@@ -546,6 +546,8 @@ corrBlock=0 corrScan=1 via="]
 -- 250 → 251 — `contentArm_of_dispatch` and the `accum_step_content` wrapper hold the step equations their premises
 -- restate (the wrapper the whole preprocess → blockIndicators → content chain); edges and chains unmoved.
 def expectedLadder : List String :=
+  -- 2026-11-14: `StructDepth`'s `DInv_dispatchBlock` / `DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling,
+  --   items 446–452): holders 144 → 143 (block), 185 → 184 (content), 256 → 255 (preprocess)
 -- 2026-10-24 (item 350): holders=112 → 113 — `dispatchBlock_colon_notQuestion` reads the `:`
 -- dispatch equation to hand every `:` producer `NotQuestionPark`.
 -- 2026-10-23 (item 357): holders=117 → 119 — `dispatchBlockIndicators_markedCols` and its `_of_ne`
@@ -565,7 +567,7 @@ def expectedLadder : List String :=
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchBlockIndicators holders 140 → 142 — `contentLead_of_interior`, `accum_step_content_traceK` read `h_blk_none`.
    -- 2026-11-13 (item 489, the landing agreement): 142 → 143 — `accum_step_content_pairB` holds `h_blk_none`.
    -- 2026-11-14 (item 490): 143 → 144 — `accum_step_content_pairK` holds `h_blk_none`.
-   "scanNextToken_dispatchBlockIndicators holders=144 edge=1 chain=0",
+   "scanNextToken_dispatchBlockIndicators holders=143 edge=1 chain=0",
    -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
    -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent holders 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
    -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent holders 175 → 180 — `TraceOf/ContentBridge`'s three twins
@@ -573,11 +575,13 @@ def expectedLadder : List String :=
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchContent holders 180 → 183 — `contentLead_of_interior`, `content_prop_tail_kept`, `accum_step_content_traceK`.
    -- 2026-11-13 (item 489): 183 → 184 — `accum_step_content_pairB` holds `h_dispatch`.
    -- 2026-11-14 (item 490): 184 → 185 — `accum_step_content_pairK` holds `h_dispatch`.
-   "scanNextToken_dispatchContent holders=185 edge=3 chain=1",
+   -- 2026-11-15 (item 517): dispatchContent 185 → 186, preprocess 256 → 257 — `content_km_transport_any`
+   -- (`TraceOf/ContentBridge`) holds `hok` / `h_pre`: the T mask's content-step transport, route (μ).
+   "scanNextToken_dispatchContent holders=186 edge=3 chain=1",
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): preprocess holders 251 → 254 — `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK`.
    -- 2026-11-13 (item 489): 254 → 255 — `accum_step_content_pairB` holds `h_preprocess`.
    -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
-   "scanNextToken_preprocess holders=256 edge=17 chain=3"]
+   "scanNextToken_preprocess holders=257 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may

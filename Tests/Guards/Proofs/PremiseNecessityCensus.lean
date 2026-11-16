@@ -376,6 +376,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-11-09 (item 469): `GapRead`/`FlowArm`/`FlowStackKBody`/`FlowStackKA` and `accum_step_flow_trace` — 20 constants, 16 decls; FIELD/READ/RELAY move with the arm fields.
 -- 2026-11-10 (item 469, review round 1): constants 1764 → 1766, decls 1395 → 1397, eta 506 → 508, READ 1491 → 1488, RELAY 2756 → 2760 — `FlowStackKBody`/`KA`/`toK`/`ofPack`/`ofK` out, `gapTail` (+2 lemmas), `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; the arm's `∀ m` leads relayed at the sites (as HypothesisReaderCensus).
 -- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas over item 498's tree (as `HypothesisReaderCensus`).
+-- 2026-11-14 (item 508): READ 1487 → 1489 — `h_dead` READ (`.1` / `.2`) at the entry producers' root arms,
+-- as [[HypothesisReaderCensus]] reads the same move.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -396,7 +398,7 @@ def expectedModuleTallyP : String :=
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
   -- 2026-11-14 (item 499): KeyArm in StreamAccum — constants +10, decls +9, eta +60, READ +6, RELAY +8 (composed over item 498's base).
-  "constants=1756 decls=1387 eta=607 FIELD=201 READ=1487 RELAY=2717 RETURN=173 UNUSED=26"
+  "constants=1765 decls=1395 eta=608 FIELD=201 READ=1482 RELAY=2725 RETURN=174 UNUSED=26"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -520,6 +522,7 @@ def expectedNineResolved : List String :=
     "colon_open_map#24 (h_cov_in) => FIELD@And.intro#2",
     "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",
     "indicator_open_map#26 (h_ref_land) => ELIM@L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused.match_1_1#4, ELIM@L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused.match_1_1#4",
+    "indicator_open_map#30 (h_resV_land) => ELIM@L4YAML.Proofs.StreamAccum.colon_open_map#26>L4YAML.Proofs.StreamAccum.colon_open_map.match_1_9#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#27>L4YAML.Proofs.StreamAccum.question_open_map.match_1_10#8, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#27>L4YAML.Proofs.StreamAccum.question_open_map.match_1_6#6",
     "indicator_open_map#32 (h_explUp_chainD) => ELIM@L4YAML.Proofs.StreamAccum.colon_open_map#28>L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#29>L4YAML.Proofs.StreamAccum.question_open_map.match_1_8#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map.match_1_10#7>Or.casesOn#3",
     "question_open_map#23 (h_cov_in) => FIELD@And.intro#2",
     "question_open_map#24 (h_cov_nil) => FIELD@And.intro#2" ]
@@ -535,7 +538,7 @@ run_cmd do
   let nine : List (Name × Nat) :=
     [ (``accum_block_on_pendingBlock, 29), (``accum_block_on_pendingBlockContent, 34),
       (``accum_block_on_pendingContent, 33), (``accum_content_on_pendingMapValue_indented, 14),
-      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26), (``indicator_open_map, 32),
+      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26), (``indicator_open_map, 30), (``indicator_open_map, 32),
       (``question_open_map, 23), (``question_open_map, 24) ]
   if nine.length != expectedCoreTerminal.length then
     throwError "item 225's shortlist is no longer nine rows"
@@ -720,8 +723,10 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#11 (_h_src) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#12 (_h_indent) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#13 (_h_ne) [class marker]",
-   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#28 (h_alt) [promised step]",
-   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#31 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.content_dispatch_after_close#23 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.content_dispatch_routed#29 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#29 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#32 (h_alt) [promised step]",
    -- Item 409 (2026-10-30): `entryPropsKeyPack_of_dispatch.h_dispatch` is read now (the `MarkedColsIn` transport).
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close#11 (_) [conclusion binder]",
    "L4YAML.Proofs.StreamAccum.park_gate_of_peek#2 (_) [family uniformity]",
@@ -746,8 +751,13 @@ def deadReason : String → String
   -- `PackAlt.step_dispatch`/`step_content`/`step_preprocess` — the same chase, ending at the same unused step binder.
   -- Item 349: `content_dispatch_routed#29` left the set (its `h_alt` is read at the `k = 0` payment's `dif`);
   -- `accum_content_on_noPending`'s `h_alt` moved to #17 behind `h_dead` and reads as family uniformity.
+  -- Item 508: the root writes pay the chain field with the EMPTY domain at `k = 0` / `w = 0` (`h_dead.2`), so
+  -- `content_dispatch_routed#29 (h_alt)` is relayed only (promised step again, as at item 340) and
+  -- `content_dispatch_after_close#23`, which only hands it on, follows; the entry producers' `h_alt` moved one
+  -- binder behind their new `h_dead` (#28 → #29, #31 → #32).
   | "L4YAML.Proofs.StreamAccum.content_dispatch_routed#29"
-  | "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#28"
+  | "L4YAML.Proofs.StreamAccum.content_dispatch_after_close#23"
+  | "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#29"
   | "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#32"
   | "L4YAML.Proofs.StreamAccum.accum_content_on_noPending#17" => "promised step"
   | "L4YAML.Proofs.StreamAccum.PackAlt.ofRefused#1"
@@ -779,7 +789,9 @@ def deadReason : String → String
 -- wrappers; `entryPropsKeyPack_of_dispatch`'s `h_dispatch` moved from #30 to #31 behind the new binder.
 -- 2026-10-23 (item 349): `dead` 32 → 31, `RELAY` 5 → 4 — `content_dispatch_routed#29 (h_alt)` is read at the `k = 0` payment.
 -- 2026-10-24 (B3 [66] col-0 threading): dead 33 → 32 — `content_dispatch_routed#29 (h_alt)` is read on the item-354 base.
-def expectedDeadTally : String := "dead=30 RELAY=3 UNUSED=27 RELAY=3"  -- 2026-10-24 (B3): see `expectedDead`
+-- 2026-11-14 (item 508): dead 30 → 32, RELAY 3 → 5 — `content_dispatch_routed#29 (h_alt)` is no longer read at the
+-- `k = 0` payment (the root write pays with the empty domain) and `content_dispatch_after_close#23 (h_alt)` only relays it.
+def expectedDeadTally : String := "dead=32 RELAY=5 UNUSED=27 RELAY=5"
 
 run_cmd do
   let env ← getEnv

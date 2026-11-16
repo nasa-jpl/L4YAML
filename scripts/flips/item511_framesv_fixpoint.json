@@ -1,0 +1,166 @@
+{
+ "item": 511,
+ "tag": "FRAMESV-FIXPOINT-511",
+ "rev": "HEAD",
+ "target": "L4YAML",
+ "log": "scratch/511-framesv-fixpoint-build.log",
+ "msgWidth": 100,
+ "rounds": 3,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "PC_FRAMESV",
+     "old": [
+      "      (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),",
+      "        ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      (h_framesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "        ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "PMV_FRAMESV",
+     "old": [
+      "      (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),",
+      "        -- Item 150: and the dedent face's own, which is the one the landing",
+      "        -- spends — same list, same floor one column above the `?`.",
+      "        ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      (h_framesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "        -- Item 150: and the dedent face's own, which is the one the landing",
+      "        -- spends — same list, same floor one column above the `?`.",
+      "        ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧",
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "        ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "FLOW_OPEN_MAIN",
+     "old": [
+      "      ((∃ (nv : Nat) (ks : List FrameLevel),",
+      "        ∀ sp_m : SurfPos, SSLComments sp_g sp_m →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc) →"
+     ],
+     "new": [
+      "      ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "        ∀ sp_m : SurfPos, SSLComments sp_g sp_m →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc) →"
+     ],
+     "count": 1
+    },
+    {
+     "name": "RESV_LAND_x3",
+     "old": [
+      "    (h_resV_land : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "    (h_resV_land : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →",
+      "        KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)"
+     ],
+     "count": 3
+    },
+    {
+     "name": "IMPLICIT_ROUTEFV",
+     "old": [
+      "    (h_routeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      -- Item 150: the value-line pack field's cover, handed across the `:`.",
+      "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+      "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧",
+      "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+      "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+      "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ alt)"
+     ],
+     "new": [
+      "    (h_routeFV : (∀ nv ∈ RegisterWitness.markedCols s_prep, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      -- Item 150: the value-line pack field's cover, handed across the `:`.",
+      "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+      "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧",
+      "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →",
+      "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+      "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ alt)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "PROPS_ROUTEFV",
+     "old": [
+      "    (h_routeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      -- Item 150: the value-line pack field's cover, handed across the `:`.",
+      "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+      "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧",
+      "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →",
+      "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+      "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "    (h_routeFV : (∀ nv ∈ RegisterWitness.markedCols s_prep, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧",
+      "      -- Item 150: the value-line pack field's cover, handed across the `:`.",
+      "      ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+      "        IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧",
+      "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →",
+      "      ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →",
+      "      KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "PMV_INDENTED_FRAMESV108",
+     "old": [
+      "    (h_framesV108 : (∃ (nv : Nat) (ks : List FrameLevel),",
+      "      ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧",
+      "        IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "      ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+      "      KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "    (h_framesV108 : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "      ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧",
+      "        IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "      ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →",
+      "      KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "DEFER_SPLIT_FV",
+     "old": [
+      "        (h_fV : (∃ (nv : Nat) (ks : List FrameLevel),",
+      "            ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧",
+      "              IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "            ∀ sp_m : SurfPos,",
+      "            SSLComments sp_g sp_m →",
+      "            KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "        (h_fV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),",
+      "            ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧",
+      "              IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+      "            ∀ sp_m : SurfPos,",
+      "            SSLComments sp_g sp_m →",
+      "            KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

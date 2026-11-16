@@ -270,6 +270,9 @@ it may only shrink. -/
 -- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` adds its own `∨ True` (or 102 → 105) and NO binder: it resumes the park's own `ks` (PR #161 review dropped the first draft's `∃ ks'`; ghost stays 72).
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain fields `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` are RE-INDEXED by the projection `RegisterWitness.markedCols sc` (`∀ nv ∈ markedCols sc, …`, no `∃ ns`): the two ghost rows the head-form chain had added leave the roster (ghost 75 → 73, back to item 404's reading); `h_explUp` keeps its one new `∨ PackAlt sc` disjunct (or 106 → 107).
 -- 2026-11-09 (item 469, PR 2b-ii α2): `accum_step_flow` concludes `FlowStackKA` — four new carriers: `GapRead` (h_tuple's gap resolution), `FlowArm` (the arm witness; its 4 ghost rows are the post-gap tail `tl₂ : FrameTail`, h_tuple's own binder, the same kind as `FlowOpenStack`'s FrameTail rows — the projection `gapTail sc` is priced for (β)), `FlowStackKBody` / `FlowStackKA` (FlowStackK's pack verbatim, so its km/g/ks/tl rows twice more).  carriers 60 → 64, snapshot 9 → 11, ghost 72 → 84, or 109 → 117.
+-- 2026-11-14 (item 505): `pendingBlock.h_seqF` / `pendingBlockContent.h_seqF` carry the sequence's OUTER frames
+--   (`∃ ke ks, …`), the `List FrameLevel` kind this census files as ghost like every framed field (ghost 73 → 75;
+--   PendingNode 22 → 24).  No new index kind: a frame list, a mirror of `sc.indents` (item 332).
 -- 2026-11-10 (item 469, review round 1): the roster is back at its baseline — `FlowArm`'s post-gap tail is the
 -- projection `gapTail sc` and `GapRead` is indexed by the state (ghost 84 → 72, no `FrameTail` binder on either);
 -- `FlowStackKBody`/`FlowStackKA` deleted (carriers 64 → 62, snapshot 11 → 9); the leads read at every floor add a
@@ -281,7 +284,7 @@ it may only shrink. -/
 -- scalar=2, ghost=0; two disjuncts (`blockScalar`'s `c = '|' ∨ c = '>'` and `SCLLiteral ∨ SCLFolded`), or 121 → 123.
 -- 2026-11-14 (item 499): KeyArm — the ?/: flow arms' carrier on accum_step_block's conclusion: carriers 63 → 64;
 -- or 123 → 141 (its six constructors read the lead/run/separator at every floor: 10 `∨ ¬ (m ≤ …)` + 8 inner `∨`).
-def expectedSummary : String := "carriers=64 snapshot=9 ghost=73 or=141"
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=75 or=141"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -336,7 +339,7 @@ def expectedTally : List String :=
    "ParkCore: surface=0 state=2 prop=5 scalar=6 snapshot=0 ghost=1 or=0",
    "ParkFloor: surface=0 state=2 prop=4 scalar=4 snapshot=0 ghost=0 or=0",
    "ParkSlot: surface=0 state=2 prop=3 scalar=7 snapshot=0 ghost=0 or=1",
-   "PendingNode: surface=139 state=1 prop=287 scalar=64 snapshot=0 ghost=22 or=66",
+   "PendingNode: surface=141 state=1 prop=297 scalar=66 snapshot=0 ghost=24 or=66",
    "PropsKeyPack: surface=13 state=1 prop=13 scalar=7 snapshot=0 ghost=3 or=5",
    "PropsNodeRoute: surface=6 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRideRoute: surface=7 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
@@ -344,8 +347,6 @@ def expectedTally : List String :=
    "RestoreLayout: surface=0 state=1 prop=0 scalar=4 snapshot=0 ghost=0 or=0",
    "ResumeFrames: surface=4 state=0 prop=5 scalar=3 snapshot=0 ghost=2 or=0",
    "ResumeKeyCtx: surface=7 state=1 prop=6 scalar=9 snapshot=0 ghost=3 or=6",
-   -- 2026-11-10 (item 473, option (A)): `ResumeWidths` is positional — two Prop conjuncts (the bound,
-   -- the split), the landing level `e` and its width as scalars, `pre` beside `ks`/`ks'` as a third ghost list.
    "ResumeWidths: surface=0 state=0 prop=2 scalar=4 snapshot=0 ghost=3 or=0",
    "ResvOk: surface=0 state=1 prop=2 scalar=5 snapshot=0 ghost=0 or=0",
    "ResvOkLe: surface=0 state=1 prop=2 scalar=5 snapshot=0 ghost=0 or=0",
@@ -426,9 +427,11 @@ def expectedGhost : List String :=
    "PendingNode.pendingProps[26].h_closeFV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingProps[28].h_closeFEV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlockContent[13].h_closeF ks : List IndentStackCover.FrameLevel",
+   "PendingNode.pendingBlockContent[16].h_seqF ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlockContent[17].h_kslotUp ns : List Nat",
    "PendingNode.pendingBlockContent[18].h_closeFV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlock[11].h_closeF ks : List IndentStackCover.FrameLevel",
+   "PendingNode.pendingBlock[13].h_seqF ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlock[14].h_kslotUp ns : List Nat",
    "PendingNode.pendingBlock[15].h_closeFV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingMapValue[16].h_kslot ns : List Nat",
@@ -448,7 +451,6 @@ def expectedGhost : List String :=
    "ResumeKeyCtx.body ksq : List IndentStackCover.FrameLevel",
    "ResumeWidths.type[0].ks ks : List IndentStackCover.FrameLevel",
    "ResumeWidths.type[1].ks' ks' : List IndentStackCover.FrameLevel",
-   -- 2026-11-10 (item 473): the positional form's levels above the landing
    "ResumeWidths.body pre : List IndentStackCover.FrameLevel",
    "SeqFrame.type[2].a a : FrameTail"]
 

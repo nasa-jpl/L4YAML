@@ -36,7 +36,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- the roster already dropped that name.  Pinned to CI run #43678091841's
 -- measured summary on the exact merged source; no classifier or proof weakened.
 def expectedDeadCensus : String :=
-  "population=14379 thm=10314 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6585 thm=4658 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3535 thm=3172 cluster-roots=1460"
+  "population=14379 thm=10314 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6585 thm=4658 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3534 thm=3172 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

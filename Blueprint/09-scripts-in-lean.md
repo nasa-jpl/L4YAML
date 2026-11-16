@@ -59,6 +59,7 @@ Scripts/                      -- lean_lib Scripts (allowNonModules := false; `mo
   Docs/Nav.lean               -- the docs-nav slices (item index, headline, NEXT paragraph, six-step rows, sections)
   Lean/Regex.lean             -- the regex subset `docs-nav grep` accepts (backtracking matcher, #guard rows)
   Pins.lean                   -- `def expected… :=` reader/writer (repin.py)
+  Census/Dashboard.lean       -- the census dashboard: directed pins (roster), readings off the pin literals, distance to goal (item 514)
   Main/<name>.lean            -- one `main` per lean_exe
 lakefile.lean                 -- lean_exe scripts-check-import-closure, scripts-repin, scripts-flip, …
 scripts/*.sh                  -- unchanged names; body becomes `exec lake exe <name> "$@"`

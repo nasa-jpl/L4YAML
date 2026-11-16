@@ -2,11 +2,8 @@ module
 
 public import L4YAML.Proofs.Serialization.ParseCheckFrom
 public import L4YAML.Proofs.Scanner.DirectiveRuns
-public import L4YAML.Proofs.Scanner.DocStartLive
 public import L4YAML.Proofs.Scanner.FlowSync
-public import L4YAML.Proofs.Scanner.DocStartLiveInv
 public import L4YAML.Proofs.Scanner.TagShape
-public import L4YAML.Proofs.Scanner.StructDepth
 public import L4YAML.Proofs.Serialization.TraceOf.LeafBridge
 public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
 public import L4YAML.Proofs.Serialization.TraceOf.FlowBridge
@@ -37,12 +34,10 @@ scanner output.
   (`.streamEnd` is the only such token, so that `k` is `ts.size - 1`) plus
   `tokenEvents_dropLast_streamEnd` (`.streamEnd` adds no event); together,
   `scanFiltered_parseStream_ok_checkFrom_full` carries S5's verdict to all of `ts`.
-* Scanner-shape facts on the parser's view of the array, from the `scanLoop` carriers:
-  `liveF_dead_contra` (β2b, `DocStartLiveInv.scanFiltered_liveF`), `scanFiltered_noComment`
-  (`TagShape.emitOk`), `scanFiltered_bal_tok` (γ1, `StructDepth.scanFiltered_bal`).  They were
-  the discharge of `parseStreamLoop`'s no-progress exit (`LoopDead` / `DeadResidue`, items
-  446–452); since (γ2α) that exit is an error, `scanFiltered_parseStream_ok_checkFrom_full`
-  concludes `checkFrom {} (tokenEvents ts) = true` outright, and these facts stand alone.
+* The scanner-shape facts that discharged `parseStreamLoop`'s no-progress exit (`LoopDead` /
+  `DeadResidue`, items 446–452: `liveF_dead_contra`, `scanFiltered_noComment`, `scanFiltered_bal_tok`)
+  are deleted (item 506): since (γ2α) that exit is an error, `scanFiltered_parseStream_ok_checkFrom_full`
+  concludes `checkFrom {} (tokenEvents ts) = true` outright, and no slice of S3 reached them.
 -/
 
 namespace L4YAML.Proofs.Serialization.ScannerShape
@@ -213,38 +208,6 @@ lemma tokenEvents_dropLast_streamEnd (ts : Toks) (L : List YamlToken)
     rw [h1, hcat, List.dropLast_concat]
     exact (go_append_streamEnd l' p hp []).symm
 
-/-- A dead token at index 1, or right after a `.documentEnd`, contradicts `LiveF`: the token before
-it would have to be a non-boundary one. -/
-lemma liveF_dead_contra (F : List YamlToken) (hL : DocStartLive.LiveF F) (hhd : F[0]? = some .streamStart)
-    (k : Nat) (t : YamlToken) (hkt : F[k]? = some t) (hlt : DocStartLive.liveTok t = false)
-    (hpos : k = 1 ∨ F[k - 1]? = some .documentEnd) : False := by
-  have hkpos : 0 < k := by
-    rcases hpos with h | h
-    · omega
-    · cases k with
-      | zero => simp only [Nat.zero_sub] at h; rw [hhd] at h; cases h
-      | succ => omega
-  obtain ⟨u, hu, hBu⟩ := hL k t hkpos hkt hlt
-  rcases hpos with rfl | h
-  · simp only [Nat.sub_self] at hu; rw [hhd] at hu
-    simp only [Option.some.injEq] at hu; subst hu; simp [DocStartLive.Bnd] at hBu
-  · rw [h] at hu; simp only [Option.some.injEq] at hu; subst hu; simp [DocStartLive.Bnd] at hBu
-
-/-- The scanner emits no `.comment` token (`TagShape.emitOk`, carried over `scanLoop`). -/
-lemma scanFiltered_noComment (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
-    (k : Nat) (text : String) : ParseCheckFrom.tok ts k ≠ some (.comment text) := by
-  intro h
-  rw [tok_eq_toks] at h
-  have := TagShape.scanFiltered_emitOk input ts hs _ (List.mem_of_getElem? h)
-  simp [TagShape.emitOk] at this
-
-/-- (γ1) on the parser's view of the token array: a structural dead token at index `k` of
-    `scanFiltered` output sits at positive `StructDepth.depth`. -/
-lemma scanFiltered_bal_tok (input : String) (ts : Toks) (hs : scanFiltered input = .ok ts)
-    (k : Nat) (t : YamlToken) (hk : ParseCheckFrom.tok ts k = some t)
-    (hd : StructDepth.structDead t = true) : 0 < StructDepth.depth ((toks ts).take k) := by
-  rw [tok_eq_toks] at hk
-  exact StructDepth.scanFiltered_bal input ts hs k t hk hd
 
 /-- S5's token-level result on scanner output, carried to the full token array. `parseStreamLoop`
     stops before consuming `.streamEnd`, so S5's witness `k` may be `ts.size - 1`, not `ts.size`;

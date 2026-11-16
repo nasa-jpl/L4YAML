@@ -150,18 +150,6 @@ open L4YAML.Proofs.Serialization.ScannerShape in
     no-progress exit (`LoopDead_scanFiltered`, `DeadResidue`), is retired since (γ2α) made that exit an
     error. -/
 
-open L4YAML.Proofs.Serialization.ScannerShape in
-/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.liveF_dead_contra' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in
-#print axioms liveF_dead_contra
-
-open L4YAML.Proofs.Serialization.ScannerShape in
-/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_bal_tok' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms scanFiltered_bal_tok
 
 /-! S5(→): the stream loop stops at `.streamEnd` or the end of the array; the no-progress exit is an
     error ((γ2α)), so `parseStreamLoop_cf` / `parseStream_ok_checkFrom` carry no third stop shape. -/
@@ -197,13 +185,6 @@ open L4YAML.Proofs.Serialization.ScannerShape in
 #print axioms scanFiltered_TagUsesShaped
 
 
-open L4YAML.Proofs.Serialization.ScannerShape in
-/-- info: 'L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_noComment' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms scanFiltered_noComment
 
 end Tests.Guards.ScannerShapeAxioms
 

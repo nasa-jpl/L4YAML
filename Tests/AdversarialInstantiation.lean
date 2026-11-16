@@ -11766,6 +11766,352 @@ def testFlowKeyChain (state : IO.Ref TestCollector) : IO Unit := do
     (pauses == 29 && refused == 4 && checks == 26 && nested == 26 && rejects.isEmpty && atMark == 0 && below == 0)
 
 
+def testDedentSurvivorChain (state : IO.Ref TestCollector) : IO Unit := do
+  -- P123 (item 504, (ω-pay-births) (d) item (3)): the DEDENT `else` arms of the park fields'
+  -- chain (`closeThenBlock`, `pendingBlock`: a landing at column `k` after which a mark `m < k`
+  -- survives — an ancestor `?` whose `: v` is still owed) and the entry producers' `resumeAtMap`
+  -- arms.  Item 494's `[map k]` resume fact pays them only if (i) every survivor `m < k` has its
+  -- `: v` at column `m` after the landing's whole node accepted, and (ii) every such `m` is a
+  -- mapping level of the dispatch state's indent stack (`sc.indents`, the stack `IndentStackCover.Covered` reads), i.e. a `map m`
+  -- frame `KeyFrames.resumeAtMap` can resume on.  A survivor AT the landing (`m = k`) is item
+  -- 498's `?`-only class; at any other landing it would be a third class.
+  let inputs : List String :=
+    [ "?\n  ?\n    a\n  : b\n: c", "?\n  k:\n    a\n  j: 2\n: b", "?\n  - a\n  - b\n: c",
+      "?\n  a:\n    b:\n      c\n  d: 1\n: v", "?\n  - a:\n      b\n  - c\n: v", "?\n  k: |\n    x\n  j: y\n: v",
+      "k:\n  ?\n    a:\n      b\n    c: d\n  : v", "- ?\n    x:\n      y\n    z: w\n  : v",
+      "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "?\n  - - a\n    - b\n  - c\n: v", "?\n  k:\n  - a\n  - b\n: v", "?\n  k:\n    - a\n  j: b\n: v",
+      "?\n  k: [a,\n    b]\n  j: 1\n: v", "?\n  k: {a: 1}\n  j: 2\n: v", "?\n  k: \"a\n    b\"\n  j: 1\n: v",
+      "?\n  k: !t a\n  j: &x b\n: *x", "?\n  # c\n  k: 1\n  j: 2\n: v", "?\n  k: 1 # c\n  j: 2\n: v",
+      "?\n  k:\n    a:\n      b\n  j: 1\n: v", "?\n  - a\n  -\n    b\n  - c\n: v", "?\n  ? x\n  : y\n: v",
+      "?\n  ?\n    k:\n      a\n    j: 1\n  : b\n: c", "?\n  - ? a\n    : b\n  - c\n: v",
+      "?\n  k: >\n    x\n    y\n  j: 1\n: v", "?\n  k: 'a'\n  j: 'b'\n: v", "? a\n: b\n?\n  k: 1\n  j: 2\n: c",
+      "?\n  a\n  b\n: c", "?\n  k:\n    ? a\n    : b\n  j: 1\n: v", "- ?\n    - a\n    - b\n  : v",
+      -- the two `closeThenBlock` sequence births: a compact sequence at the mapping's own column
+      -- (`a:⏎- b`) or under a `?` (`? - a`), followed by the level's next entry
+      "a:\n- b\nc: 1", "a:\n- b\n- c\nd: 1", "? - a\n: b", "? - a\n  - b\n: c", "k:\n  a:\n  - b\n  c: 1",
+      "- a:\n  - b\n  c: 1", "?\n  a:\n  - b\n  c: 1\n: v" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut unframed : List String := []
+  let mut rejects : List String := []
+  -- P4's compact-sequence check (review round 1): at every block `-` inside a mapping, the
+  -- mapping's entry is on the dispatch stack (`map m`, read off `sP.indents`) and its sibling
+  -- `zz: 1` at `m` after the WHOLE sequence parses — the two `closeThenBlock` births' frame.
+  let mut seqDashes := 0
+  let mut seqInner := 0
+  let mut seqRejects : List String := []
+  let mut seqOwn := 0
+  let mut atMarkQ := 0
+  let mut atMarkOther : List String := []
+  let mut wholeOk := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
+        if c == '-' && sP.flowLevel == 0 then
+          seqDashes := seqDashes + 1
+          let kd : Int := sP.col
+          let outer := sP.indents.toList.filter fun e => !e.isSequence && 0 ≤ e.column && e.column ≤ kd
+          match outer.foldl (fun acc e => match acc with
+              | none => some e.column
+              | some m => some (max m e.column)) none with
+          | some m =>
+            seqInner := seqInner + 1
+            if m == kd then seqOwn := seqOwn + 1
+            -- the sibling goes right AFTER the whole sequence: before the first later line that
+            -- dedents to `m` or below and is not one of the sequence's own `-` lines at `kd`
+            let pad := String.mk (List.replicate m.toNat ' ')
+            let lines := input.splitOn "\n"
+            let indentOf (l : String) : Int := (l.toList.takeWhile (· == ' ')).length
+            let continues (l : String) : Bool :=
+              l.toList.all (· == ' ') || indentOf l > m ||
+                (indentOf l == kd && (l.toList.dropWhile (· == ' ')).head? == some '-')
+            let after := lines.drop (sP.line + 1)
+            let inside := after.takeWhile continues
+            let rest := after.drop inside.length
+            let probe := String.intercalate "\n"
+              (lines.take (sP.line + 1) ++ inside ++ [pad ++ "zz: 1"] ++ rest)
+            match L4YAML.TokenParser.parseYaml probe with
+            | .ok _ => pure ()
+            | .error _ => seqRejects := seqRejects ++ [s!"{repr probe}@{sP.line}:{sP.col} m={m}"]
+          | none => pure ()
+        let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+          !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if (isInd || isContent) && sP.flowLevel == 0 then
+            let k := sP.col
+            let survivors := L4YAML.Proofs.RegisterWitness.markedCols sN
+            let belowK := survivors.filter (· < k)
+            for m in survivors do
+              if m == k then
+                if c == '?' then atMarkQ := atMarkQ + 1
+                else atMarkOther := atMarkOther ++ [s!"{repr input}@{sP.line}:{k} c={c}"]
+            if !belowK.isEmpty then
+              pauses := pauses + 1
+              let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+              let ind0 := indentOf lines[sP.line]!
+              let opensEntry (l : String) : Bool :=
+                let r := l.toList.dropWhile (· == ' ')
+                match r with
+                | [] => false
+                | c0 :: rest => c0 == '#' ||
+                    ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
+              let mut last := sP.line
+              for i in [sP.line + 1 : lines.size] do
+                let l := lines[i]!
+                let blank := l.toList.all (· == ' ')
+                if i == last + 1 && (blank || indentOf l > ind0 ||
+                    (indentOf l == ind0 && !opensEntry l)) then last := i
+              let pre := "\n".intercalate (lines.toList.take (last + 1))
+              let frames := sP.indents.toList.map L4YAML.Proofs.IndentStackCover.FrameLevel.ofEntry
+              for m in belowK do
+                checks := checks + 1
+                if !(frames.contains (L4YAML.Proofs.IndentStackCover.FrameLevel.map m)) then
+                  unframed := unframed ++ [s!"{repr input}@{sP.line}:{k} m={m} frames={repr frames}"]
+                let cont := pre ++ "\n" ++ String.ofList (List.replicate m ' ') ++ ": v\n"
+                match L4YAML.TokenParser.parseYaml cont with
+                | .ok _ => pure ()
+                | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{k} c={c} m={m}"]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P123 dedent-survivor pauses={pauses} checks={checks} unframed={unframed} rejects={rejects} atMarkQ={atMarkQ} atMarkOther={atMarkOther} wholeOk={wholeOk}/{inputs.length} seqDashes={seqDashes} seqInner={seqInner} seqOwn={seqOwn} seqRejects={seqRejects}"
+  check state s!"P123 (ω-pay-births) (d) item (3) the dedent survivors' chain (item 504): {pauses} dedent pauses with a survivor below the landing, {checks} survivors checked, {unframed.length} not a map frame, {rejects.length} `: v` rejects, {atMarkQ} at-mark survivors on `?` landings, {atMarkOther.length} on other landings, {wholeOk} / {inputs.length} inputs accepted whole, {seqDashes} block `-` pauses of which {seqInner} inside a mapping ({seqOwn} at the mapping's own column) with {seqRejects.length} sibling rejects after the sequence"
+    -- pinned to the first run: P1 predicted ≥ 15 dedent pauses with a survivor below the landing
+    -- and 0 `: v` rejects (197 / 214 / 0 — HELD); P2 predicted every survivor a `map m` level of
+    -- the dispatch state's stack (0 unframed — HELD); P3 predicted at-mark survivors only on `?`
+    -- landings (43 / 0 — HELD).  Run 0 read the frames off `framesAtLine`, which is `[]` on a
+    -- line no token ends on (`?⏎  a⏎  b`'s plain scalar) — a probe artefact, not a hole.
+    (pauses == 197 && checks == 214 && unframed.isEmpty && rejects.isEmpty && atMarkQ == 43 &&
+      atMarkOther.isEmpty && wholeOk == 37 &&
+      seqDashes == 30 && seqInner == 27 && seqOwn == 8 && seqRejects.isEmpty)
+
+/-- **P125 — (ω-pay-births) (d) item (3b): the EVERY-MARK value-line carrier, Rule 2** (item 507).
+    `pendingContent.h_framesV` / `pendingMapValue.h_framesV` name ONE `nv` (the park's own `?`);
+    (3b) restates them over every `nv ∈ markedCols sc`.  The carrier claims, for every open
+    `?` mark `m` of the scanner, that after the WHOLE node at the pause its `: v` line at `m`
+    parses.  Item 504 read the dedent arms as promising `[190]`'s compact `: - w` value too,
+    which only the `?`'s own chain pays — so the probe asks BOTH shapes at every mark: `: v`
+    (`[192]`'s block node) and `: - w` (`[190]`'s compact sequence). -/
+def testEveryMarkValueLine (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "?\n  ?\n    a\n  : b\n: c", "?\n  k:\n    a\n  j: 2\n: b", "?\n  - a\n  - b\n: c",
+      "?\n  a:\n    b:\n      c\n  d: 1\n: v", "?\n  - a:\n      b\n  - c\n: v", "?\n  k: |\n    x\n  j: y\n: v",
+      "k:\n  ?\n    a:\n      b\n    c: d\n  : v", "- ?\n    x:\n      y\n    z: w\n  : v",
+      "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "?\n  - - a\n    - b\n  - c\n: v", "?\n  k:\n  - a\n  - b\n: v", "?\n  k:\n    - a\n  j: b\n: v",
+      "?\n  k: [a,\n    b]\n  j: 1\n: v", "?\n  k: {a: 1}\n  j: 2\n: v", "?\n  k: \"a\n    b\"\n  j: 1\n: v",
+      "?\n  k: !t a\n  j: &x b\n: *x", "?\n  # c\n  k: 1\n  j: 2\n: v", "?\n  k: 1 # c\n  j: 2\n: v",
+      "?\n  k:\n    a:\n      b\n  j: 1\n: v", "?\n  - a\n  -\n    b\n  - c\n: v", "?\n  ? x\n  : y\n: v",
+      "?\n  ?\n    k:\n      a\n    j: 1\n  : b\n: c", "?\n  - ? a\n    : b\n  - c\n: v",
+      "?\n  k: >\n    x\n    y\n  j: 1\n: v", "?\n  k: 'a'\n  j: 'b'\n: v", "? a\n: b\n?\n  k: 1\n  j: 2\n: c",
+      "?\n  a\n  b\n: c", "?\n  k:\n    ? a\n    : b\n  j: 1\n: v", "- ?\n    - a\n    - b\n  : v",
+      -- the two `closeThenBlock` sequence births: a compact sequence at the mapping's own column
+      -- (`a:⏎- b`) or under a `?` (`? - a`), followed by the level's next entry
+      "a:\n- b\nc: 1", "a:\n- b\n- c\nd: 1", "? - a\n: b", "? - a\n  - b\n: c", "k:\n  a:\n  - b\n  c: 1",
+      "- a:\n  - b\n  c: 1", "?\n  a:\n  - b\n  c: 1\n: v" ]
+  let mut pauses := 0
+  let mut checks := 0
+  let mut atMark := 0
+  let mut rejV : List String := []
+  let mut rejSeq : List String := []
+  let mut multi := 0
+  let mut wholeOk := 0
+  for input in inputs do
+    let chars := input.toList
+    let lines := (input.splitOn "\n").toArray
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        let isInd := (c == ':' || c == '?' || c == '-') &&
+          (chars[sP.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true
+        let isFlowInd := c == '[' || c == '{' || c == ']' || c == '}' || c == ','
+        let isContent := !isInd && !isFlowInd && c != '#' && c != '%' && c != '\n' && c != ' ' &&
+          !(c == '-' && chars[sP.offset + 1]? == some '-' && chars[sP.offset + 2]? == some '-')
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if (isInd || isContent) && sP.flowLevel == 0 then
+            let k := sP.col
+            let marks := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if !marks.isEmpty then
+              pauses := pauses + 1
+              if marks.length > 1 then multi := multi + 1
+              let indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+              let ind0 := indentOf lines[sP.line]!
+              let opensEntry (l : String) : Bool :=
+                let r := l.toList.dropWhile (· == ' ')
+                match r with
+                | [] => false
+                | c0 :: rest => c0 == '#' ||
+                    ((c0 == '?' || c0 == ':' || c0 == '-') && (rest.head?.map (· == ' ')).getD true)
+              for m in marks do
+                checks := checks + 1
+                -- the WHOLE node at the pause, cut at the mark's own value line: a line at
+                -- indent ≤ `m` that opens an entry (`:`, `?`, `-`) closes the key `m` marks
+                let mut last := sP.line
+                for i in [sP.line + 1 : lines.size] do
+                  let l := lines[i]!
+                  let blank := l.toList.all (· == ' ')
+                  let closesMark := indentOf l ≤ m && opensEntry l
+                  if i == last + 1 && (blank || (indentOf l > ind0 && !closesMark) ||
+                      (indentOf l == ind0 && !opensEntry l)) then last := i
+                let pre := "\n".intercalate (lines.toList.take (last + 1))
+                if m == k then atMark := atMark + 1
+                let pad := String.ofList (List.replicate m ' ')
+                match L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": v\n") with
+                | .ok _ => pure ()
+                | .error _ => rejV := rejV ++ [s!"{repr (pre ++ "\n" ++ pad ++ ": v")}@{sP.line}:{k} m={m}"]
+                match L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": - w\n") with
+                | .ok _ => pure ()
+                | .error _ => rejSeq := rejSeq ++ [s!"{repr (pre ++ "\n" ++ pad ++ ": - w")}@{sP.line}:{k} m={m}"]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P125 every-mark pauses={pauses} checks={checks} multi={multi} atMark={atMark} rejV={rejV} rejSeq={rejSeq} wholeOk={wholeOk}/{inputs.length}"
+  check state s!"P125 (ω-pay-births) (d) item (3b) the every-mark value-line carrier (item 507): {pauses} marked pauses, {checks} marks checked ({multi} pauses with more than one mark, {atMark} at the landing's column), {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- pinned (item 507): both value shapes parse at EVERY mark — item 504's `: - w` starvation
+    -- is proof-side (the own-`?` chain), not the runtime's.  The first run's 4 `: - w` rejects
+    -- were the probe's: its node extent ran past the mark's own `: v` line (two values).
+    (pauses == 231 && checks == 257 && multi == 24 && atMark == 43 &&
+      rejV.isEmpty && rejSeq.isEmpty && wholeOk == 37)
+
+/-- Item 508 — (ω-pay-births) (d) the ROOT closing lemma's Rule 2: at every block pause at
+    column 0 (a root landing), after the step the scanner's register holds no mark unless the
+    landing is itself a `?` (its own mark, `question_open_map`'s writer).  Reads
+    `RegisterWitness.markedCols` off the post-state `sN`; lists every other survivor by input,
+    line and char.  P123's corpus plus root-shaped inputs (unclosed `?` at column 0 followed by
+    a column-0 key, documents, comments, blank lines). -/
+def testRootLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? a\nc: 1", "? a\n? b\n: c\nd: 1", "?\n  a\nb: 1", "? a\n: b\nc: 1", "?\n  k: 1\nz: 2",
+      "? a\n:\n? b\n: c", "a: 1\n? b\n: c\nd: 2", "? [a]\nb: 1", "? {a: 1}\nb: 1", "? |\n  x\nb: 1",
+      "? !t a\nb: 1", "? &x a\nb: *x", "?\n  - a\nb: 1", "? a\n# c\nb: 1", "? a\n\nb: 1",
+      "---\n? a\nb: 1", "? a\n...\n? b\nc: 1", "? a\n---\nb: 1", "?\n  ?\n    a\n  : b\nc: 1",
+      "- ? a\n- b", "- ? a\n  : b\nc: 1", "? a\n: b\n- c", "k:\n  ? a\nz: 1", "? a\n? b\nc: 1",
+      "?\n  ?\n    a\n  : b\n: c", "?\n  k:\n    a\n  j: 2\n: b", "?\n  - a\n  - b\n: c",
+      "k:\n  ?\n    a:\n      b\n    c: d\n  : v", "- ?\n    x:\n      y\n    z: w\n  : v",
+      "?\n  ?\n    ?\n      a\n    : b\n  : c\n: d", "?\n  ? a\n  : b\n  ? c\n  : d\n: e",
+      "? a\n: b\n?\n  k: 1\n  j: 2\n: c", "a:\n- b\nc: 1", "? - a\n: b", "? - a\n  - b\n: c",
+      "k: v\n? a\n: b", "[a]\n? b\n: c", "? a: 1\n: b", "a: 1\nb: 2\nc: 3", "? a\n: b\n? c\n: d\ne: f",
+      "?\n  a\n- b", "? a\n- b", "? a\n:\n- b", "?\n  - a\n- b", "? a\n? b\n- c", "?\n  a\n:\n  b\n- c",
+      "? a\n: b\n:\n  c", "?\n  a\n:", "? a\n:- b", "?\n  a\n: - b\nc: 1", "? a\nb: 1\n: c" ]
+  let mut rootPauses := 0
+  let mut ownQ : List String := []
+  let mut ownQOther : List String := []
+  let mut survivors : List String := []
+  let mut closedBefore := 0
+  let mut wholeOk := 0
+  for input in inputs do
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 && c != '#' && sP.col == 0 then
+            rootPauses := rootPauses + 1
+            let before := L4YAML.Proofs.RegisterWitness.markedCols sP
+            let after := L4YAML.Proofs.RegisterWitness.markedCols sN
+            if !before.isEmpty && after.isEmpty then closedBefore := closedBefore + 1
+            if !after.isEmpty then
+              let tag := s!"{repr input}@{sP.line}:{repr c} pre={before} post={after}"
+              if c == '?' then
+                -- the `?` landing's post-state is exactly its OWN mark (`[k]`, here `[0]`) over an
+                -- empty pre-state: preprocess closed every older mark (review on #330: the shape
+                -- itself is asserted, not just that the post-state is non-empty)
+                if before.isEmpty && after == [sP.col] then ownQ := ownQ ++ [tag]
+                else ownQOther := ownQOther ++ [tag]
+              else survivors := survivors ++ [tag]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P126 root-landing rootPauses={rootPauses} ownQ={ownQ.length} ownQOther={ownQOther} closedBefore={closedBefore} wholeOk={wholeOk}/{inputs.length} survivors={survivors}"
+  IO.println s!"P126 ownQ={ownQ}"
+  check state s!"P126 (ω-pay-births) (d) the root closing lemma's Rule 2 (item 508): {rootPauses} root landings, {ownQ.length} own-`?` marks (pre=[] post=[0]), {ownQOther.length} `?` landings with another shape, {closedBefore} landings closing a mark, {survivors.length} other survivors, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- pinned (item 508): 0 survivors at every non-`?` root landing the scanner steps through —
+    -- incl. a column-0 `-` / `:` over an open column-0 `?`; the 50 non-empty post-states are the
+    -- `?` landings' own `[0]` over pre=[] (preprocess closes the marks) — the shape is asserted
+    -- per landing (`ownQOther` empty); 9 inputs the runtime refuses whole (trailing root content /
+    -- bare document content, §9.2).
+    (rootPauses == 120 && ownQ.length == 50 && ownQOther.isEmpty && closedBefore == 24 &&
+      survivors.isEmpty && wholeOk == 42)
+
+/-- Item 510 — the `pendingFlow` chain-field CARRIER's Rule 2: at every block-context flow open
+    (`[` / `{` at `flowLevel = 0`) read `RegisterWitness.markedCols` off the open state and again
+    off the first state back at `flowLevel = 0` (the close); the marks must agree (flow steps touch
+    no register slot), and every mark's `: v` / `: - w` after the WHOLE flow node must parse — the
+    fact a chain field on the flow park would carry.  Diffs and rejects listed by input. -/
+def testFlowCloseMarks (state : IO.Ref TestCollector) : IO Unit := do
+  let inputs : List String :=
+    [ "? [a]\n: b", "? {a: 1}\n: b", "?\n  [a, b]\n: c", "?\n  k: [a]\n  j: {b: 1}\n: v", "? [a,\n  b]\n: c",
+      "?\n  ?\n    [x]\n  : y\n: z", "? [a]: 1\n: b", "- ? [a]\n  : b", "k:\n  ? {a}\n  : v", "? [ ]\n: b",
+      "? [[a], {b: c}]\n: d", "?\n  - [a]\n  - {b}\n: v", "? a\n: [b]\n? c\n: {d: e}", "[a]\n? b\n: c",
+      "k: [a, b]\nj: {c: d}", "? [a]\n:\n  [b]", "?\n  k: [a]\n: v", "? {a: [b, {c: d}]}\n: e",
+      "? [a] # c\n: b", "? [a]\n\n: b", "--- \n? [a]\n: b", "? !t [a]\n: b", "? &x [a]\n: *x",
+      "?\n  [a]\n  : b\n: c", "? [? a : b]\n: c", "? {? a : b}\n: c" ]
+  let mut opens := 0
+  let mut marked := 0
+  let mut diffs : List String := []
+  let mut rejV : List String := []
+  let mut rejSeq : List String := []
+  let mut wholeOk := 0
+  for input in inputs do
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let lines := (input.splitOn "\n").toArray
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) =>
+          if sP.flowLevel == 0 && (c == '[' || c == '{') then
+            opens := opens + 1
+            let openMarks := L4YAML.Proofs.RegisterWitness.markedCols sP
+            if !openMarks.isEmpty then marked := marked + 1
+            -- walk to the close: the first state back at flowLevel 0
+            let mut sc := sN
+            let mut closed := false
+            for _ in [:200] do
+              if sc.flowLevel == 0 then closed := true; break
+              match L4YAML.Scanner.scanNextToken sc with
+              | .ok (some s2) => sc := s2
+              | _ => break
+            if closed then
+              let closeMarks := L4YAML.Proofs.RegisterWitness.markedCols sc
+              if closeMarks != openMarks then
+                diffs := diffs ++ [s!"{repr input}@{sP.line}:{sP.col} open={openMarks} close={closeMarks}"]
+              -- the whole flow node = the input up to and including the closing `]` / `}` itself
+              -- (review on #332: cutting at the close's LINE kept `: 1` of `? [a]: 1⏎: b` and
+              -- probed a completed mapping, not the flow close)
+              let pre := String.fromUTF8! (input.toUTF8.extract 0 sc.offset)
+              for m in closeMarks do
+                let pad := String.mk (List.replicate m ' ')
+                if !(L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": v\n")).isOk then
+                  rejV := rejV ++ [s!"{repr input}@{sP.line} m={m}"]
+                if !(L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": - w\n")).isOk then
+                  rejSeq := rejSeq ++ [s!"{repr input}@{sP.line} m={m}"]
+          s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P127 flow-close opens={opens} marked={marked} diffs={diffs} rejV={rejV} rejSeq={rejSeq} wholeOk={wholeOk}/{inputs.length}"
+  check state s!"P127 the `pendingFlow` chain-field carrier's Rule 2 (item 510): {opens} block-context flow opens, {marked} under a mark, {diffs.length} open/close mark diffs, {rejV.length} `: v` rejects, {rejSeq.length} `: - w` rejects, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- pinned (item 510): the register is untouched through a flow node (0 open/close diffs at 31 opens,
+    -- 25 of them under a `?` mark) and every mark's `: v` / `: - w` after the whole flow node parses;
+    -- 2 inputs the runtime refuses whole (§9.2 bare document content after a root `?` entry).
+    (opens == 31 && marked == 25 && diffs.isEmpty && rejV.isEmpty && rejSeq.isEmpty && wholeOk == 24)
+
 def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
   -- P89 (item 438, (χ-seqtop-refused)): the negative arm `ExplicitValueRefused s ∨ SeqTopKey s`
   -- proposed for `content_dispatch_routed`'s `h_resF` premise must NOT be a tautology over the
@@ -11829,6 +12175,72 @@ def testSeqTopRefusedArm (state : IO.Ref TestCollector) : IO Unit := do
         "\"? |\\n  k\\n: v\"@2:0",
         "\"k: v\\n? a\\n: b\"@1:2",
         "\"k: v\\n? a\\n: b\"@2:0"])
+
+def testSeqOuterFrames (state : IO.Ref TestCollector) : IO Unit := do
+  -- P124 (item 505, (ω-pay-births) (d) item (3a)): `pendingBlock.h_seqF` /
+  -- `pendingBlockContent.h_seqF` restated with the sequence's OUTER frames — after the
+  -- `[183]` at `ke` closes, the maps it stands inside resume (`ResumeFrames (SLYamlStream …) ks`),
+  -- where `SeqEntryTail` bottomed in the bare stream.  The statement's surface: at a block `-`
+  -- landing inside a mapping, the mapping's next sibling after the whole sequence parses.
+  let inputs : List String :=
+    [ "a:\n- b\n- c", "a:\n  - b\n  - c", "a:\n  b:\n  - c\n  - d", "- - a\n  - b",
+      "? - a\n  - b\n: c", "a:\n- - b\n  - c", "a:\n- b: 1\n- c", "k:\n  - a\n  -\n    - b\n  - c",
+      "a:\n- |\n  t\n- c", "a:\n- [x]\n- c", "a:\n- 'q'\n- c", "a:\n- !!str b\n- c",
+      "a:\n- &x b\n- *x", "a: # c\n- b\n- c" ]
+  let mut dashes := 0
+  let mut inner := 0
+  let mut own := 0
+  let mut checks := 0
+  let mut wholeOk := 0
+  let mut rejects : List String := []
+  for input in inputs do
+    if (L4YAML.TokenParser.parseYaml input).isOk then wholeOk := wholeOk + 1
+    let lines := input.splitOn "\n"
+    let mut s := L4YAML.Scanner.ScannerState.mk' input
+    for _ in [:80] do
+      match L4YAML.Scanner.scanNextToken_preprocess s with
+      | .ok (some (sP, c)) =>
+        if c == '-' && sP.flowLevel == 0 then
+          dashes := dashes + 1
+          let k : Int := sP.col
+          -- the stack's base entry sits at column -1 and is no mapping level: a root sequence has
+          -- no outer map.  `≤ k`, not `< k`: an indentless sequence (`a:⏎- b⏎- c`) sits at its
+          -- mapping's own column, and that mapping is the outer frame the sibling lands on.
+          let outer := sP.indents.toList.filter fun e => !e.isSequence && 0 ≤ e.column && e.column ≤ k
+          match outer.foldl (fun acc e => match acc with
+              | none => some e.column
+              | some m => some (max m e.column)) none with
+          | some m =>
+            inner := inner + 1
+            if m == k then own := own + 1
+            checks := checks + 1
+            -- the sibling goes right AFTER the whole sequence (P123's cut): before the first later
+            -- line that dedents to `m` or below and is not one of the sequence's own `-` lines at `k`
+            let pad := String.mk (List.replicate m.toNat ' ')
+            let indentOf (l : String) : Int := (l.toList.takeWhile (· == ' ')).length
+            let continues (l : String) : Bool :=
+              l.toList.all (· == ' ') || indentOf l > m ||
+                (indentOf l == k && (l.toList.dropWhile (· == ' ')).head? == some '-')
+            let after := lines.drop (sP.line + 1)
+            let inside := after.takeWhile continues
+            let rest := after.drop inside.length
+            let cont := String.intercalate "\n"
+              (lines.take (sP.line + 1) ++ inside ++ [pad ++ "zz: 1"] ++ rest)
+            match L4YAML.TokenParser.parseYaml cont with
+            | .ok _ => pure ()
+            | .error _ => rejects := rejects ++ [s!"{repr input}@{sP.line}:{sP.col} m={m}"]
+          | none => pure ()
+        match L4YAML.Scanner.scanNextToken s with
+        | .ok (some sN) => s := sN
+        | _ => break
+      | _ => break
+  IO.println s!"P124 seq-outer-frames dashes={dashes} inner={inner} own={own} checks={checks} rejects={rejects} wholeOk={wholeOk}/{inputs.length}"
+  check state s!"P124 (ω-pay-births) (d) item (3a) the sequence's outer frames (item 505): {dashes} block `-` pauses, {inner} inside a mapping ({own} at the mapping's own column), {rejects.length} sibling rejects after the sequence, {wholeOk} / {inputs.length} inputs accepted whole"
+    -- Pinned to the first run; P7 predicted ≥ 20 / ≥ 12 / 0 rejects / 14 whole (32 / 12 / 0 / 14
+    -- HELD).  Review on #327: the first form took `e.column < k` and appended the sibling at the
+    -- END of the input, so the indentless dashes (`a:⏎- b⏎- c`, `outer = []`) were never checked;
+    -- `≤ k` + P123's after-the-sequence cut now check them (`own`) — re-pinned to that run.
+    (dashes == 32 && inner == 29 && own == 19 && rejects.isEmpty && wholeOk == 14)
 
 def testFlowCarrier (state : IO.Ref TestCollector) : IO Unit := do
   let nestedQ : List String := ["?\n  ? -\n: w\n", "? - ? - a\n  : b\n: c\n", "?\n  ?\n    -\n    - b\n  ? c\n: w\n", "? ? - a\n  : b\n: c\n", "- ? - a\n  : b\n"]
@@ -13075,7 +13487,7 @@ def loopDeadB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
     (k == 1 || tok ts (k - 1) == some .documentEnd || P91.afterDocOK (tok ts k))
 
 /-- `DeadResidue (tok ts k)`, computed: the `.afterDocument` shape (the `.comment` disjunct was
-closed by `scanFiltered_noComment`, Priority 96). -/
+closed by `scanFiltered_noComment` (deleted, item 506), Priority 96). -/
 def residueB (ts : Array (Positioned YamlToken)) (k : Nat) : Bool :=
   P91.afterDocOK (tok ts k)
 
@@ -13091,12 +13503,12 @@ def listsUpTo : Nat → List (List YamlToken)
   | 0 => [[]]
   | n + 1 => let r := listsUpTo n; r ++ (r.filter (·.length == n)).flatMap fun l => alphabet.map (l ++ [·])
 
-/-- `liveF_dead_contra`'s position premise: `k = 1 ∨ L[k-1] = .documentEnd`. -/
+/-- `liveF_dead_contra (deleted, item 506)`'s position premise: `k = 1 ∨ L[k-1] = .documentEnd`. -/
 def posB (L : List YamlToken) (k : Nat) : Bool := k == 1 || L[k - 1]? == some .documentEnd
 end P94
 
 def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "Priority 94 (vi): S3 (β2b) — scanFiltered_liveF, liveF_dead_contra, LoopDead_scanFiltered"
+  setCategory state "Priority 94 (vi): S3 (β2b) — LiveF of scanFiltered output (scanFiltered_liveF deleted), liveF_dead_contra (deleted, item 506), LoopDead_scanFiltered"
   -- (a) list level: with `LiveF` and `.streamStart` first, no dead token at 1 / after `...`
   let mut held := 0
   let mut failedPremise := 0
@@ -13110,12 +13522,12 @@ def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
       | some t =>
         if live then
           held := held + 1
-          checkM state s!"P94 (vi) liveF_dead_contra {repr L} k={k}" (L4YAML.Proofs.DocStartLive.liveTok t) ""
+          checkM state s!"P94 (vi) liveF_dead_contra (deleted, item 506) {repr L} k={k}" (L4YAML.Proofs.DocStartLive.liveTok t) ""
         else
           failedPremise := failedPremise + 1
           if !L4YAML.Proofs.DocStartLive.liveTok t then deadUnderFailed := deadUnderFailed + 1
       | none => pure ()
-  checkM state s!"P94 (vi) liveF_dead_contra: premise-held rows={held}, failed-premise rows={failedPremise}, dead under failed premise={deadUnderFailed} (load-bearing)"
+  checkM state s!"P94 (vi) liveF_dead_contra (deleted, item 506): premise-held rows={held}, failed-premise rows={failedPremise}, dead under failed premise={deadUnderFailed} (load-bearing)"
     (held > 0 && deadUnderFailed > 0) ""
   -- (b) scanner outputs: `LiveF` + head, and the discharge at every `LoopDead` position
   let mut scanned := 0
@@ -13128,8 +13540,8 @@ def testLoopDeadDischarge (state : IO.Ref TestCollector) : IO Unit := do
     | .ok ts =>
       scanned := scanned + 1
       let L := L4YAML.Proofs.DirectiveRuns.toks ts
-      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: LiveF" (P92.liveFB L) s!"toks={repr L}"
-      checkM state s!"P94 (vi) scanFiltered_liveF {repr input}: head" (L[0]? == some .streamStart) ""
+      checkM state s!"P94 (vi) LiveF of scanFiltered output (scanFiltered_liveF deleted) {repr input}: LiveF" (P92.liveFB L) s!"toks={repr L}"
+      checkM state s!"P94 (vi) LiveF of scanFiltered output (scanFiltered_liveF deleted) {repr input}: head" (L[0]? == some .streamStart) ""
       for k in List.range (ts.size + 1) do
         if P94.loopDeadB ts k then
           loopDeadPos := loopDeadPos + 1
@@ -13445,7 +13857,7 @@ def testNoComment (state : IO.Ref TestCollector) : IO Unit := do
   checkM state "P96 pin: `LoopDead` holds at 1 there (a comment is dead)" (P94.loopDeadB bad 1) ""
   -- finding: `validNextToken .afterDocument (.comment _) = true` — the `.afterDocument` shape
   -- already admitted a comment, so item 449's second disjunct was redundant and the shrink of
-  -- `DeadResidue` is syntactic; the lemma's content is `scanFiltered_noComment` itself (the stop
+  -- `DeadResidue` is syntactic; the lemma's content is `scanFiltered_noComment` (deleted, item 506) itself (the stop
   -- token is never a comment), which is what (γ)'s carrier may assume
   checkM state "P96 finding: `afterDocOK (.comment)` is TRUE (the old disjunct was redundant)"
     (P91.afterDocOK (some (.comment "c"))) ""
@@ -15181,23 +15593,23 @@ example {sp sp_qe sp_s sp' : SurfPos} (hq : GLit '?' sp sp_qe) (hs : SSeparate n
   .midQuestionEmptyColon sp sp sp_qe sp_s sp' [] (.init sp) hq hs hcol
 -- stack shapes: depth 0 (`nil`); a base opener after a gap (`sp_before ≠ sp_br`);
 -- `[[` (parent at `.sep`) and `{a: [` (parent at `.colon false`)
-example (sp : SurfPos) (tl : FrameTail) : TFlowStackB n 0 #[] tl sp sp [] := .nil sp tl
+example (sp : SurfPos) (tl : FrameTail) : TFlowStackB n 0 #[] #[] tl sp sp [] := .nil sp tl
 example {sp_before sp_br sp_open : SurfPos} (ho : GLit '[' sp_br sp_open) :
-    TFlowOpenStack n 1 #[true] .sep sp_before sp_open [] :=
+    TFlowOpenStack n 1 #[true] #[false] .sep sp_before sp_open [] :=
   .seqBase sp_before sp_br sp_open sp_open sp_open .sep [] ho (.none sp_open) (.betweenEmpty sp_open)
 example {sp_br sp_o1 sp_o2 : SurfPos} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2) :
-    TFlowOpenStack n 2 (#[true].push true) .sep sp_br sp_o2 ([] ++ []) :=
-  .seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o1 sp_o2 sp_o2 sp_o2 [] []
+    TFlowOpenStack n 2 (#[true].push true) (#[false].push false) .sep sp_br sp_o2 ([] ++ []) :=
+  .seqNest 1 #[true] #[false] false .sep .sep sp_br sp_o1 sp_o1 sp_o2 sp_o2 sp_o2 [] []
     (.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
-    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2) (.betweenEmpty sp_o2)
+    (Iff.intro (fun h => nomatch h) (fun ⟨_, h⟩ => nomatch h)) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2) (.betweenEmpty sp_o2)
 example {sp_br sp_o1 sp_k sp_c sp_b sp_o2 : SurfPos} {ev : List Event} (h1 : GLit '{' sp_br sp_o1)
     (hk : TFlowNode n (inFlowCtx .flowOut) sp_o1 sp_k ev) (hc : GLit ':' sp_k sp_c) (hs : SSeparateLines n sp_c sp_b)
     (h2 : GLit '[' sp_b sp_o2) :
-    TFlowOpenStack n 2 (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
-  .seqNest 1 #[false] (.colon false) .sep sp_br sp_c sp_b sp_o2 sp_o2 sp_o2 ([] ++ ev) []
+    TFlowOpenStack n 2 (#[false].push true) (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
+  .seqNest 1 #[false] #[false] true (.colon false) .sep sp_br sp_c sp_b sp_o2 sp_o2 sp_o2 ([] ++ ev) []
     (.mapBase sp_br sp_br sp_o1 sp_o1 sp_c (.colon false) ([] ++ ev) h1 (.none sp_o1)
       (.midColon false sp_o1 sp_o1 sp_k sp_k sp_c [] ev (.init sp_o1) hk (fun h => nomatch h) (.none sp_k) hc))
-    (fun _ h => nomatch h) (.inl hs) h2 (.none sp_o2) (.betweenEmpty sp_o2)
+    (Iff.intro (fun _ => ⟨false, rfl⟩) (fun _ => rfl)) (fun _ h => nomatch h) (.inl hs) h2 (.none sp_o2) (.betweenEmpty sp_o2)
 end P104Examples
 
 /-! ### Priority 105 — S3 slice (3) PR 2b-i: the stack-level receive twins (item 467), before proof
@@ -15389,21 +15801,21 @@ variable {n : Nat}
 /-! Hand-built receive chains over abstract leaf premises, one per receive twin (elaborated by
     the build): the trace index of each conclusion is the frame's trace so far. -/
 -- depth-0 open: `[` / `{`
-example {sp_br sp_o : SurfPos} (ho : GLit '[' sp_br sp_o) : TFlowStackB n 1 #[true] .sep sp_br sp_o [] :=
+example {sp_br sp_o : SurfPos} (ho : GLit '[' sp_br sp_o) : TFlowStackB n 1 #[true] #[false] .sep sp_br sp_o [] :=
   TFlowStackB.openSeqBase ho (.none sp_o)
-example {sp_br sp_o : SurfPos} (ho : GLit '{' sp_br sp_o) : TFlowStackB n 1 #[false] .sep sp_br sp_o [] :=
+example {sp_br sp_o : SurfPos} (ho : GLit '{' sp_br sp_o) : TFlowStackB n 1 #[false] #[false] .sep sp_br sp_o [] :=
   TFlowStackB.openMapBase ho (.none sp_o)
 -- `[a`: the node glued to `[` (`.sep` is leadFree) — receiveNode
 example {sp_br sp_o sp_a : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev) :
-    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_a ([] ++ ev) :=
+    TFlowOpenStack n 1 #[true] #[false] (.value false) sp_br sp_a ([] ++ ev) :=
   (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNode
     (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
 -- `{a: b` — receiveNodeColon then receiveNode after a separation
 example {sp_br sp_o sp_a sp_c sp_s sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLit '{' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev_a) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_s)
     (hb : TFlowNode n .flowIn sp_s sp_b ev_b) :
-    TFlowOpenStack n 1 #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
+    TFlowOpenStack n 1 #[false] #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
   ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
       (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc).receiveNode
     (fun _ h => nomatch h) (.inl hs) hb (fun h => nomatch h)
@@ -15411,7 +15823,7 @@ example {sp_br sp_o sp_a sp_c sp_s sp_b : SurfPos} {ev_a ev_b : List Event} (ho 
 example {sp_br sp_o sp_a sp_c sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLit '{' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev_a) (hj : TCFlowJsonNode n .flowIn sp_o sp_a ev_a) (hc : GLit ':' sp_a sp_c)
     (hb : TFlowNode n .flowIn sp_c sp_b ev_b) :
-    TFlowOpenStack n 1 #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
+    TFlowOpenStack n 1 #[false] #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
   ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
       (kj := true) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun _ => hj) (.inr rfl) hc).receiveNode
     (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) hb (fun h => nomatch h)
@@ -15419,59 +15831,59 @@ example {sp_br sp_o sp_a sp_c sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLi
 example {sp_br sp_o sp_q sp_s1 sp_a sp_c sp_s2 sp_b : SurfPos} {ev_a ev_b : List Event} (ho : GLit '[' sp_br sp_o)
     (hq : GLit '?' sp_o sp_q) (hs1 : SSeparateLines n sp_q sp_s1) (ha : TFlowNode n .flowIn sp_s1 sp_a ev_a)
     (hc : GLit ':' sp_a sp_c) (hs2 : SSeparateLines n sp_c sp_s2) (hb : TFlowNode n .flowIn sp_s2 sp_b ev_b) :
-    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
+    TFlowOpenStack n 1 #[true] #[false] (.value false) sp_br sp_b (([] ++ ev_a) ++ ev_b) :=
   (((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveQuestion
       rfl (.inr ⟨rfl, rfl⟩) hq).receiveNodeColon (kj := false) (.inr rfl) (.inl hs1) ha (fun h => nomatch h)
       (.inr rfl) hc).receiveNode (fun _ h => nomatch h) (.inl hs2) hb (fun h => nomatch h)
 -- `[:` and `[? :` — receiveColonSep / receiveColonQuestion, trace kept
 example {sp_br sp_o sp_c : SurfPos} (ho : GLit '[' sp_br sp_o) (hc : GLit ':' sp_o sp_c) :
-    TFlowOpenStack n 1 #[true] (.colon false) sp_br sp_c [] :=
+    TFlowOpenStack n 1 #[true] #[false] (.colon false) sp_br sp_c [] :=
   (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveColonSep
     rfl (.inr ⟨rfl, rfl⟩) hc
 example {sp_br sp_o sp_q sp_s sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hq : GLit '?' sp_o sp_q)
     (hs : SSeparateLines n sp_q sp_s) (hc : GLit ':' sp_s sp_c) :
-    TFlowOpenStack n 1 #[false] (.colon false) sp_br sp_c [] :=
+    TFlowOpenStack n 1 #[false] #[false] (.colon false) sp_br sp_c [] :=
   ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveQuestion
     rfl (.inr ⟨rfl, rfl⟩) hq).receiveColonQuestion rfl (.inl hs) hc
 -- `[&a` then `]`-decided empty content — receivePropsEmpty; `[&a b` — receivePropsContent
 example {sp_br sp_o sp_p : SurfPos} {ev_p : List Event} (ho : GLit '[' sp_br sp_o)
     (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) :
-    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_p ([] ++ ev_p) :=
+    TFlowOpenStack n 1 #[true] #[false] (.value false) sp_br sp_p ([] ++ ev_p) :=
   (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receivePropsEmpty
     (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) hp
 example {sp_br sp_o sp_p sp_s sp_b : SurfPos} {ev_p ev_b : List Event} (ho : GLit '[' sp_br sp_o)
     (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) (hs : SSeparateLines n sp_p sp_s)
     (hb : TFlowContent n .flowIn sp_s sp_b ev_b) :
-    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_b ([] ++ (ev_p ++ ev_b)) :=
+    TFlowOpenStack n 1 #[true] #[false] (.value false) sp_br sp_b ([] ++ (ev_p ++ ev_b)) :=
   (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receivePropsContent
     (kj := false) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) hp hs hb (fun h => nomatch h)
 -- `[&a : b` — receiveColonPropsSep; `{? &a : b` — receiveColonPropsQuestion
 example {sp_br sp_o sp_p sp_g sp_c sp_s sp_b : SurfPos} {ev_p ev_b : List Event} (ho : GLit '[' sp_br sp_o)
     (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) (hg : SSeparateLines n sp_p sp_g) (hc : GLit ':' sp_g sp_c)
     (hs : SSeparateLines n sp_c sp_s) (hb : TFlowNode n .flowIn sp_s sp_b ev_b) :
-    TFlowOpenStack n 1 #[true] (.value false) sp_br sp_b (([] ++ ev_p) ++ ev_b) :=
+    TFlowOpenStack n 1 #[true] #[false] (.value false) sp_br sp_b (([] ++ ev_p) ++ ev_b) :=
   ((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveColonPropsSep
       rfl (.inr ⟨rfl, rfl⟩) hp (.some _ _ hg) hc).receiveNode (fun _ h => nomatch h) (.inl hs) hb (fun h => nomatch h)
 example {sp_br sp_o sp_q sp_s sp_p sp_g sp_c : SurfPos} {ev_p : List Event} (ho : GLit '{' sp_br sp_o)
     (hq : GLit '?' sp_o sp_q) (hs : SSeparateLines n sp_q sp_s) (hp : TCNsProperties n .flowIn sp_s sp_p ev_p)
     (hg : SSeparateLines n sp_p sp_g) (hc : GLit ':' sp_g sp_c) :
-    TFlowOpenStack n 1 #[false] (.colon false) sp_br sp_c ([] ++ ev_p) :=
+    TFlowOpenStack n 1 #[false] #[false] (.colon false) sp_br sp_c ([] ++ ev_p) :=
   ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveQuestion
     rfl (.inr ⟨rfl, rfl⟩) hq).receiveColonPropsQuestion rfl (.inl hs) hp (.some _ _ hg) hc
 -- `[&x b : c` — receivePropsNodeColon (the run decorates the key)
 example {sp_br sp_o sp_p sp_s sp_b sp_c : SurfPos} {ev_p ev_b : List Event} (ho : GLit '[' sp_br sp_o)
     (hp : TCNsProperties n .flowIn sp_o sp_p ev_p) (hs : SSeparateLines n sp_p sp_s)
     (hb : TFlowContent n .flowIn sp_s sp_b ev_b) (hc : GLit ':' sp_b sp_c) :
-    TFlowOpenStack n 1 #[true] (.colon false) sp_br sp_c ([] ++ (ev_p ++ ev_b)) :=
+    TFlowOpenStack n 1 #[true] #[false] (.colon false) sp_br sp_c ([] ++ (ev_p ++ ev_b)) :=
   (TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receivePropsNodeColon
     (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) hp hs hb (fun h => nomatch h) (.inr rfl) hc
 -- `[[a` — a nest receives; the parent's trace prefix rides
 example {sp_br sp_o1 sp_o2 sp_a : SurfPos} {ev : List Event} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2)
     (ha : TFlowNode n .flowIn sp_o2 sp_a ev) :
-    TFlowOpenStack n 2 (#[true].push true) (.value false) sp_br sp_a (([] ++ []) ++ ev) :=
-  (TFlowOpenStack.seqNest 1 #[true] .sep .sep sp_br sp_o1 sp_o1 sp_o2 sp_o2 sp_o2 [] []
+    TFlowOpenStack n 2 (#[true].push true) (#[false].push false) (.value false) sp_br sp_a (([] ++ []) ++ ev) :=
+  (TFlowOpenStack.seqNest 1 #[true] #[false] false .sep .sep sp_br sp_o1 sp_o1 sp_o2 sp_o2 sp_o2 [] []
     (.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
-    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2) (.betweenEmpty sp_o2)).receiveNode (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
+    (Iff.intro (fun h => nomatch h) (fun ⟨_, h⟩ => nomatch h)) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2) (.betweenEmpty sp_o2)).receiveNode (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)
 end P105Examples
 
 /-! ### Priority 106 — S3 slice (3) PR 2b-ii(α): `accum_step_flow_trace`'s indicator arms (item 468), before proof
@@ -15634,7 +16046,7 @@ variable {n : Nat}
 -- `[a,` — comma on a `.value` tail, glued
 example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ',' sp_a sp_c) :
-    TFlowOpenStack n 1 #[true] .sep sp_br sp_c ([] ++ ev) :=
+    TFlowOpenStack n 1 #[true] #[false] .sep sp_br sp_c ([] ++ ev) :=
   ((TFlowOpenStack.seqBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNode
     (kj := false) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h)).comma
     (fun h => nomatch h) (.inr ⟨rfl, rfl⟩) hc
@@ -15642,18 +16054,18 @@ example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br 
 example {sp_br sp_o sp_a sp_c sp_b sp_o2 : SurfPos} {ev : List Event} (ho : GLit '{' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_b)
     (h2 : GLit '[' sp_b sp_o2) :
-    TFlowOpenStack n 2 (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
+    TFlowOpenStack n 2 (#[false].push true) (#[false].push true) .sep sp_br sp_o2 (([] ++ ev) ++ []) :=
   ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
     (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc).openNestSeq
-    (fun _ h => nomatch h) (.inl hs) h2
+    (Iff.intro (fun _ => ⟨false, rfl⟩) (fun _ => rfl)) (fun _ h => nomatch h) (.inl hs) h2
 example {sp_br sp_o1 sp_o2 : SurfPos} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '{' sp_o1 sp_o2) :
-    TFlowOpenStack n 2 (#[true].push false) .sep sp_br sp_o2 ([] ++ []) :=
+    TFlowOpenStack n 2 (#[true].push false) (#[false].push false) .sep sp_br sp_o2 ([] ++ []) :=
   (TFlowOpenStack.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1)).openNestMap
-    (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2
+    (Iff.intro (fun h => nomatch h) (fun ⟨_, h⟩ => nomatch h)) (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2
 -- `[[a]` — the nested close lands on the parent as `.value true`; `{a: {}}`'s inner close likewise
 example {sp_br sp_o1 sp_o2 sp_a sp_c : SurfPos} {ev : List Event} (h1 : GLit '[' sp_br sp_o1) (h2 : GLit '[' sp_o1 sp_o2)
     (ha : TFlowNode n .flowIn sp_o2 sp_a ev) (hc : GLit ']' sp_a sp_c) :
-    TFlowOpenStack n 1 #[true] (.value true) sp_br sp_c ([] ++ ([] ++ ev)) :=
+    TFlowOpenStack n 1 #[true] #[false] (.value true) sp_br sp_c ([] ++ ([] ++ ev)) :=
   TFlowOpenStack.closeNestedSeq
     (TFlowOpenStack.seqBase sp_br sp_br sp_o1 sp_o1 sp_o1 .sep [] h1 (.none sp_o1) (.betweenEmpty sp_o1))
     (fun _ h => nomatch h) (.inr ⟨rfl, rfl⟩) h2 (.none sp_o2)
@@ -15661,7 +16073,7 @@ example {sp_br sp_o1 sp_o2 sp_a sp_c : SurfPos} {ev : List Event} (h1 : GLit '['
 example {sp_br sp_o sp_a sp_c sp_b sp_o2 sp_e : SurfPos} {ev : List Event} (ho : GLit '{' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ':' sp_a sp_c) (hs : SSeparateLines n sp_c sp_b)
     (h2 : GLit '{' sp_b sp_o2) (he : GLit '}' sp_o2 sp_e) :
-    TFlowOpenStack n 1 #[false] (.value true) sp_br sp_e (([] ++ ev) ++ []) :=
+    TFlowOpenStack n 1 #[false] #[false] (.value true) sp_br sp_e (([] ++ ev) ++ []) :=
   TFlowOpenStack.closeNestedMap
     ((TFlowOpenStack.mapBase sp_br sp_br sp_o sp_o sp_o .sep [] ho (.none sp_o) (.betweenEmpty sp_o)).receiveNodeColon
       (kj := false) (.inl rfl) (.inr ⟨rfl, rfl⟩) ha (fun h => nomatch h) (.inr rfl) hc)
@@ -15669,11 +16081,11 @@ example {sp_br sp_o sp_a sp_c sp_b sp_o2 sp_e : SurfPos} {ev : List Event} (ho :
 -- `[a]` / `{}` — the base close hands the content out, the stack is `nil`
 example {sp_br sp_o sp_a sp_c : SurfPos} {ev : List Event} (ho : GLit '[' sp_br sp_o)
     (ha : TFlowNode n .flowIn sp_o sp_a ev) (hc : GLit ']' sp_a sp_c) :
-    TFlowContent n .flowOut sp_br sp_c ([] ++ ev) ∧ TFlowStackB n 0 #[] (.value true) sp_br sp_br [] :=
+    TFlowContent n .flowOut sp_br sp_c ([] ++ ev) ∧ TFlowStackB n 0 #[] #[] (.value true) sp_br sp_br [] :=
   TSeqFrame.closeBase (sp_block := sp_br) ho (.none sp_o) (.midNode false sp_o sp_o sp_a [] ev (.init sp_o) ha (fun h => nomatch h))
     (.inr ⟨rfl, rfl⟩) hc
 example {sp_br sp_o sp_c : SurfPos} (ho : GLit '{' sp_br sp_o) (hc : GLit '}' sp_o sp_c) :
-    TFlowContent n .flowOut sp_br sp_c [] ∧ TFlowStackB n 0 #[] (.value true) sp_br sp_br [] :=
+    TFlowContent n .flowOut sp_br sp_c [] ∧ TFlowStackB n 0 #[] #[] (.value true) sp_br sp_br [] :=
   TMapFrame.closeBase (sp_block := sp_br) ho (.none sp_o) (.betweenEmpty sp_o) (.inr ⟨rfl, rfl⟩) hc
 end P106Examples
 
@@ -17232,10 +17644,15 @@ The depth-≥1 `?` / `:` steps are `accum_step_block`'s (the key/value indicator
 `?` on a `.sep` tail (`receiveQuestion`); `:` on a `.value kj` tail (the closure
 `FlowStackK` carries), on `.sep` and on `.question`, each under a white lead or a
 held run (`receiveColonSep` / `receiveColonQuestion` / `…Props…`).  Their T twins
-(FlowWalk §6) exist for five; the `.value kj → .colon kj` twin does not — the T
-frames store the key node (`midNode` / `midKey`, and `midExplicitKey` after a
-`? key` — both `.value kj` tails, two constructor cases per frame), so it is a
-frame step, not a closure.  Shadows, at every in-flow `?` / `:` step: (i) the
+(FlowWalk §6) exist for five; the `.value kj → .colon kj` step is NOT a frame
+step on either side (item 503 corrected item 491's reading): the S side pays it by
+the closure `FlowStackK.h_kprom` carries (`KeyAfterValueLayout sc ∨ ∀ …, lead →
+GLit ':' → FlowStackB … (.colon kj)`), stored by the step that created the tail;
+the T side has the closure's producers (`receiveNodeColon` /
+`receivePropsNodeColon`) but no holder — `TFlowStackB` is indexed by `tl` alone,
+so `betweenEntries`, `midNode` / `midKey` and `midExplicitKey` (all `.value kj`
+tails) are indistinguishable at the `:` — hence `TFlowStackK` must carry the T
+closure at every floor (price (2a)–(2c)).  Shadows, at every in-flow `?` / `:` step: (i) the
 step's hypotheses (preprocess, structural and flow dispatchers decline, the block
 dispatcher fires to the WHOLE post-state — every `ScannerState` field, not the
 tokens alone), (ii) the pre-tail by indicator and lead, the `.value`-tail `:`
@@ -17347,6 +17764,7 @@ structure Tally where
   pairDetected : Nat := 0
   kavlPair : Nat := 0
   kavlColon : Nat := 0
+  producerBy : List (String × Nat) := []
   hypsOk : Nat := 0
   hypsFail : List String := []
   postTailOk : Nat := 0
@@ -17394,7 +17812,21 @@ def tally (rows : List String) : Tally := Id.run do
           -- `KeyArm.colonValue`'s projection: `¬ KeyAfterValueLayout` at every `.value`-tail `:` step
           if k == "value" then
             match tailOf pre.tokens with
-            | .value _ => if kavlShadow pre then t := { t with kavlColon := t.kavlColon + 1 }
+            | .value _ =>
+              if kavlShadow pre then t := { t with kavlColon := t.kavlColon + 1 }
+              -- item 502: WHICH step produced the `.value` tail the `:` lands on — a content node
+              -- (`receiveNodeColon` is its T closure), a nested close (`[[a]: b]`, no T twin yet),
+              -- or a property-decorated node (`receivePropsNodeColon`).
+              let toks := (pre.tokens.toList.map (fun (tk : L4YAML.Positioned L4YAML.YamlToken) => tk.val)).reverse.dropWhile isPlaceholder
+              let producer := match toks with
+                | .flowSequenceEnd :: _ | .flowMappingEnd :: _ => "close"
+                | _ :: rest =>
+                  let rest := rest.dropWhile isPlaceholder
+                  match rest with
+                  | tk :: _ => if tk.isNodeProperty then "props" else "node"
+                  | [] => "node"
+                | [] => "none"
+              t := { t with producerBy := bumpS t.producerBy producer }
             | _ => pure ()
           t := { t with tailBy := bumpS t.tailBy s!"{k}/{tailName}/{lead}" }
           -- (i) the hypotheses
@@ -17444,12 +17876,13 @@ open P119
 def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
   let t := tally (P113.allRows ++ P118.extraRows)
   checkM state
-    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps; KeyAfterValueLayout at those {t.kavlPair}, at the `.value`-tail `:` steps {t.kavlColon}"
+    s!"P119 the ?/: flow arms: {t.inSteps} in-flow steps {t.byChar}; pre-tails {t.tailBy}; hypotheses {t.hypsOk}/{t.inSteps} (failing: {t.hypsFail}); whole post-state {t.stateOk}/{t.inSteps} (bad: {t.stateBad}); post-tail {t.postTailOk}/{t.inSteps} (bad: {t.postTailBad}); indices+floor ride {t.rides}/{t.inSteps} (bad: {t.rideBad}); trace prefix {t.prefixOk}/{t.inSteps} (bad: {t.prefixBad}) suffixes {t.suffixByLead}; floors {t.floors}; ':' after a completed pair refused {refusedOk}/{refusedRows.length}; completed pairs seen by the detector at `,`/close steps {t.pairDetected} of {t.pairSteps} `.value`-tail steps; KeyAfterValueLayout at those {t.kavlPair}, at the `.value`-tail `:` steps {t.kavlColon}; the `.value` tail's producer at those `:` steps {t.producerBy}"
     (t.inSteps == 171 && t.byChar == [("value", 144), ("key", 27)] &&
       t.tailBy == [("value/sep/white", 8), ("key/sep/white", 27), ("value/value/white", 113),
         ("value/value-explicit/white", 13), ("value/question/white", 4), ("value/sep/props", 4),
         ("value/question/props", 2)] &&
       t.stateOk == 171 && refusedOk == 4 && t.pairDetected == 127 && t.pairSteps == 370 && t.kavlColon == 0 && t.kavlPair == 127 &&
+      t.producerBy == [("node", 113), ("close", 3), ("props", 10)] &&
       t.hypsOk == 171 && t.hypsFail.isEmpty && t.stateBad.isEmpty && t.postTailOk == 171 && t.postTailBad.isEmpty &&
       t.rides == 171 && t.rideBad.isEmpty && t.prefixOk == 171 && t.prefixBad.isEmpty &&
       t.suffixByLead == [("white/+0", 165), ("props/+0", 6)] &&
@@ -17457,6 +17890,379 @@ def testKeyArmShadow (state : IO.Ref TestCollector) : IO Unit := do
     s!"{t.inSteps} {t.byChar} {t.tailBy} {t.hypsFail} {t.postTailBad} {t.rideBad} {t.prefixBad} {t.suffixByLead} {t.floors} {t.stateOk} {t.stateBad} {t.pairDetected}/{t.pairSteps}"
 
 end P119Test
+
+/-! ## Priority 126 (item 509; P120–P125 are Row 19's lane): the T closure's producer at the content step, read off the scanner
+`TFlowStackK`'s T half gains, at every floor, the `.value kj`-tail closure the S half carries in
+`FlowStackK.h_kprom` (item 85): `KeyAfterValueLayout sc ∨ ∀ sp_prep sp_tok, lead → GLit ':' →
+TFlowStackB … (.colon kj)`.  `accum_step_content_pairK` produces it the way the S content step
+does (StreamAccum's `.value` site cases the PRE-tail): a `.colon` pre-tail means the node
+COMPLETED a pair, and `content_value_layout` gives the left disjunct; a `.sep` / `.question`
+pre-tail means the node is a key candidate, and `receiveNodeColon` / `receivePropsNodeColon`
+give the right.  Shadows, at every in-flow content step whose post-tail is `.value kj`:
+(i) the pre-tail class — `.value` never (the adjacency guard), so the two cases are exhaustive;
+(ii) at a `.colon` pre-tail, `KeyAfterValueLayout post` (its decidable face, `P119.kavlShadow`);
+(iii) which of these steps a `:` follows (the closure's consumer, `KeyArm.colonValue`'s twin),
+by pre-tail — the `.colon` pre-tail must be absent there (the scanner refuses `[a: b: c]`);
+(iv) the closure's lead at those `:` steps, node end → `:`, classed (ε / blanks / lines) and,
+where it crosses a break, indented at least the floor ceiling (`SSeparateLines m` at every
+`m ≤ minContentIndentOf`). -/
+namespace P126
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+structure Tally where
+  valueSteps : Nat := 0
+  preTail : List (String × Nat) := []
+  colonKavlOk : Nat := 0
+  colonKavlBad : List String := []
+  colonNext : Nat := 0
+  colonNextBy : List (String × Nat) := []
+  leadBy : List (String × Nat) := []
+  leadFloorOk : Nat := 0
+  leadFloorBad : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      let arr := sts.toArray
+      for i in [0:arr.size] do
+        let (pre, post) := arr[i]!
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          match tailOf post.tokens with
+          | .value _ => pure ()
+          | _ => continue
+          t := { t with valueSteps := t.valueSteps + 1 }
+          let preClass := tailClass (tailOf pre.tokens)
+          t := { t with preTail := bumpS t.preTail preClass }
+          -- (ii) a completed pair's layout
+          if preClass == "colon" then
+            if P119.kavlShadow post then t := { t with colonKavlOk := t.colonKavlOk + 1 }
+            else t := { t with colonKavlBad := t.colonKavlBad ++ [s] }
+          -- (iii) does the next step push a `:` inside the same flow?
+          if i + 1 < arr.size then
+            let (pre₂, post₂) := arr[i + 1]!
+            let pushed₂ := post₂.tokens.toList.drop pre₂.tokens.size
+            match pushed₂.getLast? with
+            | some back₂ =>
+              if kindOf back₂.val == "value" && pre₂.flowLevel == pre.flowLevel then
+                t := { t with colonNext := t.colonNext + 1, colonNextBy := bumpS t.colonNextBy preClass }
+                -- (iv) the lead from the node's end to the `:`
+                let txt := String.ofList ((s.toList.drop post.offset).take (back₂.pos.offset - post.offset))
+                let cls := gapClass txt
+                t := { t with leadBy := bumpS t.leadBy cls }
+                if cls == "lines" then
+                  let lastLine := (txt.splitOn "\n").getLast!
+                  let lead := (lastLine.toList.takeWhile (· == ' ')).length
+                  let ceiling := L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf post
+                  if ceiling ≤ lead then t := { t with leadFloorOk := t.leadFloorOk + 1 }
+                  else t := { t with leadFloorBad := t.leadFloorBad ++ [s!"{s} lead={lead} ceiling={ceiling}"] }
+                else t := { t with leadFloorOk := t.leadFloorOk + 1 }
+            | none => pure ()
+    | _, _ => pure ()
+  return t
+
+end P126
+
+namespace P126Test
+open P126
+
+def testTClosureProducerShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows)
+  checkM state
+    s!"P126 the T closure's producer: {t.valueSteps} in-flow content steps land a `.value` tail; pre-tails {t.preTail}; KeyAfterValueLayout after a `.colon` pre-tail {t.colonKavlOk} (bad: {t.colonKavlBad}); a `:` follows {t.colonNext} of them, by pre-tail {t.colonNextBy}; the lead to that `:` {t.leadBy}, at every floor {t.leadFloorOk}/{t.colonNext} (bad: {t.leadFloorBad})"
+    (t.valueSteps == 441 && t.preTail == [("colon", 113), ("question", 17), ("sep", 311)] &&
+      t.colonKavlOk == 113 && t.colonKavlBad.isEmpty &&
+      t.colonNext == 123 && t.colonNextBy == [("sep", 110), ("question", 13)] &&
+      t.leadBy == [("ε", 122), ("blanks", 1)] &&
+      t.leadFloorOk == 123 && t.leadFloorBad.isEmpty)
+    s!"{t.valueSteps} {t.preTail} kavl {t.colonKavlOk} {t.colonKavlBad} next {t.colonNext} {t.colonNextBy} lead {t.leadBy} floors {t.leadFloorOk} {t.leadFloorBad}"
+
+end P126Test
+
+/-! ## Priority 128 (item 513; 127 is item 510's label): the T closure's producer at the NESTED CLOSE, read off the scanner
+`[[a]: b]`: a nested `]` / `}` lands the parent's tail on `.value true` (`FlowArm.closeNested.h_tl`),
+so the restated `TFlowStackK` (item 509) owes the `.value`-tail closure there too.  The S side
+pays it at the open: `FlowOpenStack.seqNest` / `mapNest` STORE `promise` (`b = false → … → .colon`)
+and `inject`, the key-map bit `b` set by the pre-tail of the OPEN (`.sep` / `.question` → false,
+`.colon` → true; `.value` refuted), and the close site cases on the bit (`close_layout_of_bit` →
+`KeyAfterValueLayout`, or the promise).  The T nest frames store the PARENT frame instead
+(`seqNest … parent h_tail_p h_lead_p`), so the T promise is `parent.receiveNodeColon` with the
+closed nest as the node — `closeNestedColon`, this item — and it runs only when the parent's tail is
+`.sep` / `.question`.  Shadows, at every in-flow nested close: (i) the post-tail (`.value` always);
+(ii) the parent's pre-tail = the tail before the matching open, classed (`.value` never: the open's
+own guard); (iii) at a `.colon` parent, `KeyAfterValueLayout post` (`P119.kavlShadow`); (iv) which
+closes a `:` follows, by parent class (`.colon` absent: `[a: [x]: b]` is refused one step later);
+(v) the lead to that `:`; (vi) the nest's kind (seq / map) and whether a held run decorated it
+(the `…Props` twins). -/
+namespace P128
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+/-- Index of the open bracket matching a close at the END of `toks` (the close itself is not in
+    `toks`): walk back over balanced nests. -/
+def matchingOpen (toks : Array (L4YAML.Positioned L4YAML.YamlToken)) : Option Nat := Id.run do
+  let mut depth : Nat := 0
+  let mut i := toks.size
+  while i > 0 do
+    i := i - 1
+    match toks[i]!.val with
+    | .flowSequenceEnd | .flowMappingEnd => depth := depth + 1
+    | .flowSequenceStart | .flowMappingStart =>
+      if depth == 0 then return some i else depth := depth - 1
+    | _ => pure ()
+  return none
+
+/-- Rows of this item's own: the corpus nests under `?` nowhere and decorates no nest that a `:`
+    follows — the `.question` parent and the `…Props` twins would otherwise be exercised by no row;
+    one row per twin a `:` follows (seq / seq+props / map / map+props), read by `nextKindBy`. -/
+def extraRows : List String := ["[? [a]: b]", "[&x [a]: b]", "{? {a}: b}", "{&x {a}: b}"]
+
+structure Tally where
+  closes : Nat := 0
+  postTailBad : List String := []
+  parentBy : List (String × Nat) := []
+  noOpen : List String := []
+  colonKavlOk : Nat := 0
+  colonKavlBad : List String := []
+  -- item 516: the bit's other face — a `.sep` / `.question` parent leaves NO completed-pair layout
+  nonColonKavlOk : Nat := 0
+  nonColonKavlBad : List String := []
+  colonNext : Nat := 0
+  colonNextBy : List (String × Nat) := []
+  leadBy : List (String × Nat) := []
+  kindBy : List (String × Nat) := []
+  nextKindBy : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      let arr := sts.toArray
+      for i in [0:arr.size] do
+        let (pre, post) := arr[i]!
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := match back.val with
+            | .flowSequenceEnd => "seq" | .flowMappingEnd => "map" | _ => ""
+          if kind.isEmpty then continue
+          if pre.flowLevel < 2 then continue
+          t := { t with closes := t.closes + 1 }
+          -- (i) the post-tail
+          match tailOf post.tokens with
+          | .value _ => pure ()
+          | _ => t := { t with postTailBad := t.postTailBad ++ [s] }
+          -- (ii) the parent's pre-tail, before the matching open; (vi) the nest's kind + a held run
+          let (parentClass, kindFull) ← match matchingOpen pre.tokens with
+            | some j =>
+              let before := pre.tokens.extract 0 j
+              let decorated := match (before.toList.map (·.val)).reverse.dropWhile P119.isPlaceholder with
+                | tk :: _ => tk.isNodeProperty
+                | [] => false
+              pure (tailClass (tailOf before), if decorated then s!"{kind}/props" else kind)
+            | none =>
+              t := { t with noOpen := t.noOpen ++ [s] }
+              pure ("none", kind)
+          t := { t with parentBy := bumpS t.parentBy parentClass, kindBy := bumpS t.kindBy kindFull }
+          -- (iii) the completed pair's layout in the closed state
+          if parentClass == "colon" then
+            if P119.kavlShadow post then t := { t with colonKavlOk := t.colonKavlOk + 1 }
+            else t := { t with colonKavlBad := t.colonKavlBad ++ [s] }
+          else if parentClass == "sep" || parentClass == "question" then
+            if P119.kavlShadow post then t := { t with nonColonKavlBad := t.nonColonKavlBad ++ [s] }
+            else t := { t with nonColonKavlOk := t.nonColonKavlOk + 1 }
+          -- (iv) does the next step push a `:` inside the same (parent) flow?
+          if i + 1 < arr.size then
+            let (pre₂, post₂) := arr[i + 1]!
+            let pushed₂ := post₂.tokens.toList.drop pre₂.tokens.size
+            match pushed₂.getLast? with
+            | some back₂ =>
+              if kindOf back₂.val == "value" && pre₂.flowLevel == post.flowLevel then
+                t := { t with colonNext := t.colonNext + 1, colonNextBy := bumpS t.colonNextBy parentClass,
+                               nextKindBy := bumpS t.nextKindBy kindFull }
+                -- (v) the lead from the close to the `:`
+                let txt := String.ofList ((s.toList.drop post.offset).take (back₂.pos.offset - post.offset))
+                t := { t with leadBy := bumpS t.leadBy (gapClass txt) }
+            | none => pure ()
+    | _, _ => pure ()
+  return t
+
+end P128
+
+namespace P128Test
+open P128
+
+def testCloseNestedColonShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P128 the nested close's T closure: {t.closes} in-flow nested closes (post-tail not `.value`: {t.postTailBad}); the parent's pre-tail {t.parentBy} (no matching open: {t.noOpen}); KeyAfterValueLayout after a `.colon` parent {t.colonKavlOk} (bad: {t.colonKavlBad}), after a `.sep` / `.question` parent never {t.nonColonKavlOk} (bad: {t.nonColonKavlBad}); a `:` follows {t.colonNext}, by parent {t.colonNextBy}, by kind {t.nextKindBy}; the lead to that `:` {t.leadBy}; kinds {t.kindBy}"
+    (t.closes == 59 && t.postTailBad.isEmpty &&
+      t.parentBy == [("sep", 43), ("colon", 14), ("question", 2)] && t.noOpen.isEmpty &&
+      t.colonKavlOk == 14 && t.colonKavlBad.isEmpty &&
+      t.nonColonKavlOk == 45 && t.nonColonKavlBad.isEmpty &&
+      t.colonNext == 7 && t.colonNextBy == [("sep", 5), ("question", 2)] &&
+      t.nextKindBy == [("seq", 2), ("map", 2), ("seq/props", 2), ("map/props", 1)] &&
+      t.leadBy == [("ε", 7)] &&
+      t.kindBy == [("seq", 27), ("map", 16), ("seq/props", 10), ("map/props", 6)])
+    s!"{t.closes} bad {t.postTailBad} parent {t.parentBy} noOpen {t.noOpen} kavl {t.colonKavlOk} {t.colonKavlBad} nonColon {t.nonColonKavlOk} {t.nonColonKavlBad} next {t.colonNext} {t.colonNextBy} {t.nextKindBy} lead {t.leadBy} kinds {t.kindBy}"
+
+end P128Test
+
+/-! ## Priority 129 — the nested open's mask bit (item 517, before the proof)
+
+Item 517 gives the T flow stack its own key-map mask `kmT`: at a nested open the frame records
+`kmBit tl_par` — WHETHER the parent's tail was `.colon` — and `TFlowStackK` couples the mask to the
+scanner by `KmSound sc kmT kc`.  `KmSound.push`'s premise for a `true` bit is a layout fact about
+the open's pre-state (the pending simple key is a saved key over the pair's `.value` token); the
+shadow reads that fact at every in-flow nested open of the corpus, by the parent's pre-tail class:
+(i) at a `.colon` parent the face holds; (ii) at a `.sep`/`.question` parent it does not (the bit
+is `false`, and the state shows no completed pair).  Kinds as P128's. -/
+namespace P129
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+/-- `RestoreLayout post k` for the key the open STACKED (`k = post.simpleKeyStack.back`), the
+    premise `KmSound.push` asks of a `true` bit: a live key directly over a `.value` token, behind
+    the cursor, two slots below the token array's end.  Read on the POST state — the open's
+    pre-state has not yet run preprocessing's save (first run, refuted as a reading). -/
+def trueBitFace (post : ScannerState) : Bool :=
+  match post.simpleKeyStack.back? with
+  | none => false
+  | some k =>
+    k.possible && decide (0 < k.tokenIndex) &&
+      (match post.tokens[k.tokenIndex - 1]? with
+        | some tok => (match tok.val with | .value => true | _ => false)
+        | none => false) &&
+      decide (k.pos.offset < post.offset) && decide (k.tokenIndex + 1 < post.tokens.size)
+
+structure Tally where
+  opens : Nat := 0
+  parentBy : List (String × Nat) := []
+  colonFaceOk : Nat := 0
+  colonFaceBad : List String := []
+  nonColonFaceOk : Nat := 0
+  nonColonFaceBad : List String := []
+  kindBy : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := match back.val with
+            | .flowSequenceStart => "seq" | .flowMappingStart => "map" | _ => ""
+          if kind.isEmpty then continue
+          if pre.flowLevel < 1 then continue
+          let decorated := match (pre.tokens.toList.map (·.val)).reverse.dropWhile P119.isPlaceholder with
+            | tk :: _ => tk.isNodeProperty
+            | [] => false
+          let parentClass := tailClass (tailOf pre.tokens)
+          t := { t with opens := t.opens + 1, parentBy := bumpS t.parentBy parentClass,
+                        kindBy := bumpS t.kindBy (if decorated then s!"{kind}/props" else kind) }
+          if parentClass == "colon" then
+            if trueBitFace post then t := { t with colonFaceOk := t.colonFaceOk + 1 }
+            else t := { t with colonFaceBad := t.colonFaceBad ++ [s] }
+          else
+            if trueBitFace post then t := { t with nonColonFaceBad := t.nonColonFaceBad ++ [s] }
+            else t := { t with nonColonFaceOk := t.nonColonFaceOk + 1 }
+    | _, _ => pure ()
+  return t
+
+/-- The content step's mask transport (`content_km_transport_any`, review round 1): across every
+    in-flow content step the fields `KmSound` reads ride unchanged — the key stack, the two stamps —
+    the token prefix is kept, and the pending key is KEPT, CLEARED or FRESHLY SAVED at or above the
+    old token end (`KmSound.transport`'s `h_pend`, the three disjuncts); nothing falls outside. -/
+structure ContentTally where
+  steps : Nat := 0
+  stackBad : List String := []
+  stampBad : List String := []
+  prefixBad : List String := []
+  pendBy : List (String × Nat) := []
+  pendOutside : List String := []
+  deriving Repr
+
+def contentTally (rows : List String) : ContentTally := Id.run do
+  let mut t : ContentTally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          if !contentArms.contains (kindOf back.val) then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with steps := t.steps + 1 }
+          if post.simpleKeyStack.size != pre.simpleKeyStack.size ||
+              (List.range pre.simpleKeyStack.size).any (fun i =>
+                match pre.simpleKeyStack[i]?, post.simpleKeyStack[i]? with
+                | some a, some b => !(a.possible == b.possible && a.tokenIndex == b.tokenIndex &&
+                    a.pos.offset == b.pos.offset && a.pos.line == b.pos.line && a.pos.col == b.pos.col)
+                | _, _ => true) then
+            t := { t with stackBad := t.stackBad ++ [s] }
+          if post.implicitValueLine != pre.implicitValueLine || post.docStartLine != pre.docStartLine then
+            t := { t with stampBad := t.stampBad ++ [s] }
+          if post.tokens.size < pre.tokens.size ||
+              (List.range pre.tokens.size).any (fun i =>
+                match pre.tokens[i]?, post.tokens[i]? with
+                | some a, some b => !(kindOf a.val == kindOf b.val && a.pos.offset == b.pos.offset)
+                | _, _ => true) then
+            t := { t with prefixBad := t.prefixBad ++ [s] }
+          let pend :=
+            if post.simpleKey.possible == pre.simpleKey.possible &&
+                post.simpleKey.tokenIndex == pre.simpleKey.tokenIndex then "kept"
+            else if !post.simpleKey.possible then "cleared"
+            else if pre.tokens.size ≤ post.simpleKey.tokenIndex then "fresh"
+            else "outside"
+          t := { t with pendBy := bumpS t.pendBy pend }
+          if pend == "outside" then t := { t with pendOutside := t.pendOutside ++ [s] }
+    | _, _ => pure ()
+  return t
+
+end P129
+
+namespace P129Test
+open P129
+
+def testOpenMaskShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P129 the nested open's mask bit: {t.opens} in-flow nested opens; the parent's pre-tail {t.parentBy}; the `true` face at a `.colon` parent {t.colonFaceOk} (bad: {t.colonFaceBad}); the `false` face at a `.sep` / `.question` parent {t.nonColonFaceOk} (bad: {t.nonColonFaceBad}); kinds {t.kindBy}"
+    (t.opens == 59 &&
+      t.parentBy == [("sep", 43), ("colon", 14), ("question", 2)] &&
+      t.colonFaceOk == 14 && t.colonFaceBad.isEmpty &&
+      t.nonColonFaceOk == 45 && t.nonColonFaceBad.isEmpty &&
+      t.kindBy == [("seq", 27), ("map", 16), ("seq/props", 10), ("map/props", 6)])
+    s!"{t.opens} parent {t.parentBy} colon {t.colonFaceOk} {t.colonFaceBad} nonColon {t.nonColonFaceOk} {t.nonColonFaceBad} kinds {t.kindBy}"
+  let c := contentTally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P129 the content step's mask transport (content_km_transport_any): {c.steps} in-flow content steps; key stack unchanged (bad: {c.stackBad}); stamps unchanged (bad: {c.stampBad}); token prefix kept (bad: {c.prefixBad}); the pending key {c.pendBy} (outside h_pend: {c.pendOutside})"
+    (c.steps == 544 && c.stackBad.isEmpty && c.stampBad.isEmpty && c.prefixBad.isEmpty &&
+      c.pendBy == [("fresh", 466), ("kept", 78)] && c.pendOutside.isEmpty)
+    s!"{c.steps} stack {c.stackBad} stamps {c.stampBad} prefix {c.prefixBad} pend {c.pendBy} outside {c.pendOutside}"
+
+end P129Test
 
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
@@ -17563,6 +18369,10 @@ def collectTests : IO VerifiedSuiteResult := do
   testPackSurvivorsChain state
   testProducersPremiseChain state
   testFlowKeyChain state
+  testDedentSurvivorChain state
+  testEveryMarkValueLine state
+  testRootLandingMarks state
+  testFlowCloseMarks state
   testPackMappingLaneTail state
   testPackDedentSlotGuard state
   testPackAltMarks state
@@ -17653,6 +18463,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testFlowArm state
   testPropsRunT state
   testHeldNestOpen state
+  testSeqOuterFrames state
   P110Test.testPlainContinuationRead state
   P111Test.testContentArmRead state
   P112Test.testContentArmShadow state
@@ -17664,6 +18475,9 @@ def collectTests : IO VerifiedSuiteResult := do
   P117Test.testValueLandingNodeEnd state
   P118Test.testFloorFoldShadow state
   P119Test.testKeyArmShadow state
+  P126Test.testTClosureProducerShadow state
+  P128Test.testCloseNestedColonShadow state
+  P129Test.testOpenMaskShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

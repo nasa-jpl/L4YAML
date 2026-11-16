@@ -28,8 +28,9 @@ public import L4YAML.Proofs.Scanner.DocStartLiveInv
     (`shaped_named`; `w = ""` gives `"!!"`).
 
     The same carrier excludes `.comment` tokens (`emitOk (.comment _) = false`): no arm builds one,
-    so the stream loop's stop token is never a comment (`ScannerShape.scanFiltered_noComment`; the
-    `DeadResidue` consumer of item 449 is retired since (γ2α)).
+    so the stream loop's stop token is never a comment (the stream-level reading,
+    `ScannerShape.scanFiltered_noComment`, and its `DeadResidue` consumer of item 449 are deleted:
+    (γ2α) made that exit an error — item 506).
 
     Rule 2 first: `Tests/AdversarialInstantiation.lean`, Priority 95 (tags) and 96 (comments). -/
 
