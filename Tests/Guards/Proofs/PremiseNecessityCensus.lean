@@ -398,7 +398,10 @@ def expectedModuleTallyP : String :=
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
   -- 2026-11-14 (item 499): KeyArm in StreamAccum — constants +10, decls +9, eta +60, READ +6, RELAY +8 (composed over item 498's base).
-  "constants=1765 decls=1395 eta=608 FIELD=201 READ=1482 RELAY=2725 RETURN=174 UNUSED=26"
+-- Item 519: constants/decls −1 (the open's ladders), READ 1482 → 1479, RELAY 2725 → 2724, UNUSED 26 → 27 — `accum_step_flow`'s
+-- `h_mono` is read by nothing once the four flow-close `Classical.em` splits are PAID from `vslot`.
+-- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
+  "constants=1766 decls=1396 eta=608 FIELD=201 READ=1487 RELAY=2724 RETURN=174 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -716,6 +719,8 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.PackAlt.step_value#6 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.PackAltG.ofPark#2 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.accum_content_on_noPending#18 (h_alt) [family uniformity]",
+   -- Item 519: `accum_step_flow`'s `h_mono` — its only readers were the four flow-close `Classical.em` splits, PAID from `vslot`; the parameter stays for the family's uniformity (its deletion is owed with the callers).
+   "L4YAML.Proofs.StreamAccum.accum_step_flow#15 (h_mono) [family uniformity]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline#12 (_h_res) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#10 (_h_src) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#11 (_h_indent) [class marker]",
@@ -791,7 +796,7 @@ def deadReason : String → String
 -- 2026-10-24 (B3 [66] col-0 threading): dead 33 → 32 — `content_dispatch_routed#29 (h_alt)` is read on the item-354 base.
 -- 2026-11-14 (item 508): dead 30 → 32, RELAY 3 → 5 — `content_dispatch_routed#29 (h_alt)` is no longer read at the
 -- `k = 0` payment (the root write pays with the empty domain) and `content_dispatch_after_close#23 (h_alt)` only relays it.
-def expectedDeadTally : String := "dead=32 RELAY=5 UNUSED=27 RELAY=5"
+def expectedDeadTally : String := "dead=33 RELAY=5 UNUSED=28 RELAY=5"
 
 run_cmd do
   let env ← getEnv

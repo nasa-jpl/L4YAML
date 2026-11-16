@@ -29,14 +29,27 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-14 (item 490, the ∀-floor fold): population 14,279 → 14,289 (+10: ContentBridge §10's nine lemmas and
 -- `accum_step_content_pairK`), unreached +10 and (A) 1,351 → 1,361 — the fold is read by no root until the 2c fold
 -- (`scan_trace`) composes it; the (B) roster 3,536 unmoved, (C)/(D) unmoved.
--- 2026-11-15 (#302 merge at ccc50f2d): +10 declarations are the three proof lemmas
--- `compactMapTail_append`, `ResumeFrames.one_of_route`, `markedCols_le_of_top`, plus
--- `KeyArm` and its six constructors (Row 12 / S3).  `MarkedColsIn.of_markedCols_nil`
--- is newly reached by the Row 12 proof, hence unreached −1 and B-roster thm −1;
--- the roster already dropped that name.  Pinned to CI run #43678091841's
--- measured summary on the exact merged source; no classifier or proof weakened.
+-- 2026-11-15 (item 506 rebased over items 505/508/510): the deletion's −87 (class (A)) recomposed over the base —
+-- population 14,302 → 14,215, unreached 6,577 → 6,490, (A) 1,361 → 1,274; the roster 3,534 and (D) 277 are the
+-- base's (item 505's `StreamAccum.seqEntryTail_cons` entered the roster unpinned on the base; the owner's call),
+-- cluster-roots 1,460 → 1,461 (one roster name's cluster root recomputed after the module deletion).
+-- 2026-11-15 (item 513, closeNestedColon, rebased over item 512's +1 reached): population 14,216 → 14,220 (+4: FlowWalk §6d's `closeNestedSeqColon` /
+--- `closeNestedMapColon` / `closeNestedSeqPropsColon` / `closeNestedMapPropsColon`), unreached +4 and (A) 1,274 → 1,278 —
+--- the nested close's `:` twin is read by no root until price (3)'s fold (`accum_step_flow_pairK`) consumes it; the (B)
+--- roster 3,534, (C)/(D) and cluster-roots unmoved.
+-- 2026-11-15 (item 517): +3 class (A) — `kmBit` / `kmBit_iff` (FlowWalk §8) and `content_km_transport_any`
+-- (ContentBridge), reached only by `accum_step_flow_trace` / `accum_step_content_pairK` until the fold; roster unmoved.
+-- 2026-11-15 (item 519): population +1 = `RegisterWitness.MarkedColsIn.mem`; `FlowBaseRoutes.vslot` LEFT the roster (3,534 → 3,533) — the projection is read at the four flow closes now; unreached −1.
+-- 2026-11-15 (#302 earlier integration at ccc50f2d): its own three proof lemmas,
+-- `KeyArm` and six constructors entered a separately measured tree; that tree's
+-- population=14379 pin is superseded by this integration with item 519.
+-- 2026-11-17 (#302 composed over item 519, exact-tree `dead-census --check`):
+-- population 14224 → 14304, theorem 10200 → 10247, definition 2674 → 2701;
+-- capstone roots 26 → 27, blueprint roots 222 → 223; unreached 6496 → 6505,
+-- C-api 1405 → 1414; A-campaign 1281, D-test-only 277, B-roster 3533 and
+-- cluster roots 1460 unchanged. This pin is measured, not copied from either parent.
 def expectedDeadCensus : String :=
-  "population=14379 thm=10314 def=2707 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6585 thm=4658 A-campaign=1361 C-api=1414 D-test-only=275 B-roster=3534 thm=3172 cluster-roots=1460"
+  "population=14304 thm=10247 def=2701 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6505 thm=4586 A-campaign=1281 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1460"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

@@ -284,7 +284,9 @@ it may only shrink. -/
 -- scalar=2, ghost=0; two disjuncts (`blockScalar`'s `c = '|' ∨ c = '>'` and `SCLLiteral ∨ SCLFolded`), or 121 → 123.
 -- 2026-11-14 (item 499): KeyArm — the ?/: flow arms' carrier on accum_step_block's conclusion: carriers 63 → 64;
 -- or 123 → 141 (its six constructors read the lead/run/separator at every floor: 10 `∨ ¬ (m ≤ …)` + 8 inner `∨`).
-def expectedSummary : String := "carriers=64 snapshot=9 ghost=75 or=141"
+-- Item 519: `FlowBaseRoutes.vslot`'s free `∃ ns : List Nat` binder was a ghost index (Rule 8); the field
+-- ranges over `markedCols s0` now — ghost 75 → 74 (FlowBaseRoutes 4 → 3).
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=141"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -307,7 +309,7 @@ def expectedTally : List String :=
    "ExplicitValueRefused: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "FlowArm: surface=21 state=2 prop=42 scalar=10 snapshot=0 ghost=0 or=8",
    "FlowBaseAnchor: surface=0 state=5 prop=0 scalar=4 snapshot=2 ghost=0 or=0",
-   "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=4 or=7",
+   "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=3 or=7",
    "FlowOpenHeld: surface=0 state=0 prop=0 scalar=3 snapshot=0 ghost=2 or=0",
    "FlowOpenStack: surface=31 state=1 prop=28 scalar=9 snapshot=1 ghost=11 or=2",
    "FlowStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
@@ -375,7 +377,7 @@ def expectedGhost : List String :=
    "FlowBaseRoutes.mk[6].valueF ks : List IndentStackCover.FrameLevel",
    "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
    "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
-   "FlowBaseRoutes.mk[9].vslot ns : List Nat",
+-- Item 519: `vslot`'s free `ns` left the ghost list (the field ranges over `markedCols s0`).
    "FlowOpenHeld.type[3].S S : List Nat",
    "FlowOpenHeld.body T : List Nat",
    "FlowOpenStack.type[3].g g : Option ScannerState",

@@ -254,7 +254,10 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- branch deleted (`hnw : n + 1 ≤ w` decides them); two of the three deleted `else Or.inr trivial` arms were audit
 -- writers (entryKeyPack ×14 → 13, entryPropsKeyPack ×7 → 6); positions unchanged.
 def expectedSummary : String :=
-  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=26 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=11 consumers: spent=104 relayed=13 unused=0 unreadable=36 writers=41 inrTrivial=497"
+-- Item 519: inrTrivial 497 → 495 — the two flow-close `h_vpack` `Or.inr trivial` arms are PAID from `vslot`
+-- (the `h_framesV` arms keep their `[]` cover decline); shrink-only.
+-- Item 519 (review round): inrTrivial 495 → 496, see the writers' row for `accum_flow_open_depth0`.
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=26 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=11 consumers: spent=104 relayed=13 unused=0 unreadable=36 writers=41 inrTrivial=496"
 
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`,
 -- so its `h_nodeS` / `h_nodeSF` positions read [31] / [32] (were [30] / [31]) — an index shift, not a
@@ -535,10 +538,10 @@ def expectedPositions : List String :=
 -- `pendingMapValue` arm's fabricated singleton pair DECLINES under the projection face (the `-` arm still splits).
 def expectedSupply : List String :=
   ["L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key relayed [DECLINE=1 SPLIT=1 VIA=6]",
-  "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[9].vslot relayed [DECLINE=5 SPLIT=1 VIA=2]",
-  "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack relayed [DECLINE=4 SPLIT=5 VIA=3]",
+  "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[9].vslot relayed [DECLINE=5 SPLIT=3]",
+  "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack relayed [DECLINE=2 SPLIT=7 VIA=3]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[11].h_framesS relayed [DECLINE=2 SPLIT=8 VIA=2]",
-  "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[12].h_framesV relayed [DECLINE=4 SPLIT=8]",
+  "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[12].h_framesV relayed [DECLINE=2 SPLIT=10]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[16].h_seqF relayed [DECLINE=9 SPLIT=3]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[19].h_ncol paid [FIELD=2 PAY=3 RELAY=1]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingProps[21].h_kslot relayed [DECLINE=2 FIELD=2 RELAY=1 SPLIT=1]",
@@ -906,8 +909,9 @@ def expectedWriters : List String :=
   "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×29 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×29 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_content_pending ×78 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×67 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_step_flow ×6 (StreamAccum)",
+  -- Item 519 (review round): ×67 → ×68 — the `pendingBlock` / `pendingMapValue` `vslot` fallback chains each end in one decline, the first draft's single decline gone (+2 −1).
+  "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×68 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_step_flow ×4 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key ×1 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.colon_fires_props_key ×1 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.colon_open_map ×3 (StreamAccum)",

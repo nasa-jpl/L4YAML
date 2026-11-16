@@ -2384,7 +2384,6 @@ L4YAML.Proofs.Acceptance.atDocumentStart_false_of_corr thm
 L4YAML.Proofs.EmitterScannability.seqBodyProps_of_recseqbody_window thm
 L4YAML.Proofs.ParserNodeProofs.tacticUnfold_loop_at_ def
 L4YAML.Proofs.DocStartLive.lastReal_append_cases thm
-L4YAML.Proofs.StreamAccum.FlowBaseRoutes.vslot thm
 L4YAML.Proofs.Acceptance.parseHexEscape_accepts thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.ValidTokenStreamPropIx def
 L4YAML.Proofs.DumpRoundTrip.dumpDocuments_two thm
