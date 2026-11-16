@@ -18239,6 +18239,152 @@ def testOpenMaskShadow (state : IO.Ref TestCollector) : IO Unit := do
 
 end P129Test
 
+/-! ## Priority 130 — the comma's mask transport (item 520, before the fold)
+
+The fold `accum_step_flow_pairK` carries the T mask through the indicator arms: a comma by
+`comma_km_transport`, a nested open by `km_push_at_open` (P129's faces), a nested close by
+`close_km_pop` + the closure at the new `.value true` tail (P128's faces).  The comma is the one arm
+no shadow has read: across every in-flow `,` step the key stack, both stamps and the token prefix
+ride unchanged and the pending key is CLEARED (`scanFlowEntry_simpleKey_false`). -/
+namespace P130
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+
+def tally (rows : List String) : P129.ContentTally := Id.run do
+  let mut t : P129.ContentTally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          match back.val with
+          | .flowEntry => pure ()
+          | _ => continue
+          if pre.flowLevel < 1 then continue
+          t := { t with steps := t.steps + 1 }
+          if post.simpleKeyStack.size != pre.simpleKeyStack.size ||
+              (List.range pre.simpleKeyStack.size).any (fun i =>
+                match pre.simpleKeyStack[i]?, post.simpleKeyStack[i]? with
+                | some a, some b => !(a.possible == b.possible && a.tokenIndex == b.tokenIndex &&
+                    a.pos.offset == b.pos.offset && a.pos.line == b.pos.line && a.pos.col == b.pos.col)
+                | _, _ => true) then
+            t := { t with stackBad := t.stackBad ++ [s] }
+          if post.implicitValueLine != pre.implicitValueLine || post.docStartLine != pre.docStartLine then
+            t := { t with stampBad := t.stampBad ++ [s] }
+          if post.tokens.size < pre.tokens.size ||
+              (List.range pre.tokens.size).any (fun i =>
+                match pre.tokens[i]?, post.tokens[i]? with
+                | some a, some b => !(kindOf a.val == kindOf b.val && a.pos.offset == b.pos.offset)
+                | _, _ => true) then
+            t := { t with prefixBad := t.prefixBad ++ [s] }
+          let pend :=
+            if post.simpleKey.possible == pre.simpleKey.possible &&
+                post.simpleKey.tokenIndex == pre.simpleKey.tokenIndex then "kept"
+            else if !post.simpleKey.possible then "cleared"
+            else if pre.tokens.size ≤ post.simpleKey.tokenIndex then "fresh"
+            else "outside"
+          t := { t with pendBy := bumpS t.pendBy pend }
+          if pend == "outside" then t := { t with pendOutside := t.pendOutside ++ [s] }
+    | _, _ => pure ()
+  return t
+
+end P130
+
+namespace P130Test
+open P130
+
+def testCommaMaskShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let c := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P130 the comma's mask transport (comma_km_transport): {c.steps} in-flow `,` steps; key stack unchanged (bad: {c.stackBad}); stamps unchanged (bad: {c.stampBad}); token prefix kept (bad: {c.prefixBad}); the pending key {c.pendBy} (outside h_pend: {c.pendOutside})"
+    (c.steps == 119 && c.stackBad.isEmpty && c.stampBad.isEmpty && c.prefixBad.isEmpty &&
+      c.pendBy == [("cleared", 107), ("kept", 12)] && c.pendOutside.isEmpty)
+    s!"{c.steps} stack {c.stackBad} stamps {c.stampBad} prefix {c.prefixBad} pend {c.pendBy} outside {c.pendOutside}"
+
+end P130Test
+
+/-! ## Priority 131 — the fold's three carriers (item 520, after the fold)
+
+`accum_step_flow_pairK` closed on three `FlowArm` fields item 517 did not price: `openBase.h_km`
+(the depth-0 open's pushed key is POSSIBLE — the T base mask `#[false]` is `KmSound`),
+`openBase.h_sp` (the landing is the lit's end — the T base frame sits at `sp_open`), and
+`openNest.h_klay` (at a `.colon`-tailed nested open, `dispatch_key_after_value`'s case: a fresh
+key may start, no explicit-key line, the last token `.value` — or the layout).  Each has an
+executable face on the scanner: read on every corpus open. -/
+namespace P131
+
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+structure Tally where
+  baseOpens : Nat := 0
+  baseSeq : Nat := 0
+  baseMap : Nat := 0
+  landingBad : List String := []
+  keyBad : List String := []
+  colonOpens : Nat := 0
+  colonCaseOk : Nat := 0
+  colonKavl : Nat := 0
+  colonBad : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let kind := match back.val with
+            | .flowSequenceStart => "seq" | .flowMappingStart => "map" | _ => ""
+          if kind == "" then continue
+          if pre.flowLevel == 0 then
+            t := { t with baseOpens := t.baseOpens + 1 }
+            if kind == "seq" then t := { t with baseSeq := t.baseSeq + 1 }
+            else t := { t with baseMap := t.baseMap + 1 }
+            -- `h_sp`: the scanner sits right after the lit — nothing consumed past it.
+            if post.offset != back.pos.offset + 1 then t := { t with landingBad := t.landingBad ++ [s] }
+            -- `h_km`: the key the open stacked is possible.
+            match post.simpleKeyStack.back? with
+            | some k => if !k.possible then t := { t with keyBad := t.keyBad ++ [s] }
+            | none => t := { t with keyBad := t.keyBad ++ [s] }
+          else
+            match tailOf pre.tokens with
+            | .colon _ =>
+              t := { t with colonOpens := t.colonOpens + 1 }
+              let lastValue := match pre.tokens[pre.tokens.size - 1]? with
+                | some tok => (match tok.val with | .value => true | _ => false)
+                | none => false
+              if pre.simpleKeyAllowed && pre.explicitKeyLine.isNone && lastValue then
+                t := { t with colonCaseOk := t.colonCaseOk + 1 }
+              else if P119.kavlShadow pre then t := { t with colonKavl := t.colonKavl + 1 }
+              else t := { t with colonBad := t.colonBad ++ [s] }
+            | _ => pure ()
+    | _, _ => pure ()
+  return t
+
+end P131
+
+namespace P131Test
+open P131
+
+def testOpenCarrierShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let c := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
+  checkM state
+    s!"P131 the fold's carriers: {c.baseOpens} base opens (seq {c.baseSeq} / map {c.baseMap}); landing = lit end (bad: {c.landingBad}); pushed key possible (bad: {c.keyBad}); .colon-tail nested opens {c.colonOpens}: key case {c.colonCaseOk} / layout {c.colonKavl} (bad: {c.colonBad})"
+    (c.baseOpens == 251 && c.baseSeq == 161 && c.baseMap == 90 && c.landingBad.isEmpty &&
+      c.keyBad.isEmpty && c.colonOpens == 14 && c.colonCaseOk == 12 && c.colonKavl == 2 &&
+      c.colonBad.isEmpty)
+    s!"{repr c}"
+
+end P131Test
+
 def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 100: S3 slice (1) — leaf span ↔ token payload (anchor / alias / tag), before proof"
   let t := P100.tally P100.allRows
@@ -18452,6 +18598,8 @@ def collectTests : IO VerifiedSuiteResult := do
   P126Test.testTClosureProducerShadow state
   P128Test.testCloseNestedColonShadow state
   P129Test.testOpenMaskShadow state
+  P130Test.testCommaMaskShadow state
+  P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
            label := "Adversarial Instantiation Tests (sorry audit)",

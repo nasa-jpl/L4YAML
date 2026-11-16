@@ -368,7 +368,9 @@ def expectedWideCensus : String :=
 -- 2026-11-14 (item 490, the ∀-floor fold): T 29 → 30 — `accum_step_content_pairK`
 -- (ContentBridge §11) destructures `accum_step_content` too.  D unchanged.
 def expectedCensus : String :=
-  "D=4 S=0 R=0 T=30 capstonesInT=2 rawElim=11"
+-- 2026-11-15 (item 520, the flow fold): T 30 → 31 — `accum_step_flow_pairK` consumes `accum_step_flow` whole,
+-- `dropClose`'s dependent through it; D / S / R unmoved.
+  "D=4 S=0 R=0 T=31 capstonesInT=2 rawElim=11"
 
 /-- The first ring: two in the library, two in the instruments that exhibit the
     defect.  `stream_anything` is item 236's free-maker and item 235 restates it;
@@ -410,6 +412,7 @@ def expectedTrans : List Name :=
    -- 2026-11-13 (item 489): the per-floor pair step destructures `accum_step_content`.
    `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_content_pairB,
    `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_content_pairK,
+   `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_flow_pairK,
    `L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl,
    `L4YAML.Proofs.StreamAccum.PendingNode.close_with_sslFrom,
    `L4YAML.Proofs.StreamAccum.accum_block_pending,

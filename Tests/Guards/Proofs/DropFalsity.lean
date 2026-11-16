@@ -396,7 +396,9 @@ example (s : String) : ([] : List Char) <:+ s.toList := List.nil_suffix
 -- bound `SLYamlStream` shape.
 -- 2026-11-14 (item 490, the ∀-floor fold): total 29 → 30, bound 11 → 12 — `accum_step_content_pairK`
 -- (ContentBridge §11) states `sc.flowLevel = d + 1` as `pairB` does.
-def expectedTally : String := "bound=12 empty=10 free=5 negation=3 total=30"
+-- 2026-11-15 (item 520): bound 12 → 13, total 30 → 31 — `accum_step_flow_pairK` (ContentBridge) consumes
+-- `accum_step_flow` whole, one more `dropClose` dependent with the bound falsity shape.
+def expectedTally : String := "bound=13 empty=10 free=5 negation=3 total=31"
 
 /-- The arm the model omits. -/
 def drop : Name := `L4YAML.Surface.SLYamlStream.scannerDrop

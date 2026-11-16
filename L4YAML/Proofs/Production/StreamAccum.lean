@@ -7144,12 +7144,19 @@ inductive FlowArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : 
     SurfPos → SurfPos → Prop where
   | openBase (b : Bool) (sp_br sp_open sp_block' sp_flow' : SurfPos)
       (h_depth : sc.flowLevel = 0) (h_c : c = if b then '[' else '{') (h_open : GLit c sp_br sp_open)
-      (h_fl : s'.flowLevel = 1) (h_ks : s'.flowStack = #[b]) (h_tl : tailOf s'.tokens = .sep) :
+      (h_fl : s'.flowLevel = 1) (h_ks : s'.flowStack = #[b]) (h_tl : tailOf s'.tokens = .sep)
+      -- Item 520: the T fold's base mask — the pushed key is possible, read where the park said so.
+      (h_km : ∃ kc, KmSound s' #[false] kc)
+      (h_sp : sp_flow' = sp_open) :
       FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow'
   | openNest (b : Bool) (sp_flow₂ sp_br sp_open : SurfPos)
       (gap : GapRead sc sp_flow sp_scan sp_flow₂)
       (h_depth : 1 ≤ sc.flowLevel) (h_c : c = if b then '[' else '{')
       (h_tail : ∀ kj, tailOf sc.tokens ≠ .value kj)
+      (h_klay : ∀ kj, tailOf sc.tokens = .colon kj →
+        (sc.simpleKeyAllowed = true ∧ sc.explicitKeyLine = none ∧
+          ∃ tok, sc.tokens[sc.tokens.size - 1]? = some tok ∧ tok.val = .value) ∨
+        KeyAfterValueLayout sc)
       (h_lead : ∀ m, (SSeparateLines m sp_flow₂ sp_br ∨
           (sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = [])) ∨
         ¬ (m ≤ minContentIndentOf sc))
@@ -13839,7 +13846,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open := by
   rw [h_fl1]
   -- Item 363: every `PackAlt sc` face of the open is typed over the BLOCK state `sc`
   -- (`h_fl0`), so the flow lane's K7 fact is a projection of that state, decided once
@@ -13869,6 +13877,11 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     · have h0 : i = 0 := by simp at hi; omega
       subst h0
       exact absurd hb (by simp)
+  -- Item 520: the T base mask's witness — `KmSound`'s two `∨ True` stamp conjuncts paid once,
+  -- here, not at the eight open sites (OrTrueAudit: no new position, one writer).
+  have h_km0t : s_prep.simpleKey.possible = true →
+      KmSound s' #[false] s_prep.simpleKey.pos.col :=
+    h_km0 (Or.inr trivial) (Or.inr trivial)
   -- Item 67: the OPEN is where the flow stack's index gets its floor.  The
   -- pending's own measurement is the only source, so a park that hands `True`
   -- opens a stack whose interior cannot read a multi-line token at `n` — the
@@ -13975,7 +13988,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
           ScannerSurfCorr s' sp_scan' ∧
           ((1 : Nat) ≥ 1 →
             InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-            LastTokenReal s'.tokens ∧ s'.allowDirectives = false)) →
+            LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+            (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open) →
       -- Item 118: the park's open suffix arm (item 117's skeleton face at the
       -- flow open) — a `...` park lands the completed collection in
       -- `suffixContinue`'s own slot; only `pendingDocEnd`'s arm pays.
@@ -14010,7 +14024,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open := by
     intro sp_g h_trail h_gateM h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
     rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess
         h_noflow_prep h_park h_trail h_gateM with
@@ -14068,7 +14083,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0t (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess)⟩, rfl⟩
     · exact h_nobreak hcol hws
   -- The completed constructs cannot reach a same-line `[`/`{`: their producers'
   -- trailing validation left the rest of the line inert (`h_line`), and the
@@ -14083,7 +14099,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_line hcol hws =>
       (LineNoOpen.no_open_across_whites (h_line.resolve_left hcol) hws h_head h_c).elim
   -- The OPAQUE resume (item 46: `pendingFlow`'s alone).  The deferred state
@@ -14178,7 +14195,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_kp_drop =>
     ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil _,
      h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) h_kp_drop (Nat.zero_le _) trivial (mkv none 0 sp_block (fun _ sp_ne sp_m _ h_ssl =>
@@ -14188,7 +14206,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
-     fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+     fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+     ⟨_, h_km0t h_kp_drop⟩, rfl⟩
   have opaque_resume : s_prep.simpleKey.possible = true →
       sp_scan.col ≠ 0 → GStar SSWhite sp_scan sp_prep →
       ∃ sp_gram' sp_block' sp_flow' sp_scan',
@@ -14199,7 +14218,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_kp _ _ => drop_ride h_kp
   -- **Item 285 (step 12.2): the ride the SLOT pays for.**  `drop_ride`'s own
   -- term with the gate the open's park can now name — `some s_prep`, anchored
@@ -14233,7 +14253,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_alt h_gateS hmem hrun hska =>
       match h_optok with
       | ⟨_, htok, hop, hpos⟩ =>
@@ -14253,7 +14274,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
            (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
            (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
-         fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+         fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+     ⟨_, h_km0t (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess)⟩, rfl⟩
   cases h_pending with
   | noPending _ _ h_col h_armN h_nodoc h_noekN _ h_gateN =>
     -- Nothing to close: the leading separation rides in the fresh bare
@@ -14296,7 +14318,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0t (preprocess_saved_key_fresh (h_armN.resolve_right (by rw [h_scflow]; simp)).1 h_noflow_prep h_preprocess).1⟩, rfl⟩
   | pendingContent _ _ _ _ h_line h_closableA _ _ _ _ h_frS176 h_frV201 _ h_tail143 _ _ h_runA h_gateA _ =>
     -- Item 37: §7.5's set weakens to item 10's here, exactly as `[204]`'s does.
     -- Item 143: …and this park's producer finished a node, so it PAYS §9.2's
@@ -14503,7 +14526,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
-             fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+             fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0t (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess)⟩, rfl⟩
     · -- Item 172: the run-end half of the under-run is no longer the scanner's
       -- refusal — §8.1's floor is read at the CLOSE now, so the open STEP
       -- scans (`k:⏎  b:⏎    &x⏎[1]`) and this arm has to build.  The park is
@@ -14558,7 +14582,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+     ⟨_, h_km0t (preprocess_saved_key_fresh h_armD.1 h_noflow_prep h_preprocess).1⟩, rfl⟩
   | pendingBlock _ _ _ n_old h_close _ h_floor_old h_sk_old h_col59 h_kslot_old _ _ _
       h_kslotUp_old _ _ h_offer_b h_gateB =>
     -- Item 46: the stack opens at the ENTRY's index, so the resume's node
@@ -14648,7 +14673,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0t (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1⟩, rfl⟩
     · -- Item 73: `pendingBlock`'s floor is a measurement, not an option, which
       -- is what LOCATES the under-run; item 265 measures which half the
       -- location refutes.
@@ -14783,7 +14809,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0t (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1⟩, rfl⟩
     · -- Item 68: the TAB half is §6.1's refusal, for `pendingProps`' reason.
       -- Item 82: the park's floor is REAL, which is what locates the run-end
       -- half; item 265 measures that the location it names is downstream
@@ -19873,7 +19900,7 @@ lemma accum_step_flow (sc : ScannerState)
       subst hs
       have h_pos := h_flow.pos_eq_of_depth_zero
       subst h_pos
-      obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+      obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, q7, q8⟩ :=
         accum_flow_open_depth0 sc sp_start sp_gram _ sp_scan sp_prep sp_open
           s_prep _ '[' h_stream h_stack (h_pending h0) h_corr h_sound h_preprocess hcorr_prep
           hcorr_open (by rw [h_fl, h_ad0])
@@ -19913,7 +19940,7 @@ lemma accum_step_flow (sc : ScannerState)
                 (tailOf_scanFlowSequenceStart _).1,
                 show (#[] : Array Bool).push true = #[true] from rfl]
             exact FlowStackB.openSeqBase false resume h_open (GOpt.none sp_open))
-      exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase true sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks0]; rfl) (tailOf_scanFlowSequenceStart _).1⟩, fun _ => q4, q5, q6⟩
+      exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase true sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks0]; rfl) (tailOf_scanFlowSequenceStart _).1 q7 q8⟩, fun _ => q4, q5, q6⟩
     · split at h_dispatch
       · -- c == ']' at depth 0: `if flowLevel == 0 then .error` — flowLevel = 0 ⇒ error.
         rw [h_ad0] at h_dispatch; simp at h_dispatch
@@ -19937,7 +19964,7 @@ lemma accum_step_flow (sc : ScannerState)
           subst hs
           have h_pos := h_flow.pos_eq_of_depth_zero
           subst h_pos
-          obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+          obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, q7, q8⟩ :=
             accum_flow_open_depth0 sc sp_start sp_gram _ sp_scan sp_prep sp_open
               s_prep _ '{' h_stream h_stack (h_pending h0) h_corr h_sound h_preprocess hcorr_prep
               hcorr_open (by rw [h_fl, h_ad0])
@@ -19977,7 +20004,7 @@ lemma accum_step_flow (sc : ScannerState)
                     (tailOf_scanFlowMappingStart _).1,
                     show (#[] : Array Bool).push false = #[false] from rfl]
                 exact FlowStackB.openMapBase false resume h_open (GOpt.none sp_open))
-          exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase false sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks0]; rfl) (tailOf_scanFlowMappingStart _).1⟩, fun _ => q4, q5, q6⟩
+          exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase false sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks0]; rfl) (tailOf_scanFlowMappingStart _).1 q7 q8⟩, fun _ => q4, q5, q6⟩
         · split at h_dispatch
           · -- c == '}' at depth 0: error (flowLevel == 0).
             rw [h_ad0] at h_dispatch; simp at h_dispatch
@@ -20291,7 +20318,7 @@ lemma accum_step_flow (sc : ScannerState)
           ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks,
           (tailOf_scanFlowSequenceStart _).1]
       exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-        FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest true sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [← h_gt]; exact h_lead_open (Or.inl rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks, hks]) (tailOf_scanFlowSequenceStart _).1) ⟨
+        FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest true sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [htl]; exact h_klay) (by rw [← h_gt]; exact h_lead_open (Or.inl rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks, hks]) (tailOf_scanFlowSequenceStart _).1) ⟨
          .open (d + 1 + 1) (ks.push true) (km.push b_new) .sep sp_block sp_tok
           (.seqNest (d + 1) ks km b_new .sep sp_block sp_prep sp_tok sp_tok sp_tok
             h_bprom
@@ -20540,7 +20567,7 @@ lemma accum_step_flow (sc : ScannerState)
               ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks,
               (tailOf_scanFlowMappingStart _).1]
           exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-            FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest false sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [← h_gt]; exact h_lead_open (Or.inr rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks, hks]) (tailOf_scanFlowMappingStart _).1) ⟨
+            FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest false sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [htl]; exact h_klay) (by rw [← h_gt]; exact h_lead_open (Or.inr rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks, hks]) (tailOf_scanFlowMappingStart _).1) ⟨
              .open (d + 1 + 1) (ks.push false) (km.push b_new) .sep sp_block sp_tok
               (.mapNest (d + 1) ks km b_new .sep sp_block sp_prep sp_tok sp_tok sp_tok
                 h_bprom

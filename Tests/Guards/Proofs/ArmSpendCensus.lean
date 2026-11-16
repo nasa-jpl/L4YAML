@@ -278,8 +278,11 @@ def expectedBinders : List String :=
 -- `Or.elim` over the park's cover (informative → carried, punted → declined), a shape the
 -- arm-payment reader skips (RelaySupply's tally skipped 41 → 42 the same way).
 -- 2026-11-02 (item 422): edges 106 → 108, RELAY 29 → 31 — the openers' `h_ref` relay the `h_outer` ARMED arm whole (`fun h => Or.inr h`).
+-- 2026-11-15 (item 520): edges 109 → 110, DECLINE 21 → 22 — `FlowArm.openNest.h_klay` (the T fold's carrier) has the
+-- arm's shape (`simpleKeyAllowed = true ∧ … ∨ KeyAfterValueLayout sc`); `accum_step_flow` forwards the gap tuple's
+-- `h_klay` into it at the two nested-open sites, which the census reads as a DECLINE (no `Or.inl` written).
 def expectedTally : String :=
-  "edges=109 skipped=41 DECLINE=21 FIELD=7 PAY=17 RELAY=32 VIA=32"
+  "edges=110 skipped=41 DECLINE=22 FIELD=7 PAY=17 RELAY=32 VIA=32"
 
 run_cmd do
   let env ← getEnv

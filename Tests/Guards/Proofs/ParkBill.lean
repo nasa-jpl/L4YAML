@@ -163,7 +163,9 @@ def expectedClosure : Nat := 287  -- -1 on 2026-11-14: `Proofs.Scanner.StructDep
 -- destructures `accum_step_content` as `pairB` does, so it joins both drops; gate holders ELSEWHERE
 -- dn/mid 10 → 11, fv/mid 12 → 13 — it holds the wrapper's `h_dn`/`h_fv` outside `accumNs`.
 def expectedBill : String :=
-  "Dp=11 Sp=0 Tp=38 T=30 shared=23 extra=15 capstonesInTp=2"
+-- 2026-11-15 (item 520): Tp 38 → 39, T 30 → 31, shared 23 → 24; holders elsewhere dn/mid 11 → 12, fv/mid 13 → 14 —
+-- `accum_step_flow_pairK` holds `h_dn` / `h_fv` mid-stream for `accum_step_flow`, as `accum_step_content_pairK` does.
+  "Dp=11 Sp=0 Tp=39 T=31 shared=24 extra=15 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and
@@ -369,7 +371,7 @@ def accumNs : Name := `L4YAML.Proofs.StreamAccum
     holder moved. -/
 def expectedGateHolders : String :=
   "dn/mid=23 dn/eof=5 fv/mid=17 fv/eof=4 | \
-elsewhere dn/mid=11 dn/eof=14 fv/mid=13 fv/eof=15"
+elsewhere dn/mid=12 dn/eof=14 fv/mid=14 fv/eof=15"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftCoreM do

@@ -286,7 +286,9 @@ it may only shrink. -/
 -- or 123 → 141 (its six constructors read the lead/run/separator at every floor: 10 `∨ ¬ (m ≤ …)` + 8 inner `∨`).
 -- Item 519: `FlowBaseRoutes.vslot`'s free `∃ ns : List Nat` binder was a ghost index (Rule 8); the field
 -- ranges over `markedCols s0` now — ghost 75 → 74 (FlowBaseRoutes 4 → 3).
-def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=141"
+-- 2026-11-15 (item 520): `FlowArm` prop 42 → 46, scalar 10 → 15, or 8 → 9 — three carried obligations for the
+-- T fold (`openBase.h_km` / `.h_sp`, `openNest.h_klay`, the last a disjunction); ghost unmoved (74 after item 519): none is a ghost index; or 141 → 142.
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=142"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -307,7 +309,7 @@ def expectedTally : List String :=
    "DanglingPred: surface=0 state=0 prop=0 scalar=6 snapshot=0 ghost=0 or=0",
    "ExplValueLine: surface=5 state=0 prop=3 scalar=1 snapshot=0 ghost=0 or=0",
    "ExplicitValueRefused: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
-   "FlowArm: surface=21 state=2 prop=42 scalar=10 snapshot=0 ghost=0 or=8",
+   "FlowArm: surface=21 state=2 prop=46 scalar=15 snapshot=0 ghost=0 or=9",
    "FlowBaseAnchor: surface=0 state=5 prop=0 scalar=4 snapshot=2 ghost=0 or=0",
    "FlowBaseRoutes: surface=23 state=1 prop=30 scalar=9 snapshot=1 ghost=3 or=7",
    "FlowOpenHeld: surface=0 state=0 prop=0 scalar=3 snapshot=0 ghost=2 or=0",
@@ -470,9 +472,10 @@ def expectedDisjuncts : List String :=
    "CommentStop.body ∨ c = '\\x0d'",
    "ContentArm.blockScalar[5].h_c ∨ c = '>'",
    "ContentArm.blockScalar[6].h_bs ∨ SCLFolded 0 sp sp'",
-   "FlowArm.openNest[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "FlowArm.openNest[14].h_klay ∨ EntryBoundaryLayout.KeyAfterValueLayout sc",
+   "FlowArm.openNest[15].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    -- 2026-11-14 (item 497): the ε lead also carries `trailingPropertyRun sc.tokens = []` (the strict-lead carry).
-   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = []",
+   "FlowArm.openNest[15].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = []",
    "FlowArm.comma[13].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "FlowArm.comma[13].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
    "FlowArm.closeNested[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
