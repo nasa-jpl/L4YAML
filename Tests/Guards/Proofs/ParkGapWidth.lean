@@ -550,6 +550,8 @@ corrBlock=0 corrScan=1 via="]
 -- 2026-11-17 (item 522): preprocess holders 257 → 261 — `scanValue_km_transport`, `dispatchBlock_km_faces`,
 -- `dispatchBlock_indents_of_inFlow` and `accum_step_key_pairK` hold `h_pre` (predicted off DispatchPrice's same move); block-dispatcher holders 143 → 147 — the same
 -- four hold `h_dispatch`.
+-- 2026-11-17 (item 524, the deletion): preprocess holders 261 → 259 — `ad_implicitValueLine` / `ad_docStartLine` (holders of `h_pre`)
+-- deleted with the 23 preservation lemmas on the owner's ruling (item 520's roster); edges / chains unmoved.
 def expectedLadder : List String :=
   -- 2026-11-14: `StructDepth`'s `DInv_dispatchBlock` / `DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling,
   --   items 446–452): holders 144 → 143 (block), 185 → 184 (content), 256 → 255 (preprocess)
@@ -588,7 +590,7 @@ def expectedLadder : List String :=
    -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
    -- 2026-11-15 (item 520): preprocess 257 → 259 — `accum_step_flow_pairK` and `dispatchFlow_km_faces` hold
    -- `h_preprocess` (the flow fold's two steps); dispatchContent / dispatchBlockIndicators unmoved.
-   "scanNextToken_preprocess holders=261 edge=17 chain=3"]
+   "scanNextToken_preprocess holders=259 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
