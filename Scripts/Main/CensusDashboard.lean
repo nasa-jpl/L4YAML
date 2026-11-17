@@ -6,7 +6,7 @@ public import Scripts.Docs.Nav
 @[expose] public section Blanket
 
 /-!
-# scripts-census-dashboard — `lake run census-dashboard [-- -C ROOT] [--check] [--md FILE]`
+# scripts-census-dashboard — `lake run census-dashboard [-- -C ROOT] [--check] [--md FILE] [--diff REF]`
 
 DOCS item 514.  Every directed census — a pinned count the campaign drives to zero or up to a bound —
 with its current reading (read off the `def expected… :=` literals under `Tests/Guards/Proofs/`, the
@@ -24,6 +24,8 @@ def usage : String := "usage: lake run census-dashboard -- [-C ROOT] [--check] [
   --check         exit 1 when a roster row resolves to no pin / field (the CI form)
   --md FILE       also write the report to FILE
   --no-readings   omit the `readings without a target` section
+  --diff REF      report only the pins that moved against git REF (e.g. origin/fix-a-grammar-completeness):
+                  directed fields with goal distance before → after and a verdict, then population readings
   -h, --help      this text"
 
 structure Opts where
@@ -31,6 +33,7 @@ structure Opts where
   check : Bool := false
   md : Option String := none
   readings : Bool := true
+  diff : Option String := none
 
 def parseOpts : List String → Opts → Except String Opts
   | [], o => .ok o
@@ -39,6 +42,7 @@ def parseOpts : List String → Opts → Except String Opts
   | "--check" :: rest, o => parseOpts rest { o with check := true }
   | "--md" :: f :: rest, o => parseOpts rest { o with md := some f }
   | "--no-readings" :: rest, o => parseOpts rest { o with readings := false }
+  | "--diff" :: r :: rest, o => parseOpts rest { o with diff := some r }
   | a :: _, _ => .error s!"unknown argument `{a}`\n{usage}"
 
 def guardsDir : System.FilePath := "Tests" / "Guards" / "Proofs"
@@ -57,6 +61,21 @@ def ledgerPin (root : System.FilePath) : IO (Option Pin) := do
   match Scripts.Ledger.parseLedger (← IO.FS.readFile path) with
   | .error _ => return none
   | .ok l => return some { census := "scripts-ledger", name := "open", literal := s!"rows={l.openCount} pin={l.pin}" }
+
+/-- The guard file `path` (relative to `root`) as it stands at git `ref`; `none` when `ref` has no such file. -/
+def fileAt (root : System.FilePath) (ref : String) (rel : String) : IO (Option String) := do
+  let r ← IO.Process.output { cmd := "git", args := #["show", s!"{ref}:{rel}"], cwd := some root }
+  return if r.exitCode == 0 then some r.stdout else none
+
+/-- Every pin of every `Tests/Guards/Proofs/*.lean` at git `ref` (the files this tree has; a file `ref`
+    holds and this tree deleted is reported by `git diff --stat`, not here). -/
+def pinsAt (root : System.FilePath) (ref : String) : IO (Array Pin) := do
+  let mut pins : Array Pin := #[]
+  for f in ← guardFiles root do
+    let stem := f.fileStem.getD ""
+    if let some text ← fileAt root ref s!"Tests/Guards/Proofs/{f.fileName.getD ""}" then
+      pins := pins ++ readPins stem text
+  return pins
 
 def shortHead (root : System.FilePath) : IO String := do
   let r ← IO.Process.output { cmd := "git", args := #["rev-parse", "--short", "HEAD"], cwd := some root }
@@ -86,6 +105,16 @@ def run (args : List String) : IO UInt32 := do
   if let some p ← ledgerPin root then pins := pins.push p
   let (rows, errs) := resolveAll pins
   let mut out : Array String := #[]
+  if let some ref := o.diff then
+    let base ← pinsAt root ref
+    let cur := pins.filter (·.census != "scripts-ledger")  -- synthesized from the live ledger only; not a pin `git show` can read
+    let moves := renderMoves ref (directedMoves base cur) (directedUnresolved base cur) (populationMoves base cur)
+    let report := "\n".intercalate moves.toList ++ "\n"
+    IO.print report
+    if let some f := o.md then
+      IO.FS.writeFile f report
+      IO.eprintln s!"wrote {f}"
+    return 0
   out := out.push s!"# Census dashboard — tree `{← shortHead root}`"
   out := out.push ""
   out := out ++ (← mandate root)

@@ -596,4 +596,145 @@ def renderReadings (pins : Array Pin) : Array String := Id.run do
     out := out.push s!"- `{p.census}.{p.name}`: {body}"
   return out
 
+/-! ## Moves between two trees (`--diff REF`, DOCS item 523)
+
+A PR moves pins; the reviewer's question is which of those moves are DIRECTED (a roster field, with
+a goal — so the move is toward it or away from it) and which are POPULATION readings (the size of a
+dependent set, a holder count, a thread length — one more consumer lemma is one more; no direction).
+`directedMoves` / `populationMoves` answer it from the pins of the base tree and of this one. -/
+
+/-- One directed field that moved: `left` before and after, and the verdict against its `move`. -/
+structure DirMove where
+  census : String
+  field : String
+  before : Nat
+  after : Nat
+  goal : Nat
+  move : Move
+  deriving Repr, BEq, Inhabited
+
+def DirMove.leftBefore (m : DirMove) : Nat := distance m.before m.goal
+def DirMove.leftAfter (m : DirMove) : Nat := distance m.after m.goal
+
+/-- `toward` / `away` by the distance to the goal; a `hold` field that moves at all is `BROKEN`;
+    `away` on a shrink-only / grow-only field is what needs the owner's word. -/
+def DirMove.verdict (m : DirMove) : String :=
+  match m.move with
+  | .hold => "BROKEN (hold)"
+  | _ => if m.leftAfter < m.leftBefore then "toward"
+         else if m.leftAfter > m.leftBefore then "AWAY (owner's word)"
+         else "lateral"
+
+/-- Every roster field whose reading differs between `base` and `cur`; a field that resolves on one
+    side only is reported with the side it has (`none` on the other) by `directedUnresolved`. -/
+def directedMoves (base cur : Array Pin) : Array DirMove := Id.run do
+  let mut out := #[]
+  for t in roster do
+    match resolve base t, resolve cur t with
+    | .ok (_, b, _), .ok (_, a, g) =>
+      if b != a then out := out.push { census := t.census, field := t.field, before := b, after := a, goal := g, move := t.move }
+    | _, _ => pure ()
+  return out
+
+/-- Roster fields that resolve on exactly one side (a pin or field born or deleted by the change). -/
+def directedUnresolved (base cur : Array Pin) : Array String := Id.run do
+  let mut out := #[]
+  for t in roster do
+    match resolve base t, resolve cur t with
+    | .ok _, .error e => out := out.push s!"`{t.census}.{t.field}`: gone in this tree ({e})"
+    | .error e, .ok _ => out := out.push s!"`{t.census}.{t.field}`: new in this tree ({e} on the base)"
+    | _, _ => pure ()
+  return out
+
+/-- One population field that moved: `census.pin field before → after`. -/
+structure PopMove where
+  census : String
+  pin : String
+  field : String
+  before : String
+  after : String
+  deriving Repr, BEq, Inhabited
+
+def isRosterField (census pin field : String) : Bool :=
+  roster.any fun t => t.census == census && t.pin == pin && t.field == field
+
+/-- Every field of every pin present on both sides whose value differs and that no roster row names;
+    a pin present on one side only contributes each of its fields with `∅` on the missing side. -/
+def populationMoves (base cur : Array Pin) : Array PopMove := Id.run do
+  let mut out := #[]
+  let find (ps : Array Pin) (c n : String) : Option Pin := ps.find? fun p => p.census == c && p.name == n
+  for p in cur do
+    let fa := pinFields p.literal
+    match find base p.census p.name with
+    | some q =>
+      let fb := pinFields q.literal
+      for (k, v) in fa do
+        if !isRosterField p.census p.name k then
+          match fb.find? (·.1 == k) with
+          | some (_, w) => if v != w then out := out.push { census := p.census, pin := p.name, field := k, before := w, after := v }
+          | none => out := out.push { census := p.census, pin := p.name, field := k, before := "∅", after := v }
+      for (k, w) in fb do
+        if !isRosterField p.census p.name k && (fa.find? (·.1 == k)).isNone then
+          out := out.push { census := p.census, pin := p.name, field := k, before := w, after := "∅" }
+    | none =>
+      for (k, v) in fa do
+        if !isRosterField p.census p.name k then
+          out := out.push { census := p.census, pin := p.name, field := k, before := "∅", after := v }
+  for q in base do
+    if (find cur q.census q.name).isNone then
+      for (k, w) in pinFields q.literal do
+        if !isRosterField q.census q.name k then
+          out := out.push { census := q.census, pin := q.name, field := k, before := w, after := "∅" }
+  return out
+
+#guard (populationMoves
+  #[{ census := "X", name := "expectedA", literal := "a=1 b=2" }]
+  #[{ census := "X", name := "expectedA", literal := "a=1 b=3 c=4" }]).map (fun m => (m.field, m.before, m.after))
+  == #[("b", "2", "3"), ("c", "∅", "4")]
+#guard (populationMoves
+  #[{ census := "X", name := "expectedA", literal := "7" }]
+  #[{ census := "X", name := "expectedA", literal := "8" }]).map (fun m => (m.field, m.before, m.after))
+  == #[("value", "7", "8")]
+#guard (directedMoves
+  #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=10 inrTrivial=5" }]
+  #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=8 inrTrivial=5" }]).map
+    (fun m => (m.field, m.before, m.after, m.verdict))
+  == #[("positions", 10, 8, "toward")]
+#guard (directedMoves
+  #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=10" }]
+  #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=12" }]).map (·.verdict)
+  == #["AWAY (owner's word)"]
+#guard (populationMoves
+  #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=10" }]
+  #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=12" }]).size == 0
+
+/-- The Markdown of the moves: the two-row summary a PR body opens with, then the directed table
+    (goal distance before → after, verdict), then the population list. -/
+def renderMoves (ref : String) (dir : Array DirMove) (unres : Array String) (pop : Array PopMove) : Array String := Id.run do
+  let mut out : Array String := #[]
+  out := out.push s!"## Pins moved against `{ref}`"
+  out := out.push ""
+  out := out.push "| kind | moved | reading |"
+  out := out.push "|---|---:|---|"
+  let toward := (dir.filter (·.verdict == "toward")).size
+  let away := dir.size - toward
+  out := out.push s!"| directed (roster fields with a goal) | {dir.size} | toward {toward}, not toward {away}{if unres.isEmpty then "" else s!", born/gone {unres.size}"} |"
+  out := out.push s!"| population (readings without a target) | {pop.size} | consumer-set sizes, holder counts, thread lengths — no direction |"
+  if !dir.isEmpty || !unres.isEmpty then
+    out := out.push ""
+    out := out.push "| census | field | before → after | goal | left before → after | move | verdict |"
+    out := out.push "|---|---|---|---:|---|---|---|"
+    for m in dir do
+      out := out.push s!"| `{m.census}` | `{m.field}` | {m.before} → {m.after} | {m.goal} | {m.leftBefore} → {m.leftAfter} | {m.move.render} | {m.verdict} |"
+    for u in unres do out := out.push s!"- {u}"
+  if !pop.isEmpty then
+    out := out.push ""
+    out := out.push "<details><summary>population moves</summary>"
+    out := out.push ""
+    for m in pop do
+      out := out.push s!"- `{m.census}.{m.pin}` {m.field} {m.before} → {m.after}"
+    out := out.push ""
+    out := out.push "</details>"
+  return out
+
 end Scripts.Census.Dashboard
