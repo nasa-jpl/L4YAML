@@ -62,12 +62,12 @@ def ledgerPin (root : System.FilePath) : IO (Option Pin) := do
   | .error _ => return none
   | .ok l => return some { census := "scripts-ledger", name := "open", literal := s!"rows={l.openCount} pin={l.pin}" }
 
-/-- The guard file `path` (relative to `root`) as it stands at git `ref`; `none` when `ref` has no such file. -/
 /-- `ref` names a commit (`git rev-parse --verify`); a mistyped or unfetched ref is an error, not an empty base. -/
 def refExists (root : System.FilePath) (ref : String) : IO Bool := do
   let r ← IO.Process.output { cmd := "git", args := #["rev-parse", "--verify", "--quiet", s!"{ref}^\{commit}"], cwd := some root }
   return r.exitCode == 0
 
+/-- The guard file `path` (relative to `root`) as it stands at git `ref`; `none` when `ref` has no such file. -/
 def fileAt (root : System.FilePath) (ref : String) (rel : String) : IO (Option String) := do
   let r ← IO.Process.output { cmd := "git", args := #["show", s!"{ref}:{rel}"], cwd := some root }
   return if r.exitCode == 0 then some r.stdout else none
