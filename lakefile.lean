@@ -543,7 +543,7 @@ headers through `LEAN_PATH`, which this script sets from the workspace. -/
 script «docs-nav» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
 
-/-- `lake run census-dashboard [-- --check | --md FILE]`: every directed census (a pinned count driven
+/-- `lake run census-dashboard [-- --check | --md FILE | --diff REF]`: every directed census (a pinned count driven
     to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs` pin literals, its
     goal, the distance left and what moves it; then the pinned readings with no target (item 514).
     Reads source text only — no build of the library needed. -/
