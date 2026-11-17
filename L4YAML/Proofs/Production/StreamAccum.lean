@@ -9914,14 +9914,7 @@ lemma allowDirectives_update_pendingKeys (s : ScannerState) :
     else s).pendingKeys = s.pendingKeys := by
   split <;> rfl
 
-/-- …and the implicit value's stamp (item 103). -/
-lemma allowDirectives_update_implicitValueLine (s : ScannerState) :
-    (if s.allowDirectives then
-      { s with allowDirectives := false, documentEverStarted := true }
-    else s).implicitValueLine = s.implicitValueLine := by
-  split <;> rfl
-
-/-- `docStartLine` twin of `allowDirectives_update_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+/-- The `allowDirectives` update leaves `docStartLine` (item 299; its `implicitValueLine` twin was deleted under item 520's ruling): the field has one writer, `scanDocumentStart`. -/
 lemma allowDirectives_update_docStartLine (s : ScannerState) :
     (if s.allowDirectives then
       { s with allowDirectives := false, documentEverStarted := true }
@@ -19123,30 +19116,6 @@ lemma preprocess_pending_cases {sc s_prep : ScannerState} {c : Char}
       show s_skip.tokens.size = sc.tokens.size
       rw [h_tk_skip]
     · exact Or.inl h_sk_skip
-
-/-- **The stamp reaches the dispatched state** (item 103): preprocessing does
-    not write `implicitValueLine` and neither does the `allowDirectives`
-    update, so every flow step's transport reads the field at `sc`. -/
-lemma ad_implicitValueLine {sc s_prep s_ad : ScannerState} {c : Char}
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ad_def : (if s_prep.allowDirectives = true then
-        { s_prep with allowDirectives := false, documentEverStarted := true }
-      else s_prep) = s_ad) :
-    s_ad.implicitValueLine = sc.implicitValueLine := by
-  have h := preprocess_preserves_implicitValueLine sc s_prep c h_pre
-  rw [← h_ad_def]
-  split <;> exact h
-
-/-- `docStartLine` twin of `ad_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma ad_docStartLine {sc s_prep s_ad : ScannerState} {c : Char}
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ad_def : (if s_prep.allowDirectives = true then
-        { s_prep with allowDirectives := false, documentEverStarted := true }
-      else s_prep) = s_ad) :
-    s_ad.docStartLine = sc.docStartLine := by
-  have h := preprocess_preserves_docStartLine sc s_prep c h_pre
-  rw [← h_ad_def]
-  split <;> exact h
 
 /-- The mask a nested flow open leaves (item 10): the incoming mask rides
     through preprocessing and the bracket push, and the pushed bit's evidence

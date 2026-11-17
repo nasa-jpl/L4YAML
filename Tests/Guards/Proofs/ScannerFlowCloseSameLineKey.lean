@@ -129,37 +129,12 @@ example {sc : ScannerState} {km : Array Bool} {kc : Nat}
 -- (`flowKeyPack_of_close`), and Priority 132 reads it: 13 / 251 corpus base opens.
 
 -- §5b …and the reason the transport is possible at all: NOTHING between the
--- open and the close writes the field.  The five indicators, the `?`, and the
--- `:` that declines because it is a flow entry's rather than `[194]`'s.
-open L4YAML.Scanner L4YAML.Proofs.ScannerCorrectness in
-/-- A flow `:` writes no stamp. -/
-example {s s' : ScannerState} (h_flow : s.inFlow = true) (hok : scanValue s = .ok s') :
-    s'.implicitValueLine = s.implicitValueLine :=
-  scanValue_inFlow_implicitValueLine h_flow hok
-
-open L4YAML.Scanner L4YAML.Proofs.ScannerCorrectness in
-/-- … nor does the `[` that opens the collection. -/
-example (s : ScannerState) :
-    (scanFlowSequenceStart s).implicitValueLine = s.implicitValueLine :=
-  scanFlowSequenceStart_preserves_implicitValueLine s
-
-open L4YAML.Scanner L4YAML.Proofs.ScannerCorrectness in
-/-- … nor the `]` that closes it. -/
-example (s : ScannerState) :
-    (scanFlowSequenceEnd s).implicitValueLine = s.implicitValueLine :=
-  scanFlowSequenceEnd_preserves_implicitValueLine s
-
-open L4YAML.Scanner L4YAML.Proofs.ScannerCorrectness in
-/-- … nor the `,` between entries. -/
-example {s s' : ScannerState} (h : scanFlowEntry s = .ok s') :
-    s'.implicitValueLine = s.implicitValueLine :=
-  scanFlowEntry_preserves_implicitValueLine s s' h
-
-open L4YAML.Scanner L4YAML.Proofs.ScannerCorrectness in
-/-- … nor the `?` inside one. -/
-example {s s' : ScannerState} (h : scanKey s = .ok s') :
-    s'.implicitValueLine = s.implicitValueLine :=
-  scanKey_preserves_implicitValueLine s s' h
+-- open and the close writes the field.  The five `example`s that stood here
+-- (`scanValue_inFlow_implicitValueLine`, `scanFlow{Sequence}{Start,End}_preserves_implicitValueLine`,
+-- `scanFlowEntry_` / `scanKey_preserves_implicitValueLine`) were deleted with the 23 preservation
+-- lemmas on the owner's ruling (item 520's roster, 2026-11-17): the close DECIDES the stamp on its
+-- own state (`flowKeyPack_of_close`), so no transport from the open is stated any more and the
+-- preservation chain had no consumer (Rule 1).
 
 -- §6 The residue this item does NOT take, pinned as measured: a collection
 -- whose interior crossed a LINE is not a key at all, and the scanner says so

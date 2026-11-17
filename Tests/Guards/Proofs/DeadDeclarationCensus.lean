@@ -48,8 +48,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-17 (item 522): population 14,229 → 14,237 (+8: ContentBridge §12's seven and `scanValue_km_transport`), unreached
 -- +7 class (A) 1,288 → 1,295 — the key fold is reached by no root until the 2c fold `scan_trace` consumes it (`scanValue_km_transport`
 -- is reached, by `accum_step_block`); roster 3,556 and cluster-roots unmoved.
+-- 2026-11-17 (item 524, the deletion): the 23 `implicitValueLine` / `docStartLine` preservation lemmas item 520 listed for the
+-- owner's ruling deleted on his word — roster 3,556 → 3,533, population −23, unreached −23; class (A) and cluster-roots read below.
 def expectedDeadCensus : String :=
-  "population=14237 thm=10212 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6533 thm=4621 A-campaign=1295 C-api=1405 D-test-only=277 B-roster=3556 thm=3195 cluster-roots=1476"
+  "population=14214 thm=10189 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6510 thm=4598 A-campaign=1295 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

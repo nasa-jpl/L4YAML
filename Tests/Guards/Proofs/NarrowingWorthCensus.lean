@@ -914,7 +914,9 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- `KmSound`'s base-slot `∨ True` conjuncts.
 -- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
-def expectedNoopTally : String := "theorems=6473 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
+-- 2026-11-17 (item 524, the deletion): theorems 6473 → 6450 — the 23 `implicitValueLine` / `docStartLine` preservation lemmas
+-- (item 520's roster) deleted on the owner's ruling; the no-op readings unmoved.
+def expectedNoopTally : String := "theorems=6450 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
