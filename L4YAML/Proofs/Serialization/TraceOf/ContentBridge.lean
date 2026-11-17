@@ -1182,8 +1182,6 @@ lemma content_km_transport_any {sc s_prep s_ad s' : L4YAML.Scanner.ScannerState}
       obtain ⟨hlt, -⟩ := Array.getElem?_eq_some_iff.mp h1
       omega
   refine h_km.transport
-    ((L4YAML.Proofs.StreamAccum.dispatchContent_implicitValueLine hok).trans (L4YAML.Proofs.StreamAccum.ad_implicitValueLine h_pre h_ad_def))
-    ((L4YAML.Proofs.StreamAccum.dispatchContent_docStartLine hok).trans (L4YAML.Proofs.StreamAccum.ad_docStartLine h_pre h_ad_def))
     ?_ h_pref (by omega)
     (Nat.le_trans h_mono
       (L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s_ad c s' hok)) ?_
@@ -1717,6 +1715,519 @@ lemma accum_step_content_pairK {d : Nat} {ev : List Event} (sc : ScannerState)
   exact ⟨g, b, f, sn, ev_n, q1, q2, q4, q5, q6, hblk, q3, km, kc,
     content_km_transport_any (by omega) hKm h_preprocess h_ad_def h_dispatch (Nat.le_of_lt h_off_gt),
     fun m hm => hk m (by rwa [hmin] at hm)⟩
+
+/-! ## §10 The flow step on the T stack (item 520) -/
+
+/-- Item 520: the gap's events at every floor at once — the white gap pushes none and the held
+    run's `TCNsProperties` events are floor-independent (`TCNsProperties_floor_mono`), read at the
+    ceiling `minContentIndentOf sc` and carried down to every floor the S half admits. -/
+lemma gapRead_onT_uniform {sc : L4YAML.Scanner.ScannerState} {sp_flow sp_scan sp_flow₂ : SurfPos}
+    (gap : L4YAML.Proofs.StreamAccum.GapRead sc sp_flow sp_scan sp_flow₂) :
+    ∃ ev_g, ∀ {n d : Nat} {ks km : Array Bool} {sp_block : SurfPos} {ev : List Event},
+      n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+      TFlowOpenStack n d ks km (tailOf sc.tokens) sp_block sp_flow ev →
+      TFlowOpenStack n d ks km (L4YAML.Proofs.StreamAccum.gapTail sc) sp_block sp_flow₂ (ev ++ ev_g) := by
+  cases gap with
+  | white _ h_nil =>
+    rw [L4YAML.Proofs.StreamAccum.gapTail_of_nil h_nil]
+    exact ⟨[], fun _ hT => by simpa using hT⟩
+  | props ha ht sp_p h_tail h_lead h_run _ h_held =>
+    rw [L4YAML.Proofs.StreamAccum.gapTail_of_held h_held]
+    obtain ⟨ev_p, hp⟩ := PropsRun.toT ((h_run _).resolve_right (fun h => h (Nat.le_refl _)))
+    exact ⟨ev_p, fun hn hT =>
+      hT.receivePropsEmpty h_tail ((h_lead _).resolve_right (fun h => h hn))
+        (TCNsProperties_floor_mono hn hp)⟩
+
+/-- Item 520: the `.colon`-tail layout case `dispatch_key_after_value` reads — the S side's
+    `h_klay`, carried by `FlowArm.openNest`. -/
+abbrev ColonKeyCase (sc : ScannerState) : Prop :=
+  ∀ kj, tailOf sc.tokens = .colon kj →
+    (sc.simpleKeyAllowed = true ∧ sc.explicitKeyLine = none ∧
+      ∃ tok, sc.tokens[sc.tokens.size - 1]? = some tok ∧ tok.val = .value) ∨
+    L4YAML.Proofs.EntryBoundaryLayout.KeyAfterValueLayout sc
+
+/-- Item 520: the flow indicator's effect on the key-map mask, read off the dispatcher once for
+    every arm — the open pushes `kmBit` of the pre-tail (`km_push_at_open`, the `.colon` face fed by
+    `dispatch_key_after_value` off the carried layout fact), the close pops the top bit
+    (`close_km_pop`) and a `true` top bit refutes the next `:` (`close_layout_of_bit`), the `,`
+    keeps the mask (`comma_km_transport`).  `h_kpos` is the T stack's `km.size = depth` at a
+    nested step. -/
+lemma dispatchFlow_km_faces {sc s_prep s' : ScannerState} {c : Char} {km : Array Bool} {kc : Nat}
+    (h_flow : 0 < sc.flowLevel) (h_kpos : 0 < km.size)
+    (h_km : KmSound sc km kc)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_dispatch : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok (some s')) :
+    ((c = '[' ∨ c = '{') ∧ (ColonKeyCase sc → KmSound s' (km.push (kmBit (tailOf sc.tokens))) kc)) ∨
+    ((c = ']' ∨ c = '}') ∧ ∀ km₀ b₀, km = km₀.push b₀ →
+      KmSound s' km₀ kc ∧
+        (b₀ = true → L4YAML.Proofs.EntryBoundaryLayout.KeyAfterValueLayout s')) ∨
+    (c = ',' ∧ KmSound s' km kc) := by
+  unfold scanNextToken_dispatchFlowIndicators at h_dispatch
+  replace h_dispatch := peel_flowAdj h_dispatch
+  simp only [bind, Except.bind, pure, Except.pure] at h_dispatch
+  have hpeek_ad : (if s_prep.allowDirectives = true then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep).peek? = s_prep.peek? := by split <;> rfl
+  generalize h_ad_def : (if s_prep.allowDirectives = true then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep) = s_ad at h_dispatch hpeek_ad
+  have hpk : s_ad.peek? = some c := hpeek_ad.trans (preprocess_some_peek h_preprocess)
+  have h_hm : s_ad.offset < s_ad.inputEnd := by
+    unfold ScannerState.peek? at hpk
+    split at hpk
+    · assumption
+    · exact absurd hpk (by simp)
+  have h_bkey : ColonKeyCase sc → kmBit (tailOf sc.tokens) = true →
+      s_ad.simpleKey.possible = true ∧ 0 < s_ad.simpleKey.tokenIndex ∧
+      (∃ tok, s_ad.tokens[s_ad.simpleKey.tokenIndex - 1]? = some tok ∧ tok.val = .value) ∧
+      s_ad.simpleKey.pos.offset ≤ s_ad.offset ∧
+      s_ad.simpleKey.tokenIndex + 1 < s_ad.tokens.size := fun h_klay hb => by
+    obtain ⟨kj, hkj⟩ := (kmBit_iff _).1 hb
+    exact dispatch_key_after_value h_flow (h_klay kj hkj) h_preprocess h_ad_def
+  split at h_dispatch
+  · rename_i heq
+    have hc : c = '[' := by simpa using heq
+    have hs := Option.some.inj (Except.ok.inj h_dispatch)
+    subst hs
+    have h_off_lt := ScannerProgress.scanFlowSequenceStart_offset_lt s_ad h_hm
+    exact Or.inl ⟨Or.inl hc, fun h_klay => km_push_at_open h_flow h_km h_preprocess h_ad_def
+      (ScannerCorrectness.scanFlowSequenceStart_stack_pushed s_ad)
+      (ScannerCorrectness.scanFlowSequenceStart_simpleKey_cleared s_ad)
+      ⟨_, scanFlowSequenceStart_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
+      (fun hb => by
+        obtain ⟨h1, h2, h3, h4, h5⟩ := h_bkey h_klay hb
+        exact ⟨h1, h2, h3, by omega, h5⟩)
+      (fun h0 => absurd h0 (by omega)) (fun h0 => absurd h0 (by omega))⟩
+  · split at h_dispatch
+    · rename_i heq
+      have hc : c = ']' := by simpa using heq
+      split at h_dispatch
+      · simp at h_dispatch
+      · split at h_dispatch
+        · simp at h_dispatch
+        · split at h_dispatch
+          · simp at h_dispatch
+          · have hs := Option.some.inj (Except.ok.inj h_dispatch)
+            subst hs
+            have h_off_lt := ScannerProgress.scanFlowSequenceEnd_offset_lt s_ad h_hm
+            refine Or.inr (Or.inl ⟨Or.inl hc, ?_⟩)
+            rintro km₀ b₀ rfl
+            refine ⟨close_km_pop h_flow h_km h_preprocess h_ad_def
+              (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s_ad)
+              (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad)
+              ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt), fun hb => ?_⟩
+            subst hb
+            exact close_layout_of_bit h_flow h_km h_preprocess h_ad_def
+              (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad) rfl
+              ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt) rfl
+    · split at h_dispatch
+      · rename_i heq
+        have hc : c = '{' := by simpa using heq
+        have hs := Option.some.inj (Except.ok.inj h_dispatch)
+        subst hs
+        have h_off_lt := ScannerProgress.scanFlowMappingStart_offset_lt s_ad h_hm
+        exact Or.inl ⟨Or.inr hc, fun h_klay => km_push_at_open h_flow h_km h_preprocess h_ad_def
+          (ScannerCorrectness.scanFlowMappingStart_stack_pushed s_ad)
+          (ScannerCorrectness.scanFlowMappingStart_simpleKey_cleared s_ad)
+          ⟨_, scanFlowMappingStart_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
+          (fun hb => by
+            obtain ⟨h1, h2, h3, h4, h5⟩ := h_bkey h_klay hb
+            exact ⟨h1, h2, h3, by omega, h5⟩)
+          (fun h0 => absurd h0 (by omega)) (fun h0 => absurd h0 (by omega))⟩
+      · split at h_dispatch
+        · rename_i heq
+          have hc : c = '}' := by simpa using heq
+          split at h_dispatch
+          · simp at h_dispatch
+          · split at h_dispatch
+            · simp at h_dispatch
+            · split at h_dispatch
+              · simp at h_dispatch
+              · have hs := Option.some.inj (Except.ok.inj h_dispatch)
+                subst hs
+                have h_off_lt := ScannerProgress.scanFlowMappingEnd_offset_lt s_ad h_hm
+                refine Or.inr (Or.inl ⟨Or.inr hc, ?_⟩)
+                rintro km₀ b₀ rfl
+                refine ⟨close_km_pop h_flow h_km h_preprocess h_ad_def
+                  (ScannerCorrectness.scanFlowMappingEnd_stack_popped s_ad)
+                  (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad)
+                  ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt), fun hb => ?_⟩
+                subst hb
+                exact close_layout_of_bit h_flow h_km h_preprocess h_ad_def
+                  (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad) rfl
+                  ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt) rfl
+        · split at h_dispatch
+          · rename_i heq
+            have hc : c = ',' := by simpa using heq
+            split at h_dispatch
+            · simp at h_dispatch
+            · split at h_dispatch
+              · simp at h_dispatch
+              · rename_i s_fe hfe
+                have hs := Option.some.inj (Except.ok.inj h_dispatch)
+                subst hs
+                exact Or.inr (Or.inr ⟨hc, comma_km_transport h_flow h_km h_preprocess h_ad_def h_hm hfe⟩)
+          · simp at h_dispatch
+
+/-- Item 520: `accum_step_flow_trace` with the floor inside — ONE event suffix `ev_g` and ONE
+    mask effect for every floor `n ≤ minContentIndentOf sc` (the gap's events are floor-independent
+    by `gapRead_onT_uniform`; the base open pushes none), each effect tagged by the indicator it
+    answers to.  Three faces as the per-floor lemma: the T stack steps (kept / pushed `kmBit` /
+    popped) and, at a `.value`-tail landing (the nested close), either the popped bit was `true`
+    (the S side's `close_layout_of_bit` face) or the next `:` continues on the T stack (item 513's
+    `closeNested*Colon`); the base close ends the flow node (`TFlowContent` at every floor, the T
+    stack back to `nil`); the base open starts one at `#[false]`, its mask sound by the carried
+    `FlowArm.openBase.h_km`. -/
+lemma accum_step_flow_trace_uniform {sc s' : L4YAML.Scanner.ScannerState} {c : Char}
+    {sp_block sp_flow sp_scan sp_block' sp_flow' : SurfPos} {ev : List Event} (km : Array Bool)
+    (arm : L4YAML.Proofs.StreamAccum.FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow') :
+    ∃ ev_g,
+      (0 < sc.flowLevel ∧ ∃ km',
+        ((c = ',' ∧ km' = km) ∨
+          ((c = '[' ∨ c = '{') ∧ ColonKeyCase sc ∧
+            ∃ b, km' = km.push b ∧ (b = true ↔ ∃ kj, tailOf sc.tokens = .colon kj)) ∨
+          ((c = ']' ∨ c = '}') ∧ km' = km.pop)) ∧
+        ∀ {n : Nat}, n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+          TFlowStackB n sc.flowLevel sc.flowStack km (tailOf sc.tokens) sp_block sp_flow ev →
+          TFlowStackB n s'.flowLevel s'.flowStack km' (tailOf s'.tokens) sp_block' sp_flow' (ev ++ ev_g) ∧
+          (∀ kj, tailOf s'.tokens = .value kj → (km' = km.pop ∧ km.back? = some true) ∨
+            ∀ sp_prep sp_tok, (SSeparateLines n sp_flow' sp_prep ∨ sp_prep = sp_flow') →
+              GLit ':' sp_prep sp_tok →
+              TFlowStackB n s'.flowLevel s'.flowStack km' (.colon kj) sp_block' sp_tok (ev ++ ev_g))) ∨
+      (s'.flowLevel = 0 ∧ s'.flowStack = #[] ∧ 0 < sc.flowLevel ∧ sp_flow' = sp_block' ∧
+        ∀ {n : Nat}, n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf sc →
+          TFlowStackB n sc.flowLevel sc.flowStack km (tailOf sc.tokens) sp_block sp_flow ev →
+          ∃ sp_br sp_tok, TFlowContent n .flowOut sp_br sp_tok (ev ++ ev_g) ∧
+            TFlowStackB n 0 #[] #[] (tailOf s'.tokens) sp_block' sp_flow' []) ∨
+      (sc.flowLevel = 0 ∧ ev_g = [] ∧ (∃ kc, KmSound s' #[false] kc) ∧
+        (∀ kj, tailOf s'.tokens ≠ .value kj) ∧
+        ∀ n, TFlowStackB n s'.flowLevel s'.flowStack #[false] (tailOf s'.tokens) sp_block' sp_flow' []) := by
+  cases arm with
+  | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl h_km h_sp =>
+    refine ⟨[], Or.inr (Or.inr ⟨h_depth, rfl, h_km, (fun _ h => by rw [h_tl] at h; cases h),
+      fun n => ?_⟩)⟩
+    rw [h_fl, h_ks, h_tl, h_sp]
+    cases b
+    · have h_open' : GLit '{' sp_br sp_open := by subst h_c; simpa using h_open
+      exact TFlowStackB.openMapBase h_open' (GOpt.none sp_open)
+    · have h_open' : GLit '[' sp_br sp_open := by subst h_c; simpa using h_open
+      exact TFlowStackB.openSeqBase h_open' (GOpt.none sp_open)
+  | openNest b sp_flow₂ sp_br sp_open gap h_depth h_c h_tail h_klay h_lead h_open h_fl h_ks h_tl =>
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
+    have h_ctag : c = '[' ∨ c = '{' := by subst h_c; cases b <;> simp
+    cases gap with
+    | props ha ht sp_p h_tail₀ h_lead₀ h_run _ h_held =>
+      obtain ⟨ev_p, hp₀⟩ := PropsRun.toT ((h_run _).resolve_right (fun h => h (Nat.le_refl _)))
+      refine ⟨ev_p, Or.inl ⟨by omega, _,
+        Or.inr (Or.inl ⟨h_ctag, h_klay, kmBit (tailOf sc.tokens), rfl, kmBit_iff _⟩),
+        fun {n} hn hT => ?_⟩⟩
+      have hp := TCNsProperties_floor_mono hn hp₀
+      generalize hks : sc.flowStack = ks at hT
+      rw [hd] at hT
+      cases hT with
+      | «open» _ _ _ _ _ _ _ hTO =>
+      have h_lead₀' := (h_lead₀ n).resolve_right (fun h => h hn)
+      have h_psep : SSeparate n .flowIn sp_scan sp_br :=
+        ((h_lead n).resolve_right (fun h => h hn)).resolve_right (fun h => h_held h.2.2)
+      rw [h_fl, h_ks, h_tl, hd, hks]
+      refine ⟨?_, fun _ h => nomatch h⟩
+      cases b
+      · have h_open' : GLit '{' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ _ (TFlowOpenStack.retrace (by simp)
+          (hTO.openNestMapProps (kmBit_iff _) h_tail₀ h_lead₀' hp h_psep h_open'))
+      · have h_open' : GLit '[' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ _ (TFlowOpenStack.retrace (by simp)
+          (hTO.openNestSeqProps (kmBit_iff _) h_tail₀ h_lead₀' hp h_psep h_open'))
+    | white _ h_nil =>
+      refine ⟨[], Or.inl ⟨by omega, _,
+        Or.inr (Or.inl ⟨h_ctag, h_klay, kmBit (tailOf sc.tokens), rfl, kmBit_iff _⟩),
+        fun {n} hn hT => ?_⟩⟩
+      generalize hks : sc.flowStack = ks at hT
+      rw [hd] at hT
+      cases hT with
+      | «open» _ _ _ _ _ _ _ hTO =>
+      have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+      rw [L4YAML.Proofs.StreamAccum.gapTail_of_nil h_nil] at h_lead'
+      replace h_lead' := h_lead'.imp id (fun h => And.intro h.1 h.2.1)
+      rw [h_fl, h_ks, h_tl, hd, hks]
+      refine ⟨?_, fun _ h => nomatch h⟩
+      cases b
+      · have h_open' : GLit '{' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ _ (hTO.openNestMap (kmBit_iff _) h_tail h_lead' h_open')
+      · have h_open' : GLit '[' sp_br sp_flow' := by subst h_c; simpa using h_open
+        exact .open _ _ _ _ _ _ _ (hTO.openNestSeq (kmBit_iff _) h_tail h_lead' h_open')
+  | comma sp_flow₂ sp_prep sp_tok gap h_depth h_c h_tail h_lead h_lit h_fl h_ks h_tl =>
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
+    obtain ⟨ev_g, hG⟩ := gapRead_onT_uniform gap
+    refine ⟨ev_g, Or.inl ⟨by omega, _, Or.inl ⟨h_c, rfl⟩, fun {n} hn hT => ?_⟩⟩
+    generalize hks : sc.flowStack = ks at hT
+    rw [hd] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    have hTO₂ := hG hn hTO
+    rw [h_fl, h_ks, h_tl, hd, hks]
+    exact ⟨.open _ _ _ _ _ _ _ (hTO₂.comma h_tail h_lead' h_lit), fun _ h => nomatch h⟩
+  | closeNested b sp_flow₂ sp_prep sp_tok gap h_depth h_c h_top h_lead h_lit h_fl h_ks h_tl =>
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 + 1 := ⟨sc.flowLevel - 2, by omega⟩
+    have h_ctag : c = ']' ∨ c = '}' := by subst h_c; cases b <;> simp
+    obtain ⟨ev_g, hG⟩ := gapRead_onT_uniform gap
+    refine ⟨ev_g, Or.inl ⟨by omega, _, Or.inr (Or.inr ⟨h_ctag, rfl⟩), fun {n} hn hT => ?_⟩⟩
+    generalize hks : sc.flowStack = ks at hT
+    rw [hd] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    have hTO₂ := hG hn hTO
+    have h_fl' : s'.flowLevel = d + 1 := by omega
+    rw [h_fl', h_ks, h_tl, hks]
+    rw [hks] at h_top
+    generalize hE : ev ++ ev_g = evT at hTO₂ ⊢
+    generalize hgt : L4YAML.Proofs.StreamAccum.gapTail sc = tl₂ at hTO₂ h_lead'
+    cases hTO₂ with
+    | seqNest _ ks₀ km₀ b₀ tl_par _ _ _ _ _ _ _ _ _ parent h_b₀ h_tail_p h_lead_p h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · simp at h_top
+      · have h_lit' : GLit ']' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push, Array.pop_push, Array.back?_push]
+        refine ⟨.open _ _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedSeq parent h_tail_p h_lead_p h_open h_sep st h_lead' h_lit'),
+          fun kj hkj => ?_⟩
+        cases FrameTail.value.inj hkj
+        cases b₀
+        · refine Or.inr (fun sp_p sp_t h_l h_col => .open _ _ _ _ _ _ _
+            (TFlowOpenStack.closeNestedSeqColon parent ?_ h_lead_p h_open h_sep st h_lead' h_lit' h_l h_col))
+          cases tl_par with
+          | sep => exact Or.inl rfl
+          | question => exact Or.inr rfl
+          | colon kj => exact absurd (h_b₀.2 ⟨kj, rfl⟩) Bool.false_ne_true
+          | value kj => exact absurd rfl (h_tail_p kj)
+        · exact Or.inl ⟨rfl, rfl⟩
+    | mapNest _ ks₀ km₀ b₀ tl_par _ _ _ _ _ _ _ _ _ parent h_b₀ h_tail_p h_lead_p h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · have h_lit' : GLit '}' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push, Array.pop_push, Array.back?_push]
+        refine ⟨.open _ _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedMap parent h_tail_p h_lead_p h_open h_sep st h_lead' h_lit'),
+          fun kj hkj => ?_⟩
+        cases FrameTail.value.inj hkj
+        cases b₀
+        · refine Or.inr (fun sp_p sp_t h_l h_col => .open _ _ _ _ _ _ _
+            (TFlowOpenStack.closeNestedMapColon parent ?_ h_lead_p h_open h_sep st h_lead' h_lit' h_l h_col))
+          cases tl_par with
+          | sep => exact Or.inl rfl
+          | question => exact Or.inr rfl
+          | colon kj => exact absurd (h_b₀.2 ⟨kj, rfl⟩) Bool.false_ne_true
+          | value kj => exact absurd rfl (h_tail_p kj)
+        · exact Or.inl ⟨rfl, rfl⟩
+      · simp at h_top
+    | seqNestProps _ ks₀ km₀ b₀ tl_par _ _ _ _ _ _ _ _ _ _ _ _ parent h_b₀ h_tail_p h_lead_p h_props h_psep h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · simp at h_top
+      · have h_lit' : GLit ']' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push, Array.pop_push, Array.back?_push]
+        refine ⟨.open _ _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedSeqProps parent h_tail_p h_lead_p h_props h_psep h_open h_sep st
+            h_lead' h_lit'),
+          fun kj hkj => ?_⟩
+        cases FrameTail.value.inj hkj
+        cases b₀
+        · refine Or.inr (fun sp_p sp_t h_l h_col => .open _ _ _ _ _ _ _
+            (TFlowOpenStack.closeNestedSeqPropsColon parent ?_ h_lead_p h_props h_psep h_open h_sep st
+              h_lead' h_lit' h_l h_col))
+          cases tl_par with
+          | sep => exact Or.inl rfl
+          | question => exact Or.inr rfl
+          | colon kj => exact absurd (h_b₀.2 ⟨kj, rfl⟩) Bool.false_ne_true
+          | value kj => exact absurd rfl (h_tail_p kj)
+        · exact Or.inl ⟨rfl, rfl⟩
+    | mapNestProps _ ks₀ km₀ b₀ tl_par _ _ _ _ _ _ _ _ _ _ _ _ parent h_b₀ h_tail_p h_lead_p h_props h_psep h_open h_sep st =>
+      rw [Array.back?_push] at h_top
+      cases b
+      · have h_lit' : GLit '}' sp_prep sp_flow' := by subst h_c; simpa using h_lit
+        rw [Array.pop_push, Array.pop_push, Array.back?_push]
+        refine ⟨.open _ _ _ _ _ _ _
+          (TFlowOpenStack.closeNestedMapProps parent h_tail_p h_lead_p h_props h_psep h_open h_sep st
+            h_lead' h_lit'),
+          fun kj hkj => ?_⟩
+        cases FrameTail.value.inj hkj
+        cases b₀
+        · refine Or.inr (fun sp_p sp_t h_l h_col => .open _ _ _ _ _ _ _
+            (TFlowOpenStack.closeNestedMapPropsColon parent ?_ h_lead_p h_props h_psep h_open h_sep st
+              h_lead' h_lit' h_l h_col))
+          cases tl_par with
+          | sep => exact Or.inl rfl
+          | question => exact Or.inr rfl
+          | colon kj => exact absurd (h_b₀.2 ⟨kj, rfl⟩) Bool.false_ne_true
+          | value kj => exact absurd rfl (h_tail_p kj)
+        · exact Or.inl ⟨rfl, rfl⟩
+      · simp at h_top
+  | closeBase b sp_flow₂ sp_prep sp_tok gap h_depth h_c h_top h_lead h_lit h_fl h_ks h_tl =>
+    obtain ⟨ev_g, hG⟩ := gapRead_onT_uniform gap
+    refine ⟨ev_g, Or.inr (Or.inl ⟨h_fl, h_ks, by omega, rfl, fun {n} hn hT => ?_⟩)⟩
+    generalize hks : sc.flowStack = ks at hT
+    rw [h_depth] at hT
+    cases hT with
+    | «open» _ _ _ _ _ _ _ hTO =>
+    have h_lead' := (h_lead n).resolve_right (fun h => h hn)
+    have hTO₂ := hG hn hTO
+    rw [h_tl]
+    rw [hks] at h_top
+    generalize hE : ev ++ ev_g = evT at hTO₂ ⊢
+    generalize hgt : L4YAML.Proofs.StreamAccum.gapTail sc = tl₂ at hTO₂ h_lead'
+    cases hTO₂ with
+    | seqBase _ sp_br _ _ _ _ _ h_open h_sep st =>
+      cases b
+      · exact absurd h_top (by decide)
+      · have h_lit' : GLit ']' sp_prep sp_tok := by subst h_c; simpa using h_lit
+        exact ⟨sp_br, sp_tok, TSeqFrame.closeBase h_open h_sep st h_lead' h_lit'⟩
+    | mapBase _ sp_br _ _ _ _ _ h_open h_sep st =>
+      cases b
+      · have h_lit' : GLit '}' sp_prep sp_tok := by subst h_c; simpa using h_lit
+        exact ⟨sp_br, sp_tok, TMapFrame.closeBase h_open h_sep st h_lead' h_lit'⟩
+      · exact absurd h_top (by decide)
+    | seqNest _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ _ => cases parent
+    | mapNest _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ _ => cases parent
+    | seqNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ _ _ _ => cases parent
+    | mapNestProps _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ parent _ _ _ _ _ _ _ _ => cases parent
+
+/-- Item 520 (price (3) PR 2, the fold): the flow-indicator step on `TFlowStackK` — the S step
+    `accum_step_flow` whole, its `FlowArm` read into the T twin at every floor at once
+    (`accum_step_flow_trace_uniform`), the T mask re-packed by the dispatcher's face
+    (`dispatchFlow_km_faces`).  Two outcomes: the T stack steps (open / `,` / nested close, the
+    `.value`-tail closure by `close_layout_of_bit` or item 513's `closeNested*Colon`), or the base
+    close ends the flow node — `TFlowContent` at every floor the S half admitted, the T stack back
+    to `nil` with the empty mask.  No `StreamAccum` arm is re-proved here. -/
+lemma accum_step_flow_pairK {ev : List Event} (sc : ScannerState)
+    (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
+    (s_prep s' : ScannerState) (c : Char)
+    (h_stream : SLYamlStream sp_start sp_gram)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_flowK : TFlowStackK sp_start sc sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow ev)
+    (h_pending : sc.flowLevel = 0 → PendingNode sc false sp_start sp_flow sp_scan)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_interior : sc.flowLevel ≥ 1 →
+      InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan ∧
+        LastTokenReal sc.tokens ∧ sc.allowDirectives = false)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_sound : PendingKeySound.Sound sc)
+    (h_dn : scanNextToken_checkDanglingNode sc s_prep = .ok ())
+    (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
+    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())
+    (h_base : IndentStackBase.SentinelBase sc)
+    (h_mono : IndentStackMono.Mono sc)
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_dispatch : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok (some s')) :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan' ev_g,
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      L4YAML.Proofs.StreamAccum.FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow' ∧
+      (TFlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' (ev ++ ev_g) ∨
+        (s'.flowLevel = 0 ∧ 0 < sc.flowLevel ∧
+          TFlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' [] ∧
+          ∀ n, n ≤ minContentIndentOf sc →
+            ∃ sp_br sp_tok, TFlowContent n .flowOut sp_br sp_tok (ev ++ ev_g))) ∧
+      (s'.flowLevel = 0 → PendingNode s' false sp_start sp_flow' sp_scan') ∧
+      ScannerSurfCorr s' sp_scan' ∧
+      (s'.flowLevel ≥ 1 →
+        InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+  obtain ⟨hS, km, kc, hKm, hTall⟩ := h_flowK
+  obtain ⟨g, b, f, sn, q1, q2, ⟨q3, arm⟩, q4, q5, q6⟩ :=
+    accum_step_flow sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c
+      h_stream h_stack hS h_pending h_corr h_sound h_mono h_interior h_preprocess h_dn h_fv h_str_none
+      h_dispatch h_bare h_base
+  have h_ksz : km.size = sc.flowLevel := TFlowStackB.km_size (hTall 0 (Nat.zero_le _)).1
+  obtain ⟨ev_g, hU⟩ := accum_step_flow_trace_uniform km arm
+  refine ⟨g, b, f, sn, ev_g, q1, q2, arm, ?_, q4, q5, q6⟩
+  rcases hU with ⟨hflow, km', heff, hstep⟩ | ⟨hfl0, hks0, hflow, _, hclose⟩ |
+    ⟨hsc0, hevg, ⟨kc0, hkm0⟩, htl', hopen⟩
+  · -- The floor ceiling rides a nested step: the dispatcher keeps the indents, so does the
+    -- in-flow preprocess.
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
+    have hmin : minContentIndentOf s' = minContentIndentOf sc :=
+      L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf_congr
+        ((L4YAML.Proofs.FlowIndentStable.dispatchFlowIndicators_preserves_indents h_dispatch).trans
+          ((by split <;> rfl : (if s_prep.allowDirectives then
+              { s_prep with allowDirectives := false, documentEverStarted := true }
+            else s_prep).indents = s_prep.indents).trans
+            (L4YAML.Proofs.FlowIndentStable.preprocess_indents_of_inFlow
+              (inFlow_of_flowLevel_eq hd) h_preprocess)))
+    have hkpos : 0 < km.size := by omega
+    have hfaces := dispatchFlow_km_faces hflow hkpos hKm h_preprocess h_dispatch
+    have hK : KmSound s' km' kc ∧
+        (km' = km.pop → km.back? = some true →
+          L4YAML.Proofs.EntryBoundaryLayout.KeyAfterValueLayout s') := by
+      rcases heff with ⟨hc, rfl⟩ | ⟨hc, hklay, b', rfl, hb⟩ | ⟨hc, rfl⟩
+      · rcases hfaces with ⟨hc', _⟩ | ⟨hc', _⟩ | ⟨_, hK⟩
+        · rcases hc' with h | h <;> simp [hc] at h
+        · rcases hc' with h | h <;> simp [hc] at h
+        · refine ⟨hK, fun hpop _ => ?_⟩
+          have := congrArg Array.size hpop
+          simp at this
+          omega
+      · rcases hfaces with ⟨_, hK⟩ | ⟨hc', _⟩ | ⟨hc', _⟩
+        · have hbit : b' = kmBit (tailOf sc.tokens) := Bool.eq_iff_iff.2 (hb.trans (kmBit_iff _).symm)
+          refine ⟨hbit ▸ hK hklay, fun hpop _ => ?_⟩
+          have := congrArg Array.size hpop
+          simp at this
+          omega
+        · rcases hc with rfl | rfl <;> rcases hc' with h | h <;> simp at h
+        · rcases hc with rfl | rfl <;> simp at hc'
+      · rcases hfaces with ⟨hc', _⟩ | ⟨_, hK⟩ | ⟨hc', _⟩
+        · rcases hc with rfl | rfl <;> rcases hc' with h | h <;> simp at h
+        · have hdec := Array.eq_push_pop_back!_of_size_ne_zero (xs := km) (by omega)
+          obtain ⟨hK1, hK2⟩ := hK km.pop km.back! hdec
+          refine ⟨hK1, fun _ hback => hK2 ?_⟩
+          rw [hdec, Array.back?_push] at hback
+          exact Option.some.inj hback
+        · rcases hc with rfl | rfl <;> simp at hc'
+    refine Or.inl ⟨q3, km', kc, hK.1, fun n hn => ?_⟩
+    rw [hmin] at hn
+    obtain ⟨hT', hcl⟩ := hstep hn (hTall n hn).1
+    refine ⟨hT', fun _ kj htl => ?_⟩
+    rcases hcl kj htl with ⟨hpop, hback⟩ | hcont
+    · exact Or.inl (hK.2 hpop hback)
+    · exact Or.inr hcont
+  · -- The base close: the flow node is done, the T stack back to `nil`.
+    obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
+    have hmin : minContentIndentOf s' = minContentIndentOf sc :=
+      L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf_congr
+        ((L4YAML.Proofs.FlowIndentStable.dispatchFlowIndicators_preserves_indents h_dispatch).trans
+          ((by split <;> rfl : (if s_prep.allowDirectives then
+              { s_prep with allowDirectives := false, documentEverStarted := true }
+            else s_prep).indents = s_prep.indents).trans
+            (L4YAML.Proofs.FlowIndentStable.preprocess_indents_of_inFlow
+              (inFlow_of_flowLevel_eq hd) h_preprocess)))
+    refine Or.inr ⟨hfl0, hflow, ⟨q3, #[], kc, KmSound.empty s' kc, fun n hn => ?_⟩, fun n hn => ?_⟩
+    · rw [hmin] at hn
+      obtain ⟨_, _, _, hnil⟩ := hclose hn (hTall n hn).1
+      refine ⟨?_, fun h0 => absurd h0 (by omega)⟩
+      rw [hfl0, hks0]
+      exact hnil
+    · obtain ⟨sp_br, sp_tok, hcont, _⟩ := hclose hn (hTall n hn).1
+      exact ⟨sp_br, sp_tok, hcont⟩
+  · -- The base open: the T stack was `nil` (no events), the new mask `#[false]` sound by the carrier.
+    subst hevg
+    have hev : ev = [] := by
+      have h0 := (hTall 0 (Nat.zero_le _)).1
+      generalize hks : sc.flowStack = ks at h0
+      rw [hsc0] at h0
+      cases h0 with
+      | nil => rfl
+      | «open» _ _ _ _ _ _ _ h => cases h
+    subst hev
+    exact Or.inl ⟨q3, #[false], kc0, hkm0, fun n _ => ⟨hopen n, fun _ kj h => absurd h (htl' kj)⟩⟩
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.ContentBridge

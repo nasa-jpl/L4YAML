@@ -350,6 +350,8 @@ def expectedAlphabet : String := "prodTyped=175 prodSurf=96 prodSpec=58"
 -- `DInv_dispatch*` / arm lemmas read the dispatchers.
 -- 2026-11-11 (item 484): stepHolders 2107 → 2109, dispHolders 410 → 412 — `contentArm_of_dispatch` and the
 -- `accum_step_content` wrapper each hold the `scanNextToken_dispatchContent` step equation.
+-- 2026-11-17 (item 520, review round 2): stepHolders 2,105 → 2,103 — `flowOpen_stamp` / `flowOpen_marker` (holders of
+-- `h_pre`) deleted with the base slot's stamp / marker conjuncts; preprocess decls 259 → 257 the same two.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -386,7 +388,9 @@ def expectedSteps : String :=
 -- 2026-11-12 (item 487, the K caller): stepHolders 2114 → 2118 (`tailOf_preprocess_eq`, `contentLead_of_interior`,
 -- `content_prop_tail_kept`, `accum_step_content_traceK`), dispHolders 417 → 420 (the last three read `h_dispatch`),
 -- dispTwoCorr 31 → 32 (`contentLead_of_interior` reads the surface at `sc` and at `s_prep`).
-  "stepHolders=2103 dispHolders=420 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
+-- 2026-11-15 (item 520): stepHolders 2103 → 2105, dispHolders 420 → 422 — `accum_step_flow_pairK` and
+-- `dispatchFlow_km_faces` (ContentBridge §10) each hold `h_preprocess` + `h_dispatch` (the flow fold's two steps).
+  "stepHolders=2103 dispHolders=422 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another

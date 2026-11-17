@@ -114,7 +114,7 @@ def expectedClosure : String := "modulesSeen=280"  -- -1 on 2026-11-14: `Proofs.
 -- 2026-11-14 (item 490, the ∀-floor fold): theorems 108 → 109, nestedConcl 60 → 61 —
 -- `accum_step_content_pairK` (ContentBridge §11) is stream-headed with the pair's nested conclusion, as `pairB`.
 def expectedCensus : String :=
-  "theorems=109 headYaml=5 headStream=35 nestedConcl=61 hypOnly=8 free=17 \
+  "theorems=110 headYaml=5 headStream=35 nestedConcl=62 hypOnly=8 free=17 \
 survivesBeta5=2 yamlInHypothesis=0"
 
 /-- Every free theorem, with the route that closes it.  A count alone would not

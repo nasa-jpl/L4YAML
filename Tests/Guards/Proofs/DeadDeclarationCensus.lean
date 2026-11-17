@@ -40,8 +40,13 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-15 (item 517): +3 class (A) — `kmBit` / `kmBit_iff` (FlowWalk §8) and `content_km_transport_any`
 -- (ContentBridge), reached only by `accum_step_flow_trace` / `accum_step_content_pairK` until the fold; roster unmoved.
 -- 2026-11-15 (item 519): population +1 = `RegisterWitness.MarkedColsIn.mem`; `FlowBaseRoutes.vslot` LEFT the roster (3,534 → 3,533) — the projection is read at the four flow closes now; unreached −1.
+-- 2026-11-15 (item 520): +7 class (A) composed over item 519's re-pin — `accum_step_flow_pairK` / `accum_step_flow_trace_uniform` / `dispatchFlow_km_faces` / `gapRead_onT_uniform` / `ColonKeyCase` (ContentBridge §10), `TFlowStackB.km_size` / `TFlowOpenStack.km_size` (FlowWalk) are reached by no root until (2c); cluster-roots 1,460 → 1,459 — unmoved by this item on item 518's tree and by item 519 on its own, −1 on the composed tree (an interaction of the two items' unreached sets; cause not read); roster unmoved.
+-- 2026-11-17 (item 520, review round 2): population 14,231 → 14,229 (`flowOpen_stamp` / `flowOpen_marker` deleted); unreached
+-- +23 → roster 3,533 → 3,556, cluster-roots 1,459 → 1,476 — the `implicitValueLine` / `docStartLine` PRESERVATION chain that
+-- only fed `KmSound`'s stamp transport is now reached by nothing; re-pinned as read, the names listed in item 520 for the
+-- owner's ruling (delete or keep), as item 505's `seqEntryTail_cons` was.
 def expectedDeadCensus : String :=
-  "population=14224 thm=10200 def=2674 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6496 thm=4585 A-campaign=1281 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1460"
+  "population=14229 thm=10204 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6526 thm=4614 A-campaign=1288 C-api=1405 D-test-only=277 B-roster=3556 thm=3195 cluster-roots=1476"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

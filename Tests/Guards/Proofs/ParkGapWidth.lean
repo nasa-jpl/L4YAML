@@ -545,6 +545,8 @@ corrBlock=0 corrScan=1 via="]
 -- 2026-11-11 (item 484, ContentArm): dispatchBlockIndicators holders 139 → 140, dispatchContent 173 → 175, preprocess
 -- 250 → 251 — `contentArm_of_dispatch` and the `accum_step_content` wrapper hold the step equations their premises
 -- restate (the wrapper the whole preprocess → blockIndicators → content chain); edges and chains unmoved.
+-- 2026-11-17 (item 520, review round 2): preprocess holders 259 → 257 — `flowOpen_stamp` / `flowOpen_marker` (holders of
+-- `h_pre`) deleted with `KmSound`'s base-slot stamp / marker conjuncts.
 def expectedLadder : List String :=
   -- 2026-11-14: `StructDepth`'s `DInv_dispatchBlock` / `DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling,
   --   items 446–452): holders 144 → 143 (block), 185 → 184 (content), 256 → 255 (preprocess)
@@ -581,6 +583,8 @@ def expectedLadder : List String :=
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): preprocess holders 251 → 254 — `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK`.
    -- 2026-11-13 (item 489): 254 → 255 — `accum_step_content_pairB` holds `h_preprocess`.
    -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
+   -- 2026-11-15 (item 520): preprocess 257 → 259 — `accum_step_flow_pairK` and `dispatchFlow_km_faces` hold
+   -- `h_preprocess` (the flow fold's two steps); dispatchContent / dispatchBlockIndicators unmoved.
    "scanNextToken_preprocess holders=257 edge=17 chain=3"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check

@@ -120,21 +120,13 @@ open L4YAML.Scanner L4YAML.Proofs.StreamAccum in
     (item 300 adds the marker's line). -/
 example {sc : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc) (h1 : km.size = 1) :
-    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc ∧
-      (sc.implicitValueLine = some key.pos.line ∨ True) ∧
-      (sc.docStartLine = some key.pos.line ∨ True) :=
+    -- Item 520 (review round 2): the column alone — the stamp and the marker are decided at the close.
+    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc :=
   KmSound.back_col h h1
 
-open L4YAML.Scanner L4YAML.Proofs.StreamAccum in
-/-- The open records the stamp by a case split on the saved key's own line —
-    a key that reached the bracket across a break lands on a LATER line, which
-    is exactly the input the reading must not claim (`k:⏎  [1]: b` is legal). -/
-example {sc s_prep s' : ScannerState} {c : Char}
-    (h_ivl : sc.implicitValueLine = some sc.line ∨ True)
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ivl' : s'.implicitValueLine = s_prep.implicitValueLine) :
-    s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True :=
-  flowOpen_stamp h_ivl h_pre h_ivl'
+-- Item 520 (review round 2): `flowOpen_stamp` is gone — the open records no stamp; the close
+-- decides `sc.implicitValueLine = some sc.simpleKey.pos.line` on its own state
+-- (`flowKeyPack_of_close`), and Priority 132 reads it: 13 / 251 corpus base opens.
 
 -- §5b …and the reason the transport is possible at all: NOTHING between the
 -- open and the close writes the field.  The five indicators, the `?`, and the

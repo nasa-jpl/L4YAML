@@ -378,6 +378,10 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas over item 498's tree (as `HypothesisReaderCensus`).
 -- 2026-11-14 (item 508): READ 1487 → 1489 — `h_dead` READ (`.1` / `.2`) at the entry producers' root arms,
 -- as [[HypothesisReaderCensus]] reads the same move.
+-- 2026-11-17 (item 520): eta 608 → 611 — the three `FlowArm` carriers (`openBase.h_km` / `h_sp`, `openNest.h_klay`) read
+-- eta-expanded at their producers; composed over item 521's module tally.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -401,7 +405,7 @@ def expectedModuleTallyP : String :=
 -- Item 519: constants/decls −1 (the open's ladders), READ 1482 → 1479, RELAY 2725 → 2724, UNUSED 26 → 27 — `accum_step_flow`'s
 -- `h_mono` is read by nothing once the four flow-close `Classical.em` splits are PAID from `vslot`.
 -- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
-  "constants=1764 decls=1394 eta=608 FIELD=201 READ=1490 RELAY=2725 RETURN=174 UNUSED=27"
+  "constants=1762 decls=1392 eta=611 FIELD=201 READ=1485 RELAY=2703 RETURN=175 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -415,11 +419,13 @@ def expectedModuleTallyP : String :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 -- 2026-11-02 (item 422): the PEELED optional-context census moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
 -- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
 def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=160 ETA=31 FIELD=4 READ=90 RELAY=33 RETURN=2"
+  "total=158 ETA=31 FIELD=4 READ=88 RELAY=33 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -909,9 +915,11 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 -- 2026-11-02 (item 422): the optional population moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
 -- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=160 optTy=154 ctorFields=31"
+  "total=158 optTy=152 ctorFields=31"
 
 run_cmd do
   let env ← getEnv

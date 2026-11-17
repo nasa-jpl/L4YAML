@@ -172,8 +172,7 @@ example {sc : ScannerState} {sp_start sp_br sp_tok sp_key : SurfPos}
   flowKeyPack_of_close (g := none) (kc := 3)
     (Or.inl ⟨3, sp_key, route, head, rfl, Or.inr trivial, Or.inr trivial,
       Or.inr trivial⟩)
-    -- Item 300: the base slot's third reading, the marker's line, declined here.
-    ⟨h_kc, Or.inr trivial, Or.inr trivial⟩ h_park h_content
+    h_kc h_park h_content
 
 end L4YAML.Tests.Guards.FlowStackIndexParametric
 

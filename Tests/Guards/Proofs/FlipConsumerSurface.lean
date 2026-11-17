@@ -212,6 +212,8 @@ def surface (lanes : Array Lane) : CommandElabM (Array (Array String)) := do
   return rows.map (·.qsort)
 
 /-- The gate: each census must be its pinned list, row for row. -/
+-- 2026-11-17 (item 520, review round 2): `KmSound`'s base slot no longer carries the stamp / marker as `P ∨ True`
+-- (decided at `flowKeyPack_of_close` on the close state); `flowOpen_stamp` / `flowOpen_marker` deleted.
 def pin (lanes : Array (Lane × List String)) : CommandElabM Unit := do
   let got ← surface (lanes.map Prod.fst)
   for i in [0:lanes.size] do
@@ -489,8 +491,7 @@ All three lanes, in one walk of the module. -/
       -- (`content_dispatch_routed`'s two cascades, `flowKeyPack_of_close`'s
       -- base slot), and read at the three consumers' `cases`; the flow open
       -- cases the run's punt twice now (stamp and marker), so its rows double.
-      ["accum_flow_open_depth0: KeyPackPunt.tab=2 KeyPackPunt.implicitValue=2 KeyPackPunt.markerLine=2 KeyPackPunt.noKeyContext=2",
-       "colon_fires_implicit_key: KeyPackPunt.tab=1 KeyPackPunt.implicitValue=1 KeyPackPunt.markerLine=1 KeyPackPunt.noKeyContext=1",
+      ["colon_fires_implicit_key: KeyPackPunt.tab=1 KeyPackPunt.implicitValue=1 KeyPackPunt.markerLine=1 KeyPackPunt.noKeyContext=1",
        "colon_fires_props_key: KeyPackPunt.tab=1 KeyPackPunt.implicitValue=1 KeyPackPunt.markerLine=1 KeyPackPunt.noKeyContext=1",
        "content_dispatch_routed: KeyPackPunt.markerLine=2 KeyPackPunt.noKeyContext=2",
        "entryKeyPack_of_dispatch: KeyPackPunt.tab=1 KeyPackPunt.implicitValue=1",
