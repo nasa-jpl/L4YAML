@@ -288,7 +288,8 @@ it may only shrink. -/
 -- ranges over `markedCols s0` now — ghost 75 → 74 (FlowBaseRoutes 4 → 3).
 -- 2026-11-15 (item 520): `FlowArm` prop 42 → 46, scalar 10 → 15, or 8 → 9 — three carried obligations for the
 -- T fold (`openBase.h_km` / `.h_sp`, `openNest.h_klay`, the last a disjunction); ghost unmoved (74 after item 519): none is a ghost index; or 141 → 142.
-def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=142"
+-- 2026-11-17 (item 520, review round 2): or 142 → 140 — `KmSound`'s two `P ∨ True` stamp / marker conjuncts deleted.
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=140"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -299,6 +300,7 @@ def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=142"
 -- scalar 8 → 9); pendingMapValue.h_closeF's cover lost its ghost level `m` (PendingNode
 -- scalar 63 → 62) — the cover is now `Floor lo n ks` at the park's own level.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): FlowStackK prop 5 → 6 — the carrier gains `(0 < fl → sc.pendingKeys = s0.pendingKeys)`, an implication whose body is a STATE equality (classed `prop` like its indents twin); ghost 3 → 3, no proof-side list.
+-- 2026-11-17 (item 520, review round 2): the `KmSound`-bearing carrier rows lose the two `∨ True` stamp conjuncts.
 def expectedTally : List String :=
   ["BareLandingFacts: surface=0 state=2 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "BlockStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
@@ -329,7 +331,7 @@ def expectedTally : List String :=
    "KeyPackPunt: surface=0 state=1 prop=9 scalar=0 snapshot=0 ghost=0 or=0",
    "KeyResv: surface=0 state=1 prop=1 scalar=1 snapshot=0 ghost=0 or=0",
    "KeyResvLe: surface=0 state=1 prop=1 scalar=1 snapshot=0 ghost=0 or=0",
-   "KmSound: surface=0 state=1 prop=9 scalar=21 snapshot=0 ghost=3 or=2",
+   "KmSound: surface=0 state=1 prop=9 scalar=21 snapshot=0 ghost=3 or=0",
    "MapFrame: surface=40 state=0 prop=38 scalar=7 snapshot=0 ghost=1 or=0",
    "MarkerNodeRoute: surface=4 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "NextIsSep: surface=0 state=1 prop=0 scalar=3 snapshot=0 ghost=0 or=0",
@@ -467,6 +469,7 @@ def expectedGhost : List String :=
 -- 2026-10-29 (item 394, option B): 106 rows unchanged in count; FlowBaseRoutes' indices shift for
 -- `s0` and FlowStackK's colon-route disjunct now names `s0` in the FlowStackB it promises.
 -- 2026-11-14 (item 499): + KeyArm's 18 floor-read disjuncts (lead / run / separator at every floor `m`).
+-- 2026-11-17 (item 520, review round 2): the two `KmSound` base-slot `∨ True` disjuncts are gone (142 → 140).
 def expectedDisjuncts : List String :=
   ["CommentStop.body ∨ c = '\\n' ∨ c = '\\x0d'",
    "CommentStop.body ∨ c = '\\x0d'",
@@ -526,8 +529,6 @@ def expectedDisjuncts : List String :=
    "KeyArm.colonPropsQuestion[15].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "KeyArm.colonPropsQuestion[16].h_sep ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "KeyArm.colonPropsQuestion[16].h_sep ∨ sp_prep = sp_scan",
-   "KmSound.body ∨ True",
-   "KmSound.body ∨ True",
    "OpenSeqEntry.body ∨ sameIndentSequenceOpen s.tokens ↑s.col = true",
    "ParkChoice.body ∨ ParkSlot sc0 s d",
    "ParkSlot.mk[5].slotRun ∨ ∃ j, prevRealIdx? sc0.tokens (propsRunStart sc0.tokens sc0.tokens.size) = some j ∧ sc0.tokens[j]!.val.offersNodeSlot = true",

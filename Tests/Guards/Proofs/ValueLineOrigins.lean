@@ -1202,7 +1202,7 @@ def expectedUnborn : List String := []
 -- 2026-11-14 (item 508): alts 5596 → 5608, nodes 14489 → 14495, liteNodes 680193 → 681347 — the value-line
 -- twin's root arms split on `hw : w = 0` (`PackAlt.ofRefused (h_dead …).1` at the root, the pre-state relay
 -- elsewhere); positions / origins / rows unchanged.
--- 2026-11-17 (item 520, rebased over item 521 + review round 1): lets 762 → 763, lapps 1,227 → 1,236, alts 5,626 → 5,704, liteNodes 687,565 → 696,590; nodes 14,543 unmoved — `accum_step_flow_pairK`'s proof term joins the walk, the base-mask witness reads each arm's own stamps (round 1); the +2 nodes / +8,802 liteNodes read on items 518/519's trees did not compose (REFUTED, re-read off this build); every structural field unmoved.
+-- 2026-11-17 (item 520, rebased over item 521; review rounds 1–2): lets 762 → 756, alts 5704 → 5676, nodes 14543 → 14527, liteNodes 696590 → 693828 — `accum_step_flow_pairK`'s term joins the walk; `KmSound`'s stamp / marker conjuncts, `flowOpen_stamp` / `flowOpen_marker` and their readers deleted (round 2); re-read off this build.
 def expectedLine : String :=
   -- 2026-10-25 (item 359): punt 12 → 11, stamp 39 → 40 — the `noPending` value-park face pays `PackAlt.ofRefused (h_noek …)`;
   -- lapps 806 → 807, liteNodes 607398 → 607407 — that one application and its term.
@@ -1226,7 +1226,7 @@ def expectedLine : String :=
 -- Item 519: stamp 42 → 40, built 151 → 153, origins 67 → 69, originRows 32 → 34, invariant 4 → 6, noneHeld 98 → 100 —
 -- the two flow-close `h_vpack` stamps are built from `FlowBaseRoutes.vslot` (the invariant); term sizes moved with the open's ladders.
 -- Item 519 (review round): term size only — lets 753 → 756, lapps 1204 → 1209, alts 5620 → 5625, liteNodes 688005 → 688691 (the `vslot` writers' fallback funders: `have hnode`, `by_cases`); no row, origin or hold moved.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=40 built=153 origins=70 originRows=35 route=12 frames=29 tail=15 other=0 concl=8 invariant=6 heldOrigins=15 allHeld=2 someHeld=124 noneHeld=13 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=412 lets=762 lapps=1235 alts=5704 nodes=14543 liteNodes=696590"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=197 ctorRows=104 paramRows=93 packagedRows=29 punt=4 stamp=40 built=153 origins=70 originRows=35 route=12 frames=29 tail=15 other=0 concl=8 invariant=6 heldOrigins=15 allHeld=2 someHeld=124 noneHeld=13 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=4 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=412 lets=756 lapps=1235 alts=5676 nodes=14527 liteNodes=693828"
 
 /-! ## §4 The reading -/
 

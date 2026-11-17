@@ -298,7 +298,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
 -- 2026-11-10 (item 473, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
 -- one strict head shape fewer; binders/faces unchanged.
-def expectedFaceTally : String := "binders=160 faces=64 heads=18"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedFaceTally : String := "binders=158 faces=63 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -312,6 +314,8 @@ def expectedFaceTally : String := "binders=160 faces=64 heads=18"
 -- are bodies now ((γ′)).
 -- 2026-11-07 (item 448, (α) stage A): heads `lt` 30 → 26, `le` 11 → 15 — the four `:` park faces' width bound
 -- (`pendingMapValue.h_closeF`, the two `h_valF`, the `h_closeF` mirror) read `≤ n`, the park's own level admitted.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -323,7 +327,7 @@ def expectedHeadCensus : List String :=
   ["BareLandingFacts 7",
    "CompletedTail 4",
    "Covered 3",
-   "Eq 16",
+   "Eq 14",
    "FVAR 2",
    "Floor 16",
    "GStar 4",
@@ -395,7 +399,9 @@ which of four reasons applies. -/
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
 -- 2026-11-02 (item 422): binders 163 → 161 — the two `h_outer` positions retired (see `expectedFaceTally`).
-def expectedFidelity : String := "binders=160 surf=133 state=27"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedFidelity : String := "binders=158 surf=133 state=25"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -405,6 +411,7 @@ def expectedFidelity : String := "binders=160 surf=133 state=27"
 -- 2026-10-24 (B3): indices shift with the new park fields (closeThenBlock 25→26, entryKeyPack 17→18,
 -- entryPropsKeyPack 16→17, flowKeyRoute_of_root 21→24).
 -- 2026-11-02 (item 422): 29 → 27 — `colon_open_map_explicit#21`; `compact_open_map#29` retired: the two `h_outer` `∨ True` binders are bodies now ((γ′)).
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` deleted with `KmSound`'s `∨ True` conjuncts.
 def expectedStateFaces : List String :=
   ["PreprocessIndentStable.IndentFloor.transport#3",
    "accum_block_on_closeThenBlock#26",
@@ -419,8 +426,6 @@ def expectedStateFaces : List String :=
    "entryKeyPack_of_dispatch#18",
    "entryPropsKeyPack_of_dispatch#17",
    "flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
-   "flowOpen_marker#4",
-   "flowOpen_stamp#4",
    "frameChainUnion#2",
    "frameChainUnion#3",
    "frameChainUnionD#3",
@@ -705,7 +710,9 @@ rather than as a count. -/
 -- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
 -- — the same binder, syntactically optional.
 -- 2026-11-02 (item 422): syntactic 156 → 154, population 158 → 156 — the two `h_outer` positions retired.
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=154 hiddenOnly=2 population=156"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=152 hiddenOnly=2 population=154"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 
@@ -903,7 +910,9 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
 -- 2026-11-11 (item 484): theorems 6464 → 6466 — `contentArm_of_dispatch` and the `accum_step_content` wrapper; the no-op tally itself unchanged.
 -- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
-def expectedNoopTally : String := "theorems=6474 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedNoopTally : String := "theorems=6472 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
@@ -975,6 +984,8 @@ def expectedNoopTally : String := "theorems=6474 byElab=16 byWhnf=16 elabOnly=0 
     `mutual` block exports
     (`Tests.Guards.SurfaceSpanCensus.expectedMotiveExport`). -/
 -- 2026-10-20 (item 309): the three generic helpers conclude in `∨ alt` and are no `∨ True` no-ops.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
 def expectedNoopConclusions : List String :=
   ["FlowBaseRoutes.key",
    -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — a `∨ True` conclusion (§8: `Or.inr trivial` proves it; the informative side is what the flow closes relay).
@@ -987,8 +998,6 @@ def expectedNoopConclusions : List String :=
    "flowKeyHead",
    "flowKeyRoute_of_open",
    "flowKeyRoute_of_root",
-   "flowOpen_marker",
-   "flowOpen_stamp",
    "keyctx_of_preprocess",
    "markerctx_of_landing",
    "nodocctx_of_preprocess",

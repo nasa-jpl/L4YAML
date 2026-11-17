@@ -278,24 +278,14 @@ def attribControl : CommandElabM (Array String) := do
 -- 2026-10-20 (item 309): 17 → 14 — `frameChainUnion`, `flowVPack_of_close` and `explFrameValueLine`
 -- conclude in `∨ alt` (generic in the alternative) and leave the `∨ True` survey.
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted (zero callers; the ∨-True audit's one never-supplied binder) — its row goes.
+-- 2026-11-17 (item 520, review round 2): `KmSound`'s base slot no longer carries the stamp / marker as `P ∨ True`
+-- (decided at `flowKeyPack_of_close` on the close state); `flowOpen_stamp` / `flowOpen_marker` deleted.
 def expected : List String :=
-  ["back_col inl=0,inr=0 inl=0,inr=0 | un=0,0",
-   "close_col_of_base inl=0,inr=0 inl=0,inr=0 | un=0,0",
-   "dedent_cover_of_landing inl=1,inr=3 | un=0,0",
-   -- item 385: the deeper landing's node route at the mapping park (`h_valF`) and
-   -- the `-` park (`closeF`); the `inr`s are the dedent (and the frameless park).
-   -- item 386: the mapping helper's second `inl` is the SIBLING at `k = nv` (empty
-   -- value, `resumeAt` the head frame); its `inr`s are now the popped/col-0 dedent
-   -- and the frameless park — the no-pop dedent closes by `absurd`.
-   -- item 387: `deeperLandingResumeSeq` leaves the census — it takes `n < k` and
-   -- concludes the route itself (no `∨ True`); its former `inr` (`k = n`) is the
-   -- caller's split on `atSequenceIndent` (sequence top refuted, mapping sibling declined).
-   "deeperLandingResume inl=2,inr=2 | un=0,0",  -- item 512 (review): `h_valF` indexes the AWAITED level, kept existential
+  ["dedent_cover_of_landing inl=1,inr=3 | un=0,0",
+   "deeperLandingResume inl=2,inr=2 | un=0,0",
    "flowKeyHead inl=0,inr=0 | un=0,0",
    "flowKeyRoute_of_open inl=2,inr=4 inl=0,inr=0 inl=1,inr=2 inl=2,inr=0 inl=1,inr=2 | un=3,3",
    "flowKeyRoute_of_root inl=2,inr=2 inl=0,inr=0 inl=0,inr=3 inl=5,inr=0 inl=1,inr=2 | un=3,5",
-      "flowOpen_marker inl=1,inr=2 | un=1,1",
-   "flowOpen_stamp inl=1,inr=2 | un=1,1",
    "keyctx_of_preprocess inl=2,inr=3 | un=0,0",
    "markerctx_of_landing inl=1,inr=3 | un=1,1",
    "nodocctx_of_preprocess inl=2,inr=3 | un=0,0",

@@ -960,18 +960,18 @@ def hopName (env : Environment) (e : Edge) : String :=
 -- 2026-11-02 (item 422): edges 655 → 650, SPLIT 180 → 175 — the five `h_park.elim` / `h_kslotUp.elim` splits at the
 -- openers' `h_outer` writes (`closeThenBlock` ×2, `pendingBlockContent`, `pendingBlock` ×2) are gone: the body is decided
 -- by `Classical.em (MarkedColsIn s_prep [k])` and both arms PAY ((γ′): K7 with the landing's key, or the ARMED fact).
--- 2026-11-17 (item 520, review round 1): edges 644 → 646, FIELD 61 → 62, PAY 53 → 54 — the T base mask's
--- `KmSound` witness now takes each open arm's own stamp / marker (the terms the arm hands `h_kpkg`): the stamped
--- arms' `flowOpen_stamp` / `flowOpen_marker` payments are relayed into a second consumer, no `Or.inr trivial` added;
--- the pipe landing (piped 102 → 103, Or.imp⇒FIELD 39 → 40) and the decline reach (accounted 644 → 646, fieldEdges /
--- fieldResolved 61 → 62) read the same edge.
+-- 2026-11-17 (item 520, review round 2): edges 644 → 640 against the base (FIELD 61 → 60, PAY 53 → 50) — the base slot's
+-- stamp / marker conjuncts and their feeders (`flowOpen_stamp` / `flowOpen_marker`, the per-arm stamp payments) are
+-- deleted; round 1's +2 (the stamped arms relayed into the mask witness) is gone with them; the pipe landing
+-- (piped 103 → 101, Or.imp⇒FIELD 40 → 38) and the decline reach (accounted 646 → 640, nodes 159 → 157, fieldEdges /
+-- fieldResolved 62 → 60) read the same edges.
 def expectedTally : String :=
   -- 2026-10-26 (item 366): DECLINE 258 → 256, VIA 47 → 49 — the two `h_outer` arguments of
   -- `accum_block_on_closeThenBlock` (compact and explicit `:`) pay under `Classical.em (MarkedColsIn sc [col])`.
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=646 skipped=41 [DECLINE=237, FIELD=62, LOCAL=26, PAY=54, RELAY=64, \
+  "edges=640 skipped=41 [DECLINE=237, FIELD=60, LOCAL=26, PAY=50, RELAY=64, \
 SPLIT=175, VIA=28]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
@@ -1065,7 +1065,7 @@ def expectedProducers : List String :=
 -- 2026-11-02 (item 422): piped 78 → 73, `Or.elim⇒SPLIT` 5 → 0 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the `h_outer` writes
 -- are `Classical.em (MarkedColsIn s_prep [k])` decisions now (see `expectedTally`).
 def expectedPipeLanding : String :=
-  "piped=103 producers=10 [Eq.rec⇒VIA=8, Or.elim⇒SPLIT=20, Or.imp⇒FIELD=40, \
+  "piped=101 producers=10 [Eq.rec⇒VIA=8, Or.elim⇒SPLIT=20, Or.imp⇒FIELD=38, \
 Or.imp⇒LOCAL=5, Or.imp⇒PAY=1, Or.imp⇒RELAY=18, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, \
 dite⇒SPLIT=5]"
 
@@ -1406,7 +1406,7 @@ def expectedDeclineReach : String :=
 -- 2026-10-28 (item 380, PR #146 review): liveSplits 101 → 104 — `Or.elim` read as a two-arm split: three of the
 -- five disagreeing `Classical.em … |>.elim` decisions stand on a live (reachable) decline path; nothing else moved.
 -- Item 519: accounted 650 → 644 with the tally's edges (the open's three ladders gone); nothing else moved.
-  "pairs=37 orphan=4 direct=7 closureDecline=33 dead=0 maxDepth=2 liveSplits=103 deadSplits=0 accounted=646/646 nodes=159 fieldEdges=62 fieldResolved=62 withCycle=10 declineWriters=19 parkHop=22"
+  "pairs=37 orphan=4 direct=7 closureDecline=33 dead=0 maxDepth=2 liveSplits=103 deadSplits=0 accounted=640/640 nodes=157 fieldEdges=60 fieldResolved=60 withCycle=10 declineWriters=19 parkHop=22"
 
 /-- **Every branch premise, with what its own callers supply and where that
     bottoms out.**  `⇐` names the FIRST hop — for a park field, the field

@@ -1182,8 +1182,6 @@ lemma content_km_transport_any {sc s_prep s_ad s' : L4YAML.Scanner.ScannerState}
       obtain ⟨hlt, -⟩ := Array.getElem?_eq_some_iff.mp h1
       omega
   refine h_km.transport
-    ((L4YAML.Proofs.StreamAccum.dispatchContent_implicitValueLine hok).trans (L4YAML.Proofs.StreamAccum.ad_implicitValueLine h_pre h_ad_def))
-    ((L4YAML.Proofs.StreamAccum.dispatchContent_docStartLine hok).trans (L4YAML.Proofs.StreamAccum.ad_docStartLine h_pre h_ad_def))
     ?_ h_pref (by omega)
     (Nat.le_trans h_mono
       (L4YAML.Proofs.ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s_ad c s' hok)) ?_
@@ -1802,10 +1800,6 @@ lemma dispatchFlow_km_faces {sc s_prep s' : ScannerState} {c : Char} {km : Array
       (fun hb => by
         obtain ⟨h1, h2, h3, h4, h5⟩ := h_bkey h_klay hb
         exact ⟨h1, h2, h3, by omega, h5⟩)
-      (fun h0 => absurd h0 (by omega))
-      (ScannerCorrectness.scanFlowSequenceStart_preserves_implicitValueLine s_ad)
-      (fun h0 => absurd h0 (by omega))
-      (ScannerCorrectness.scanFlowSequenceStart_preserves_docStartLine s_ad)
       (fun h0 => absurd h0 (by omega)) (fun h0 => absurd h0 (by omega))⟩
   · split at h_dispatch
     · rename_i heq
@@ -1824,9 +1818,7 @@ lemma dispatchFlow_km_faces {sc s_prep s' : ScannerState} {c : Char} {km : Array
             refine ⟨close_km_pop h_flow h_km h_preprocess h_ad_def
               (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s_ad)
               (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad)
-              ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
-              (ScannerCorrectness.scanFlowSequenceEnd_preserves_implicitValueLine s_ad)
-              (ScannerCorrectness.scanFlowSequenceEnd_preserves_docStartLine s_ad), fun hb => ?_⟩
+              ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt), fun hb => ?_⟩
             subst hb
             exact close_layout_of_bit h_flow h_km h_preprocess h_ad_def
               (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad) rfl
@@ -1844,10 +1836,6 @@ lemma dispatchFlow_km_faces {sc s_prep s' : ScannerState} {c : Char} {km : Array
           (fun hb => by
             obtain ⟨h1, h2, h3, h4, h5⟩ := h_bkey h_klay hb
             exact ⟨h1, h2, h3, by omega, h5⟩)
-          (fun h0 => absurd h0 (by omega))
-          (ScannerCorrectness.scanFlowMappingStart_preserves_implicitValueLine s_ad)
-          (fun h0 => absurd h0 (by omega))
-          (ScannerCorrectness.scanFlowMappingStart_preserves_docStartLine s_ad)
           (fun h0 => absurd h0 (by omega)) (fun h0 => absurd h0 (by omega))⟩
       · split at h_dispatch
         · rename_i heq
@@ -1866,9 +1854,7 @@ lemma dispatchFlow_km_faces {sc s_prep s' : ScannerState} {c : Char} {km : Array
                 refine ⟨close_km_pop h_flow h_km h_preprocess h_ad_def
                   (ScannerCorrectness.scanFlowMappingEnd_stack_popped s_ad)
                   (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad)
-                  ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
-                  (ScannerCorrectness.scanFlowMappingEnd_preserves_implicitValueLine s_ad)
-                  (ScannerCorrectness.scanFlowMappingEnd_preserves_docStartLine s_ad), fun hb => ?_⟩
+                  ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt), fun hb => ?_⟩
                 subst hb
                 exact close_layout_of_bit h_flow h_km h_preprocess h_ad_def
                   (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad) rfl

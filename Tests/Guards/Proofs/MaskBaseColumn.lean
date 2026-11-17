@@ -69,9 +69,8 @@ example {s0 : ScannerState} {sp_start : SurfPos} {n kc fl : Nat} {ks km : Array 
     with the marker's line too. -/
 example {sc : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc) (h1 : km.size = 1) :
-    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc ∧
-      (sc.implicitValueLine = some key.pos.line ∨ True) ∧
-      (sc.docStartLine = some key.pos.line ∨ True) :=
+    -- Item 520 (review round 2): the column alone — the stamp and the marker are decided at the close.
+    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc :=
   h.back_col h1
 
 /-! ## §3  …and both packs carry an equation
@@ -108,8 +107,7 @@ example {sc : ScannerState} {kc : Nat} {sp_start sp_br sp_tok sp_key : SurfPos}
       ImplicitKeyPack sc sp_start sp_tok ∨ KeyPackPunt sc :=
   flowKeyPack_of_close (g := none) (Or.inl ⟨kc, sp_key, route, head, rfl, Or.inr trivial,
       Or.inr trivial, Or.inr trivial⟩)
-    -- Item 300: the base slot's third reading, the marker's line, declined here.
-    ⟨h_kc, Or.inr trivial, Or.inr trivial⟩ h_park h_content
+    h_kc h_park h_content
 
 /-! ## §4  The promise, measured on the scanner
 

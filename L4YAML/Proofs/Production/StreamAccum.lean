@@ -1628,26 +1628,25 @@ lemma flowKeyPack_of_close {sc : ScannerState} {g : Option ScannerState} {n kc :
     -- Item 103: the close's own reading of the base slot, both halves at once
     -- (`close_col_of_base`) — the column the pack carries and the stamp the
     -- punt names.
-    (h_base : sc.simpleKey.pos.col = kc ∧
-      (sc.implicitValueLine = some sc.simpleKey.pos.line ∨ True) ∧
-      -- Item 300: and the marker's line, the base slot's third reading.
-      (sc.docStartLine = some sc.simpleKey.pos.line ∨ True))
+    -- Item 520 (review round 2): the stamp and the marker are not carried here any more — they
+    -- are decidable facts of THIS state, decided below where the punt is named.
+    (h_base : sc.simpleKey.pos.col = kc)
     (h_park : StalePark sc)
     (h_content : SFlowContent n .flowOut sp_br sp_tok) :
     sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
       ImplicitKeyPack sc sp_start sp_tok ∨ KeyPackPunt sc := by
   intro _ h_kline
-  obtain ⟨h_kc, h_stamp, h_mark⟩ := h_base
+  have h_kc := h_base
   -- The punts this lemma can reach, named once: a stamped slot refutes (item
   -- 101), a slot on the marker's line refutes (item 300), and everything else
-  -- is the caller's missing key context.
+  -- is the caller's missing key context.  Item 520 (review round 2): the two
+  -- readings are decided HERE, on the close state — not relayed as options.
   have punt : KeyPackPunt sc := by
-    cases h_stamp with
-    | inl h => exact KeyPackPunt.implicitValue (by rw [h, h_kline]) h_kline h_park
-    | inr _ =>
-      cases h_mark with
-      | inl h => exact KeyPackPunt.markerLine (by rw [h, h_kline]) h_kline
-      | inr _ => exact KeyPackPunt.noKeyContext
+    by_cases h_stamp : sc.implicitValueLine = some sc.simpleKey.pos.line
+    · exact KeyPackPunt.implicitValue (by rw [h_stamp, h_kline]) h_kline h_park
+    · by_cases h_mark : sc.docStartLine = some sc.simpleKey.pos.line
+      · exact KeyPackPunt.markerLine (by rw [h_mark, h_kline]) h_kline
+      · exact KeyPackPunt.noKeyContext
   rcases h_key with ⟨k, sp_key, route, head, hkcol, h_pair, h_tw99, h_tw108⟩ | _
   · rcases head sp_tok h_content with h_head | _
     -- Item 96: the frame carries the value-line pair now, and it passes
@@ -5324,9 +5323,11 @@ def KmSound (sc : ScannerState) (km : Array Bool) (kc : Nat) : Prop :=
     -- is on the line the open's key sits on, the `:` after the close is a
     -- mapping entry on the marker's line (`--- [1]: b`), which §9.1.1 refuses.
     -- Optional for the same reason as the stamp, and decided the same way.
+    -- Item 520 (review round 2): the stamp and marker conjuncts items 103 / 300 carried here as
+    -- `P ∨ True` are GONE — each is a decidable fact of the state that reads it, decided at the
+    -- reader (`flowKeyPack_of_close`), so the slot carries the column and the possibility only.
     (0 < km.size → ∃ key, sc.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧
-      (sc.implicitValueLine = some key.pos.line ∨ True) ∧
-      (sc.docStartLine = some key.pos.line ∨ True) ∧ key.possible = true)
+      key.possible = true)
 
 /-- The empty mask is sound in every state — it promises nothing: both bit
     quantifiers range over no bit, and the base-column promise is conditional
@@ -5356,8 +5357,6 @@ lemma RestoreLayout.transport {sc s' : ScannerState} {k : SimpleKeyState}
 /-- The mask rides along any step that leaves the key stack alone. -/
 lemma KmSound.transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc)
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_dsl : s'.docStartLine = sc.docStartLine)
     (h_sks : s'.simpleKeyStack = sc.simpleKeyStack)
     (h_pref : ∀ i, i < sc.tokens.size → s'.tokens[i]? = sc.tokens[i]?)
     (h_off : sc.offset ≤ s'.offset)
@@ -5370,9 +5369,7 @@ lemma KmSound.transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat}
   obtain ⟨off, h_al, h_bits, h_floor, h_base⟩ := h
   refine ⟨off, by rw [h_sks]; exact h_al, fun i hi hb => ?_, fun i hi hb => ?_,
     fun hpos => (h_base hpos).imp
-      (fun _ ⟨h_get, h_col, h_st⟩ => ⟨by rw [h_sks]; exact h_get, h_col,
-        h_st.imp (fun h => by rw [h_ivl]; exact h)
-          (fun h2 => h2.imp (fun h => by rw [h_dsl]; exact h) id)⟩)⟩
+      (fun _ ⟨h_get, h_col, h_kp⟩ => ⟨by rw [h_sks]; exact h_get, h_col, h_kp⟩)⟩
   · obtain ⟨k, h_get, hRL⟩ := h_bits i hi hb
     exact ⟨k, by rw [h_sks]; exact h_get, hRL.transport h_pref h_off h_size⟩
   · obtain ⟨h_above, h_pending⟩ := h_floor i hi hb
@@ -5413,14 +5410,6 @@ lemma KmSound.push {sc s' : ScannerState} {km : Array Bool} {b : Bool}
     -- frame's mask, which is never empty (`FlowOpenStack.km_pos`), so the
     -- premise is discharged by refutation at both call sites.
     (h_base_new : km.size = 0 → k.pos.col = kc)
-    -- Item 103: the base open's own stamp reading, the twin of `h_base_new` and
-    -- discharged the same way — `Or.inr trivial` wherever the mask came from a
-    -- frame, a `by_cases` on the key's line where the base is actually opened.
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_stamp_new : km.size = 0 → (s'.implicitValueLine = some k.pos.line ∨ True))
-    -- Item 300: the marker's twin of the stamp pair, discharged the same way.
-    (h_dsl : s'.docStartLine = sc.docStartLine)
-    (h_marker_new : km.size = 0 → (s'.docStartLine = some k.pos.line ∨ True))
     -- Item 293: and its possibility, discharged the same way.
     (h_poss_new : km.size = 0 → k.possible = true)
     (h_new : b = true → RestoreLayout s' k) : KmSound s' (km.push b) kc := by
@@ -5438,21 +5427,17 @@ lemma KmSound.push {sc s' : ScannerState} {km : Array Bool} {b : Bool}
   -- Item 79: and a push onto an EMPTY mask is a base open, whose own key IS
   -- the slot — `h_base_new`, refuted wherever the mask came from a frame.
   have h_base' : 0 < (km.push b).size →
-      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧
-        (s'.implicitValueLine = some key.pos.line ∨ True) ∧
-        (s'.docStartLine = some key.pos.line ∨ True) ∧ key.possible = true := by
+      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧ key.possible = true := by
     intro _
     by_cases h0 : km.size = 0
-    · refine ⟨k, ?_, h_base_new h0, h_stamp_new h0, h_marker_new h0, h_poss_new h0⟩
+    · refine ⟨k, ?_, h_base_new h0, h_poss_new h0⟩
       rw [h_sks, Array.getElem?_push, ite_eq_left (by omega)]
-    · obtain ⟨key, h_get, h_col, h_st, h_mk, h_kp⟩ := h_base (by omega)
+    · obtain ⟨key, h_get, h_col, h_kp⟩ := h_base (by omega)
       have hlt : off < sc.simpleKeyStack.size := by
         rcases Nat.lt_or_ge off sc.simpleKeyStack.size with hh | hh
         · exact hh
         · rw [Array.getElem?_eq_none hh] at h_get; exact absurd h_get (by simp)
-      exact ⟨key, by rw [h_sks, Array.getElem?_push, ite_eq_right (by omega)]; exact h_get, h_col,
-        h_st.imp (fun h => by rw [h_ivl]; exact h) id,
-        h_mk.imp (fun h => by rw [h_dsl]; exact h) id, h_kp⟩
+      exact ⟨key, by rw [h_sks, Array.getElem?_push, ite_eq_right (by omega)]; exact h_get, h_col, h_kp⟩
   refine ⟨off, by rw [h_sks]; simp [Array.size_push]; omega,
     fun i hi hb => ?_, fun i hi hb => ?_, h_base'⟩
   · rw [Array.size_push] at hi
@@ -5510,8 +5495,6 @@ lemma KmSound.pop {sc s' : ScannerState} {km : Array Bool} {b : Bool} {kc : Nat}
     (h_pref : ∀ i, i < sc.tokens.size → s'.tokens[i]? = sc.tokens[i]?)
     (h_off : sc.offset ≤ s'.offset)
     (h_size : sc.tokens.size ≤ s'.tokens.size)
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_dsl : s'.docStartLine = sc.docStartLine)
     (h_sk' : s'.simpleKey = sc.simpleKeyStack.back?.getD {}) : KmSound s' km kc := by
   obtain ⟨off, h_al, h_bits, h_floor, h_base⟩ := h
   rw [Array.size_push] at h_al
@@ -5524,14 +5507,10 @@ lemma KmSound.pop {sc s' : ScannerState} {km : Array Bool} {b : Bool} {kc : Nat}
   -- of a NESTED level leaves the outermost stacked key where it was.  Item 79:
   -- a pop that EMPTIES the mask owes nothing, and says so by its own premise.
   have h_base' : 0 < km.size →
-      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧
-        (s'.implicitValueLine = some key.pos.line ∨ True) ∧
-        (s'.docStartLine = some key.pos.line ∨ True) ∧ key.possible = true := by
+      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧ key.possible = true := by
     intro hpos
-    obtain ⟨key, h_get, h_col, h_st, h_mk, h_kp⟩ := h_base (by rw [Array.size_push]; omega)
-    exact ⟨key, by rw [h_sks, Array.getElem?_pop, ite_eq_left (by omega)]; exact h_get, h_col,
-      h_st.imp (fun h => by rw [h_ivl]; exact h) id,
-      h_mk.imp (fun h => by rw [h_dsl]; exact h) id, h_kp⟩
+    obtain ⟨key, h_get, h_col, h_kp⟩ := h_base (by rw [Array.size_push]; omega)
+    exact ⟨key, by rw [h_sks, Array.getElem?_pop, ite_eq_left (by omega)]; exact h_get, h_col, h_kp⟩
   refine ⟨off, by rw [h_sks, Array.size_pop]; omega,
     fun i hi hb => ?_, fun i hi hb => ?_, h_base'⟩
   · have hb' : (km.push b)[i]'(by rw [Array.size_push]; omega) = true := by
@@ -5606,13 +5585,11 @@ lemma KmSound.back_of_true {sc : ScannerState} {km : Array Bool} {b : Bool} {kc 
     in a stamped value slot, and the ones that are say so at the open. -/
 lemma KmSound.back_col {sc : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc) (h1 : km.size = 1) :
-    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc ∧
-      (sc.implicitValueLine = some key.pos.line ∨ True) ∧
-      (sc.docStartLine = some key.pos.line ∨ True) := by
+    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc := by
   obtain ⟨off, h_al, -, -, h_base⟩ := h
   rw [h1] at h_al
-  obtain ⟨key, h_get, h_col, h_st, h_mk, -⟩ := h_base (by omega)
-  refine ⟨key, ?_, h_col, h_st, h_mk⟩
+  obtain ⟨key, h_get, h_col, -⟩ := h_base (by omega)
+  refine ⟨key, ?_, h_col⟩
   rw [Array.back?_eq_getElem?, show sc.simpleKeyStack.size - 1 = off from by omega]
   exact h_get
 
@@ -5623,7 +5600,7 @@ lemma KmSound.back_poss {sc : ScannerState} {km : Array Bool} {kc : Nat}
     ∃ key, sc.simpleKeyStack.back? = some key ∧ key.possible = true := by
   obtain ⟨off, h_al, -, -, h_base⟩ := h
   rw [h1] at h_al
-  obtain ⟨key, h_get, -, -, -, h_kp⟩ := h_base (by omega)
+  obtain ⟨key, h_get, -, h_kp⟩ := h_base (by omega)
   refine ⟨key, ?_, h_kp⟩
   rw [Array.back?_eq_getElem?, show sc.simpleKeyStack.size - 1 = off from by omega]
   exact h_get
@@ -13607,46 +13584,8 @@ lemma InteriorGap.col_pos {sc : ScannerState} {tl : FrameTail} {sp_flow sp_scan 
     exact propsRun_col_gt ((h_run 0).resolve_right (fun h => h (Nat.zero_le _)))
       (Nat.zero_le _)
 
-/-- **The stamp a depth-0 flow OPEN records** (item 103), and the `by_cases`
-    that decides it.
-
-    The mask's base slot answers a question about the key the open stacks: was
-    the line that key sits on already stamped by a value indicator?  The park
-    knows the first half (`pendingMapValue`'s own `h_ivl`, and a props park's
-    punt), preprocessing carries the field unchanged, and the second half — is
-    the saved key still on the park's line — is decidable, so the reading is a
-    case split rather than a premise.  A key that reached the bracket across a
-    break lands on a LATER line, which is exactly the input the stamp must not
-    claim (`k:⏎  [1]: b` is legal). -/
-lemma flowOpen_stamp {sc s_prep s' : ScannerState} {c : Char}
-    (h_ivl : sc.implicitValueLine = some sc.line ∨ True)
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ivl' : s'.implicitValueLine = s_prep.implicitValueLine) :
-    s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True := by
-  by_cases hln : s_prep.simpleKey.pos.line = sc.line
-  · cases h_ivl with
-    | inl h =>
-      exact Or.inl (by
-        rw [h_ivl', preprocess_preserves_implicitValueLine sc s_prep c h_pre, h, hln])
-    | inr _ => exact Or.inr trivial
-  · exact Or.inr trivial
-
-/-- `docStartLine` twin of `flowOpen_stamp` (item 300): the open records whether
-    the `---` marker is on the line the base key sits on, by the same case split.
-    A key that reached the bracket across a break lands on a later line, which is
-    exactly the input the marker must not claim (`---⏎[1]: b` is legal). -/
-lemma flowOpen_marker {sc s_prep s' : ScannerState} {c : Char}
-    (h_doc : sc.docStartLine = some sc.line ∨ True)
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_dsl' : s'.docStartLine = s_prep.docStartLine) :
-    s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True := by
-  by_cases hln : s_prep.simpleKey.pos.line = sc.line
-  · cases h_doc with
-    | inl h =>
-      exact Or.inl (by
-        rw [h_dsl', preprocess_preserves_docStartLine sc s_prep c h_pre, h, hln])
-    | inr _ => exact Or.inr trivial
-  · exact Or.inr trivial
+-- Item 520 (review round 2): `flowOpen_stamp` / `flowOpen_marker` (items 103 / 300) deleted — the base
+-- slot no longer carries the stamp and marker as `P ∨ True`; the close decides both on its own state.
 
 /-- A real final slot is the one `prevRealIdx?` lands on. -/
 lemma lastTokenReal_prevRealIdx {ts : Array (Positioned YamlToken)}
@@ -13795,11 +13734,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     -- structure), which is what carries the pending's floor onto the stack.
     (h_ind' : s'.indents = s_prep.indents)
     (h_pk' : s'.pendingKeys = s_prep.pendingKeys)
-    -- Item 103: nor does it write the stamp, which is what carries a value
-    -- indicator's line into the collection and out at its close.
-    (h_ivl_open : s'.implicitValueLine = s_prep.implicitValueLine)
-    -- Item 300: nor the marker's line, which the base slot carries to the close.
-    (h_dsl_open : s'.docStartLine = s_prep.docStartLine)
     -- Item 143: §9.2's landing refusal, threaded from `scanNextToken` through
     -- `accum_step_flow` — the last step that did not carry it.  It runs BEFORE
     -- the allowDirectives update and before §8.1's floor, so the state it reads
@@ -13865,18 +13799,13 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       FlowStackB sp_start n s_prep.simpleKey.pos.col g s' 1 s'.flowStack #[false]
         (tailOf s'.tokens) sp_before sp_open :=
     fun g n sp_before v => mk g n sp_before (.ofValue v)
-  -- Item 103: the base slot's stamp is the open's to record, and only the
-  -- park knows it — so `h_km0` takes the reading and each arm below supplies
-  -- one (`Or.inr trivial` wherever the park cannot be in a stamped slot).
-  -- Item 520 (review round 1): the T base mask's witness takes each arm's OWN stamp and marker —
-  -- the terms the arm already hands `h_kpkg` — so the stamped arms carry their facts and no
-  -- `Or.inr trivial` is written that the arm did not already write (OrTrueAudit unmoved).
-  have h_km0 : (s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True) →
-      (s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True) →
-      s_prep.simpleKey.possible = true →
-      KmSound s' #[false] s_prep.simpleKey.pos.col := fun h_st h_mk h_kp => by
+  -- Item 520 (review round 2): the base slot's stamp and marker (items 103 / 300) are no longer
+  -- recorded at the open — `KmSound` carries the column and the possibility; the close decides
+  -- the stamp and the marker on its own state (`flowKeyPack_of_close`).
+  have h_km0 : s_prep.simpleKey.possible = true →
+      KmSound s' #[false] s_prep.simpleKey.pos.col := fun h_kp => by
     refine ⟨s'.simpleKeyStack.size - 1, by simp; omega,
-      fun i hi hb => ?_, fun i hi hb => ?_, fun _ => ⟨_, h_kc, rfl, h_st, h_mk, h_kp⟩⟩ <;>
+      fun i hi hb => ?_, fun i hi hb => ?_, fun _ => ⟨_, h_kc, rfl, h_kp⟩⟩ <;>
     · have h0 : i = 0 := by simp at hi; omega
       subst h0
       exact absurd hb (by simp)
@@ -13885,9 +13814,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- opens a stack whose interior cannot read a multi-line token at `n` — the
   -- deferral narrows to those parks rather than to the whole open.
   have h_kpkg : ∀ (g : Option ScannerState) (n : Nat) sp_b sp_f,
-      (s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True) →
-      -- Item 300: the base slot's marker reading, the stamp's twin.
-      (s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True) →
       -- Item 293: the open's own saved key is live — each arm says why.
       s_prep.simpleKey.possible = true →
       n ≤ minContentIndentOf s' →
@@ -13898,9 +13824,9 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       FlowStackB sp_start n s_prep.simpleKey.pos.col g s' 1 s'.flowStack #[false]
       (tailOf s'.tokens) sp_b sp_f →
       FlowStackK sp_start s' 1 s'.flowStack (tailOf s'.tokens) sp_b sp_f :=
-    fun g n _ _ h_st h_mk h_kp hfl h_anch h_b =>
+    fun g n _ _ h_kp hfl h_anch h_b =>
       ⟨n, _, #[false], g, s', h_b, h_ks1, fun _ => rfl, fun _ => rfl, hfl,
-        fun _ => ⟨h_km0 h_st h_mk h_kp, h_anch, fun kj hv => absurd hv (h_nv kj),
+        fun _ => ⟨h_km0 h_kp, h_anch, fun kj hv => absurd hv (h_nv kj),
           s'.simpleKeyStack.size, by simp, ResvOk.top h_opsk⟩⟩
   -- Item 67: the pending's floor, carried onto the stack the open pushes.  It
   -- needs the park's own COLUMN (`h_start`) — the separator alone cannot say
@@ -14038,7 +13964,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         h_tail143.imp (fun h_tl =>
           ⟨h_bare, h_preprocess, h_noflow_prep, h_ska, h_tl, h_base⟩) id
       exact ⟨sp_mid, sp_mid, sp_open, sp_open, h_stream_mid, BlockStack.nil sp_mid,
-             h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess) (Nat.zero_le _) trivial (mk none 0 sp_mid ⟨fun _ _ => Or.inr trivial, (fun _ =>
+             h_kpkg none _ _ _ (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess) (Nat.zero_le _) trivial (mk none 0 sp_mid ⟨fun _ _ => Or.inr trivial, (fun _ =>
                -- Item 118: the value route chosen by the face — the open
                -- arm's slot for a closed `...`, `implicitContinue` otherwise.
                match h_sfx with
@@ -14082,7 +14008,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-             ⟨_, h_km0 (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess)⟩, rfl⟩
+             ⟨_, h_km0 (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess)⟩, rfl⟩
     · exact h_nobreak hcol hws
   -- The completed constructs cannot reach a same-line `[`/`{`: their producers'
   -- trailing validation left the rest of the line inert (`h_line`), and the
@@ -14197,7 +14123,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
           (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_kp_drop =>
     ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil _,
-     h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) h_kp_drop (Nat.zero_le _) trivial (mkv none 0 sp_block (fun _ sp_ne sp_m _ h_ssl =>
+     h_kpkg none _ _ _ h_kp_drop (Nat.zero_le _) trivial (mkv none 0 sp_block (fun _ sp_ne sp_m _ h_ssl =>
        dropClose h_stream_block sp_ne sp_m h_ssl)),
      PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
@@ -14205,7 +14131,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
      fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-     ⟨_, h_km0 (Or.inr trivial) (Or.inr trivial) h_kp_drop⟩, rfl⟩
+     ⟨_, h_km0 h_kp_drop⟩, rfl⟩
   have opaque_resume : s_prep.simpleKey.possible = true →
       sp_scan.col ≠ 0 → GStar SSWhite sp_scan sp_prep →
       ∃ sp_gram' sp_block' sp_flow' sp_scan',
@@ -14257,7 +14183,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       match h_optok with
       | ⟨_, htok, hop, hpos⟩ =>
         ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil _,
-         h_kpkg (some s_prep) 0 _ _ (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess) (Nat.zero_le _)
+         h_kpkg (some s_prep) 0 _ _ (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess) (Nat.zero_le _)
            ⟨Or.inr (ParkSlot.ofOpen htok hop h_ind' h_noflow_prep
               (by rw [hpos]; exact hmem) hrun),
             ⟨KeyFloor.cleared h_opsk, fun i hlo hhi => absurd hhi (by omega)⟩⟩
@@ -14273,7 +14199,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
            (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
          fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-     ⟨_, h_km0 (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess)⟩, rfl⟩
+     ⟨_, h_km0 (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess)⟩, rfl⟩
   cases h_pending with
   | noPending _ _ h_col h_armN h_nodoc h_noekN _ h_gateN =>
     -- Nothing to close: the leading separation rides in the fresh bare
@@ -14296,7 +14222,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     have h_col0 := h_col.resolve_right
       (show ¬ sc.inFlow = true by rw [h_scflow]; simp)
     exact ⟨_, _, sp_open, sp_open, h_stream_block, BlockStack.nil _,
-           h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial)
+           h_kpkg none _ _ _
              (preprocess_saved_key_fresh (h_armN.resolve_right (by rw [h_scflow]; simp)).1 h_noflow_prep h_preprocess).1 (Nat.zero_le _) trivial
              (mk none 0 _ ⟨fun _ _ => Or.inr trivial, (fun _ => nodocFlowResumeSep (h_nodoc h_scflow)
                  (h_sep.resolve_right (fun h => absurd h.2.2 (by omega)))),
@@ -14317,7 +14243,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-             ⟨_, h_km0 (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_fresh (h_armN.resolve_right (by rw [h_scflow]; simp)).1 h_noflow_prep h_preprocess).1⟩, rfl⟩
+             ⟨_, h_km0 (preprocess_saved_key_fresh (h_armN.resolve_right (by rw [h_scflow]; simp)).1 h_noflow_prep h_preprocess).1⟩, rfl⟩
   | pendingContent _ _ _ _ h_line h_closableA _ _ _ _ h_frS176 h_frV201 _ h_tail143 _ _ h_runA h_gateA _ =>
     -- Item 37: §7.5's set weakens to item 10's here, exactly as `[204]`'s does.
     -- Item 143: …and this park's producer finished a node, so it PAYS §9.2's
@@ -14399,31 +14325,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         h_corr h_preprocess (GStar.nil _) (fun _ _ => (h_gateP (noflow_of_fl0 h_fl0)).gate)
     have h_pe : sp_gap = sp_prep := ScannerSurfCorr_unique hcorr_gap hcorr_prep
     rw [h_pe] at h_sep_or
-    -- Item 103: the props park needs no field of its own for the stamp — its
-    -- `h_key` already carries one where there is one to carry.  A run parked in
-    -- a stamped value slot punts `implicitValue` (item 102), and that
-    -- constructor's first component IS the reading the flow open records.
-    have h_stamp_p : s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True := by
-      rcases h_pkey with _ | punt
-      · exact Or.inr trivial
-      · cases punt with
-        | implicitValue h_ivl _ _ =>
-          exact flowOpen_stamp (Or.inl h_ivl) h_preprocess h_ivl_open
-        | tab _ _ => exact Or.inr trivial
-        | markerLine _ _ => exact Or.inr trivial
-        | noKeyContext => exact Or.inr trivial
-    -- Item 300: and the marker's line the same way — a run whose park sits on
-    -- the `---` line hands `markerLine` (`--- &p [1]: b`), and the open records it
-    -- on the base slot for the close to refuse.
-    have h_marker_p : s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True := by
-      rcases h_pkey with _ | punt
-      · exact Or.inr trivial
-      · cases punt with
-        | markerLine h_doc _ =>
-          exact flowOpen_marker (Or.inl h_doc) h_preprocess h_dsl_open
-        | implicitValue _ _ _ => exact Or.inr trivial
-        | tab _ _ => exact Or.inr trivial
-        | noKeyContext => exact Or.inr trivial
     -- **Item 165: the gate this arm opens at, and what it pays for.**  The
     -- frame's construction is polymorphic in `g` (item 163), so the choice is
     -- made once here and the route term below is written once — the break arm
@@ -14446,7 +14347,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
              -- Item 68: the run's park is at or past its route index, so the
              -- collection this open pushes reads its interior AT that index.
              -- Item 84: the floor arrives WITH the separator now.
-             h_kpkg gp _ _ _ h_stamp_p h_marker_p (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess) (openFloorT h_floor_prep) h_anch_p (mk gp n sp_block ⟨fun _ _ => Or.inr trivial, (fun h_g sp_ne sp_m h_content h_ssl =>
+             h_kpkg gp _ _ _ (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess) (openFloorT h_floor_prep) h_anch_p (mk gp n sp_block ⟨fun _ _ => Or.inr trivial, (fun h_g sp_ne sp_m h_content h_ssl =>
                h_route (h_pay_p h_g) sp_m (flowInBlock_blockNode h_sep_run
                  (SFlowNode.propsContent n .flowOut sp_p sp_scan sp_prep sp_ne
                    h_run.toProperties h_sep h_content) h_ssl)),
@@ -14525,7 +14426,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
              fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-             ⟨_, h_km0 h_stamp_p h_marker_p (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess)⟩, rfl⟩
+             ⟨_, h_km0 (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess)⟩, rfl⟩
     · -- Item 172: the run-end half of the under-run is no longer the scanner's
       -- refusal — §8.1's floor is read at the CLOSE now, so the open STEP
       -- scans (`k:⏎  b:⏎    &x⏎[1]`) and this arm has to build.  The park is
@@ -14564,9 +14465,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       fun sp h_node =>
         h_doc_route sp (GAlt.left sp_scan sp (SLBareDocument.mk sp_scan sp h_node))
     exact ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil sp_block,
-           h_kpkg none _ _ _ (Or.inr trivial)
-              -- Item 300: `--- [1]: b` — the marker's line rides the base slot to the close.
-              (flowOpen_marker (Or.inl h_doclineD) h_preprocess h_dsl_open)
+           h_kpkg none _ _ _
               (preprocess_saved_key_fresh h_armD.1 h_noflow_prep h_preprocess).1 (Nat.zero_le _) trivial (mk none 0 sp_block ⟨fun _ _ => Or.inr trivial, (fun _ sp_ne sp_m h_content h_ssl =>
              h_docnode sp_m (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_ne sp_m
                h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)),
@@ -14581,7 +14480,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-     ⟨_, h_km0 (Or.inr trivial) (flowOpen_marker (Or.inl h_doclineD) h_preprocess h_dsl_open) (preprocess_saved_key_fresh h_armD.1 h_noflow_prep h_preprocess).1⟩, rfl⟩
+     ⟨_, h_km0 (preprocess_saved_key_fresh h_armD.1 h_noflow_prep h_preprocess).1⟩, rfl⟩
   | pendingBlock _ _ _ n_old h_close _ h_floor_old h_sk_old h_col59 h_kslot_old _ _ _
       h_kslotUp_old _ _ h_offer_b h_gateB =>
     -- Item 46: the stack opens at the ENTRY's index, so the resume's node
@@ -14603,7 +14502,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     rcases h_sep_or with ⟨h_sep, h_floor_prep⟩ |
       ⟨sp_mid2, _h_ssl2, h_col02, h_ur, h_ltsl2, h_landed_ur, h_ska_ur⟩
     · exact ⟨sp_gram, sp_block, sp_open, sp_open, h_stream, h_stack,
-             h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1 (openFloorT h_floor_prep) trivial (mk none (n_old + 1) sp_block ⟨fun _ _ => Or.inr trivial, (fun _ sp_ne sp_m h_content h_ssl =>
+             h_kpkg none _ _ _ (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1 (openFloorT h_floor_prep) trivial (mk none (n_old + 1) sp_block ⟨fun _ _ => Or.inr trivial, (fun _ sp_ne sp_m h_content h_ssl =>
                h_close sp_m (SBlockIndented.node n_old .blockIn sp_scan sp_m
                  (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_ne sp_m
                    h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))),
@@ -14672,7 +14571,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-             ⟨_, h_km0 (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1⟩, rfl⟩
+             ⟨_, h_km0 (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1⟩, rfl⟩
     · -- Item 73: `pendingBlock`'s floor is a measurement, not an option, which
       -- is what LOCATES the under-run; item 265 measures which half the
       -- location refutes.
@@ -14710,9 +14609,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
              -- open so the close can read it — `k: [1]: 2` is the flow twin of
              -- item 101's `k: a: 1`, one construct over.
              h_kpkg none _ _ _
-               (flowOpen_stamp (h_ivl_mv.imp id (fun _ => trivial)) h_preprocess h_ivl_open)
-               -- Item 300: a value park is not a `---` park; the marker reading declines.
-               (Or.inr trivial)
                (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1
                (openFloorT h_floor_prep) trivial
                (mk none (n_old + 1) sp_block ⟨(fun sp_ne h_content => h_closeF_mv.elim (fun ⟨ks, _, hcov, route⟩ => hcov.elim
@@ -14808,7 +14704,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
-             ⟨_, h_km0 (flowOpen_stamp (h_ivl_mv.imp id (fun _ => trivial)) h_preprocess h_ivl_open) (Or.inr trivial) (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1⟩, rfl⟩
+             ⟨_, h_km0 (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1⟩, rfl⟩
     · -- Item 68: the TAB half is §6.1's refusal, for `pendingProps`' reason.
       -- Item 82: the park's floor is REAL, which is what locates the run-end
       -- half; item 265 measures that the location it names is downstream
@@ -19273,15 +19169,6 @@ lemma km_push_at_open {sc s_prep s_ad s' : ScannerState} {c : Char}
     -- Item 79: `KmSound.push`'s base-open premise, refuted at both call sites
     -- from the parent frame (`FlowOpenStack.km_pos`).
     (h_base_new : km.size = 0 → s_ad.simpleKey.pos.col = kc)
-    -- Item 103: the stamp's twin of the pair above — the open's own reading of
-    -- the field, and the base-open promise refuted the same way.
-    (h_ivl' : s'.implicitValueLine = s_ad.implicitValueLine)
-    (h_stamp_new : km.size = 0 →
-      (s'.implicitValueLine = some s_ad.simpleKey.pos.line ∨ True))
-    -- Item 300: the marker's twin of the stamp pair, refuted the same way.
-    (h_dsl' : s'.docStartLine = s_ad.docStartLine)
-    (h_marker_new : km.size = 0 →
-      (s'.docStartLine = some s_ad.simpleKey.pos.line ∨ True))
     -- Item 293: and the base open's possibility, refuted the same way.
     (h_poss_new : km.size = 0 → s_ad.simpleKey.possible = true) :
     KmSound s' (km.push b_new) kc := by
@@ -19322,8 +19209,7 @@ lemma km_push_at_open {sc s_prep s_ad s' : ScannerState} {c : Char}
     · exact Or.inl (h_ad_sk.trans h_eq)
     · exact Or.inr (fun _ => by rw [h_ad_sk, h_ti]; exact Nat.le_refl _)
   refine KmSound.push (k := s_ad.simpleKey) h_km ?_ h_pref' ?_ h_size h_kcase h_poss'
-    h_base_new (h_ivl'.trans (ad_implicitValueLine h_pre h_ad_def)) h_stamp_new
-    (h_dsl'.trans (ad_docStartLine h_pre h_ad_def)) h_marker_new h_poss_new ?_
+    h_base_new h_poss_new ?_
   · rw [h_sks', h_ad_sks, h_psks]
   · omega
   · intro hb
@@ -19484,20 +19370,12 @@ lemma close_col_of_base {sc s_prep s_ad s' : ScannerState} {c : Char}
         { s_prep with allowDirectives := false, documentEverStarted := true }
       else s_prep) = s_ad)
     (h_sk' : s'.simpleKey = s_ad.simpleKeyStack.back?.getD {})
-    (h_tk' : ∃ p : Positioned YamlToken, s'.tokens = s_ad.tokens.push p)
-    -- Item 103: the second datum the same slot carries, read at the same close.
-    (h_ivl' : s'.implicitValueLine = s_ad.implicitValueLine)
-    -- Item 300: and the third, the marker's line, read the same way.
-    (h_dsl' : s'.docStartLine = s_ad.docStartLine) :
-    s'.simpleKey.pos.col = kc ∧
-      (s'.implicitValueLine = some s'.simpleKey.pos.line ∨ True) ∧
-      (s'.docStartLine = some s'.simpleKey.pos.line ∨ True) := by
+    (h_tk' : ∃ p : Positioned YamlToken, s'.tokens = s_ad.tokens.push p) :
+    s'.simpleKey.pos.col = kc := by
   obtain ⟨-, h_sks_ad⟩ := close_transports h_flow h_pre h_ad_def h_tk'
-  obtain ⟨k, h_back, h_col, h_st, h_mk⟩ := h_km.back_col h1
+  obtain ⟨k, h_back, h_col⟩ := h_km.back_col h1
   rw [h_sk', h_sks_ad, h_back]
-  exact ⟨h_col, h_st.imp
-    (fun h => by rw [h_ivl', ad_implicitValueLine h_pre h_ad_def]; exact h) id,
-    h_mk.imp (fun h => by rw [h_dsl', ad_docStartLine h_pre h_ad_def]; exact h) id⟩
+  exact h_col
 
 /-- **The key the outermost close restores is live** (item 293) —
     `close_col_of_base`'s twin, over the possibility `KmSound.back_poss` reads.
@@ -19531,9 +19409,7 @@ lemma close_km_pop {sc s_prep s_ad s' : ScannerState} {c : Char}
     (h_sks' : s'.simpleKeyStack = s_ad.simpleKeyStack.pop)
     (h_sk' : s'.simpleKey = s_ad.simpleKeyStack.back?.getD {})
     (h_tk' : ∃ p : Positioned YamlToken, s'.tokens = s_ad.tokens.push p)
-    (h_off' : s_ad.offset ≤ s'.offset)
-    (h_ivl' : s'.implicitValueLine = s_ad.implicitValueLine)
-    (h_dsl' : s'.docStartLine = s_ad.docStartLine) :
+    (h_off' : s_ad.offset ≤ s'.offset) :
     KmSound s' km kc := by
   obtain ⟨h_pref', h_sks_ad⟩ := close_transports h_flow h_pre h_ad_def h_tk'
   obtain ⟨_, h_poff, _⟩ := preprocess_inFlow_facts h_flow h_pre
@@ -19551,8 +19427,6 @@ lemma close_km_pop {sc s_prep s_ad s' : ScannerState} {c : Char}
     rw [hp, Array.size_push]
     omega
   exact h_km.pop (by rw [h_sks', h_sks_ad]) h_pref' (by omega) h_size
-    (h_ivl'.trans (ad_implicitValueLine h_pre h_ad_def))
-    (h_dsl'.trans (ad_docStartLine h_pre h_ad_def))
     (by rw [h_sk', h_sks_ad])
 
 
@@ -19748,10 +19622,6 @@ lemma comma_km_transport {sc s_prep s_ad s_fe : ScannerState} {c : Char}
     rw [hp, Array.size_push]
     omega
   exact h_km.transport
-    ((ScannerCorrectness.scanFlowEntry_preserves_implicitValueLine s_ad s_fe hfe).trans
-      (ad_implicitValueLine h_pre h_ad_def))
-    ((ScannerCorrectness.scanFlowEntry_preserves_docStartLine s_ad s_fe hfe).trans
-      (ad_docStartLine h_pre h_ad_def))
     (by rw [ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s_ad s_fe hfe, h_sks_ad])
     h_pref' (by omega) h_size
     (Or.inr (Or.inl (ScannerCorrectness.scanFlowEntry_clears_simpleKey s_ad s_fe hfe)))
@@ -19789,10 +19659,6 @@ lemma scanKey_km_transport {sc s_prep s_ad s_k : ScannerState} {c : Char}
     rw [hp, Array.size_push]
     omega
   exact h_km.transport
-    ((ScannerCorrectness.scanKey_preserves_implicitValueLine s_ad s_k hk).trans
-      (ad_implicitValueLine h_pre h_ad_def))
-    ((ScannerCorrectness.scanKey_preserves_docStartLine s_ad s_k hk).trans
-      (ad_docStartLine h_pre h_ad_def))
     (by rw [ScannerCorrectness.scanKey_preserves_simpleKeyStack s_ad s_k hk, h_sks_ad])
     h_pref' (by omega) h_size
     (Or.inr (Or.inl (ScannerCorrectness.scanKey_clears_simpleKey s_ad s_k hk)))
@@ -19924,10 +19790,6 @@ lemma accum_step_flow (sc : ScannerState)
                   allowDirectives_update_indents])
           (by rw [L4YAML.Proofs.PendingKeysStable.scanFlowSequenceStart_preserves_pendingKeys,
                   allowDirectives_update_pendingKeys])
-          (by rw [ScannerCorrectness.scanFlowSequenceStart_preserves_implicitValueLine,
-                  allowDirectives_update_implicitValueLine])
-          (by rw [ScannerCorrectness.scanFlowSequenceStart_preserves_docStartLine,
-                  allowDirectives_update_docStartLine])
           h_bare h_dn h_fv h_base
           -- Item 165: the bracket's push and the key it clears.
           ⟨_, by rw [scanFlowSequenceStart_tokens, allowDirectives_update_tokens], rfl,
@@ -19988,10 +19850,6 @@ lemma accum_step_flow (sc : ScannerState)
                       allowDirectives_update_indents])
               (by rw [L4YAML.Proofs.PendingKeysStable.scanFlowMappingStart_preserves_pendingKeys,
                       allowDirectives_update_pendingKeys])
-              (by rw [ScannerCorrectness.scanFlowMappingStart_preserves_implicitValueLine,
-                      allowDirectives_update_implicitValueLine])
-              (by rw [ScannerCorrectness.scanFlowMappingStart_preserves_docStartLine,
-                      allowDirectives_update_docStartLine])
               h_bare h_dn h_fv h_base
               -- Item 165: the bracket's push and the key it clears.
               ⟨_, by rw [scanFlowMappingStart_tokens, allowDirectives_update_tokens], rfl,
@@ -20335,10 +20193,6 @@ lemma accum_step_flow (sc : ScannerState)
              -- Item 79: the parent frame's mask has a bottom, so this open is
              -- not a base open and owes no column.  Item 103: nor a stamp.
              (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-             (ScannerCorrectness.scanFlowSequenceStart_preserves_implicitValueLine s_ad)
-             (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-             (ScannerCorrectness.scanFlowSequenceStart_preserves_docStartLine s_ad)
-             (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
              (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega)),
            -- Item 164: a nested `[` deepens the hold by one and stacks the
            -- pending key, which is `ParkFloor.pushOpen`'s whole content.
@@ -20418,9 +20272,7 @@ lemma accum_step_flow (sc : ScannerState)
                     (flowKeyPack_of_close ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))).symm ▸ resume.key)
                       (close_col_of_base (by omega) h_km rfl h_preprocess h_ad_def
                         (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad)
-                        ⟨_, scanFlowSequenceEnd_tokens s_ad⟩
-                        (ScannerCorrectness.scanFlowSequenceEnd_preserves_implicitValueLine s_ad)
-                        (ScannerCorrectness.scanFlowSequenceEnd_preserves_docStartLine s_ad))
+                        ⟨_, scanFlowSequenceEnd_tokens s_ad⟩)
                       (staleNodeTail_scanFlowSequenceEnd s_ad).toStalePark
                       (SFlowContent.flowSeq _ _ _ _ h_seq))
                       (fun _ => staleNodeTail_scanFlowSequenceEnd _)
@@ -20476,9 +20328,7 @@ lemma accum_step_flow (sc : ScannerState)
                    fun _ => ⟨close_km_pop (by omega) h_km h_preprocess h_ad_def
                        (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s_ad)
                        (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad)
-                       ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
-                       (ScannerCorrectness.scanFlowSequenceEnd_preserves_implicitValueLine s_ad)
-                       (ScannerCorrectness.scanFlowSequenceEnd_preserves_docStartLine s_ad),
+                       ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt),
                      -- Item 164: a nested `]` shallows the hold, and the arm
                      -- knows its depth only to be POSITIVE — which is what
                      -- `seqEndPos` is for.
@@ -20584,10 +20434,6 @@ lemma accum_step_flow (sc : ScannerState)
                  -- Item 79: the parent frame's mask has a bottom.  Item 103:
                  -- nor is this open where a stamp is recorded.
                  (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-                 (ScannerCorrectness.scanFlowMappingStart_preserves_implicitValueLine s_ad)
-                 (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-                 (ScannerCorrectness.scanFlowMappingStart_preserves_docStartLine s_ad)
-                 (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
                  (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega)),
                -- Item 164: the mapping twin of the nested open's hold.
                h_panch_ad.mapStart, (fun _ h => absurd h (by simp)),
@@ -20661,9 +20507,7 @@ lemma accum_step_flow (sc : ScannerState)
                         (flowKeyPack_of_close ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))).symm ▸ resume.key)
                           (close_col_of_base (by omega) h_km rfl h_preprocess h_ad_def
                             (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad)
-                            ⟨_, scanFlowMappingEnd_tokens s_ad⟩
-                        (ScannerCorrectness.scanFlowMappingEnd_preserves_implicitValueLine s_ad)
-                        (ScannerCorrectness.scanFlowMappingEnd_preserves_docStartLine s_ad))
+                            ⟨_, scanFlowMappingEnd_tokens s_ad⟩)
                       (staleNodeTail_scanFlowMappingEnd s_ad).toStalePark
                           (SFlowContent.flowMap _ _ _ _ h_map))
                       (fun _ => staleNodeTail_scanFlowMappingEnd _)
@@ -20709,9 +20553,7 @@ lemma accum_step_flow (sc : ScannerState)
                        fun _ => ⟨close_km_pop (by omega) h_km h_preprocess h_ad_def
                            (ScannerCorrectness.scanFlowMappingEnd_stack_popped s_ad)
                            (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad)
-                           ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
-                           (ScannerCorrectness.scanFlowMappingEnd_preserves_implicitValueLine s_ad)
-                           (ScannerCorrectness.scanFlowMappingEnd_preserves_docStartLine s_ad),
+                           ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt),
                          -- Item 164: the mapping twin of the nested close.
                          h_panch_ad.mapEndPos (by
                            have := FlowOpenStack_depth_pos
@@ -21564,8 +21406,6 @@ lemma FlowBaseAnchor.flowValue {g : Option ScannerState} {s s' : ScannerState} {
     DEEP in the array (a restored collection key, `[{x: y}: b]`). -/
 lemma KmSound.colon_transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc)
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_dsl : s'.docStartLine = sc.docStartLine)
     (h_sks : s'.simpleKeyStack = sc.simpleKeyStack)
     (h_off : sc.offset ≤ s'.offset)
     (h_size : sc.tokens.size ≤ s'.tokens.size)
@@ -21577,9 +21417,7 @@ lemma KmSound.colon_transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat
   obtain ⟨off, h_al, h_bits, h_floor, h_base⟩ := h
   refine ⟨off, by rw [h_sks]; exact h_al, fun i hi hb => ?_, fun i hi hb => ?_,
     fun hpos => (h_base hpos).imp
-      (fun _ ⟨h_get, h_col, h_st⟩ => ⟨by rw [h_sks]; exact h_get, h_col,
-        h_st.imp (fun hh => by rw [h_ivl]; exact hh)
-          (fun h2 => h2.imp (fun hh => by rw [h_dsl]; exact hh) id)⟩)⟩
+      (fun _ ⟨h_get, h_col, h_kp⟩ => ⟨by rw [h_sks]; exact h_get, h_col, h_kp⟩)⟩
   · obtain ⟨k, h_get, h1, h2, ⟨tok, h3, h4⟩, h5, h6⟩ := h_bits i hi hb
     have h_get' : sc.simpleKeyStack[off + i]! = k := by
       rw [Array.getElem!_eq_getD, Array.getD_eq_getD_getElem?, h_get]
@@ -31983,10 +31821,6 @@ lemma accum_step_block (sc : ScannerState)
               omega
             have h_km_v : KmSound s_v km kc := by
               refine KmSound.colon_transport h_km
-                (ScannerCorrectness.scanValue_inFlow_implicitValueLine h_ad_inflow hsv |>.trans
-                  (ad_implicitValueLine h_preprocess h_ad_def))
-                ((ScannerCorrectness.scanValue_preserves_docStartLine hsv).trans
-                  (ad_docStartLine h_preprocess h_ad_def))
                 ?_ ?_ h_size_v h_facts.2.2.2.1 ?_
               · rw [h_facts.2.2.2.2.1, h_ad_sks_eq, h_psks]
               · have h_off_v := h_facts.2.2.2.2.2.2.1
@@ -41090,8 +40924,6 @@ lemma content_km_transport {sc s_prep s_ad s' : ScannerState} {c : Char}
       rw [h_tk_skip4] at h_mono4
       omega
   refine h_km.transport
-    ((dispatchContent_implicitValueLine hok).trans (ad_implicitValueLine h_pre h_ad_def))
-    ((dispatchContent_docStartLine hok).trans (ad_docStartLine h_pre h_ad_def))
     ?_ h_pref (by omega)
     (Nat.le_trans h_mono
       (ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s_ad c s' hok)) ?_
