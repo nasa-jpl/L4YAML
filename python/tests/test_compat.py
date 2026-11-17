@@ -196,6 +196,10 @@ class TestSafeLoadLimits:
         with pytest.raises(l4yaml.ConfigError):
             safe_load("hello", limits="structural:\n  maxDepth: banana")
 
+    def test_empty_stream_with_limits_raises_parse_error(self) -> None:
+        with pytest.raises(l4yaml.ParseError):
+            safe_load("", limits="structural:\n  maxDepth: 100")
+
 
 # ── safe_load_all ─────────────────────────────────────────────────────
 
