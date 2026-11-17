@@ -63,6 +63,11 @@ def ledgerPin (root : System.FilePath) : IO (Option Pin) := do
   | .ok l => return some { census := "scripts-ledger", name := "open", literal := s!"rows={l.openCount} pin={l.pin}" }
 
 /-- The guard file `path` (relative to `root`) as it stands at git `ref`; `none` when `ref` has no such file. -/
+/-- `ref` names a commit (`git rev-parse --verify`); a mistyped or unfetched ref is an error, not an empty base. -/
+def refExists (root : System.FilePath) (ref : String) : IO Bool := do
+  let r ← IO.Process.output { cmd := "git", args := #["rev-parse", "--verify", "--quiet", s!"{ref}^\{commit}"], cwd := some root }
+  return r.exitCode == 0
+
 def fileAt (root : System.FilePath) (ref : String) (rel : String) : IO (Option String) := do
   let r ← IO.Process.output { cmd := "git", args := #["show", s!"{ref}:{rel}"], cwd := some root }
   return if r.exitCode == 0 then some r.stdout else none
@@ -106,6 +111,13 @@ def run (args : List String) : IO UInt32 := do
   let (rows, errs) := resolveAll pins
   let mut out : Array String := #[]
   if let some ref := o.diff then
+    if !(← refExists root ref) then
+      IO.eprintln s!"CENSUS-DASHBOARD: `{ref}` is not a commit here (mistyped, or not fetched)"
+      return 2
+    if o.check && !errs.isEmpty then
+      for e in errs do IO.eprintln s!"- {e}"
+      IO.eprintln s!"CENSUS-DASHBOARD: {errs.size} roster row(s) resolve to no pin / field — fix the roster in Scripts/Census/Dashboard.lean"
+      return 1
     let base ← pinsAt root ref
     let cur := pins.filter (·.census != "scripts-ledger")  -- synthesized from the live ledger only; not a pin `git show` can read
     let moves := renderMoves ref (directedMoves base cur) (directedUnresolved base cur) (populationMoves base cur)

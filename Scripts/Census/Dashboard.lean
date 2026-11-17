@@ -609,11 +609,13 @@ structure DirMove where
   field : String
   before : Nat
   after : Nat
+  /-- the goal as the BASE tree resolved it (a `.field` goal moves with its pin) -/
+  goalBefore : Nat
   goal : Nat
   move : Move
   deriving Repr, BEq, Inhabited
 
-def DirMove.leftBefore (m : DirMove) : Nat := distance m.before m.goal
+def DirMove.leftBefore (m : DirMove) : Nat := distance m.before m.goalBefore
 def DirMove.leftAfter (m : DirMove) : Nat := distance m.after m.goal
 
 /-- `toward` / `away` by the distance to the goal; a `hold` field that moves at all is `BROKEN`;
@@ -631,8 +633,9 @@ def directedMoves (base cur : Array Pin) : Array DirMove := Id.run do
   let mut out := #[]
   for t in roster do
     match resolve base t, resolve cur t with
-    | .ok (_, b, _), .ok (_, a, g) =>
-      if b != a then out := out.push { census := t.census, field := t.field, before := b, after := a, goal := g, move := t.move }
+    | .ok (_, b, gb), .ok (_, a, g) =>
+      if b != a || gb != g then
+        out := out.push { census := t.census, field := t.field, before := b, after := a, goalBefore := gb, goal := g, move := t.move }
     | _, _ => pure ()
   return out
 
@@ -700,6 +703,12 @@ def populationMoves (base cur : Array Pin) : Array PopMove := Id.run do
   #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=8 inrTrivial=5" }]).map
     (fun m => (m.field, m.before, m.after, m.verdict))
   == #[("positions", 10, 8, "toward")]
+-- a `.field` goal: `covered` 72/77 → 74/79 is 5 → 5 left, lateral — not 7 → 5
+#guard (directedMoves
+  #[{ census := "SurfaceSpanCensus", name := "expectedCoverage", literal := "closure=77 covered=72" }]
+  #[{ census := "SurfaceSpanCensus", name := "expectedCoverage", literal := "closure=79 covered=74" }]).map
+    (fun m => (m.field, m.leftBefore, m.leftAfter, m.verdict))
+  == #[("covered", 5, 5, "lateral")]
 #guard (directedMoves
   #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=10" }]
   #[{ census := "OrTrueAudit", name := "expectedSummary", literal := "positions=12" }]).map (·.verdict)
@@ -725,7 +734,7 @@ def renderMoves (ref : String) (dir : Array DirMove) (unres : Array String) (pop
     out := out.push "| census | field | before → after | goal | left before → after | move | verdict |"
     out := out.push "|---|---|---|---:|---|---|---|"
     for m in dir do
-      out := out.push s!"| `{m.census}` | `{m.field}` | {m.before} → {m.after} | {m.goal} | {m.leftBefore} → {m.leftAfter} | {m.move.render} | {m.verdict} |"
+      out := out.push s!"| `{m.census}` | `{m.field}` | {m.before} → {m.after} | {if m.goalBefore == m.goal then toString m.goal else s!"{m.goalBefore} → {m.goal}"} | {m.leftBefore} → {m.leftAfter} | {m.move.render} | {m.verdict} |"
     for u in unres do out := out.push s!"- {u}"
   if !pop.isEmpty then
     out := out.push ""
