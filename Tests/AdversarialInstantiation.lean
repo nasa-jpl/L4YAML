@@ -18544,6 +18544,74 @@ def tally (rows : List String) : Tally := Id.run do
 
 end P133
 
+/-! ## Priority 134 (item 525, READ): the depth-0 steps `scan_trace` must fold and the park a
+depth-0 flow open sits over — the S side spends `dropClose` / `close_with_ssl` (`scannerDrop`)
+there; the T side has no twin.  Counts only; no lemma is stated here. -/
+namespace P134
+open L4YAML L4YAML.Scanner P107 P111 P113
+
+structure Tally where
+  depth0 : List (String × Nat) := []
+  baseOpens : Nat := 0
+  baseCloses : Nat := 0
+  openPark : List (String × Nat) := []
+  deriving Repr
+
+def countOf (l : List (String × Nat)) (k : String) : Nat := (l.find? (·.1 == k)).map (·.2) |>.getD 0
+
+def parkOf (toks : List (L4YAML.Positioned L4YAML.YamlToken)) : String :=
+  match (toks.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head? with
+  | none => "noPending"
+  | some tk =>
+    match tk.val with
+    | .streamStart | .documentStart | .documentEnd | .blockEnd | .flowSequenceEnd | .flowMappingEnd => "noPending"
+    | .blockEntry => "pendingBlock"
+    | .value => "pendingMapValue"
+    | .key => "pendingKey"
+    | .anchor _ | .tag _ _ => "pendingProps"
+    | .blockMappingStart | .blockSequenceStart => "pendingBlock"
+    | .scalar _ _ | .alias _ => "pendingContent"
+    | _ => s!"other/{kindOf tk.val}"
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        if pre.flowLevel == 0 && post.flowLevel == 1 then
+          t := { t with baseOpens := t.baseOpens + 1, openPark := bumpS t.openPark (parkOf pre.tokens.toList) }
+        else if pre.flowLevel == 1 && post.flowLevel == 0 then
+          t := { t with baseCloses := t.baseCloses + 1 }
+        else if pre.flowLevel == 0 then
+          let pushed := post.tokens.toList.drop pre.tokens.size
+          let k := match (pushed.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head? with
+            | some back => kindOf back.val
+            | none => "none"
+          t := { t with depth0 := bumpS t.depth0 k }
+    | _, _ => pure ()
+  return t
+
+end P134
+
+namespace P134Test
+def testScanTraceDepth0 (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P134.tally (P113.allRows ++ P118.extraRows)
+  IO.println s!"P134 depth0={repr t.depth0} baseOpens={t.baseOpens} baseCloses={t.baseCloses} openPark={repr t.openPark}"
+  check state "P134 base opens = base closes" (t.baseOpens == t.baseCloses)
+  -- Predicted 251 (P131's count on its own corpus); this corpus (P113 + P118 rows) holds 247.
+  check state "P134 base opens 247 on P113 + P118's rows" (t.baseOpens == 247)
+  -- Predicted content ≈ 640 / key+value ≈ 200 / `-` ≈ 250 / structural ≈ 120: content 661 and
+  -- key+value 200 HELD; `-` 118 and structural ("other": markers, directives, block ends) 250 REFUTED.
+  check state "P134 depth-0 arms" (P134.countOf t.depth0 "plain" == 431 && P134.countOf t.depth0 "value" == 171 &&
+    P134.countOf t.depth0 "key" == 29 && P134.countOf t.depth0 "bEntry" == 118 && P134.countOf t.depth0 "other" == 250)
+  -- Predicted the park under a depth-0 open to be a pending key/value mostly (≈ 150); it is `noPending`
+  -- (a line start or a closed construct) 206 / 247 — the opaque resume (`drop_ride`) arm is the minority.
+  check state "P134 park under a depth-0 open" (P134.countOf t.openPark "noPending" == 206 &&
+    P134.countOf t.openPark "pendingMapValue" == 18 && P134.countOf t.openPark "pendingBlock" == 15 &&
+    P134.countOf t.openPark "pendingProps" == 6 && P134.countOf t.openPark "pendingKey" == 2)
+end P134Test
+
 namespace P133Test
 open P133
 
@@ -18733,6 +18801,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P129Test.testOpenMaskShadow state
   P130Test.testCommaMaskShadow state
   P133Test.testKeyFoldShadow state
+  P134Test.testScanTraceDepth0 state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
