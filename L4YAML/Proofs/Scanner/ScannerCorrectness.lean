@@ -5113,19 +5113,15 @@ lemma dispatchContent_preserves_docStartLine (s : ScannerState) (c : Char) (s' :
           | (simp_all; done)
 
 
-/-! ### … and through the FLOW indicators (item 103)
+/-! ### The flow indicators and the flow `:` (item 103) — the stamp chain is gone (item 524)
 
-The stamp has to cross a whole flow COLLECTION to reach the close that may
-read it as a key (`k: [1]: 2`), so the five indicators and the `?` are walked
-here too.  None of them writes the field — `scanValue` is still its only
-writer, and inside a flow even that one preserves it. -/
-
-/-! ### … and the `:` that DECLINES to stamp (item 103)
-
-`scanValue` is the field's only writer, and inside a flow it writes what it
-read: `[a: b]`'s `:` is `[142] ns-flow-map-implicit-entry`'s, not `[194]`'s, so
-the stamp a block-context value indicator left outside the collection survives
-the collection's own entries. -/
+Item 103 walked the stamp (`implicitValueLine` / `docStartLine`) through the five flow indicators,
+the `?` and the flow `:` so a close could read the stamp a block-context `:` left outside the
+collection (`k: [1]: 2`).  Item 520 made the close DECIDE the stamp on its own state instead
+(`flowKeyPack_of_close`), the transport lost its consumer, and the 23 preservation lemmas that
+stood here were deleted on the owner's ruling (item 524).  Nothing in this module states the
+field's preservation across a flow step any more; the per-step preservation lemmas above (the
+content dispatcher's) remain for their own consumers. -/
 
 lemma collectDirectiveNameLoop_preserves_simpleKey (s : ScannerState) (name : String) (fuel : Nat) :
     (collectDirectiveNameLoop s name fuel).snd.simpleKey = s.simpleKey := by
