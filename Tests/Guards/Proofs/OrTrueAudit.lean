@@ -257,7 +257,7 @@ def expectedSummary : String :=
 -- Item 519: inrTrivial 497 → 495 — the two flow-close `h_vpack` `Or.inr trivial` arms are PAID from `vslot`
 -- (the `h_framesV` arms keep their `[]` cover decline); shrink-only.
 -- Item 519 (review round): inrTrivial 495 → 496, see the writers' row for `accum_flow_open_depth0`.
-  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=26 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=11 consumers: spent=104 relayed=13 unused=0 unreadable=36 writers=41 inrTrivial=496"
+  "positions=269 top=166 nested=103 True=193 PackAlt=67 PackAltG=9 modules=2 supply: paid=26 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=11 consumers: spent=104 relayed=13 unused=0 unreadable=36 writers=39 inrTrivial=484"
 
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`,
 -- so its `h_nodeS` / `h_nodeSF` positions read [31] / [32] (were [30] / [31]) — an index shift, not a
@@ -904,16 +904,14 @@ def expectedWriters : List String :=
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock ×26 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent ×23 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent ×12 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_block_pending ×40 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_block_pending ×41 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_content_on_noPending ×12 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×29 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_content_on_pendingBlock_indented ×28 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented ×29 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_content_pending ×78 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_content_pending ×75 (StreamAccum)",
   -- Item 519 (review round): ×67 → ×68 — the `pendingBlock` / `pendingMapValue` `vslot` fallback chains each end in one decline, the first draft's single decline gone (+2 −1).
-  "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×68 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_flow_open_depth0 ×67 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_step_flow ×4 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key ×1 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.colon_fires_props_key ×1 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.colon_open_map ×3 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.colon_open_map_explicit ×5 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.colon_open_map_implicit ×4 (StreamAccum)",
@@ -923,10 +921,10 @@ def expectedWriters : List String :=
   "L4YAML.Proofs.StreamAccum.content_dispatch_routed ×24 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.dedent_cover_of_landing ×3 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.deeperLandingResume ×2 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch ×15 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch ×8 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch ×13 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch ×6 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close ×3 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open ×8 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open ×7 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root ×9 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.flowOpen_marker ×2 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.flowOpen_stamp ×2 (StreamAccum)",
@@ -936,7 +934,7 @@ def expectedWriters : List String :=
   "L4YAML.Proofs.StreamAccum.markerctx_of_landing ×3 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.nodocctx_of_preprocess ×3 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.question_open_map ×6 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.resumectx_of_landing ×10 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.resumectx_of_landing ×9 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.scanValue_ok_park_facts ×1 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.suffixctx_of_landing ×3 (StreamAccum)"]
 

@@ -107,7 +107,7 @@ example {sc : ScannerState} {sp_start sp_p sp_scan : SurfPos}
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧
-      ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+      ((∀ nv ∈ L4YAML.Proofs.RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAlt sc) := by
@@ -116,7 +116,7 @@ example {sc : ScannerState} {sp_start sp_p sp_scan : SurfPos}
   -- a reader that wants only the widths projects past it.
   exact ⟨k, h_resF.imp (fun ⟨ks, h_lt, _, r⟩ => ⟨ks, h_lt, r⟩) id,
     -- Item 150: the value-line twin carries one too, and projects the same way.
-    h_resFV.elim (fun ⟨nv, ks, h_lt, _, r⟩ => Or.inl ⟨nv, ks, h_lt, r⟩) Or.inr⟩
+    h_resFV.elim (fun hall => Or.inl fun nv hm => let ⟨ks, h_lt, _, r⟩ := hall nv hm; ⟨ks, h_lt, r⟩) Or.inr⟩
 
 /-! ## §3 The landing's payment: the resumed context funds route and twin at once
 

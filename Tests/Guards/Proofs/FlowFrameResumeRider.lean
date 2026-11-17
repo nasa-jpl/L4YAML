@@ -110,7 +110,7 @@ example {sc : ScannerState} {kc : Nat} {sp_start sp_br sp_tok sp_key : SurfPos}
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
-    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
+    (tw108 : ∀ nv ∈ L4YAML.Proofs.RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e)
@@ -139,7 +139,7 @@ example {s0 : ScannerState} {sp_start sp_br sp_key : SurfPos} {kc : Nat}
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
-    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
+    (tw108 : ∀ nv ∈ L4YAML.Proofs.RegisterWitness.markedCols s0, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e) :
