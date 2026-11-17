@@ -348,10 +348,13 @@ if wants 4; then
 
   # The headline theorem-dependency SVGs the verification chapter embeds are
   # committed under doc/Doc/L4YAML/graphs/ (refreshed by PR from L4YAML.FGM);
-  # nothing is downloaded.  Verso renders without a missing image, so gate here.
+  # nothing is downloaded.  Verso renders without a missing image, so gate here;
+  # the CI-rendered import graph is required only when `dot` produced it above.
   say "Phase 4 — doc graph references"
   LOG="$LOGS/04-doc-graphs.log"
-  if lake run check-doc-graphs -- --strict > "$LOG" 2>&1; then
+  STRICT=""
+  [ -f doc/Doc/L4YAML/graphs/import-graph.svg ] && STRICT="--strict"
+  if lake run check-doc-graphs -- $STRICT > "$LOG" 2>&1; then
     tail -1 "$LOG"
     note 4 doc-graphs ok
   else
