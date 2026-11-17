@@ -5421,7 +5421,7 @@ def atCol0 (l : String) : Bool :=
   | [] => false
 
 def lines (input : String) : List String :=
-  (input.splitOn "\n").map fun l => if l.endsWith "\r" then String.mk l.toList.dropLast else l
+  (input.splitOn "\n").map fun l => if l.endsWith "\r" then String.ofList l.toList.dropLast else l
 
 /-- Document STARTS the stream grammar's marker structure counts over the first `fuel` lines
 (not node membership — see the section header): `broad = false` is the
@@ -11827,7 +11827,7 @@ def testDedentSurvivorChain (state : IO.Ref TestCollector) : IO Unit := do
             if m == kd then seqOwn := seqOwn + 1
             -- the sibling goes right AFTER the whole sequence: before the first later line that
             -- dedents to `m` or below and is not one of the sequence's own `-` lines at `kd`
-            let pad := String.mk (List.replicate m.toNat ' ')
+            let pad := String.ofList (List.replicate m.toNat ' ')
             let lines := input.splitOn "\n"
             let indentOf (l : String) : Int := (l.toList.takeWhile (· == ' ')).length
             let continues (l : String) : Bool :=
@@ -12096,7 +12096,7 @@ def testFlowCloseMarks (state : IO.Ref TestCollector) : IO Unit := do
               -- probed a completed mapping, not the flow close)
               let pre := String.fromUTF8! (input.toUTF8.extract 0 sc.offset)
               for m in closeMarks do
-                let pad := String.mk (List.replicate m ' ')
+                let pad := String.ofList (List.replicate m ' ')
                 if !(L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": v\n")).isOk then
                   rejV := rejV ++ [s!"{repr input}@{sP.line} m={m}"]
                 if !(L4YAML.TokenParser.parseYaml (pre ++ "\n" ++ pad ++ ": - w\n")).isOk then
@@ -12215,7 +12215,7 @@ def testSeqOuterFrames (state : IO.Ref TestCollector) : IO Unit := do
             checks := checks + 1
             -- the sibling goes right AFTER the whole sequence (P123's cut): before the first later
             -- line that dedents to `m` or below and is not one of the sequence's own `-` lines at `k`
-            let pad := String.mk (List.replicate m.toNat ' ')
+            let pad := String.ofList (List.replicate m.toNat ' ')
             let indentOf (l : String) : Int := (l.toList.takeWhile (· == ' ')).length
             let continues (l : String) : Bool :=
               l.toList.all (· == ' ') || indentOf l > m ||
