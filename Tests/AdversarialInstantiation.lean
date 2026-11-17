@@ -18445,6 +18445,124 @@ def testLeafBridge (state : IO.Ref TestCollector) : IO Unit := do
   checkM state s!"P100(viii) loop helpers: {L.runs} runs (4 loops × 4 fuels × 2 accumulators per leaf), {L.ok} with the span/landing clauses"
     (L.ok == L.runs) s!"{repr (L.bad.take 8)}"
 
+
+/-! ## Priority 133 (item 522): the key fold's faces — `KeyArm` into the T twins, the mask across `?` / `:`
+`accum_step_key_pairK` folds `accum_step_block`'s six `KeyArm` arms (item 499) onto `TFlowStackK`
+at every floor: `question` → `receiveQuestion`, `colonSep` / `colonQuestion` → `receiveColonSep` /
+`receiveColonQuestion`, the two `…Props…` arms → `receiveColonProps*` (`PropsRun.toT`), and
+`colonValue` by the T closure's right disjunct (item 509; `h_layout : ¬ KeyAfterValueLayout`
+selects it).  Shadows, at every in-flow `?` / `:` step: (i) the arm by indicator, pre-tail and
+held run; (ii) the `.question`-tail `:` is never ADJACENT to its `?` (the T twin's lead
+`SSeparateLines ∨ (eq ∧ tl.leadFree)` has `leadFree .question = false`, so `KeyArm.colonQuestion`'s
+`sp_prep = sp_flow` disjunct must be refutable — predicted 0 / 6); (iii) the mask faces
+`dispatchBlock_km_faces` needs: key stack unchanged, pending key cleared, offset monotone, the
+token prefix kept — EXACT at the `?` and the `.sep` / `.question` `:` (predicted 45), kept only off
+the pending key's slot and its successor at the `.value`-tail `:` (`scanValue_prefix_off_targets`,
+predicted 126 — REFUTED: 54 / 117, nine `.value`-tail `:` steps keep the prefix exactly because
+their pending key is not `possible` at the step, so `scanValue` inserts nothing; the lemma's
+off-targets guard covers both); (iv) the indents (the floor ceiling) ride the step; (v) the post tail's `kj` is the
+pre `.value kj`'s at `colonValue`, `false` elsewhere. -/
+namespace P133
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.StreamAccum (tailOf FrameTail)
+
+structure Tally where
+  inSteps : Nat := 0
+  arms : List (String × Nat) := []
+  questionColons : Nat := 0
+  adjacent : List String := []
+  sksOk : Nat := 0
+  possOk : Nat := 0
+  offOk : Nat := 0
+  prefixExact : Nat := 0
+  prefixOffOnly : Nat := 0
+  prefixBad : List String := []
+  indentsOk : Nat := 0
+  kjOk : Nat := 0
+  kjBad : List String := []
+  deriving Repr
+
+def lastReal (toks : List (L4YAML.Positioned L4YAML.YamlToken)) : Option (L4YAML.Positioned L4YAML.YamlToken) :=
+  (toks.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head?
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        match pushed.getLast? with
+        | none => pure ()
+        | some back =>
+          let k := kindOf back.val
+          if k != "key" && k != "value" then continue
+          if pre.flowLevel == 0 then continue
+          t := { t with inSteps := t.inSteps + 1 }
+          let run := L4YAML.Scanner.trailingPropertyRun pre.tokens
+          let arm := match k, tailOf pre.tokens, run.isEmpty with
+            | "key", .sep, true => "question"
+            | "value", .value _, true => "colonValue"
+            | "value", .sep, true => "colonSep"
+            | "value", .question, true => "colonQuestion"
+            | "value", .sep, false => "colonPropsSep"
+            | "value", .question, false => "colonPropsQuestion"
+            | _, _, _ => s!"other/{k}/{tailClass (tailOf pre.tokens)}/{run.isEmpty}"
+          t := { t with arms := bumpS t.arms arm }
+          -- (ii) adjacency of the `:` to its `?`
+          if arm == "colonQuestion" || arm == "colonPropsQuestion" then
+            t := { t with questionColons := t.questionColons + 1 }
+            match lastReal pre.tokens.toList with
+            | some q =>
+              if back.pos.line == q.pos.line && back.pos.col == q.pos.col + 1 then
+                t := { t with adjacent := t.adjacent ++ [s] }
+            | none => t := { t with adjacent := t.adjacent ++ [s!"{s}@no-?"] }
+          -- (iii) the mask faces
+          if post.simpleKeyStack == pre.simpleKeyStack then t := { t with sksOk := t.sksOk + 1 }
+          if !post.simpleKey.possible then t := { t with possOk := t.possOk + 1 }
+          if pre.offset ≤ post.offset then t := { t with offOk := t.offOk + 1 }
+          let idx := List.range pre.tokens.size
+          let exact := idx.all fun i => post.tokens[i]? == pre.tokens[i]?
+          let ti := pre.simpleKey.tokenIndex
+          let off := idx.all fun i =>
+            (pre.simpleKey.possible && (i == ti || i == ti + 1)) || post.tokens[i]? == pre.tokens[i]?
+          if exact then t := { t with prefixExact := t.prefixExact + 1 }
+          else if off then t := { t with prefixOffOnly := t.prefixOffOnly + 1 }
+          else t := { t with prefixBad := t.prefixBad ++ [s!"{s}@{arm}"] }
+          -- (iv) the ceiling rides
+          if post.indents == pre.indents then t := { t with indentsOk := t.indentsOk + 1 }
+          -- (v) the post tail's `kj`
+          let kj := match tailOf pre.tokens, tailOf post.tokens with
+            | .value a, .colon b => a == b
+            | _, .colon false => k == "value"
+            | _, .question => k == "key"
+            | _, _ => false
+          if kj then t := { t with kjOk := t.kjOk + 1 }
+          else t := { t with kjBad := t.kjBad ++ [s!"{s}@{arm}:{repr (tailOf post.tokens)}"] }
+    | _, _ => pure ()
+  return t
+
+end P133
+
+namespace P133Test
+open P133
+
+def testKeyFoldShadow (state : IO.Ref TestCollector) : IO Unit := do
+  let t := tally (P113.allRows ++ P118.extraRows)
+  checkM state
+    (s!"P133 the key fold's faces (predicted 171 steps; arms question 27 / colonValue 126 / colonSep 8 / colonQuestion 4 / colonPropsSep 4 / colonPropsQuestion 2; adjacent `?:` 0 / 6; mask faces 171 each; prefix exact 45 / off-targets 126; indents 171; kj 171): "
+      ++ s!"{t.inSteps} steps, arms {t.arms}; adjacent {t.adjacent.length} / {t.questionColons}; key stack {t.sksOk}, pending cleared {t.possOk}, offset {t.offOk}; prefix exact {t.prefixExact} / off-targets {t.prefixOffOnly} (bad: {t.prefixBad}); indents {t.indentsOk}; kj {t.kjOk} (bad: {t.kjBad})")
+    (t.inSteps == 171 &&
+      t.arms.all (fun (a, n) => (a, n) ∈ [("question", 27), ("colonValue", 126), ("colonSep", 8),
+        ("colonQuestion", 4), ("colonPropsSep", 4), ("colonPropsQuestion", 2)]) && t.arms.length == 6 &&
+      t.adjacent.isEmpty && t.questionColons == 6 &&
+      t.sksOk == 171 && t.possOk == 171 && t.offOk == 171 &&
+      t.prefixExact == 54 && t.prefixOffOnly == 117 && t.prefixBad.isEmpty &&
+      t.indentsOk == 171 && t.kjOk == 171 && t.kjBad.isEmpty)
+    s!"{t.inSteps} {t.arms} {t.adjacent} {t.sksOk} {t.possOk} {t.offOk} {t.prefixExact}/{t.prefixOffOnly} {t.prefixBad} {t.indentsOk} {t.kjOk} {t.kjBad}"
+
+end P133Test
+
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
   test9g state
@@ -18614,6 +18732,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P128Test.testCloseNestedColonShadow state
   P129Test.testOpenMaskShadow state
   P130Test.testCommaMaskShadow state
+  P133Test.testKeyFoldShadow state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",

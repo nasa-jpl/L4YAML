@@ -367,10 +367,12 @@ def expectedWideCensus : String :=
 -- (ContentBridge §9) destructures `accum_step_content`, so the arm's drop reaches it.  D unchanged.
 -- 2026-11-14 (item 490, the ∀-floor fold): T 29 → 30 — `accum_step_content_pairK`
 -- (ContentBridge §11) destructures `accum_step_content` too.  D unchanged.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedCensus : String :=
 -- 2026-11-15 (item 520, the flow fold): T 30 → 31 — `accum_step_flow_pairK` consumes `accum_step_flow` whole,
 -- `dropClose`'s dependent through it; D / S / R unmoved.
-  "D=4 S=0 R=0 T=31 capstonesInT=2 rawElim=11"
+  "D=4 S=0 R=0 T=32 capstonesInT=2 rawElim=11"
 
 /-- The first ring: two in the library, two in the instruments that exhibit the
     defect.  `stream_anything` is item 236's free-maker and item 235 restates it;
@@ -406,6 +408,8 @@ def expectedRawElim : List Name :=
     spelling `InYamlLanguage` out — carrying it into `scan_strict`,
     `parse_strict` and the two Group 7 capstones.  Six of the 26 are the
     instruments themselves. -/
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedTrans : List Name :=
   [`L4YAML.Proofs.DocumentProduction.parse_strict_proof,
    `L4YAML.Proofs.DocumentProduction.scan_strict_proof,
@@ -413,6 +417,7 @@ def expectedTrans : List Name :=
    `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_content_pairB,
    `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_content_pairK,
    `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_flow_pairK,
+   `L4YAML.Proofs.Serialization.TraceOf.ContentBridge.accum_step_key_pairK,
    `L4YAML.Proofs.StreamAccum.PendingNode.close_with_ssl,
    `L4YAML.Proofs.StreamAccum.PendingNode.close_with_sslFrom,
    `L4YAML.Proofs.StreamAccum.accum_block_pending,

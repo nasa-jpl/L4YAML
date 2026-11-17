@@ -912,7 +912,9 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
 -- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
 -- `KmSound`'s base-slot `∨ True` conjuncts.
-def expectedNoopTally : String := "theorems=6472 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+def expectedNoopTally : String := "theorems=6473 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
