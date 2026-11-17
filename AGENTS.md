@@ -109,6 +109,7 @@ The gates an item reports green, in the order they are cheap:
 lake run check-theorem-keyword       # Rule 7
 lake run check-import-closure        # no orphan modules (off the .olean headers)
 lake run check-reflection-index      # every Tests/Reflections/* is indexed
+lake run check-doc-graphs            # every graphs/*.svg the Verso doc embeds is in doc/Doc/L4YAML/graphs/
 lake run check-closure-log           # DOCS.md items ascend, dated, gaps declared
 lake run check-serialization-proofs  # serialization hygiene: kernel axiom profiles, sorry control, exact headline sets
 lake run check-gate-vocab            # gate names in prose resolve (pin: Tests/Guards/Proofs/GateVocabulary.lean)
