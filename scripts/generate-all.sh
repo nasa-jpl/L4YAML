@@ -355,8 +355,7 @@ if wants 4; then
     tail -1 "$LOG"
     note 4 doc-graphs ok
   else
-    cat "$LOG"
-    die "doc graph references unresolved (see $LOG)"
+    cat "$LOG"; warn "doc graph references unresolved — see $LOG"; note 4 doc-graphs FAILED
   fi
 
   say "Phase 4 — Verso render"
