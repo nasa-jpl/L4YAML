@@ -378,6 +378,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas over item 498's tree (as `HypothesisReaderCensus`).
 -- 2026-11-14 (item 508): READ 1487 → 1489 — `h_dead` READ (`.1` / `.2`) at the entry producers' root arms,
 -- as [[HypothesisReaderCensus]] reads the same move.
+-- 2026-11-17 (item 520): eta 608 → 611 — the three `FlowArm` carriers (`openBase.h_km` / `h_sp`, `openNest.h_klay`) read
+-- eta-expanded at their producers; composed over item 521's module tally.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -401,7 +403,7 @@ def expectedModuleTallyP : String :=
 -- Item 519: constants/decls −1 (the open's ladders), READ 1482 → 1479, RELAY 2725 → 2724, UNUSED 26 → 27 — `accum_step_flow`'s
 -- `h_mono` is read by nothing once the four flow-close `Classical.em` splits are PAID from `vslot`.
 -- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
-  "constants=1764 decls=1394 eta=608 FIELD=201 READ=1490 RELAY=2725 RETURN=174 UNUSED=27"
+  "constants=1764 decls=1394 eta=611 FIELD=201 READ=1490 RELAY=2725 RETURN=174 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

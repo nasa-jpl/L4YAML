@@ -536,6 +536,10 @@ def expectedPositions : List String :=
 
 -- 2026-10-30 (item 408): `flowKeyRoute_of_open[13].h_compact_pair` [DECLINE=1 SPLIT=2] → [DECLINE=2 SPLIT=1] — the
 -- `pendingMapValue` arm's fabricated singleton pair DECLINES under the projection face (the `-` arm still splits).
+-- 2026-11-17 (item 520, review round 1): `flowOpen_marker[4].h_doc` [PAY=2] → [PAY=3], `flowOpen_stamp[4].h_ivl` [FIELD=1 PAY=1] →
+-- [FIELD=2 PAY=1] — the T base mask's `KmSound` witness takes each open arm's OWN stamp / marker (the terms the arm
+-- hands `h_kpkg`), so the two stamped arms' payments reach a second consumer; inrTrivial and positions unmoved (the
+-- round replaced the +2 `Or.inr trivial` writers the PR first carried).
 def expectedSupply : List String :=
   ["L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[8].key relayed [DECLINE=1 SPLIT=1 VIA=6]",
   "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.mk[9].vslot relayed [DECLINE=5 SPLIT=3]",
@@ -664,9 +668,9 @@ def expectedSupply : List String :=
   "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[25].h_mapF unresolved [DECLINE=3 LOCAL(h_mapF176)=1]",
   "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[26].h_mapFV relayed [DECLINE=3 SPLIT=1]",
   "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] conclusion",
-  "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc paid [PAY=2]",
+  "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc paid [PAY=3]",
   "L4YAML.Proofs.StreamAccum.flowOpen_marker[ret] conclusion",
-  "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl paid [FIELD=1 PAY=1]",
+  "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl paid [FIELD=2 PAY=1]",
   "L4YAML.Proofs.StreamAccum.flowOpen_stamp[ret] conclusion",
   "L4YAML.Proofs.StreamAccum.indicator_open_map[22].h_sfx_land relayed [DECLINE=3 SPLIT=1]",
   "L4YAML.Proofs.StreamAccum.indicator_open_map[23].h_nodoc_land paid [DECLINE=3 PAY=1]",

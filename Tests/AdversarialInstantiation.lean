@@ -18325,6 +18325,11 @@ structure Tally where
   baseMap : Nat := 0
   landingBad : List String := []
   keyBad : List String := []
+  stampHolds : Nat := 0
+  stampFails : Nat := 0
+  stampNone : Nat := 0
+  markerHolds : Nat := 0
+  markerFails : Nat := 0
   colonOpens : Nat := 0
   colonCaseOk : Nat := 0
   colonKavl : Nat := 0
@@ -18352,7 +18357,16 @@ def tally (rows : List String) : Tally := Id.run do
             if post.offset != back.pos.offset + 1 then t := { t with landingBad := t.landingBad ++ [s] }
             -- `h_km`: the key the open stacked is possible.
             match post.simpleKeyStack.back? with
-            | some k => if !k.possible then t := { t with keyBad := t.keyBad ++ [s] }
+            | some k =>
+              if !k.possible then t := { t with keyBad := t.keyBad ++ [s] }
+              -- Priority 132 (item 520, review round 2): the base slot's stamp / marker read as PLAIN facts
+              -- (the owner asked for `KmSound`'s two `∨ True` conjuncts dropped) — on how many corpus base
+              -- opens does `implicitValueLine = some key.pos.line` hold, and `docStartLine = some key.pos.line`?
+              if post.implicitValueLine == some k.pos.line then t := { t with stampHolds := t.stampHolds + 1 }
+              else t := { t with stampFails := t.stampFails + 1 }
+              if post.docStartLine == some k.pos.line then t := { t with markerHolds := t.markerHolds + 1 }
+              else t := { t with markerFails := t.markerFails + 1 }
+              if post.implicitValueLine.isNone then t := { t with stampNone := t.stampNone + 1 }
             | none => t := { t with keyBad := t.keyBad ++ [s] }
           else
             match tailOf pre.tokens with
@@ -18377,7 +18391,8 @@ open P131
 def testOpenCarrierShadow (state : IO.Ref TestCollector) : IO Unit := do
   let c := tally (P113.allRows ++ P118.extraRows ++ P128.extraRows)
   checkM state
-    s!"P131 the fold's carriers: {c.baseOpens} base opens (seq {c.baseSeq} / map {c.baseMap}); landing = lit end (bad: {c.landingBad}); pushed key possible (bad: {c.keyBad}); .colon-tail nested opens {c.colonOpens}: key case {c.colonCaseOk} / layout {c.colonKavl} (bad: {c.colonBad})"
+    (s!"P131 the fold's carriers: {c.baseOpens} base opens (seq {c.baseSeq} / map {c.baseMap}); landing = lit end (bad: {c.landingBad}); pushed key possible (bad: {c.keyBad}); .colon-tail nested opens {c.colonOpens}: key case {c.colonCaseOk} / layout {c.colonKavl} (bad: {c.colonBad})"
+      ++ s!"\n  P132 the base slot's stamp / marker as PLAIN facts (predicted stamp ≈ 100 / 251, marker ≈ 3 / 251): stamp holds {c.stampHolds} / fails {c.stampFails} (implicitValueLine none at {c.stampNone}); marker holds {c.markerHolds} / fails {c.markerFails}")
     (c.baseOpens == 251 && c.baseSeq == 161 && c.baseMap == 90 && c.landingBad.isEmpty &&
       c.keyBad.isEmpty && c.colonOpens == 14 && c.colonCaseOk == 12 && c.colonKavl == 2 &&
       c.colonBad.isEmpty)

@@ -636,6 +636,8 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- Item 508 (2026-11-14): READ 1423 → 1425 — `h_dead` is now READ (`.1` / `.2`) at the two entry
 -- producers' root arms besides the routed root writes; no other column moved.
 -- Item 519 (review round): constants / decls +2 (the `pendingBlock` / `pendingMapValue` `vslot` writers' fallback `match`es, two auxiliaries), READ +8 (`h_kslotUp_old`, `h_explUp_mv`, `h_expl`'s route and third conjunct, the covers, read again).
+-- 2026-11-17 (item 520): eta 608 → 611 — the three `FlowArm` carriers (`openBase.h_km` / `h_sp`, `openNest.h_klay`) are read
+-- eta-expanded at their producers; composed over item 521's module tally.
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -644,7 +646,7 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1764 decls=1394 eta=608 FIELD=175 READ=1427 RELAY=2933 RETURN=55 \
+  "constants=1764 decls=1394 eta=611 FIELD=175 READ=1427 RELAY=2933 RETURN=55 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
