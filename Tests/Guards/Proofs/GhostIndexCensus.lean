@@ -289,7 +289,9 @@ it may only shrink. -/
 -- 2026-11-15 (item 520): `FlowArm` prop 42 → 46, scalar 10 → 15, or 8 → 9 — three carried obligations for the
 -- T fold (`openBase.h_km` / `.h_sp`, `openNest.h_klay`, the last a disjunction); ghost unmoved (74 after item 519): none is a ghost index; or 141 → 142.
 -- 2026-11-17 (item 520, review round 2): or 142 → 140 — `KmSound`'s two `P ∨ True` stamp / marker conjuncts deleted.
-def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=140"
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=139"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -325,7 +327,7 @@ def expectedTally : List String :=
    "ImplicitKeyPack: surface=16 state=1 prop=17 scalar=9 snapshot=0 ghost=4 or=7",
    "InlineResidue: surface=2 state=0 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "InteriorGap: surface=3 state=1 prop=30 scalar=11 snapshot=0 ghost=1 or=4",
-   "KeyArm: surface=19 state=2 prop=53 scalar=16 snapshot=0 ghost=0 or=18",
+   "KeyArm: surface=19 state=2 prop=53 scalar=16 snapshot=0 ghost=0 or=17",
    "KeyFloor: surface=0 state=0 prop=1 scalar=7 snapshot=0 ghost=0 or=0",
    "KeyFrames: surface=4 state=0 prop=5 scalar=3 snapshot=0 ghost=2 or=0",
    "KeyPackPunt: surface=0 state=1 prop=9 scalar=0 snapshot=0 ghost=0 or=0",
@@ -518,7 +520,6 @@ def expectedDisjuncts : List String :=
    "KeyArm.colonSep[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "KeyArm.colonSep[11].h_lead ∨ sp_prep = sp_flow",
    "KeyArm.colonQuestion[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
-   "KeyArm.colonQuestion[11].h_lead ∨ sp_prep = sp_flow",
    "KeyArm.colonPropsSep[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "KeyArm.colonPropsSep[14].h_lead ∨ sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree = true",
    "KeyArm.colonPropsSep[15].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",

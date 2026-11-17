@@ -382,6 +382,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- eta-expanded at their producers; composed over item 521's module tally.
 -- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
 -- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -405,7 +407,7 @@ def expectedModuleTallyP : String :=
 -- Item 519: constants/decls −1 (the open's ladders), READ 1482 → 1479, RELAY 2725 → 2724, UNUSED 26 → 27 — `accum_step_flow`'s
 -- `h_mono` is read by nothing once the four flow-close `Classical.em` splits are PAID from `vslot`.
 -- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
-  "constants=1762 decls=1392 eta=611 FIELD=201 READ=1485 RELAY=2703 RETURN=175 UNUSED=27"
+  "constants=1763 decls=1393 eta=611 FIELD=201 READ=1485 RELAY=2709 RETURN=175 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

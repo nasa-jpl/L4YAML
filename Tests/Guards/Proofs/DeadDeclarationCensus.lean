@@ -45,8 +45,11 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- +23 → roster 3,533 → 3,556, cluster-roots 1,459 → 1,476 — the `implicitValueLine` / `docStartLine` PRESERVATION chain that
 -- only fed `KmSound`'s stamp transport is now reached by nothing; re-pinned as read, the names listed in item 520 for the
 -- owner's ruling (delete or keep), as item 505's `seqEntryTail_cons` was.
+-- 2026-11-17 (item 522): population 14,229 → 14,237 (+8: ContentBridge §12's seven and `scanValue_km_transport`), unreached
+-- +7 class (A) 1,288 → 1,295 — the key fold is reached by no root until the 2c fold `scan_trace` consumes it (`scanValue_km_transport`
+-- is reached, by `accum_step_block`); roster 3,556 and cluster-roots unmoved.
 def expectedDeadCensus : String :=
-  "population=14229 thm=10204 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6526 thm=4614 A-campaign=1288 C-api=1405 D-test-only=277 B-roster=3556 thm=3195 cluster-roots=1476"
+  "population=14237 thm=10212 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6533 thm=4621 A-campaign=1295 C-api=1405 D-test-only=277 B-roster=3556 thm=3195 cluster-roots=1476"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

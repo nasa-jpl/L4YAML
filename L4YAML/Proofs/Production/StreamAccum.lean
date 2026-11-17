@@ -7200,7 +7200,10 @@ inductive KeyArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : S
       KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
   | colonQuestion (sp_prep sp_tok : SurfPos)
       (h_c : c = ':') (h_tail : tailOf sc.tokens = .question) (h_run : trailingPropertyRun sc.tokens = [])
-      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      -- Item 522: the `:` never abuts its `?` (`flowKeyFollowerOk`: the `?`'s `s-separate` is
+      -- mandatory), so the lead is `SSeparateLines` alone — the T twin's `(eq ∧ tl.leadFree)`
+      -- disjunct is empty at a `.question` tail, and the fold could not refute `eq` itself.
+      (h_lead : ∀ m, SSeparateLines m sp_flow sp_prep ∨ ¬ (m ≤ minContentIndentOf sc))
       (h_lit : GLit ':' sp_prep sp_tok)
       (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
       (h_tl : tailOf s'.tokens = .colon false) :
@@ -21440,6 +21443,67 @@ lemma KmSound.colon_transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat
     rw [h_sks] at hjs h_jposs ⊢
     exact h_above j hj hjs h_jposs
 
+
+/-- The mask across a flow `:` (`scanValue`): the key stack is kept, the pending key cleared, the
+    token prefix kept off the pending key's slot and its successor (the `key` insertion) — the
+    premises of `KmSound.colon_transport`, read off `scanValue_inFlow_facts` /
+    `scanValue_prefix_off_targets` and the preprocess facts.  Item 522: the `:` arms' twin of
+    `scanKey_km_transport`, so the key fold (`accum_step_key_pairK`) re-packs `KmSound` without
+    seeing the dispatcher's internals; `accum_step_block`'s `.value`-tail site calls it too. -/
+lemma scanValue_km_transport {sc s_prep s_ad s_v : ScannerState} {c : Char}
+    {km : Array Bool} {kc : Nat}
+    (h_flow : 0 < sc.flowLevel)
+    (h_inflow : s_ad.inFlow = true)
+    (h_km : KmSound sc km kc)
+    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_ad_def : (if s_prep.allowDirectives = true then
+        { s_prep with allowDirectives := false, documentEverStarted := true }
+      else s_prep) = s_ad)
+    (hsv : scanValue s_ad = .ok s_v) :
+    KmSound s_v km kc := by
+  have h_facts := scanValue_inFlow_facts h_inflow hsv
+  have h_ad_sk_eq : s_ad.simpleKey = s_prep.simpleKey := by
+    rw [← h_ad_def]; split <;> rfl
+  have h_ad_tk_eq : s_ad.tokens = s_prep.tokens := by
+    rw [← h_ad_def]; split <;> rfl
+  have h_ad_off_eq : s_ad.offset = s_prep.offset := by
+    rw [← h_ad_def]; split <;> rfl
+  have h_ad_sks_eq : s_ad.simpleKeyStack = s_prep.simpleKeyStack := by
+    rw [← h_ad_def]; split <;> rfl
+  obtain ⟨h_ppref, h_poff, h_psks⟩ := preprocess_inFlow_facts h_flow h_pre
+  have h_mono_ad : sc.tokens.size ≤ s_ad.tokens.size := by
+    obtain ⟨s_skip5, hsk5, hsave5⟩ := preprocess_inFlow_elim h_flow h_pre
+    have h_m5 := ScannerCorrectness.saveSimpleKey_tokens_monotonic s_skip5
+    have h_tk5 := ScannerCorrectness.skipToContent_preserves_tokens sc s_skip5 hsk5
+    rw [h_ad_tk_eq, hsave5]
+    rw [h_tk5] at h_m5
+    omega
+  have h_size_v : sc.tokens.size ≤ s_v.tokens.size := by
+    rw [h_facts.1, Array.size_push]
+    have h1 := ScannerCorrectness.scanValuePrepare_tokens_monotonic (scanValueClearKey s_ad)
+    have h2 := (scanValueClearKey_fields s_ad).2.2.2.2.2.2.2.1
+    rw [h2] at h1
+    omega
+  refine KmSound.colon_transport h_km ?_ ?_ h_size_v h_facts.2.2.2.1 ?_
+  · rw [h_facts.2.2.2.2.1, h_ad_sks_eq, h_psks]
+  · have h_off_v := h_facts.2.2.2.2.2.2.1
+    omega
+  · intro j hj h_guard
+    have h1 := h_ppref j hj
+    rw [← h_ad_tk_eq] at h1
+    rw [scanValue_prefix_off_targets h_inflow hsv j (by omega) ?_]
+    · exact h1
+    · intro h_poss_ad
+      rcases preprocess_pending_cases h_flow h_pre with h_eq5 | ⟨h_p5, h_ti5⟩
+      · have h_keq : s_ad.simpleKey = sc.simpleKey := h_ad_sk_eq.trans h_eq5
+        rw [h_keq]
+        rcases h_guard (by rw [← h_keq]; exact h_poss_ad) with h_g | h_g
+        · exact ⟨by omega, by omega⟩
+        · exact ⟨by omega, by omega⟩
+      · have h_tif : s_ad.simpleKey.tokenIndex = sc.tokens.size := by
+          rw [h_ad_sk_eq, h_ti5]
+        exact ⟨by omega, by omega⟩
+
 /-- The `:` step's grammar production: a `GLit ':'` from the cursor. -/
 lemma scanValue_prod (sc : ScannerState) (sp : SurfPos)
     (h_flow : sc.inFlow = true)
@@ -31819,28 +31883,8 @@ lemma accum_step_block (sc : ScannerState)
               have h2 := (scanValueClearKey_fields s_ad).2.2.2.2.2.2.2.1
               rw [h2] at h1
               omega
-            have h_km_v : KmSound s_v km kc := by
-              refine KmSound.colon_transport h_km
-                ?_ ?_ h_size_v h_facts.2.2.2.1 ?_
-              · rw [h_facts.2.2.2.2.1, h_ad_sks_eq, h_psks]
-              · have h_off_v := h_facts.2.2.2.2.2.2.1
-                omega
-              · intro j hj h_guard
-                have h1 := h_ppref j hj
-                rw [← h_ad_tk_eq] at h1
-                rw [scanValue_prefix_off_targets h_ad_inflow hsv j (by omega) ?_]
-                · exact h1
-                · intro h_poss_ad
-                  rcases preprocess_pending_cases (by omega) h_preprocess with
-                    h_eq5 | ⟨h_p5, h_ti5⟩
-                  · have h_keq : s_ad.simpleKey = sc.simpleKey := h_ad_sk_eq.trans h_eq5
-                    rw [h_keq]
-                    rcases h_guard (by rw [← h_keq]; exact h_poss_ad) with h_g | h_g
-                    · exact ⟨by omega, by omega⟩
-                    · exact ⟨by omega, by omega⟩
-                  · have h_tif : s_ad.simpleKey.tokenIndex = sc.tokens.size := by
-                      rw [h_ad_sk_eq, h_ti5]
-                    exact ⟨by omega, by omega⟩
+            have h_km_v : KmSound s_v km kc :=
+              scanValue_km_transport (by omega) h_ad_inflow h_km h_preprocess h_ad_def hsv
             -- **Item 164: the anchor across the `:` itself** — item 162's
             -- fifth shape, and the one arm item 163 measured as blocked.  The
             -- resolution write lands at the pending reservation's second slot;
@@ -32006,7 +32050,13 @@ lemma accum_step_block (sc : ScannerState)
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
                   nofun, hcorr_tok, h_bundle,
-                  fun _ => KeyArm.colonQuestion sp_prep sp_tok rfl (htl.trans h_tl_case) (trailingPropertyRun_eq_nil_of_sync h_sync_w) (fun m => (h_lead_at m).imp (fun h => h.imp id (fun h => h.1.trans h.2.symm)) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
+                  fun _ => KeyArm.colonQuestion sp_prep sp_tok rfl (htl.trans h_tl_case) (trailingPropertyRun_eq_nil_of_sync h_sync_w)
+                    (fun m => (h_lead_at m).imp (fun h => h.elim id (fun h => by
+                      have hcf := (h_free_w h.2 ':' (peek_eq_of_corr_same h_corr
+                        (by rw [← h.1]; exact hcorr_prep) (preprocess_some_peek h_preprocess))
+                        (by decide)).1
+                      rw [h_tl_case] at hcf
+                      exact absurd hcf Bool.false_ne_true)) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
               | props ha ht sp_p h_tail_p h_lead_p h_run_p h_anchor_p h_tag_p h_colon_p h_gate_p =>
                 have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
                 have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km (.colon false) sp_block sp_tok := by
