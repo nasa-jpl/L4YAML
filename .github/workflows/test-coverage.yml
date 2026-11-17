@@ -351,7 +351,7 @@ jobs:
           REPO="pass/L4YAML.FGM"
           TAG="graphs-latest"
           ASSET="theorem-graphs-headlines.tar.gz"
-          API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
+          API_URL="${GITHUB_API_URL}/repos/${REPO}/releases/tags/${TAG}"
 
           # Fetch the release metadata to find the asset download URL
           # (the field read is a Lean exe — Rule 9 — built here)
