@@ -18605,6 +18605,11 @@ def testScanTraceDepth0 (state : IO.Ref TestCollector) : IO Unit := do
   -- key+value 200 HELD; `-` 118 and structural ("other": markers, directives, block ends) 250 REFUTED.
   check state "P134 depth-0 arms" (P134.countOf t.depth0 "plain" == 431 && P134.countOf t.depth0 "value" == 171 &&
     P134.countOf t.depth0 "key" == 29 && P134.countOf t.depth0 "bEntry" == 118 && P134.countOf t.depth0 "other" == 250)
+  -- Every content kind pinned (review round 1): the 661 content steps are plain 431 + these 230.
+  check state "P134 depth-0 non-plain content" (P134.countOf t.depth0 "dq" == 30 && P134.countOf t.depth0 "sq" == 21 &&
+    P134.countOf t.depth0 "lit" == 16 && P134.countOf t.depth0 "fold" == 5 && P134.countOf t.depth0 "alias" == 9 &&
+    P134.countOf t.depth0 "anchor" == 54 && P134.countOf t.depth0 "tag" == 95 && P134.countOf t.depth0 "none" == 4 &&
+    t.depth0.length == 13 && (t.depth0.map (·.2)).sum == 1229)
   -- Predicted the park under a depth-0 open to be a pending key/value mostly (≈ 150); it is `noPending`
   -- (a line start or a closed construct) 206 / 247 — the opaque resume (`drop_ride`) arm is the minority.
   check state "P134 park under a depth-0 open" (P134.countOf t.openPark "noPending" == 206 &&
