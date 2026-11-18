@@ -18594,6 +18594,128 @@ def tally (rows : List String) : Tally := Id.run do
 
 end P134
 
+namespace P135
+/-! **Priority 135 (item 526, S3 slice (4) PR 16): the depth-0 stream prefix.**  The T twin of
+the S invariant's depth-0 stream half is the closed stream at the last document boundary plus a
+coupling of the scanner's tokens to it through `goOut`: the tokens' events so far are the closed
+trace followed by the open document's, and the pending `%TAG` handles are exactly the named
+handles scanned since the last `---`.  Before stating it: on every token prefix of every corpus
+row, (a) `goOut`'s pending state equals the named handles since the last `---` (newest first);
+(b) a `---` step pushes `blockEnd* ++ [documentStart]`, emits `beginDocument :: declareTag*` and
+clears the handles; (c) a `...` step pushes `blockEnd* ++ [documentEnd]`, emits `[endDocument]`
+and keeps the handles; (d) a `%` step pushes directives only, emits nothing and grows the handles
+by the named one; (e) an accepted row ends with no handle pending.
+Predictions (filed before the run): P1 (a) at every prefix; P2 ≈ 60 prefixes with a live handle;
+P3 ≈ 110 `---` steps, all shaped, ≈ 15 flushing a declaration; P4 ≈ 40 `...` steps, all shaped;
+P5 ≈ 30 `%` steps, all shaped, ≈ 15 named; P6 (e) on every accepted row — `%TAG !a! x⏎...` is
+refused; P7 `---⏎%TAG !a! x` is refused (directive after content). -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut isNamedHandle)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Tally where
+  rows : Nat := 0
+  prefixes : Nat := 0
+  pendingOk : Nat := 0
+  pendingLive : Nat := 0
+  docStart : Nat := 0
+  docStartShaped : Nat := 0
+  docStartDecls : Nat := 0
+  docEnd : Nat := 0
+  docEndShaped : Nat := 0
+  directive : Nat := 0
+  directiveShaped : Nat := 0
+  directiveNamed : Nat := 0
+  endClean : Nat := 0
+  endStale : List String := []
+  deriving Repr
+
+/-- The named `%TAG` handles since the last `---`, newest first — the spec of `goOut`'s state. -/
+def pendingOf (toks : List (L4YAML.Positioned L4YAML.YamlToken)) : List String :=
+  toks.foldl (fun p tk => match tk.val with
+    | .documentStart => []
+    | .tagDirective h _ => if isNamedHandle h then h :: p else p
+    | _ => p) []
+
+def isDirective : L4YAML.YamlToken → Bool
+  | .tagDirective _ _ | .versionDirective _ _ => true
+  | _ => false
+
+def hasTok (toks : List (L4YAML.Positioned L4YAML.YamlToken)) (f : L4YAML.YamlToken → Bool) : Bool :=
+  toks.any (f ·.val)
+
+/-- `blockEnd* ++ [k]`, after the step's silent `.placeholder` slots (P8: every step pushes them
+before its dispatch; `tokenEvent .placeholder = none`). -/
+def markerShaped (pushed : List (L4YAML.Positioned L4YAML.YamlToken)) (isK : L4YAML.YamlToken → Bool) : Bool :=
+  match (pushed.filter fun tk => !P119.isPlaceholder tk.val).reverse with
+  | last :: ends => isK last.val && ends.all (fun tk => tk.val matches .blockEnd)
+  | [] => false
+
+def extraRows : List String :=
+  ["%TAG !a! x\n...", "%TAG !a! x", "%TAG !a! x\n# c\n---\na", "%TAG !a! x\n---\n...\n%TAG !b! y\n---\n",
+   "---\n%TAG !a! x\n", "%YAML 1.2\n---\n", "a\n...\n%TAG !a! x\n---\nb", "%TAG ! x\n---\n", "%TAG !! x\n---\n",
+   "%TAG !a! x\n%TAG !b! y\n---\n!a!t 1", "...\n%TAG !a! x\n---\n"]
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      t := { t with rows := t.rows + 1 }
+      let mut lastToks : List (L4YAML.Positioned L4YAML.YamlToken) := []
+      for (pre, post) in sts do
+        let toks := post.tokens.toList
+        lastToks := toks
+        let (evPost, pPost) := goOut toks []
+        let (evPre, pPre) := goOut pre.tokens.toList []
+        let stepEv := evPost.drop evPre.length
+        let pushed := toks.drop pre.tokens.size
+        t := { t with prefixes := t.prefixes + 1,
+                      pendingOk := t.pendingOk + (if pPost == pendingOf toks then 1 else 0),
+                      pendingLive := t.pendingLive + (if pPost.isEmpty then 0 else 1) }
+        if hasTok pushed (· matches .documentStart) then
+          let decls : List Event := pPre.reverse.map (fun h => .declareTag h)
+          let shaped := markerShaped pushed (· matches .documentStart) && stepEv == .beginDocument :: decls && pPost.isEmpty
+          t := { t with docStart := t.docStart + 1, docStartShaped := t.docStartShaped + (if shaped then 1 else 0),
+                        docStartDecls := t.docStartDecls + (if decls.isEmpty then 0 else 1) }
+        else if hasTok pushed (· matches .documentEnd) then
+          let shaped := markerShaped pushed (· matches .documentEnd) && stepEv == [.endDocument] && pPost == pPre
+          t := { t with docEnd := t.docEnd + 1, docEndShaped := t.docEndShaped + (if shaped then 1 else 0) }
+        else if hasTok pushed isDirective then
+          let named := pushed.filterMap fun tk => match tk.val with
+            | .tagDirective h _ => if isNamedHandle h then some h else none
+            | _ => none
+          let shaped := pushed.all (fun tk => isDirective tk.val || P119.isPlaceholder tk.val) && stepEv.isEmpty && pPost == named.reverse ++ pPre
+          t := { t with directive := t.directive + 1, directiveShaped := t.directiveShaped + (if shaped then 1 else 0),
+                        directiveNamed := t.directiveNamed + named.length }
+      if (goOut lastToks []).2.isEmpty then t := { t with endClean := t.endClean + 1 }
+      else t := { t with endStale := t.endStale ++ [s] }
+    | _, _ => pure ()
+  return t
+
+end P135
+
+namespace P135Test
+def testStreamPrefix (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P135.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P135 {repr t}"
+  IO.println s!"P135 refused: {repr (P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone)}"
+  check state "P135 pending = named handles since the last ---, at every prefix" (t.pendingOk == t.prefixes)
+  check state "P135 --- steps all shaped" (t.docStartShaped == t.docStart)
+  check state "P135 ... steps all shaped" (t.docEndShaped == t.docEnd)
+  check state "P135 % steps all shaped" (t.directiveShaped == t.directive)
+  check state "P135 every accepted row ends with no pending handle" (t.endStale.isEmpty)
+  -- Scored: P1 HELD (2,688 / 2,688 prefixes); P2 REFUTED (42 live, not ≈ 60); P3 `---` 115 HELD, flushing
+  -- 38 not ≈ 15 REFUTED; P4 `...` 97 not ≈ 40 REFUTED; P5 `%` 60 not ≈ 30 REFUTED, 40 named not ≈ 15
+  -- REFUTED; P6 / P7 HELD (the three rows refused).  P8, unpredicted: every step pushes two silent
+  -- `.placeholder` slots before its dispatch, so a step's shape is read after them (not `blockEnd*` alone).
+  check state "P135 rows 627 / prefixes 2,688 / live handles 42" (t.rows == 627 && t.prefixes == 2688 && t.pendingLive == 42)
+  check state "P135 --- 115 (38 flush a declaration), ... 97, % 60 (40 named)"
+    (t.docStart == 115 && t.docStartDecls == 38 && t.docEnd == 97 && t.directive == 60 && t.directiveNamed == 40)
+  check state "P135 the three refused rows"
+    ((P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone) == ["%TAG !a! x\n...", "%TAG !a! x", "---\n%TAG !a! x\n"])
+end P135Test
+
 namespace P134Test
 def testScanTraceDepth0 (state : IO.Ref TestCollector) : IO Unit := do
   let t := P134.tally (P113.allRows ++ P118.extraRows)
@@ -18807,6 +18929,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P130Test.testCommaMaskShadow state
   P133Test.testKeyFoldShadow state
   P134Test.testScanTraceDepth0 state
+  P135Test.testStreamPrefix state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
