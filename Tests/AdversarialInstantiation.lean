@@ -18708,7 +18708,7 @@ open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
 open L4YAML.Surface
 
 /-- The empty stream, `[211]`'s `single` with nothing. -/
-def emptyStream (s : SurfPos) : TLYamlStream s s [] := .single _ _ _ _ [] [] (.nil _) (.none _) (.nil _)
+lemma emptyStream (s : SurfPos) : TLYamlStream s s [] := .single _ _ _ _ [] [] (.nil _) (.none _) (.nil _)
 
 example (s s₂ s' : SurfPos) (hm : SCDocumentEnd s s₂) (hc : SSLComments s₂ s') :
     TLYamlStream s s' [.endDocument] :=
