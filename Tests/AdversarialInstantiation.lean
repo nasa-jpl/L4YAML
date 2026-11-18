@@ -19,6 +19,7 @@ public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.TraceOf.Document
+public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
 public import L4YAML.Proofs.Serialization.RefLex
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
@@ -18693,6 +18694,92 @@ def tally (rows : List String) : Tally := Id.run do
     | _, _ => pure ()
   return t
 
+/-! **The routes' face (review round 1).**  `closeSuffix` / `explicitRoute` / `directiveRoute` and the two
+snocs are constructor assemblies; Rule 2 asks for their STATEMENTS at the boundary.  (i) Prop-level: each at the
+empty stream (`traceOf_empty`'s seed) and `TPlus_TLDirective_snoc` on a singleton run — the event list the
+statement promises is what the constructors produce, with `beginDocument` BEFORE the declarations and the body
+(the order `TLDirectiveDocument` fixes).  (ii) Executable, on every accepted corpus row: the trace splits into
+documents, each `beginDocument` is followed at once by its `declareTag`s in directive order (the handles named
+since the previous marker, textual order — `ed`'s order, not `p`'s), and `endDocument` appears once per `...`.
+Predictions: P9 ≈ 700 documents, 38 with declarations (P135's flush count), 97 `endDocument`s, every one shaped. -/
+section Routes
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Surface
+
+/-- The empty stream, `[211]`'s `single` with nothing. -/
+def emptyStream (s : SurfPos) : TLYamlStream s s [] := .single _ _ _ _ [] [] (.nil _) (.none _) (.nil _)
+
+example (s s₂ s' : SurfPos) (hm : SCDocumentEnd s s₂) (hc : SSLComments s₂ s') :
+    TLYamlStream s s' [.endDocument] :=
+  by simpa using TLYamlStream.closeSuffix (emptyStream s) hm hc
+example (s s₃ s' : SurfPos) (eb : List Event) (hde : SCDirectivesEnd s s₃) (hb : TLExplicitBody s₃ s' eb) :
+    TLYamlStream s s' (.beginDocument :: eb) :=
+  by simpa using TLYamlStream.explicitRoute (emptyStream s) (GStar.nil _) hde hb
+example (s s₃ s₄ s' : SurfPos) (ed eb : List Event) (hd : TPlus TLDirective s s₃ ed)
+    (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
+    TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
+  by simpa using TLYamlStream.directiveRoute (emptyStream s) (GStar.nil _) hd hde hb
+/-- Two documents: the second route lands AFTER the first's events, `endDocument` between them. -/
+example (s s₂ s₃ s₄ s₅ s' : SurfPos) (eb eb' : List Event) (hde : SCDirectivesEnd s s₂) (hb : TLExplicitBody s₂ s₃ eb)
+    (hm : SCDocumentEnd s₃ s₄) (hc : SSLComments s₄ s₅) (hde' : SCDirectivesEnd s₅ s₅) (hb' : TLExplicitBody s₅ s' eb') :
+    TLYamlStream s s' (.beginDocument :: eb ++ [.endDocument] ++ .beginDocument :: eb') :=
+  by simpa using TLYamlStream.explicitRoute (TLYamlStream.closeSuffix
+    (TLYamlStream.explicitRoute (emptyStream s) (GStar.nil _) hde hb) hm hc) (GStar.nil _) hde' hb'
+/-- A singleton run grows to two: the new directive's declaration comes LAST. -/
+example (s₁ s₂ s₃ : SurfPos) (e₁ e : List Event) (h₁ : TLDirective s₁ s₂ e₁) (hd : TLDirective s₂ s₃ e) :
+    TPlus TLDirective s₁ s₃ (e₁ ++ e) :=
+  by simpa using TPlus_TLDirective_snoc (TPlus.mk _ _ _ e₁ [] h₁ (TStar.nil _)) hd
+example (s₁ s₂ : SurfPos) (e : List Event) (hd : TLDirective s₁ s₂ e) : TStar TLDirective s₁ s₂ e :=
+  by simpa using TStar_snoc (TStar.nil s₁) hd
+end Routes
+
+structure RouteTally where
+  docs : Nat := 0
+  docsShaped : Nat := 0
+  withDecls : Nat := 0
+  endDocs : Nat := 0
+  deriving Repr
+
+/-- Split a trace into documents at each `beginDocument`; the head segment (a bare first document) has none. -/
+def splitDocs : List Event → List (List Event)
+  | [] => []
+  | ev =>
+    let rec go (acc : List Event) (rest : List Event) (out : List (List Event)) : List (List Event) :=
+      match rest with
+      | [] => (out ++ [acc]).filter (· ≠ [])
+      | .beginDocument :: tl => go [.beginDocument] tl (out ++ [acc])
+      | e :: tl => go (acc ++ [e]) tl out
+    go [] ev []
+
+/-- Per document (one that opens with `beginDocument`): the declarations follow it at once, in the textual
+order of the named `%TAG`s scanned since the previous marker. -/
+def routeShapes (rows : List String) : RouteTally := Id.run do
+  let mut t : RouteTally := {}
+  for s in rows do
+    match scanFiltered s with
+    | .ok toks =>
+      let ev := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents toks
+      -- the named handles before each `---`, textual order, by marker index
+      let mut decls : List (List String) := []
+      let mut cur : List String := []
+      for tk in toks.toList do
+        match tk.val with
+        | .tagDirective h _ => if isNamedHandle h then cur := cur ++ [h]
+        | .documentStart => decls := decls ++ [cur]; cur := []
+        | _ => pure ()
+      let docs := (splitDocs ev).filter fun d => d.head? == some .beginDocument
+      let mut i := 0
+      for d in docs do
+        let want := (decls.getD i []).map Event.declareTag
+        let got := (d.drop 1).takeWhile fun e => match e with | .declareTag _ => true | _ => false
+        t := { t with docs := t.docs + 1, docsShaped := t.docsShaped + (if got == want then 1 else 0),
+                      withDecls := t.withDecls + (if want.isEmpty then 0 else 1) }
+        i := i + 1
+      t := { t with endDocs := t.endDocs + (ev.filter (· == .endDocument)).length }
+    | .error _ => pure ()
+  return t
+
 end P135
 
 namespace P135Test
@@ -18712,6 +18799,14 @@ def testStreamPrefix (state : IO.Ref TestCollector) : IO Unit := do
   check state "P135 rows 627 / prefixes 2,688 / live handles 42" (t.rows == 627 && t.prefixes == 2688 && t.pendingLive == 42)
   check state "P135 --- 115 (38 flush a declaration), ... 97, % 60 (40 named)"
     (t.docStart == 115 && t.docStartDecls == 38 && t.docEnd == 97 && t.directive == 60 && t.directiveNamed == 40)
+  let r := P135.routeShapes (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P135 routes {repr r}"
+  check state "P135 routes: every document's declarations follow its beginDocument in directive order"
+    (r.docsShaped == r.docs)
+  -- Scored: P9 REFUTED on the document count — 115, not ≈ 700 (the guess was the row count; the shape is read on
+  -- the `---`-opened documents, P3's 115) — HELD on the rest: 38 with declarations, 97 `endDocument`s, 115 / 115 shaped.
+  check state "P135 routes: 115 documents, 38 carry declarations, 97 endDocuments"
+    (r.docs == 115 && r.withDecls == 38 && r.endDocs == 97)
   check state "P135 the three refused rows"
     ((P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone) == ["%TAG !a! x\n...", "%TAG !a! x", "---\n%TAG !a! x\n"])
 end P135Test
