@@ -18782,6 +18782,91 @@ def routeShapes (rows : List String) : RouteTally := Id.run do
 
 end P135
 
+namespace P136
+/-! **Priority 136 (item 527, S3 slice (4) PR 17): the depth-0 park against the `goOut` split.**  β's T twin
+of `PendingNode` at the four stream-level parks carries the open document's events and the pending handles;
+before stating it, every depth-0 corpus prefix is classed by its park (the last real token) and read against
+`goOut`: a live handle only under a `pendingDirective` park; `pendingDocStart` ends in `beginDocument ::
+declareTag*` with nothing pending; `pendingDocEnd` ends in `endDocument`; `noPending` has nothing pending.
+Predictions: P1 parks pendingDocStart 115 / pendingDocEnd 97 / pendingDirective 60 / noPending ≈ 250 /
+content ≈ 660 / the rest (`-`, `?`, `:`, props) ≈ 320; P2 every live handle (42) sits under `pendingDirective`;
+P3 the three marker shapes at every park of their class; P4 `noPending` never holds a handle. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+def parkOf (toks : List (L4YAML.Positioned L4YAML.YamlToken)) : String :=
+  match (toks.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head? with
+  | none => "noPending"
+  | some tk =>
+    match tk.val with
+    | .tagDirective _ _ | .versionDirective _ _ => "pendingDirective"
+    | .documentStart => "pendingDocStart"
+    | .documentEnd => "pendingDocEnd"
+    | .streamStart | .blockEnd | .flowSequenceEnd | .flowMappingEnd => "noPending"
+    | .scalar _ _ | .alias _ => "pendingContent"
+    | .anchor _ | .tag _ _ => "pendingProps"
+    | .blockEntry | .blockMappingStart | .blockSequenceStart => "pendingBlock"
+    | .key => "pendingKey"
+    | .value => "pendingMapValue"
+    | _ => "other"
+
+structure Tally where
+  parks : List (String × Nat) := []
+  liveUnderDirective : Nat := 0
+  liveElsewhere : Nat := 0
+  docStartShaped : Nat := 0
+  docEndShaped : Nat := 0
+  noPendingClean : Nat := 0
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (_, post) in sts do
+        if post.flowLevel == 0 then
+          let toks := post.tokens.toList
+          let k := parkOf toks
+          let (ev, p) := goOut toks []
+          t := { t with parks := bumpS t.parks k }
+          if !p.isEmpty then
+            if k == "pendingDirective" then t := { t with liveUnderDirective := t.liveUnderDirective + 1 }
+            else t := { t with liveElsewhere := t.liveElsewhere + 1 }
+          if k == "pendingDocStart" then
+            let tl := (ev.reverse.takeWhile fun e => match e with | .declareTag _ => true | _ => false).length
+            let ok := p.isEmpty && ((ev.reverse.drop tl).head? == some Event.beginDocument)
+            t := { t with docStartShaped := t.docStartShaped + (if ok then 1 else 0) }
+          if k == "pendingDocEnd" && ev.getLast? == some .endDocument then
+            t := { t with docEndShaped := t.docEndShaped + 1 }
+          if k == "noPending" && p.isEmpty then
+            t := { t with noPendingClean := t.noPendingClean + 1 }
+    | _, _ => pure ()
+  return t
+
+end P136
+
+namespace P136Test
+def testDepth0Parks (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P136.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P136 {repr t}"
+  check state "P136 a live handle sits only under a pendingDirective park" (t.liveElsewhere == 0)
+  check state "P136 pendingDocStart parks end in beginDocument :: declareTag* with nothing pending"
+    (t.docStartShaped == P134.countOf t.parks "pendingDocStart")
+  check state "P136 pendingDocEnd parks end in endDocument" (t.docEndShaped == P134.countOf t.parks "pendingDocEnd")
+  check state "P136 noPending parks hold no handle" (t.noPendingClean == P134.countOf t.parks "noPending")
+  -- Scored: P1 HELD within rounding — markers 115 / 97, `noPending` 250, content + props 516 + 150 = 666 (≈ 660),
+  -- the rest 118 + 29 + 171 = 318 (≈ 320); `pendingDirective` 61 against P135's 60 `%` steps (one row parks a
+  -- directive twice across a step that pushes none).  P2–P4 HELD (the four checks above).
+  check state "P136 depth-0 parks by class"
+    (P134.countOf t.parks "pendingContent" == 516 && P134.countOf t.parks "pendingProps" == 150 &&
+     P134.countOf t.parks "pendingMapValue" == 171 && P134.countOf t.parks "pendingBlock" == 118 &&
+     P134.countOf t.parks "pendingKey" == 29 && P134.countOf t.parks "pendingDocStart" == 115 &&
+     P134.countOf t.parks "pendingDocEnd" == 97 && P134.countOf t.parks "pendingDirective" == 61 &&
+     P134.countOf t.parks "noPending" == 250 && t.parks.length == 9)
+end P136Test
+
 namespace P135Test
 def testStreamPrefix (state : IO.Ref TestCollector) : IO Unit := do
   let t := P135.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -19025,6 +19110,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P133Test.testKeyFoldShadow state
   P134Test.testScanTraceDepth0 state
   P135Test.testStreamPrefix state
+  P136Test.testDepth0Parks state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
