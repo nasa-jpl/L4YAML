@@ -19,6 +19,7 @@ public import L4YAML.Proofs.Output.AlignProofs
 public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.TraceOf.Document
+public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
 public import L4YAML.Proofs.Serialization.RefLex
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
@@ -18594,6 +18595,222 @@ def tally (rows : List String) : Tally := Id.run do
 
 end P134
 
+namespace P135
+/-! **Priority 135 (item 526, S3 slice (4) PR 16): the depth-0 stream prefix.**  The T twin of
+the S invariant's depth-0 stream half is the closed stream at the last document boundary plus a
+coupling of the scanner's tokens to it through `goOut`: the tokens' events so far are the closed
+trace followed by the open document's, and the pending `%TAG` handles are exactly the named
+handles scanned since the last `---`.  Before stating it: on every token prefix of every corpus
+row, (a) `goOut`'s pending state equals the named handles since the last `---` (newest first);
+(b) a `---` step pushes `blockEnd* ++ [documentStart]`, emits `beginDocument :: declareTag*` and
+clears the handles; (c) a `...` step pushes `blockEnd* ++ [documentEnd]`, emits `[endDocument]`
+and keeps the handles; (d) a `%` step pushes directives only, emits nothing and grows the handles
+by the named one; (e) an accepted row ends with no handle pending.
+Predictions (filed before the run): P1 (a) at every prefix; P2 ≈ 60 prefixes with a live handle;
+P3 ≈ 110 `---` steps, all shaped, ≈ 15 flushing a declaration; P4 ≈ 40 `...` steps, all shaped;
+P5 ≈ 30 `%` steps, all shaped, ≈ 15 named; P6 (e) on every accepted row — `%TAG !a! x⏎...` is
+refused; P7 `---⏎%TAG !a! x` is refused (directive after content). -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut isNamedHandle)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Tally where
+  rows : Nat := 0
+  prefixes : Nat := 0
+  pendingOk : Nat := 0
+  pendingLive : Nat := 0
+  docStart : Nat := 0
+  docStartShaped : Nat := 0
+  docStartDecls : Nat := 0
+  docEnd : Nat := 0
+  docEndShaped : Nat := 0
+  directive : Nat := 0
+  directiveShaped : Nat := 0
+  directiveNamed : Nat := 0
+  endClean : Nat := 0
+  endStale : List String := []
+  deriving Repr
+
+/-- The named `%TAG` handles since the last `---`, newest first — the spec of `goOut`'s state. -/
+def pendingOf (toks : List (L4YAML.Positioned L4YAML.YamlToken)) : List String :=
+  toks.foldl (fun p tk => match tk.val with
+    | .documentStart => []
+    | .tagDirective h _ => if isNamedHandle h then h :: p else p
+    | _ => p) []
+
+def isDirective : L4YAML.YamlToken → Bool
+  | .tagDirective _ _ | .versionDirective _ _ => true
+  | _ => false
+
+def hasTok (toks : List (L4YAML.Positioned L4YAML.YamlToken)) (f : L4YAML.YamlToken → Bool) : Bool :=
+  toks.any (f ·.val)
+
+/-- `blockEnd* ++ [k]`, after the step's silent `.placeholder` slots (P8: every step pushes them
+before its dispatch; `tokenEvent .placeholder = none`). -/
+def markerShaped (pushed : List (L4YAML.Positioned L4YAML.YamlToken)) (isK : L4YAML.YamlToken → Bool) : Bool :=
+  match (pushed.filter fun tk => !P119.isPlaceholder tk.val).reverse with
+  | last :: ends => isK last.val && ends.all (fun tk => tk.val matches .blockEnd)
+  | [] => false
+
+def extraRows : List String :=
+  ["%TAG !a! x\n...", "%TAG !a! x", "%TAG !a! x\n# c\n---\na", "%TAG !a! x\n---\n...\n%TAG !b! y\n---\n",
+   "---\n%TAG !a! x\n", "%YAML 1.2\n---\n", "a\n...\n%TAG !a! x\n---\nb", "%TAG ! x\n---\n", "%TAG !! x\n---\n",
+   "%TAG !a! x\n%TAG !b! y\n---\n!a!t 1", "...\n%TAG !a! x\n---\n"]
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      t := { t with rows := t.rows + 1 }
+      let mut lastToks : List (L4YAML.Positioned L4YAML.YamlToken) := []
+      for (pre, post) in sts do
+        let toks := post.tokens.toList
+        lastToks := toks
+        let (evPost, pPost) := goOut toks []
+        let (evPre, pPre) := goOut pre.tokens.toList []
+        let stepEv := evPost.drop evPre.length
+        let pushed := toks.drop pre.tokens.size
+        t := { t with prefixes := t.prefixes + 1,
+                      pendingOk := t.pendingOk + (if pPost == pendingOf toks then 1 else 0),
+                      pendingLive := t.pendingLive + (if pPost.isEmpty then 0 else 1) }
+        if hasTok pushed (· matches .documentStart) then
+          let decls : List Event := pPre.reverse.map (fun h => .declareTag h)
+          let shaped := markerShaped pushed (· matches .documentStart) && stepEv == .beginDocument :: decls && pPost.isEmpty
+          t := { t with docStart := t.docStart + 1, docStartShaped := t.docStartShaped + (if shaped then 1 else 0),
+                        docStartDecls := t.docStartDecls + (if decls.isEmpty then 0 else 1) }
+        else if hasTok pushed (· matches .documentEnd) then
+          let shaped := markerShaped pushed (· matches .documentEnd) && stepEv == [.endDocument] && pPost == pPre
+          t := { t with docEnd := t.docEnd + 1, docEndShaped := t.docEndShaped + (if shaped then 1 else 0) }
+        else if hasTok pushed isDirective then
+          let named := pushed.filterMap fun tk => match tk.val with
+            | .tagDirective h _ => if isNamedHandle h then some h else none
+            | _ => none
+          let shaped := pushed.all (fun tk => isDirective tk.val || P119.isPlaceholder tk.val) && stepEv.isEmpty && pPost == named.reverse ++ pPre
+          t := { t with directive := t.directive + 1, directiveShaped := t.directiveShaped + (if shaped then 1 else 0),
+                        directiveNamed := t.directiveNamed + named.length }
+      if (goOut lastToks []).2.isEmpty then t := { t with endClean := t.endClean + 1 }
+      else t := { t with endStale := t.endStale ++ [s] }
+    | _, _ => pure ()
+  return t
+
+/-! **The routes' face (review round 1).**  `closeSuffix` / `explicitRoute` / `directiveRoute` and the two
+snocs are constructor assemblies; Rule 2 asks for their STATEMENTS at the boundary.  (i) Prop-level: each at the
+empty stream (`traceOf_empty`'s seed) and `TPlus_TLDirective_snoc` on a singleton run — the event list the
+statement promises is what the constructors produce, with `beginDocument` BEFORE the declarations and the body
+(the order `TLDirectiveDocument` fixes).  (ii) Executable, on every accepted corpus row: the trace splits into
+documents, each `beginDocument` is followed at once by its `declareTag`s in directive order (the handles named
+since the previous marker, textual order — `ed`'s order, not `p`'s), and `endDocument` appears once per `...`.
+Predictions: P9 ≈ 700 documents, 38 with declarations (P135's flush count), 97 `endDocument`s, every one shaped. -/
+section Routes
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Surface
+
+/-- The empty stream, `[211]`'s `single` with nothing. -/
+def emptyStream (s : SurfPos) : TLYamlStream s s [] := .single _ _ _ _ [] [] (.nil _) (.none _) (.nil _)
+
+example (s s₂ s' : SurfPos) (hm : SCDocumentEnd s s₂) (hc : SSLComments s₂ s') :
+    TLYamlStream s s' [.endDocument] :=
+  by simpa using TLYamlStream.closeSuffix (emptyStream s) hm hc
+example (s s₃ s' : SurfPos) (eb : List Event) (hde : SCDirectivesEnd s s₃) (hb : TLExplicitBody s₃ s' eb) :
+    TLYamlStream s s' (.beginDocument :: eb) :=
+  by simpa using TLYamlStream.explicitRoute (emptyStream s) (GStar.nil _) hde hb
+example (s s₃ s₄ s' : SurfPos) (ed eb : List Event) (hd : TPlus TLDirective s s₃ ed)
+    (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
+    TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
+  by simpa using TLYamlStream.directiveRoute (emptyStream s) (GStar.nil _) hd hde hb
+/-- Two documents: the second route lands AFTER the first's events, `endDocument` between them. -/
+example (s s₂ s₃ s₄ s₅ s' : SurfPos) (eb eb' : List Event) (hde : SCDirectivesEnd s s₂) (hb : TLExplicitBody s₂ s₃ eb)
+    (hm : SCDocumentEnd s₃ s₄) (hc : SSLComments s₄ s₅) (hde' : SCDirectivesEnd s₅ s₅) (hb' : TLExplicitBody s₅ s' eb') :
+    TLYamlStream s s' (.beginDocument :: eb ++ [.endDocument] ++ .beginDocument :: eb') :=
+  by simpa using TLYamlStream.explicitRoute (TLYamlStream.closeSuffix
+    (TLYamlStream.explicitRoute (emptyStream s) (GStar.nil _) hde hb) hm hc) (GStar.nil _) hde' hb'
+/-- A singleton run grows to two: the new directive's declaration comes LAST. -/
+example (s₁ s₂ s₃ : SurfPos) (e₁ e : List Event) (h₁ : TLDirective s₁ s₂ e₁) (hd : TLDirective s₂ s₃ e) :
+    TPlus TLDirective s₁ s₃ (e₁ ++ e) :=
+  by simpa using TPlus_TLDirective_snoc (TPlus.mk _ _ _ e₁ [] h₁ (TStar.nil _)) hd
+example (s₁ s₂ : SurfPos) (e : List Event) (hd : TLDirective s₁ s₂ e) : TStar TLDirective s₁ s₂ e :=
+  by simpa using TStar_snoc (TStar.nil s₁) hd
+end Routes
+
+structure RouteTally where
+  docs : Nat := 0
+  docsShaped : Nat := 0
+  withDecls : Nat := 0
+  endDocs : Nat := 0
+  deriving Repr
+
+/-- Split a trace into documents at each `beginDocument`; the head segment (a bare first document) has none. -/
+def splitDocs : List Event → List (List Event)
+  | [] => []
+  | ev =>
+    let rec go (acc : List Event) (rest : List Event) (out : List (List Event)) : List (List Event) :=
+      match rest with
+      | [] => (out ++ [acc]).filter (· ≠ [])
+      | .beginDocument :: tl => go [.beginDocument] tl (out ++ [acc])
+      | e :: tl => go (acc ++ [e]) tl out
+    go [] ev []
+
+/-- Per document (one that opens with `beginDocument`): the declarations follow it at once, in the textual
+order of the named `%TAG`s scanned since the previous marker. -/
+def routeShapes (rows : List String) : RouteTally := Id.run do
+  let mut t : RouteTally := {}
+  for s in rows do
+    match scanFiltered s with
+    | .ok toks =>
+      let ev := L4YAML.Proofs.Serialization.TokenEvents.tokenEvents toks
+      -- the named handles before each `---`, textual order, by marker index
+      let mut decls : List (List String) := []
+      let mut cur : List String := []
+      for tk in toks.toList do
+        match tk.val with
+        | .tagDirective h _ => if isNamedHandle h then cur := cur ++ [h]
+        | .documentStart => decls := decls ++ [cur]; cur := []
+        | _ => pure ()
+      let docs := (splitDocs ev).filter fun d => d.head? == some .beginDocument
+      let mut i := 0
+      for d in docs do
+        let want := (decls.getD i []).map Event.declareTag
+        let got := (d.drop 1).takeWhile fun e => match e with | .declareTag _ => true | _ => false
+        t := { t with docs := t.docs + 1, docsShaped := t.docsShaped + (if got == want then 1 else 0),
+                      withDecls := t.withDecls + (if want.isEmpty then 0 else 1) }
+        i := i + 1
+      t := { t with endDocs := t.endDocs + (ev.filter (· == .endDocument)).length }
+    | .error _ => pure ()
+  return t
+
+end P135
+
+namespace P135Test
+def testStreamPrefix (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P135.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P135 {repr t}"
+  IO.println s!"P135 refused: {repr (P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone)}"
+  check state "P135 pending = named handles since the last ---, at every prefix" (t.pendingOk == t.prefixes)
+  check state "P135 --- steps all shaped" (t.docStartShaped == t.docStart)
+  check state "P135 ... steps all shaped" (t.docEndShaped == t.docEnd)
+  check state "P135 % steps all shaped" (t.directiveShaped == t.directive)
+  check state "P135 every accepted row ends with no pending handle" (t.endStale.isEmpty)
+  -- Scored: P1 HELD (2,688 / 2,688 prefixes); P2 REFUTED (42 live, not ≈ 60); P3 `---` 115 HELD, flushing
+  -- 38 not ≈ 15 REFUTED; P4 `...` 97 not ≈ 40 REFUTED; P5 `%` 60 not ≈ 30 REFUTED, 40 named not ≈ 15
+  -- REFUTED; P6 / P7 HELD (the three rows refused).  P8, unpredicted: every step pushes two silent
+  -- `.placeholder` slots before its dispatch, so a step's shape is read after them (not `blockEnd*` alone).
+  check state "P135 rows 627 / prefixes 2,688 / live handles 42" (t.rows == 627 && t.prefixes == 2688 && t.pendingLive == 42)
+  check state "P135 --- 115 (38 flush a declaration), ... 97, % 60 (40 named)"
+    (t.docStart == 115 && t.docStartDecls == 38 && t.docEnd == 97 && t.directive == 60 && t.directiveNamed == 40)
+  let r := P135.routeShapes (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P135 routes {repr r}"
+  check state "P135 routes: every document's declarations follow its beginDocument in directive order"
+    (r.docsShaped == r.docs)
+  -- Scored: P9 REFUTED on the document count — 115, not ≈ 700 (the guess was the row count; the shape is read on
+  -- the `---`-opened documents, P3's 115) — HELD on the rest: 38 with declarations, 97 `endDocument`s, 115 / 115 shaped.
+  check state "P135 routes: 115 documents, 38 carry declarations, 97 endDocuments"
+    (r.docs == 115 && r.withDecls == 38 && r.endDocs == 97)
+  check state "P135 the three refused rows"
+    ((P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone) == ["%TAG !a! x\n...", "%TAG !a! x", "---\n%TAG !a! x\n"])
+end P135Test
+
 namespace P134Test
 def testScanTraceDepth0 (state : IO.Ref TestCollector) : IO Unit := do
   let t := P134.tally (P113.allRows ++ P118.extraRows)
@@ -18807,6 +19024,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P130Test.testCommaMaskShadow state
   P133Test.testKeyFoldShadow state
   P134Test.testScanTraceDepth0 state
+  P135Test.testStreamPrefix state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",

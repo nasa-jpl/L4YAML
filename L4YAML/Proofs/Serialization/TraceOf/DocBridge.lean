@@ -768,6 +768,140 @@ lemma scanDirective_trace (sc : ScannerState) (sp : SurfPos)
         · intro p; rw [goOut_nil, hnone]; rfl
         · intro sp'' _; rw [hnone, hnone]
 
+/-! ## The depth-0 stream prefix (item 526, α)
+
+The accumulation invariant's depth-0 stream half is the CLOSED stream at the last document
+boundary (`SLYamlStream sp_start sp_block`) — the open document's grammar is the pending node's,
+spent through its routes (`h_doc_route`, `h_dir_route`, `h_closable`).  Its T twin is therefore
+not a fourth walk of `[211]`'s arms but `TLYamlStream` at that boundary, coupled to the scanner's
+tokens through `goOut`: the tokens' events so far are the closed trace followed by the open
+document's events, and the pending `%TAG` handles are those scanned since the last `---`
+(Priority 135: 2,688 corpus prefixes).  The three structural leaves above are its steps, and the
+three `TLYamlStream` routes below are what the pending node's T twin (β) will spend. -/
+
+/-- The depth-0 stream so far: closed trace `ev_c` to `sp_block`, the open document's events
+`ev_o`, the handles `p` pending (newest first). -/
+structure TSLYamlStream (sp_start : SurfPos) (sc : ScannerState) (sp_block : SurfPos)
+    (ev_c ev_o : List Event) (p : List String) : Prop where
+  stream : TLYamlStream sp_start sp_block ev_c
+  events : goOut sc.tokens.toList [] = (ev_c ++ ev_o, p)
+
+namespace TSLYamlStream
+
+/-- The seed: `streamStart` is silent, nothing is open, nothing pending. -/
+lemma seed (input : List Char) (sc : ScannerState)
+    (h : ∀ t ∈ sc.tokens.toList, t.val = .streamStart) :
+    TSLYamlStream ⟨input, 0⟩ sc ⟨input, 0⟩ [] [] [] where
+  stream := .single _ _ _ _ [] [] (.nil _) (.none _) (.nil _)
+  events := by
+    have key : ∀ l : List (Positioned YamlToken), (∀ t ∈ l, t.val = .streamStart) →
+        goOut l [] = ([], []) := by
+      intro l hl
+      induction l with
+      | nil => rfl
+      | cons t ts ih =>
+        have ht := hl t (by simp)
+        rw [goOut_silent t (by rw [ht]; rfl) (by rw [ht]; simp) (by intro _ _; rw [ht]; simp)]
+        exact ih fun t' ht' => hl t' (by simp [ht'])
+    simpa using key _ h
+
+/-- With no handle pending, the tokens' events are the closed trace then the open one. -/
+lemma total {sp_start sp_block : SurfPos} {sc : ScannerState} {ev_c ev_o : List Event}
+    (h : TSLYamlStream sp_start sc sp_block ev_c ev_o []) :
+    tokenEvents sc.tokens = ev_c ++ ev_o := by
+  rw [tokenEvents_eq_goOut, h.events]; simp
+
+/-- A step that pushes `new`: the open events grow by `goOut`'s reading of `new` from `p`. -/
+lemma push {sp_start sp_block : SurfPos} {sc s' : ScannerState} {ev_c ev_o ev_n : List Event}
+    {p p' : List String} {new : List (Positioned YamlToken)}
+    (h : TSLYamlStream sp_start sc sp_block ev_c ev_o p)
+    (htoks : s'.tokens.toList = sc.tokens.toList ++ new)
+    (hnew : goOut new p = (ev_n, p')) :
+    TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_n) p' where
+  stream := h.stream
+  events := by rw [htoks, goOut_append, h.events]; simp [hnew]
+
+/-- `---`: the pending handles flush after `beginDocument`, in directive order, and clear. -/
+lemma docStart {sp_start sp_block : SurfPos} {sc : ScannerState} {ev_c ev_o : List Event}
+    {p : List String} (h : TSLYamlStream sp_start sc sp_block ev_c ev_o p)
+    (sp : SurfPos) (hcorr : ScannerSurfCorr sc sp)
+    (rest : List Char) (hchars : sp.chars = '-' :: '-' :: '-' :: rest) (hcol : sp.col = 0) :
+    ∃ sp', SCDirectivesEnd sp sp' ∧ ScannerSurfCorr (scanDocumentStart sc) sp' ∧
+      TSLYamlStream sp_start (scanDocumentStart sc) sp_block ev_c
+        (ev_o ++ .beginDocument :: p.reverse.map .declareTag) [] := by
+  obtain ⟨sp', ends, ds, hprod, hcorr', htoks, _, _, hgo⟩ :=
+    scanDocumentStart_trace sc sp hcorr rest hchars hcol
+  exact ⟨sp', hprod, hcorr', h.push (htoks.trans (List.append_assoc _ _ _)) (hgo p)⟩
+
+/-- `...`: `endDocument` is appended, the handles are untouched. -/
+lemma docEnd {sp_start sp_block : SurfPos} {sc : ScannerState} {ev_c ev_o : List Event}
+    {p : List String} (h : TSLYamlStream sp_start sc sp_block ev_c ev_o p)
+    (sp : SurfPos) (hcorr : ScannerSurfCorr sc sp)
+    (rest : List Char) (hchars : sp.chars = '.' :: '.' :: '.' :: rest) (hcol : sp.col = 0)
+    (s' : ScannerState) (hok : scanDocumentEnd sc = .ok s') :
+    ∃ sp', SCDocumentEnd sp sp' ∧ ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ [.endDocument]) p := by
+  obtain ⟨sp', ends, de, hprod, hcorr', htoks, _, _, hgo⟩ :=
+    scanDocumentEnd_trace sc sp hcorr rest hchars hcol s' hok
+  exact ⟨sp', hprod, hcorr', h.push (htoks.trans (List.append_assoc _ _ _)) (hgo p)⟩
+
+/-- `%`: no event; a named `%TAG` handle joins the pending list. -/
+lemma directive {sp_start sp_block : SurfPos} {sc : ScannerState} {ev_c ev_o : List Event}
+    {p : List String} (h : TSLYamlStream sp_start sc sp_block ev_c ev_o p)
+    (sp : SurfPos) (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '%')
+    (s' : ScannerState) (hok : scanDirective sc = .ok s') :
+    ∃ sp', ScannedDirective sp sp' ∧ ScannerSurfCorr s' sp' ∧
+      (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) ∧
+      TSLYamlStream sp_start s' sp_block ev_c ev_o ((declaredHandle (span sp sp')).toList ++ p) := by
+  obtain ⟨sp', hsd, hcorr', hbrk, new, htoks, hgo, _⟩ := scanDirective_trace sc sp hcorr hpeek s' hok
+  exact ⟨sp', hsd, hcorr', hbrk, by simpa using h.push htoks (hgo p)⟩
+
+end TSLYamlStream
+
+/-! ### The routes the pending node's T twin spends -/
+
+/-- `...` then `[79]`: the stream grows by `endDocument` (the twin of `pendingDocEnd`'s close). -/
+lemma TLYamlStream.closeSuffix {s s₁ s₂ s' : SurfPos} {e : List Event}
+    (h : TLYamlStream s s₁ e) (hm : SCDocumentEnd s₁ s₂) (hc : SSLComments s₂ s') :
+    TLYamlStream s s' (e ++ [.endDocument]) := by
+  simpa using TLYamlStream.suffixContinue s s₁ s' s' s' s' e [.endDocument] [] [] h
+    (TPlus.mk _ _ _ _ [] (TLDocumentSuffix.mk s₁ s₂ s' hm hc) (TStar.nil _))
+    (GStar.nil _) (TOpt.none _) (TStar.nil _)
+
+/-- `---` body: an explicit document continues the stream (the twin of `h_doc_route`). -/
+lemma TLYamlStream.explicitRoute {s s₁ s₂ s₃ s' : SurfPos} {e eb : List Event}
+    (h : TLYamlStream s s₁ e) (hp : GStar SLDocumentPrefix s₁ s₂)
+    (hde : SCDirectivesEnd s₂ s₃) (hb : TLExplicitBody s₃ s' eb) :
+    TLYamlStream s s' (e ++ .beginDocument :: eb) := by
+  simpa using TLYamlStream.implicitContinue s s₁ s₂ s' s' e (.beginDocument :: eb) [] h hp
+    (TOpt.some _ _ _ (TLAnyDocument.explicit _ _ _
+      (TLExplicitDocument.withContent s₂ s₃ s' eb hde hb))) (TStar.nil _)
+
+/-- Directives then `---` body: the declarations follow the `beginDocument` (the twin of
+`h_dir_route`). -/
+lemma TLYamlStream.directiveRoute {s s₁ s₂ s₃ s₄ s' : SurfPos} {e ed eb : List Event}
+    (h : TLYamlStream s s₁ e) (hp : GStar SLDocumentPrefix s₁ s₂)
+    (hd : TPlus TLDirective s₂ s₃ ed) (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
+    TLYamlStream s s' (e ++ .beginDocument :: ed ++ eb) := by
+  simpa using TLYamlStream.implicitContinue s s₁ s₂ s' s' e (.beginDocument :: ed ++ eb) [] h hp
+    (TOpt.some _ _ _ (TLAnyDocument.directive _ _ _
+      (TLDirectiveDocument.mk s₂ s₃ s₄ s' ed eb hd hde hb))) (TStar.nil _)
+
+/-- A star grows at its end. -/
+lemma TStar_snoc {P : TRel} {s₁ s₂ s₃ : SurfPos} {ed e : List Event}
+    (h : TStar P s₁ s₂ ed) (hd : P s₂ s₃ e) : TStar P s₁ s₃ (ed ++ e) := by
+  induction h with
+  | nil => simpa using TStar.cons _ _ _ e [] hd (TStar.nil _)
+  | cons _ _ _ e₁ e₂ h₁ _ ih =>
+    simpa [List.append_assoc] using TStar.cons _ _ _ e₁ (e₂ ++ e) h₁ (ih hd)
+
+/-- The run grows at its end (the twin of `GPlus_snoc`). -/
+lemma TPlus_TLDirective_snoc {s₁ s₂ s₃ : SurfPos} {ed e : List Event}
+    (h : TPlus TLDirective s₁ s₂ ed) (hd : TLDirective s₂ s₃ e) :
+    TPlus TLDirective s₁ s₃ (ed ++ e) := by
+  obtain ⟨_, sm, _, e₁, e₂, h₁, hs⟩ := h
+  exact (List.append_assoc e₁ e₂ e) ▸ TPlus.mk _ sm _ e₁ (e₂ ++ e) h₁ (TStar_snoc hs hd)
+
 end
 
 end L4YAML.Proofs.Serialization.TraceOf.DocBridge

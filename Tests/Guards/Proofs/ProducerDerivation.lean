@@ -291,7 +291,9 @@ def expectedCensus : String :=
 -- `accum_step_content_pairK` (ContentBridge §11) holds the wrapper's `h_corr` and re-packs its `SLYamlStream` conclusion.
 -- 2026-11-15 (item 520): corrHyp 622 → 623, streamConcl 90 → 91, both 43 → 44 — `accum_step_flow_pairK`
 -- (ContentBridge) takes `ScannerSurfCorr sc` and concludes `SLYamlStream`, as `accum_step_content_pairK` does.
-  "corrHyp=624 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+-- 2026-11-18 (item 526, α): corrHyp 624 → 627 — `TSLYamlStream.docStart` / `docEnd` / `directive` (DocBridge §α)
+-- read the surface through a `ScannerSurfCorr` hypothesis; they conclude the T stream prefix, not `SLYamlStream`.
+  "corrHyp=627 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=
