@@ -18979,6 +18979,92 @@ def walk (rows : List String) : Walk := Id.run do
 
 end P136
 
+namespace P137
+/-! **Priority 137 (item 528, S3 slice (4) PR 18): the depth-0 content step against `goOut`.**  β PR 2's content
+parks carry the node's events so far (`ev_o`); the producer reads them off `accum_step_content_trace_out`'s
+disjunction — a scalar (plain / quoted / block) emits nothing, `&` one `defineAnchor`, `*` one `useAlias`, `!` one
+`useTag` for a named handle and nothing for `!`, `!!`, a verbatim or an empty one.  Every depth-0 content step of
+every corpus row, by arm (the dispatch's first char) × the park before it, against its `goOut` events.
+Predictions: P1 661 steps (P134's content total); P2 events: 54 anchors → 54 `defineAnchor`, 9 aliases → 9
+`useAlias`, 95 tags → ≈ 70 `useTag` and ≈ 25 silent, the 503 scalars silent; P3 parks before: `noPending`
+≈ 200, `pendingDocStart` ≈ 90, `pendingProps` ≈ 140, `pendingBlock` ≈ 110, `pendingMapValue` ≈ 110, `pendingKey`
+≈ 10. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+/-- The arm by the token the dispatch pushed (P4, unpredicted: `pre.peek?` is the char BEFORE the step's
+preprocessing — the indent or separator — not the dispatch's; 79 steps misread until the arm was read off
+the token). -/
+def armOf : L4YAML.YamlToken → String
+  | .anchor _ => "anchor"
+  | .alias _ => "alias"
+  | .tag _ _ => "tag"
+  | .scalar _ .plain => "plain"
+  | .scalar _ .singleQuoted | .scalar _ .doubleQuoted => "quoted"
+  | .scalar _ _ => "blockScalar"
+  | _ => "other"
+
+def evShape : List Event → String
+  | [] => "silent"
+  | [.defineAnchor _] => "defineAnchor"
+  | [.useAlias _] => "useAlias"
+  | [.useTag _] => "useTag"
+  | _ => "other"
+
+structure Tally where
+  steps : Nat := 0
+  armEv : List (String × Nat) := []
+  parkArm : List (String × Nat) := []
+  parks : List (String × Nat) := []
+  deriving Repr
+
+def isContentPush (tk : L4YAML.YamlToken) : Bool :=
+  match tk with
+  | .scalar _ _ | .alias _ | .anchor _ | .tag _ _ => true
+  | _ => false
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        if pre.flowLevel == 0 && post.flowLevel == 0 then
+          let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
+          match pushed.reverse.head? with
+          | some back =>
+            if isContentPush back.val then
+              let arm := armOf back.val
+              let stepEv := (goOut post.tokens.toList []).1.drop (goOut pre.tokens.toList []).1.length
+              let park := P136.parkOf pre.tokens.toList
+              t := { t with steps := t.steps + 1, armEv := bumpS t.armEv s!"{arm}/{evShape stepEv}",
+                            parkArm := bumpS t.parkArm s!"{park}/{arm}", parks := bumpS t.parks park }
+          | none => pure ()
+    | _, _ => pure ()
+  return t
+
+end P137
+
+namespace P137Test
+def testContentStepEvents (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P137.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P137 {repr t}"
+  check state "P137 scalars silent, anchors define, aliases use, tags use-or-silent"
+    ((t.armEv.filter fun (k, _) => k == "plain/silent" || k == "quoted/silent" || k == "blockScalar/silent" ||
+        k == "anchor/defineAnchor" || k == "alias/useAlias" || k == "tag/useTag" || k == "tag/silent").length
+      == t.armEv.length)
+  -- Scored: P1 661 → 666 HELD within rounding (the eleven edge rows add five); P2 anchors 54 / aliases 9 /
+  -- scalars 507 silent HELD, tags REFUTED — 92 `useTag` and 4 silent, not ≈ 70 / ≈ 25 (nearly every corpus tag
+  -- names a handle); P3 the parks below; P4 unpredicted (the arm is the pushed token's, not `pre.peek?`'s).
+  check state "P137 666 depth-0 content steps by arm × event"
+    (t.steps == 666 && P134.countOf t.armEv "plain/silent" == 435 && P134.countOf t.armEv "quoted/silent" == 51 &&
+     P134.countOf t.armEv "blockScalar/silent" == 21 && P134.countOf t.armEv "anchor/defineAnchor" == 54 &&
+     P134.countOf t.armEv "tag/useTag" == 92 && P134.countOf t.armEv "tag/silent" == 4 &&
+     P134.countOf t.armEv "alias/useAlias" == 9 && t.armEv.length == 7)
+  IO.println s!"P137 parks {repr t.parks}"
+end P137Test
+
 namespace P136Test
 def testDepth0Parks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P136.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -19249,6 +19335,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P134Test.testScanTraceDepth0 state
   P135Test.testStreamPrefix state
   P136Test.testDepth0Parks state
+  P137Test.testContentStepEvents state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
