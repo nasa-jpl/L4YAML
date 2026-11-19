@@ -19067,6 +19067,13 @@ def testContentStepEvents (state : IO.Ref TestCollector) : IO Unit := do
      P134.countOf t.armEv "tag/useTag" == 92 && P134.countOf t.armEv "tag/silent" == 4 &&
      P134.countOf t.armEv "alias/useAlias" == 9 && t.armEv.length == 7)
   IO.println s!"P137 parks {repr t.parks}"
+  -- P3 REFUTED in the middle (≈ 200 / 90 / 140 / 110 / 110 / 10 predicted): the map value is the commonest
+  -- content park after the line start, not the entry.
+  check state "P137 the park before a depth-0 content step"
+    (P134.countOf t.parks "noPending" == 217 && P134.countOf t.parks "pendingMapValue" == 133 &&
+     P134.countOf t.parks "pendingProps" == 112 && P134.countOf t.parks "pendingDocStart" == 81 &&
+     P134.countOf t.parks "pendingBlock" == 77 && P134.countOf t.parks "pendingKey" == 19 &&
+     P134.countOf t.parks "pendingDocEnd" == 18 && P134.countOf t.parks "pendingContent" == 9 && t.parks.length == 8)
 end P137Test
 
 namespace P136Test
