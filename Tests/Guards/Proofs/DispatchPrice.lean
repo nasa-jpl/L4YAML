@@ -398,9 +398,12 @@ def expectedSteps : String :=
 -- a step's `.ok` hypothesis (`scanDocumentEnd` / `scanDirective`), as the leaves they re-read do.
 -- 2026-11-18 (item 527, β PR 1): stepHolders 2102 → 2104 — `TPendingNode.directive_step` / `docEnd_step` (StreamBridge)
 -- hold a step's `.ok` hypothesis (`scanDirective` / `scanDocumentEnd`), as the leaves they re-read do.
+-- 2026-11-19 (item 529, β PR 3): stepHolders 2105 → 2106, dispHolders 426 → 427, dispTwoCorr 32 → 33 —
+-- `TPendingNode.content_step_noPending` (StreamBridge) holds the content dispatch's `.ok` with both
+-- `ScannerSurfCorr` ends (`hcorr` / `hcorr'`), as `content_dispatch_routed` does; P7 predicted stepHolders only.
 -- 2026-11-19 (item 528, β PR 2): stepHolders 2104 → 2105 — `directive_step_noPending` / `_run` / `docEnd_step` (StreamBridge)
 -- hold a step's `.ok` hypothesis (three, were two).
-  "stepHolders=2105 dispHolders=426 dispTwoCorr=32 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
+  "stepHolders=2106 dispHolders=427 dispTwoCorr=33 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -415,8 +418,11 @@ def expectedSteps : String :=
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one TYPED and one SURF holder fewer on the ladder.
 -- 2026-11-12 (item 487, the K caller): TYPED edge 22 → 23 — `accum_step_content_traceK` holds the content dispatch
 -- typed through `ScannerSurfCorr` (item 389's reading); SURF/SPEC unmoved.
+-- 2026-11-19 (item 529, β PR 3): TYPED edge 23 → 24, chain 4 → 5 — `TPendingNode.content_step_noPending` holds
+-- `scanNextToken_dispatchContent … = .ok s'` typed at the preprocessed state, one more rung on the content dispatch's
+-- ladder (the twin of `content_dispatch_routed`); the per-function reading `scanNextToken_dispatchContent` decls 186 → 187.
 def expectedLadder : List String :=
-  ["TYPED edge=23 chain=4 fnEdge=4 fnChain=2",
+  ["TYPED edge=24 chain=5 fnEdge=4 fnChain=2",
    "SURF edge=20 chain=3 fnEdge=3 fnChain=2",
    "SPEC edge=4 chain=1 fnEdge=2 fnChain=1"]
 
@@ -506,7 +512,7 @@ def expectedPerFn : List String :=
   -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
   -- 2026-11-14: `StructDepth.DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling, items 446–452); 2026-11-15 (item 512): +1 / +1, `marks_step_content`
   -- 2026-11-15 (item 517): +1 / +1, `content_km_transport_any` (`TraceOf/ContentBridge`) — the T mask's content-step transport.
-  ["scanNextToken_dispatchContent decls=186 chain=1",
+  ["scanNextToken_dispatchContent decls=187 chain=1",
    "scanNextToken_preprocess decls=259 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's

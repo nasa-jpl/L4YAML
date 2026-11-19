@@ -59,8 +59,12 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-19 (item 528, β PR 2): population 14,242 → 14,249 (thm +2), unreached 6,538 → 6,545, A-campaign 1,323 → 1,330 —
 -- the five content-park constructors, `SSLComments_to_GStar_prefix` and the steps split by source park (five lemmas, were
 -- three), reached by no root until the fold spends them (class (A)); B-roster unmoved.
+-- 2026-11-19 (item 529, β PR 3): population 14249 → 14252, thm 10212 → 10215, unreached 6545 → 6548, A-campaign
+-- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
+-- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
+-- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
 def expectedDeadCensus : String :=
-  "population=14249 thm=10212 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6545 thm=4621 A-campaign=1330 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14252 thm=10215 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6548 thm=4624 A-campaign=1333 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

@@ -19050,6 +19050,122 @@ def tally (rows : List String) : Tally := Id.run do
 
 end P137
 
+namespace P138
+/-! **Priority 138 (item 529, S3 slice (4) PR 19): the content producer at the line-start park.**  β PR 3 is the T
+twin of `content_dispatch_routed`'s two sites — the depth-0 content step from a `noPending` park into
+`pendingContent` / `pendingProps` — so the refuter reads, at every depth-0 content step whose park before is
+`noPending`, the arm, the events before the step (`ev_c`, the closed trace), the step's own events, the handle
+list after, and the park the step lands in.  Predictions: P1 217 steps (P137's `noPending` count); P2 arms:
+scalars ≈ 160, anchor + tag ≈ 50, alias ≈ 5; P3 `ev_c = []` at ≈ 150 / 217 (the first document's line start),
+non-empty after a closed document; P4 the park after is `pendingContent` at every scalar / alias step and
+`pendingProps` at every anchor / tag step (217 / 217); P5 the handle list after is `[]` at 217 / 217. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+structure Tally where
+  steps : Nat := 0
+  arms : List (String × Nat) := []
+  evcEmpty : Nat := 0
+  evcNonEmpty : Nat := 0
+  parkAfterOk : Nat := 0
+  parkAfterBad : List String := []
+  handlesEmpty : Nat := 0
+  prefixOk : Nat := 0
+  deriving Repr
+
+def expectedPark (arm : String) : String :=
+  if arm == "anchor" || arm == "tag" then "pendingProps" else "pendingContent"
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        if pre.flowLevel == 0 && post.flowLevel == 0 && P136.parkOf pre.tokens.toList == "noPending" then
+          let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
+          match pushed.reverse.head? with
+          | some back =>
+            if P137.isContentPush back.val then
+              let arm := P137.armOf back.val
+              let (evPre, _) := goOut pre.tokens.toList []
+              let (evPost, pPost) := goOut post.tokens.toList []
+              let parkAfter := P136.parkOf post.tokens.toList
+              t := { t with steps := t.steps + 1, arms := bumpS t.arms arm,
+                            evcEmpty := t.evcEmpty + (if evPre.isEmpty then 1 else 0),
+                            evcNonEmpty := t.evcNonEmpty + (if evPre.isEmpty then 0 else 1),
+                            parkAfterOk := t.parkAfterOk + (if parkAfter == expectedPark arm then 1 else 0),
+                            parkAfterBad := if parkAfter == expectedPark arm then t.parkAfterBad
+                              else t.parkAfterBad ++ [s!"{arm}->{parkAfter}"],
+                            handlesEmpty := t.handlesEmpty + (if pPost.isEmpty then 1 else 0),
+                            prefixOk := t.prefixOk + (if evPost.take evPre.length == evPre then 1 else 0) }
+          | none => pure ()
+    | _, _ => pure ()
+  return t
+
+
+section Statements
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.StreamAccum (ContentArm)
+open L4YAML.Surface
+
+/-- The bare route at the first document: a node at the park is the stream's body, its events the stream's. -/
+example (sp_start sp sp_m : SurfPos) (ev : List Event) (h_nodoc : GStar SLDocumentPrefix sp_start sp)
+    (h : TBlockNode 0 .blockIn sp sp_m ev) : TLYamlStream sp_start sp_m ev :=
+  TLYamlStream.bareRoute h_nodoc sp_m ev h
+
+/-- The empty stream at its own start is a bare route (`[202]*` empty). -/
+example (sp sp_m : SurfPos) (ev : List Event) (h : TBlockNode 0 .blockIn sp sp_m ev) : TLYamlStream sp sp_m ev :=
+  TLYamlStream.bareRoute (GStar.nil sp) sp_m ev h
+
+/-- The content step from the first document's line start, closed over the step's landing: the stream's
+events are exactly the step's (`ev_c = []`, as P138 read at 216 / 217 steps). -/
+example (sp_start sp sp_prep sp_a sp_mid : SurfPos) (s_prep s' : ScannerState) (c : Char)
+    (hS : TSLYamlStream sp_start s_prep sp [] [] []) (h_nodoc : GStar SLDocumentPrefix sp_start sp)
+    (h_sep : SSeparateLines 0 sp sp_prep) (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s') (h_ssl : SSLComments sp_a sp_mid) :
+    ∃ ev_n, (goOut s'.tokens.toList []).1 = ev_n ∧ TLYamlStream sp_start sp_mid ev_n := by
+  obtain ⟨ev_n, hS', h_park⟩ := TPendingNode.content_step_noPending hS h_sep arm hcorr hcorr' hpeek h_depth
+    h_dispatch (fun sp_m ev h => by simpa using TLYamlStream.bareRoute h_nodoc sp_m ev h)
+  exact ⟨ev_n, by simpa using congrArg Prod.fst hS'.events,
+    by simpa using TPendingNode.close_with_ssl hS' h_park h_ssl⟩
+
+/-- After a closed document (`ev_c ≠ []`, P138's one step), the step's events follow the closed trace. -/
+example (sp_start sp sp_prep sp_a sp_mid : SurfPos) (s_prep s' : ScannerState) (c : Char) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp ev_c [] [])
+    (h_sep : SSeparateLines 0 sp sp_prep) (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_route : ∀ sp_m ev_n, TBlockNode 0 .blockIn sp sp_m ev_n → TLYamlStream sp_start sp_m (ev_c ++ ev_n))
+    (h_ssl : SSLComments sp_a sp_mid) :
+    ∃ ev_n, (goOut s'.tokens.toList []).1 = ev_c ++ ev_n ∧ TLYamlStream sp_start sp_mid (ev_c ++ ev_n) := by
+  obtain ⟨ev_n, hS', h_park⟩ := TPendingNode.content_step_noPending hS h_sep arm hcorr hcorr' hpeek h_depth
+    h_dispatch h_route
+  exact ⟨ev_n, congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' h_park h_ssl⟩
+end Statements
+
+end P138
+
+namespace P138Test
+def testContentProducerLineStart (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P138.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P138 {repr t}"
+  check state "P138 every noPending content step lands in the arm's park" (t.parkAfterOk == t.steps)
+  check state "P138 no handle survives a noPending content step" (t.handlesEmpty == t.steps)
+  check state "P138 the step appends to the closed trace" (t.prefixOk == t.steps)
+  check state "P138 217 line-start content steps (P1 held)" (t.steps == 217)
+  check state "P138 arms: plain 99 / anchor 34 / tag 47 / quoted 33 / block 4, no alias (P2 refuted)"
+    (t.arms.lookup "plain" == some 99 && t.arms.lookup "anchor" == some 34 && t.arms.lookup "tag" == some 47 &&
+     t.arms.lookup "quoted" == some 33 && t.arms.lookup "blockScalar" == some 4 && t.arms.lookup "alias" == none)
+  check state "P138 the closed trace is empty at 216 / 217 line-start steps (P3 refuted)"
+    (t.evcEmpty == 216 && t.evcNonEmpty == 1)
+end P138Test
+
 namespace P137Test
 def testContentStepEvents (state : IO.Ref TestCollector) : IO Unit := do
   let t := P137.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -19347,6 +19463,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P135Test.testStreamPrefix state
   P136Test.testDepth0Parks state
   P137Test.testContentStepEvents state
+  P138Test.testContentProducerLineStart state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
