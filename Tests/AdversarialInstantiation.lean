@@ -18859,6 +18859,7 @@ Predictions: P5 the coupling at every depth-0 prefix (1,507) and the total on ev
 section Statements
 open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
 open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.Serialization.EventsOf (declaredHandle)
 open L4YAML.Surface
 
 /-- `noPending` closes to the closed trace alone. -/
@@ -18900,7 +18901,7 @@ example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep : ScannerState) (e
       TSLYamlStream sp_start (scanDocumentStart s_prep) sp_block ev_c
         [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] ∧
       TPendingNode sp_start false sp_block sp' ev_c [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] :=
-  TPendingNode.docStart_step hS (.pendingDirective _ _ ev_c ["!b!", "!a!"] h_acc) h_pre hcorr rest hchars hcol
+  TPendingNode.docStart_step_run hS h_acc h_pre hcorr rest hchars hcol
 /-- `---` from a line-start park with no handle: `[beginDocument]` alone. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
@@ -18909,7 +18910,7 @@ example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Eve
     ∃ sp', ScannerSurfCorr (scanDocumentStart s_prep) sp' ∧
       TSLYamlStream sp_start (scanDocumentStart s_prep) sp ev_c [.beginDocument] [] ∧
       TPendingNode sp_start false sp sp' ev_c [.beginDocument] [] :=
-  TPendingNode.docStart_step hS (.noPending sp ev_c h_col) h_pre hcorr rest hchars hcol
+  TPendingNode.docStart_step_noPending hS h_col h_pre hcorr rest hchars hcol
 /-- `...` from a line-start park: `[endDocument]` open, the stream's end moved to the landing. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
@@ -18918,23 +18919,26 @@ example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List 
     (hok : scanDocumentEnd s_prep = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_prep ev_c [.endDocument] [] ∧
       TPendingNode sp_start false sp_prep sp' ev_c [.endDocument] [] :=
-  TPendingNode.docEnd_step hS (.noPending sp ev_c h_col) h_pre hcorr rest hchars hcol hok
-/-- `%` from a line-start park, then from the run it opened: the shape of both arms. -/
+  TPendingNode.docEnd_step hS h_col h_pre hcorr rest hchars hcol hok
+/-- `%` from a line-start park: the handle (if named) is the one pending, the run opens at the landing. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
     (h_pre : SSLComments sp sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
     (hpeek : s_prep.peek? = some '%') (hok : scanDirective s_prep = .ok s') :
-    ∃ sp_block' sp' p', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_block' ev_c [] p' ∧
-      TPendingNode sp_start true sp_block' sp' ev_c [] p' :=
-  TPendingNode.directive_step hS (.noPending sp ev_c h_col) h_pre hcorr hpeek hok
+    ∃ sp', ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_prep ev_c [] (declaredHandle (span sp_prep sp')).toList ∧
+      TPendingNode sp_start true sp_prep sp' ev_c [] (declaredHandle (span sp_prep sp')).toList :=
+  TPendingNode.directive_step_noPending hS h_col h_pre hcorr hpeek hok
+/-- `%` inside the run `%TAG !a!`: the new handle goes in FRONT (newest first). -/
 example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp_block ev_c [] ["!a!"])
     (h_acc : ∀ sp_mid, SSLComments sp_scan sp_mid → TPlus TLDirective sp_block sp_mid [.declareTag "!a!"])
     (h_pre : SSLComments sp_scan sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
     (hpeek : s_prep.peek? = some '%') (hok : scanDirective s_prep = .ok s') :
-    ∃ sp_block' sp' p', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_block' ev_c [] p' ∧
-      TPendingNode sp_start true sp_block' sp' ev_c [] p' :=
-  TPendingNode.directive_step hS (.pendingDirective _ _ ev_c ["!a!"] h_acc) h_pre hcorr hpeek hok
+    ∃ sp', ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c [] ((declaredHandle (span sp_prep sp')).toList ++ ["!a!"]) ∧
+      TPendingNode sp_start true sp_block sp' ev_c [] ((declaredHandle (span sp_prep sp')).toList ++ ["!a!"]) :=
+  TPendingNode.directive_step_run hS h_acc h_pre hcorr hpeek hok
 end Statements
 
 structure Walk where
@@ -18978,6 +18982,99 @@ def walk (rows : List String) : Walk := Id.run do
   return w
 
 end P136
+
+namespace P137
+/-! **Priority 137 (item 528, S3 slice (4) PR 18): the depth-0 content step against `goOut`.**  β PR 2's content
+parks carry the node's events so far (`ev_o`); the producer reads them off `accum_step_content_trace_out`'s
+disjunction — a scalar (plain / quoted / block) emits nothing, `&` one `defineAnchor`, `*` one `useAlias`, `!` one
+`useTag` for a named handle and nothing for `!`, `!!`, a verbatim or an empty one.  Every depth-0 content step of
+every corpus row, by arm (the dispatch's first char) × the park before it, against its `goOut` events.
+Predictions: P1 661 steps (P134's content total); P2 events: 54 anchors → 54 `defineAnchor`, 9 aliases → 9
+`useAlias`, 95 tags → ≈ 70 `useTag` and ≈ 25 silent, the 503 scalars silent; P3 parks before: `noPending`
+≈ 200, `pendingDocStart` ≈ 90, `pendingProps` ≈ 140, `pendingBlock` ≈ 110, `pendingMapValue` ≈ 110, `pendingKey`
+≈ 10. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+
+/-- The arm by the token the dispatch pushed (P4, unpredicted: `pre.peek?` is the char BEFORE the step's
+preprocessing — the indent or separator — not the dispatch's; 79 steps misread until the arm was read off
+the token). -/
+def armOf : L4YAML.YamlToken → String
+  | .anchor _ => "anchor"
+  | .alias _ => "alias"
+  | .tag _ _ => "tag"
+  | .scalar _ .plain => "plain"
+  | .scalar _ .singleQuoted | .scalar _ .doubleQuoted => "quoted"
+  | .scalar _ _ => "blockScalar"
+  | _ => "other"
+
+def evShape : List Event → String
+  | [] => "silent"
+  | [.defineAnchor _] => "defineAnchor"
+  | [.useAlias _] => "useAlias"
+  | [.useTag _] => "useTag"
+  | _ => "other"
+
+structure Tally where
+  steps : Nat := 0
+  armEv : List (String × Nat) := []
+  parkArm : List (String × Nat) := []
+  parks : List (String × Nat) := []
+  deriving Repr
+
+def isContentPush (tk : L4YAML.YamlToken) : Bool :=
+  match tk with
+  | .scalar _ _ | .alias _ | .anchor _ | .tag _ _ => true
+  | _ => false
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        if pre.flowLevel == 0 && post.flowLevel == 0 then
+          let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
+          match pushed.reverse.head? with
+          | some back =>
+            if isContentPush back.val then
+              let arm := armOf back.val
+              let stepEv := (goOut post.tokens.toList []).1.drop (goOut pre.tokens.toList []).1.length
+              let park := P136.parkOf pre.tokens.toList
+              t := { t with steps := t.steps + 1, armEv := bumpS t.armEv s!"{arm}/{evShape stepEv}",
+                            parkArm := bumpS t.parkArm s!"{park}/{arm}", parks := bumpS t.parks park }
+          | none => pure ()
+    | _, _ => pure ()
+  return t
+
+end P137
+
+namespace P137Test
+def testContentStepEvents (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P137.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P137 {repr t}"
+  check state "P137 scalars silent, anchors define, aliases use, tags use-or-silent"
+    ((t.armEv.filter fun (k, _) => k == "plain/silent" || k == "quoted/silent" || k == "blockScalar/silent" ||
+        k == "anchor/defineAnchor" || k == "alias/useAlias" || k == "tag/useTag" || k == "tag/silent").length
+      == t.armEv.length)
+  -- Scored: P1 661 → 666 HELD within rounding (the eleven edge rows add five); P2 anchors 54 / aliases 9 /
+  -- scalars 507 silent HELD, tags REFUTED — 92 `useTag` and 4 silent, not ≈ 70 / ≈ 25 (nearly every corpus tag
+  -- names a handle); P3 the parks below; P4 unpredicted (the arm is the pushed token's, not `pre.peek?`'s).
+  check state "P137 666 depth-0 content steps by arm × event"
+    (t.steps == 666 && P134.countOf t.armEv "plain/silent" == 435 && P134.countOf t.armEv "quoted/silent" == 51 &&
+     P134.countOf t.armEv "blockScalar/silent" == 21 && P134.countOf t.armEv "anchor/defineAnchor" == 54 &&
+     P134.countOf t.armEv "tag/useTag" == 92 && P134.countOf t.armEv "tag/silent" == 4 &&
+     P134.countOf t.armEv "alias/useAlias" == 9 && t.armEv.length == 7)
+  IO.println s!"P137 parks {repr t.parks}"
+  -- P3 REFUTED in the middle (≈ 200 / 90 / 140 / 110 / 110 / 10 predicted): the map value is the commonest
+  -- content park after the line start, not the entry.
+  check state "P137 the park before a depth-0 content step"
+    (P134.countOf t.parks "noPending" == 217 && P134.countOf t.parks "pendingMapValue" == 133 &&
+     P134.countOf t.parks "pendingProps" == 112 && P134.countOf t.parks "pendingDocStart" == 81 &&
+     P134.countOf t.parks "pendingBlock" == 77 && P134.countOf t.parks "pendingKey" == 19 &&
+     P134.countOf t.parks "pendingDocEnd" == 18 && P134.countOf t.parks "pendingContent" == 9 && t.parks.length == 8)
+end P137Test
 
 namespace P136Test
 def testDepth0Parks (state : IO.Ref TestCollector) : IO Unit := do
@@ -19249,6 +19346,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P134Test.testScanTraceDepth0 state
   P135Test.testStreamPrefix state
   P136Test.testDepth0Parks state
+  P137Test.testContentStepEvents state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
