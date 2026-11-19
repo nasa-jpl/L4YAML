@@ -18859,6 +18859,7 @@ Predictions: P5 the coupling at every depth-0 prefix (1,507) and the total on ev
 section Statements
 open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
 open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.Serialization.EventsOf (declaredHandle)
 open L4YAML.Surface
 
 /-- `noPending` closes to the closed trace alone. -/
@@ -18900,7 +18901,7 @@ example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep : ScannerState) (e
       TSLYamlStream sp_start (scanDocumentStart s_prep) sp_block ev_c
         [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] ∧
       TPendingNode sp_start false sp_block sp' ev_c [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] :=
-  TPendingNode.docStart_step hS (.pendingDirective _ _ ev_c ["!b!", "!a!"] h_acc) h_pre hcorr rest hchars hcol
+  TPendingNode.docStart_step_run hS h_acc h_pre hcorr rest hchars hcol
 /-- `---` from a line-start park with no handle: `[beginDocument]` alone. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
@@ -18909,7 +18910,7 @@ example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Eve
     ∃ sp', ScannerSurfCorr (scanDocumentStart s_prep) sp' ∧
       TSLYamlStream sp_start (scanDocumentStart s_prep) sp ev_c [.beginDocument] [] ∧
       TPendingNode sp_start false sp sp' ev_c [.beginDocument] [] :=
-  TPendingNode.docStart_step hS (.noPending sp ev_c h_col) h_pre hcorr rest hchars hcol
+  TPendingNode.docStart_step_noPending hS h_col h_pre hcorr rest hchars hcol
 /-- `...` from a line-start park: `[endDocument]` open, the stream's end moved to the landing. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
@@ -18918,23 +18919,26 @@ example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List 
     (hok : scanDocumentEnd s_prep = .ok s') :
     ∃ sp', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_prep ev_c [.endDocument] [] ∧
       TPendingNode sp_start false sp_prep sp' ev_c [.endDocument] [] :=
-  TPendingNode.docEnd_step hS (.noPending sp ev_c h_col) h_pre hcorr rest hchars hcol hok
-/-- `%` from a line-start park, then from the run it opened: the shape of both arms. -/
+  TPendingNode.docEnd_step hS h_col h_pre hcorr rest hchars hcol hok
+/-- `%` from a line-start park: the handle (if named) is the one pending, the run opens at the landing. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
     (h_pre : SSLComments sp sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
     (hpeek : s_prep.peek? = some '%') (hok : scanDirective s_prep = .ok s') :
-    ∃ sp_block' sp' p', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_block' ev_c [] p' ∧
-      TPendingNode sp_start true sp_block' sp' ev_c [] p' :=
-  TPendingNode.directive_step hS (.noPending sp ev_c h_col) h_pre hcorr hpeek hok
+    ∃ sp', ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_prep ev_c [] (declaredHandle (span sp_prep sp')).toList ∧
+      TPendingNode sp_start true sp_prep sp' ev_c [] (declaredHandle (span sp_prep sp')).toList :=
+  TPendingNode.directive_step_noPending hS h_col h_pre hcorr hpeek hok
+/-- `%` inside the run `%TAG !a!`: the new handle goes in FRONT (newest first). -/
 example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp_block ev_c [] ["!a!"])
     (h_acc : ∀ sp_mid, SSLComments sp_scan sp_mid → TPlus TLDirective sp_block sp_mid [.declareTag "!a!"])
     (h_pre : SSLComments sp_scan sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
     (hpeek : s_prep.peek? = some '%') (hok : scanDirective s_prep = .ok s') :
-    ∃ sp_block' sp' p', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_block' ev_c [] p' ∧
-      TPendingNode sp_start true sp_block' sp' ev_c [] p' :=
-  TPendingNode.directive_step hS (.pendingDirective _ _ ev_c ["!a!"] h_acc) h_pre hcorr hpeek hok
+    ∃ sp', ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c [] ((declaredHandle (span sp_prep sp')).toList ++ ["!a!"]) ∧
+      TPendingNode sp_start true sp_block sp' ev_c [] ((declaredHandle (span sp_prep sp')).toList ++ ["!a!"]) :=
+  TPendingNode.directive_step_run hS h_acc h_pre hcorr hpeek hok
 end Statements
 
 structure Walk where
