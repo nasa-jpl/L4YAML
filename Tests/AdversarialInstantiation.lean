@@ -20,6 +20,7 @@ public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
 public import L4YAML.Proofs.Serialization.TraceOf.Leaves
 public import L4YAML.Proofs.Serialization.TraceOf.Document
 public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
+public import L4YAML.Proofs.Serialization.TraceOf.StreamBridge
 public import L4YAML.Proofs.Serialization.RefLex
 public import L4YAML.Proofs.Serialization.SerializationWellFormed
 public import L4YAML.Proofs.Serialization.TokenEvents
@@ -18845,6 +18846,137 @@ def tally (rows : List String) : Tally := Id.run do
     | _, _ => pure ()
   return t
 
+/-! **The statements' face (review round 1).**  (i) Prop-level, scanner witnesses abstract and event lists
+CONCRETE: `close_with_ssl` at the three `false` parks (the trace it promises for each), `total` at a
+`pendingDocStart` park, `docStart_step` from a two-handle run (the order flips: `p` newest first, the
+declarations in directive order), `docEnd_step` from `noPending`, `directive_step` from both parks (the shape).
+(ii) Executable, the pair's STATE MACHINE by the statements' rules — `%`: `p := named.reverse ++ p`; `---`: the
+open document closes into `ev_c`, `ev_o := beginDocument :: p.reverse.map declareTag`, `p := []`; `...`: the open
+closes, `ev_o := [endDocument]`; a content step: `ev_o := ev_o ++ its events` (the content parks, the next PR) —
+run over every depth-0 step of every corpus row and read against `TSLYamlStream.events` (`goOut toks [] =
+(ev_c ++ ev_o, p)`) at every prefix, and against `total` (`tokenEvents = ev_c ++ ev_o`) at the end.
+Predictions: P5 the coupling at every depth-0 prefix (1,507) and the total on every accepted row (627). -/
+section Statements
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Surface
+
+/-- `noPending` closes to the closed trace alone. -/
+example (sp_start sp sp_mid : SurfPos) (sc : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start sc sp ev_c [] []) (h_col : sp.col = 0) (h_ssl : SSLComments sp sp_mid) :
+    TLYamlStream sp_start sp_mid ev_c := by
+  simpa using TPendingNode.close_with_ssl hS (.noPending sp ev_c h_col) h_ssl
+/-- `pendingDocEnd` closes with `endDocument` last. -/
+example (sp_start sp_block sp_scan sp_mid : SurfPos) (sc : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start sc sp_block ev_c [.endDocument] []) (hm : SCDocumentEnd sp_block sp_scan)
+    (h_ssl : SSLComments sp_scan sp_mid) :
+    TLYamlStream sp_start sp_mid (ev_c ++ [.endDocument]) :=
+  TPendingNode.close_with_ssl hS (.pendingDocEnd _ _ ev_c [] hm) h_ssl
+/-- `pendingDocStart` with two declarations closes on the empty body: `beginDocument` first, `!a!` before `!b!`. -/
+example (sp_start sp_block sp_scan sp_mid : SurfPos) (sc : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start sc sp_block ev_c [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [])
+    (h_route : ∀ sp_end eb, TLExplicitBody sp_scan sp_end eb →
+      TLYamlStream sp_start sp_end (ev_c ++ .beginDocument :: [.declareTag "!a!", .declareTag "!b!"] ++ eb))
+    (h_ssl : SSLComments sp_scan sp_mid) :
+    TLYamlStream sp_start sp_mid (ev_c ++ [.beginDocument, .declareTag "!a!", .declareTag "!b!"]) :=
+  TPendingNode.close_with_ssl hS (.pendingDocStart _ _ ev_c _ h_route) h_ssl
+/-- `total`: the tokens' events are the stream's trace. -/
+example (sp_start sp_block sp_scan sp_mid : SurfPos) (sc : ScannerState) (ev_c ed : List Event)
+    (hS : TSLYamlStream sp_start sc sp_block ev_c (.beginDocument :: ed) [])
+    (h_route : ∀ sp_end eb, TLExplicitBody sp_scan sp_end eb →
+      TLYamlStream sp_start sp_end (ev_c ++ .beginDocument :: ed ++ eb))
+    (h_ssl : SSLComments sp_scan sp_mid) :
+    TLYamlStream sp_start sp_mid (L4YAML.Proofs.Serialization.TokenEvents.tokenEvents sc.tokens) :=
+  TPendingNode.total hS (.pendingDocStart _ _ ev_c ed h_route) h_ssl
+/-- `---` after the run `%TAG !a!` then `%TAG !b!` (`p = ["!b!", "!a!"]`, newest first): the open events are
+`beginDocument, declareTag "!a!", declareTag "!b!"` — the order flips back to the directives'. -/
+example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp_block ev_c [] ["!b!", "!a!"])
+    (h_acc : ∀ sp_mid, SSLComments sp_scan sp_mid →
+      TPlus TLDirective sp_block sp_mid [.declareTag "!a!", .declareTag "!b!"])
+    (h_pre : SSLComments sp_scan sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (rest : List Char) (hchars : sp_prep.chars = '-' :: '-' :: '-' :: rest) (hcol : sp_prep.col = 0) :
+    ∃ sp', ScannerSurfCorr (scanDocumentStart s_prep) sp' ∧
+      TSLYamlStream sp_start (scanDocumentStart s_prep) sp_block ev_c
+        [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] ∧
+      TPendingNode sp_start false sp_block sp' ev_c [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] :=
+  TPendingNode.docStart_step hS (.pendingDirective _ _ ev_c ["!b!", "!a!"] h_acc) h_pre hcorr rest hchars hcol
+/-- `---` from a line-start park with no handle: `[beginDocument]` alone. -/
+example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
+    (h_pre : SSLComments sp sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (rest : List Char) (hchars : sp_prep.chars = '-' :: '-' :: '-' :: rest) (hcol : sp_prep.col = 0) :
+    ∃ sp', ScannerSurfCorr (scanDocumentStart s_prep) sp' ∧
+      TSLYamlStream sp_start (scanDocumentStart s_prep) sp ev_c [.beginDocument] [] ∧
+      TPendingNode sp_start false sp sp' ev_c [.beginDocument] [] :=
+  TPendingNode.docStart_step hS (.noPending sp ev_c h_col) h_pre hcorr rest hchars hcol
+/-- `...` from a line-start park: `[endDocument]` open, the stream's end moved to the landing. -/
+example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
+    (h_pre : SSLComments sp sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (rest : List Char) (hchars : sp_prep.chars = '.' :: '.' :: '.' :: rest) (hcol : sp_prep.col = 0)
+    (hok : scanDocumentEnd s_prep = .ok s') :
+    ∃ sp', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_prep ev_c [.endDocument] [] ∧
+      TPendingNode sp_start false sp_prep sp' ev_c [.endDocument] [] :=
+  TPendingNode.docEnd_step hS (.noPending sp ev_c h_col) h_pre hcorr rest hchars hcol hok
+/-- `%` from a line-start park, then from the run it opened: the shape of both arms. -/
+example (sp_start sp sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
+    (h_pre : SSLComments sp sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (hpeek : s_prep.peek? = some '%') (hok : scanDirective s_prep = .ok s') :
+    ∃ sp_block' sp' p', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_block' ev_c [] p' ∧
+      TPendingNode sp_start true sp_block' sp' ev_c [] p' :=
+  TPendingNode.directive_step hS (.noPending sp ev_c h_col) h_pre hcorr hpeek hok
+example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep s' : ScannerState) (ev_c : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp_block ev_c [] ["!a!"])
+    (h_acc : ∀ sp_mid, SSLComments sp_scan sp_mid → TPlus TLDirective sp_block sp_mid [.declareTag "!a!"])
+    (h_pre : SSLComments sp_scan sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (hpeek : s_prep.peek? = some '%') (hok : scanDirective s_prep = .ok s') :
+    ∃ sp_block' sp' p', ScannerSurfCorr s' sp' ∧ TSLYamlStream sp_start s' sp_block' ev_c [] p' ∧
+      TPendingNode sp_start true sp_block' sp' ev_c [] p' :=
+  TPendingNode.directive_step hS (.pendingDirective _ _ ev_c ["!a!"] h_acc) h_pre hcorr hpeek hok
+end Statements
+
+structure Walk where
+  rows : Nat := 0
+  prefixes : Nat := 0
+  coupled : Nat := 0
+  totalOk : Nat := 0
+  deriving Repr
+
+/-- The pair's state (`ev_c`, `ev_o`, `p`) by the statements' rules, against `goOut` at every depth-0 prefix
+and `tokenEvents` at the end. -/
+def walk (rows : List String) : Walk := Id.run do
+  let mut w : Walk := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok final, some sts =>
+      w := { w with rows := w.rows + 1 }
+      let mut evC : List Event := []
+      let mut evO : List Event := []
+      let mut p : List String := []
+      for (pre, post) in sts do
+        let pushed := post.tokens.toList.drop pre.tokens.size
+        let stepEv := (goOut post.tokens.toList []).1.drop (goOut pre.tokens.toList []).1.length
+        if P135.hasTok pushed (· matches .documentStart) then
+          evC := evC ++ evO; evO := .beginDocument :: p.reverse.map Event.declareTag; p := []
+        else if P135.hasTok pushed (· matches .documentEnd) then
+          evC := evC ++ evO; evO := [.endDocument]
+        else if P135.hasTok pushed P135.isDirective then
+          let named := pushed.filterMap fun tk => match tk.val with
+            | .tagDirective h _ => if L4YAML.Proofs.Serialization.TokenEvents.isNamedHandle h then some h else none
+            | _ => none
+          p := named.reverse ++ p
+        else
+          evO := evO ++ stepEv
+        if post.flowLevel == 0 then
+          w := { w with prefixes := w.prefixes + 1,
+                        coupled := w.coupled + (if goOut post.tokens.toList [] == (evC ++ evO, p) then 1 else 0) }
+      if L4YAML.Proofs.Serialization.TokenEvents.tokenEvents final == evC ++ evO then
+        w := { w with totalOk := w.totalOk + 1 }
+    | _, _ => pure ()
+  return w
+
 end P136
 
 namespace P136Test
@@ -18859,6 +18991,12 @@ def testDepth0Parks (state : IO.Ref TestCollector) : IO Unit := do
   -- Scored: P1 HELD within rounding — markers 115 / 97, `noPending` 250, content + props 516 + 150 = 666 (≈ 660),
   -- the rest 118 + 29 + 171 = 318 (≈ 320); `pendingDirective` 61 against P135's 60 `%` steps (one row parks a
   -- directive twice across a step that pushes none).  P2–P4 HELD (the four checks above).
+  let w := P136.walk (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P136 walk {repr w}"
+  check state "P136 the pair's state by the statements' rules = goOut at every depth-0 prefix" (w.coupled == w.prefixes)
+  check state "P136 total: tokenEvents = ev_c ++ ev_o on every accepted row" (w.totalOk == w.rows)
+  -- Scored: P5 HELD — 1,507 / 1,507 depth-0 prefixes coupled, 627 / 627 rows total.
+  check state "P136 walk: 627 rows, 1,507 depth-0 prefixes" (w.rows == 627 && w.prefixes == 1507)
   check state "P136 depth-0 parks by class"
     (P134.countOf t.parks "pendingContent" == 516 && P134.countOf t.parks "pendingProps" == 150 &&
      P134.countOf t.parks "pendingMapValue" == 171 && P134.countOf t.parks "pendingBlock" == 118 &&
