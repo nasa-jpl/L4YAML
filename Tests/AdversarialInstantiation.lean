@@ -19070,12 +19070,24 @@ structure Tally where
   evcNonEmpty : Nat := 0
   parkAfterOk : Nat := 0
   parkAfterBad : List String := []
+  afterFlowClose : Nat := 0
+  parserRefused : Nat := 0
   handlesEmpty : Nat := 0
   prefixOk : Nat := 0
   deriving Repr
 
 def expectedPark (arm : String) : String :=
   if arm == "anchor" || arm == "tag" then "pendingProps" else "pendingContent"
+
+/-- `P136.parkOf` reads a depth-0 flow close as `noPending`; the S invariant resumes it through the base
+close (`FlowBaseRoutes`, STARVED until Row 12), not through a line-start park — those steps are not this
+lemma's and are counted apart. -/
+def afterFlowClose (toks : List (L4YAML.Positioned L4YAML.YamlToken)) : Bool :=
+  match (toks.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head? with
+  | some tk => match tk.val with
+    | .flowSequenceEnd | .flowMappingEnd => true
+    | _ => false
+  | none => false
 
 def tally (rows : List String) : Tally := Id.run do
   let mut t : Tally := {}
@@ -19087,17 +19099,33 @@ def tally (rows : List String) : Tally := Id.run do
           let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
           match pushed.reverse.head? with
           | some back =>
-            if P137.isContentPush back.val then
+            if P137.isContentPush back.val && afterFlowClose pre.tokens.toList then
+              t := { t with afterFlowClose := t.afterFlowClose + 1 }
+            else if P137.isContentPush back.val then
               let arm := P137.armOf back.val
               let (evPre, _) := goOut pre.tokens.toList []
               let (evPost, pPost) := goOut post.tokens.toList []
-              let parkAfter := P136.parkOf post.tokens.toList
+              -- The park the lemma names is checked against the PARSER's reading of the tokens so far (closed by
+              -- `streamEnd`), not a second reading of the pushed token: a `pendingContent` park parses to a bare
+              -- scalar / alias root, a `pendingProps` park to an empty scalar carrying the property.
+              let toks := (post.tokens.filter fun tk => !P119.isPlaceholder tk.val).push { back with val := .streamEnd }
+              let parkAfter := match L4YAML.TokenParser.parseStream toks with
+                | .ok docs => match (docs.back?.map (·.value) : Option L4YAML.YamlValue) with
+                  | some (L4YAML.YamlValue.scalar sc) =>
+                    if sc.anchor.isNone && sc.tag.isNone then "pendingContent"
+                    else if sc.content == "" then "pendingProps" else "propsWithValue"
+                  | some (L4YAML.YamlValue.alias _) => "pendingContent"
+                  | some _ => "collection"
+                  | none => "noDocument"
+                | .error (.undeclaredTagHandle _ _ _) => "parserRefused"
+                | .error e => s!"parseError:{repr e}"
               t := { t with steps := t.steps + 1, arms := bumpS t.arms arm,
                             evcEmpty := t.evcEmpty + (if evPre.isEmpty then 1 else 0),
                             evcNonEmpty := t.evcNonEmpty + (if evPre.isEmpty then 0 else 1),
                             parkAfterOk := t.parkAfterOk + (if parkAfter == expectedPark arm then 1 else 0),
-                            parkAfterBad := if parkAfter == expectedPark arm then t.parkAfterBad
-                              else t.parkAfterBad ++ [s!"{arm}->{parkAfter}"],
+                            parserRefused := t.parserRefused + (if parkAfter == "parserRefused" then 1 else 0),
+                            parkAfterBad := if parkAfter == expectedPark arm || parkAfter == "parserRefused" then t.parkAfterBad
+                              else t.parkAfterBad ++ [s!"{arm}->{parkAfter} @{repr (String.mk (s.toList.take 40))}"],
                             handlesEmpty := t.handlesEmpty + (if pPost.isEmpty then 1 else 0),
                             prefixOk := t.prefixOk + (if evPost.take evPre.length == evPre then 1 else 0) }
           | none => pure ()
@@ -19155,15 +19183,20 @@ namespace P138Test
 def testContentProducerLineStart (state : IO.Ref TestCollector) : IO Unit := do
   let t := P138.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
   IO.println s!"P138 {repr t}"
-  check state "P138 every noPending content step lands in the arm's park" (t.parkAfterOk == t.steps)
+  check state "P138 the parser's reading of the tokens so far is the arm's park (bare scalar / alias, or an empty node carrying the property)"
+    (t.parkAfterOk + t.parserRefused == t.steps && t.parkAfterBad.isEmpty)
+  check state "P138 the parser refuses 18 line-start steps the scanner and the grammar accept (an undeclared named handle: outside parse_iff_grammar's `.ok` premise)"
+    (t.parserRefused == 18)
+  check state "P138 two `noPending`-read steps are resumes after a depth-0 flow close (the STARVED base close), not line-start parks"
+    (t.afterFlowClose == 2)
   check state "P138 no handle survives a noPending content step" (t.handlesEmpty == t.steps)
   check state "P138 the step appends to the closed trace" (t.prefixOk == t.steps)
-  check state "P138 217 line-start content steps (P1 held)" (t.steps == 217)
-  check state "P138 arms: plain 99 / anchor 34 / tag 47 / quoted 33 / block 4, no alias (P2 refuted)"
-    (t.arms.lookup "plain" == some 99 && t.arms.lookup "anchor" == some 34 && t.arms.lookup "tag" == some 47 &&
+  check state "P138 215 line-start content steps (P1's 217 = 215 + the 2 resumes)" (t.steps == 215)
+  check state "P138 arms: plain 97 / anchor 34 / tag 47 / quoted 33 / block 4, no alias (P2 refuted)"
+    (t.arms.lookup "plain" == some 97 && t.arms.lookup "anchor" == some 34 && t.arms.lookup "tag" == some 47 &&
      t.arms.lookup "quoted" == some 33 && t.arms.lookup "blockScalar" == some 4 && t.arms.lookup "alias" == none)
-  check state "P138 the closed trace is empty at 216 / 217 line-start steps (P3 refuted)"
-    (t.evcEmpty == 216 && t.evcNonEmpty == 1)
+  check state "P138 the closed trace is empty at every line-start step (P3 refuted: 215 / 215)"
+    (t.evcEmpty == 215 && t.evcNonEmpty == 0)
 end P138Test
 
 namespace P137Test
