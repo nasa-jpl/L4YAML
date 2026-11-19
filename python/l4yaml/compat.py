@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Iterator, NoReturn
 
 from l4yaml import _ffi
-from l4yaml.exceptions import ConfigError, L4YAMLError
+from l4yaml.exceptions import ConfigError, L4YAMLError, LimitError, ParseError
 from l4yaml.types import (
     _ALIAS,
     _MAPPING,
@@ -188,7 +188,6 @@ def _raise_configured_error(msg: str) -> NoReturn:
     (the parser does not fall back to default limits); the rest is a
     limit violation or a syntax error in the data.
     """
-    from l4yaml.exceptions import LimitError, ParseError
     if msg.startswith("config error:"):
         raise ConfigError(msg)
     if "limit" in msg.lower() or "exceeded" in msg.lower():
