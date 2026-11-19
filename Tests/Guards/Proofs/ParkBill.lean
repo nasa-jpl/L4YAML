@@ -161,8 +161,12 @@ def expectedClosure : Nat := 289  -- +1 on 2026-11-13: `Proofs.Schema.CoreRecogn
 -- 2026-11-14 (item 490): Tp 37 → 38, T 29 → 30, shared 22 → 23 — `accum_step_content_pairK` (ContentBridge §11)
 -- destructures `accum_step_content` as `pairB` does, so it joins both drops; gate holders ELSEWHERE
 -- dn/mid 10 → 11, fv/mid 12 → 13 — it holds the wrapper's `h_dn`/`h_fv` outside `accumNs`.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedBill : String :=
-  "Dp=11 Sp=0 Tp=38 T=30 shared=23 extra=15 capstonesInTp=2"
+-- 2026-11-15 (item 520): Tp 38 → 39, T 30 → 31, shared 23 → 24; holders elsewhere dn/mid 11 → 12, fv/mid 13 → 14 —
+-- `accum_step_flow_pairK` holds `h_dn` / `h_fv` mid-stream for `accum_step_flow`, as `accum_step_content_pairK` does.
+  "Dp=11 Sp=0 Tp=40 T=32 shared=25 extra=15 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and
@@ -366,9 +370,11 @@ def accumNs : Name := `L4YAML.Proofs.StreamAccum
 /-- 21 → 22 on 2026-10-18 (item 284) by ONE holder, `slotRun_of_dn`; with this
     item's 49 new declarations excluded the census reads 21 again, so no other
     holder moved. -/
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedGateHolders : String :=
   "dn/mid=23 dn/eof=5 fv/mid=17 fv/eof=4 | \
-elsewhere dn/mid=11 dn/eof=14 fv/mid=13 fv/eof=15"
+elsewhere dn/mid=13 dn/eof=14 fv/mid=15 fv/eof=15"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftCoreM do

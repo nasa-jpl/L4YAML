@@ -264,7 +264,10 @@ spans={String.intercalate "," (s.spans.map (·.getString!)).toList}"
 -- `sp_gram`); pop 10 → 9 (two sites now share a shape).
 -- 2026-11-11 (item 484, ContentArm): D=4 T=28 pop=9 sites=12 → D=4 T=29 pop=9 sites=12 — `accum_step_content_core` (the renamed body) joins
 -- the site population beside its `accum_step_content` wrapper; no park site changed.
-def expectedPop : String := "D=4 T=31 pop=9 sites=12"  -- 2026-11-13 (item 489): T 29 → 30, `accum_step_content_pairB` destructures the wrapper; 2026-11-14 (item 490): T 30 → 31, `accum_step_content_pairK` likewise
+-- 2026-11-15 (item 520): T 31 → 32 — `accum_step_flow_pairK` (ContentBridge), one more `accum_step_flow` dependent;
+-- pop / sites unmoved (no new park-gap site).
+-- 2026-11-17 (item 522): T 32 → 33 — `accum_step_key_pairK` (ContentBridge §12) joins the T set.
+def expectedPop : String := "D=4 T=33 pop=9 sites=12"  -- 2026-11-13 (item 489): T 29 → 30, `accum_step_content_pairB` destructures the wrapper; 2026-11-14 (item 490): T 30 → 31, `accum_step_content_pairK` likewise
 
 /-- **The answer, in one line.**  Four independent readings of "connected", all
     zero, beside the correspondence census that explains why the fourth is. -/

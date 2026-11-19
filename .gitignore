@@ -64,8 +64,9 @@ ffi/out
 rust/target/
 rust/Cargo.lock
 rust/.cargo/config.toml
-# Graphs (generated theorem dependency graphs — source DOT/SVGs)
-doc/Doc/L4YAML/graphs/
+# The theorem dependency graphs under doc/Doc/L4YAML/graphs/ are committed (refreshed
+# from L4YAML.FGM); only the import graph is rendered by CI.
+doc/Doc/L4YAML/graphs/import-graph.*
 # pixi project-local env (LeanCopilot native runtime deps)
 .pixi/
 # scratch files

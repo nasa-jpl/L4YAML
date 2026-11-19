@@ -260,6 +260,8 @@ def readDecl (n : Name) : MetaM Readings := do
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one ScannerSurfCorr hypothesis fewer (corrHyp 587 → 586).
 -- 2026-11-11 (item 484, ContentArm): corrHyp 612 → 614 (`contentArm_of_dispatch`, `accum_step_content_core` both
 -- take a `ScannerSurfCorr` hypothesis), streamConcl 87 → 88 / both 40 → 41 (the renamed body concludes the stream).
+-- 2026-11-17 (item 522): `accum_step_key_pairK` holds `ScannerSurfCorr` and concludes `SLYamlStream` (corrHyp / streamConcl /
+-- both +1; the producer's thread prodThread 23 → 24, withCorr 18 → 19; against T prodInT 14 → 15, union 27 → 28).
 def expectedCensus : String :=
 -- 2026-10-23 ([147] glued value): corrHyp 545 → 546 — `flowGluedCollectionValue_false_of_corr_colon_blank` reads
 -- the `": "` surface through a `ScannerSurfCorr` hypothesis; the thread, held and pair rows are unchanged.
@@ -287,7 +289,11 @@ def expectedCensus : String :=
 -- `accum_step_content_pairB` (ContentBridge §9) holds the wrapper's `h_corr` and re-packs its `SLYamlStream` conclusion.
 -- 2026-11-14 (item 490, the ∀-floor fold): corrHyp 621 → 622, streamConcl 89 → 90, both 42 → 43 —
 -- `accum_step_content_pairK` (ContentBridge §11) holds the wrapper's `h_corr` and re-packs its `SLYamlStream` conclusion.
-  "corrHyp=622 streamConcl=90 both=43 free=0 pairConcl=1 held=3 pairAny=8"
+-- 2026-11-15 (item 520): corrHyp 622 → 623, streamConcl 90 → 91, both 43 → 44 — `accum_step_flow_pairK`
+-- (ContentBridge) takes `ScannerSurfCorr sc` and concludes `SLYamlStream`, as `accum_step_content_pairK` does.
+-- 2026-11-18 (item 526, α): corrHyp 624 → 627 — `TSLYamlStream.docStart` / `docEnd` / `directive` (DocBridge §α)
+-- read the surface through a `ScannerSurfCorr` hypothesis; they conclude the T stream prefix, not `SLYamlStream`.
+  "corrHyp=627 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=
@@ -312,7 +318,7 @@ def expectedHeldOnThreads : String := "onProdThread=0 onThread=0"
 -- 2026-11-11 (item 484, ContentArm): prodThread 20 → 21, rings 8 → 9, withCorr 15 → 16 — `accum_step_content_core`
 -- (the renamed body) sits one ring below its `accum_step_content` wrapper and carries the same correspondences.
 def expectedProdThread : String :=
-  "prodThread=23 rings=9 withCorr=18 covered=0"  -- 2026-11-13 (item 489): +1 with the thread, `accum_step_content_pairB` holds `h_corr`; 2026-11-14 (item 490): +1, `accum_step_content_pairK` holds `h_corr`
+  "prodThread=24 rings=9 withCorr=19 covered=0"  -- 2026-11-13 (item 489): +1 with the thread, `accum_step_content_pairB` holds `h_corr`; 2026-11-14 (item 490): +1, `accum_step_content_pairK` holds `h_corr`
 
 /-- The first ring — the four definitions `--end producer` breaks, which is
     the same four this walk reads.
@@ -334,7 +340,8 @@ def expectedProdRing1 : List Name :=
 -- `accum_structural_pending` (they close through `PendingNode.close_with_sslFrom` now, see RepairChoice); the
 -- producer's own rows are unchanged.
 -- 2026-11-11 (item 484): `accum_step_content_core` joins both the producer's thread and T (prodInT=11 prodOutsideT=9 union=23 unionOutsideT=9 → prodInT=12 prodOutsideT=9 union=24 unionOutsideT=9).
-def expectedProdInT : String := "prodInT=14 prodOutsideT=9 union=26 unionOutsideT=9"  -- 2026-11-13 (item 489): +1 in T with the thread; 2026-11-14 (item 490): +1 (`accum_step_content_pairK`)
+-- 2026-11-15 (item 520): union 26 → 27 — `accum_step_flow_pairK` joins the thread ∪ producers set inside T.
+def expectedProdInT : String := "prodInT=15 prodOutsideT=9 union=28 unionOutsideT=9"  -- 2026-11-13 (item 489): +1 in T with the thread; 2026-11-14 (item 490): +1 (`accum_step_content_pairK`)
 
 /-- **The ~~seven~~ nine, named.**  Three wrappers that partition the escape's
     own applications, four `accum_block_on_*` arms, and (DOCS item 287) the two

@@ -114,8 +114,10 @@ def expectedClosure : String := "modulesSeen=282"
 -- conclusion nests `SLYamlStream` exactly as the wrapper's does; nothing free.
 -- 2026-11-14 (item 490, the ∀-floor fold): theorems 108 → 109, nestedConcl 60 → 61 —
 -- `accum_step_content_pairK` (ContentBridge §11) is stream-headed with the pair's nested conclusion, as `pairB`.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedCensus : String :=
-  "theorems=109 headYaml=5 headStream=35 nestedConcl=61 hypOnly=8 free=17 \
+  "theorems=111 headYaml=5 headStream=35 nestedConcl=63 hypOnly=8 free=17 \
 survivesBeta5=2 yamlInHypothesis=0"
 
 /-- Every free theorem, with the route that closes it.  A count alone would not

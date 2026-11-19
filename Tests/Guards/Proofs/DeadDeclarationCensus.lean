@@ -48,8 +48,28 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- capstone roots 26 → 27, blueprint roots 222 → 223; unreached 6496 → 6505,
 -- C-api 1405 → 1414; A-campaign 1281, D-test-only 277, B-roster 3533 and
 -- cluster roots 1460 unchanged. This pin is measured, not copied from either parent.
+-- 2026-11-15 (item 520): +7 class (A) composed over item 519's re-pin — `accum_step_flow_pairK` / `accum_step_flow_trace_uniform` / `dispatchFlow_km_faces` / `gapRead_onT_uniform` / `ColonKeyCase` (ContentBridge §10), `TFlowStackB.km_size` / `TFlowOpenStack.km_size` (FlowWalk) are reached by no root until (2c); cluster-roots 1,460 → 1,459 — unmoved by this item on item 518's tree and by item 519 on its own, −1 on the composed tree (an interaction of the two items' unreached sets; cause not read); roster unmoved.
+-- 2026-11-17 (item 520, review round 2): population 14,231 → 14,229 (`flowOpen_stamp` / `flowOpen_marker` deleted); unreached
+-- +23 → roster 3,533 → 3,556, cluster-roots 1,459 → 1,476 — the `implicitValueLine` / `docStartLine` PRESERVATION chain that
+-- only fed `KmSound`'s stamp transport is now reached by nothing; re-pinned as read, the names listed in item 520 for the
+-- owner's ruling (delete or keep), as item 505's `seqEntryTail_cons` was.
+-- 2026-11-17 (item 522): population 14,229 → 14,237 (+8: ContentBridge §12's seven and `scanValue_km_transport`), unreached
+-- +7 class (A) 1,288 → 1,295 — the key fold is reached by no root until the 2c fold `scan_trace` consumes it (`scanValue_km_transport`
+-- is reached, by `accum_step_block`); roster 3,556 and cluster-roots unmoved.
+-- 2026-11-17 (item 524, the deletion): the 23 `implicitValueLine` / `docStartLine` preservation lemmas item 520 listed for the
+-- owner's ruling deleted on his word — roster 3,556 → 3,533, population −23, unreached −23; class (A) and cluster-roots read below.
+-- 2026-11-18 (item 526, α): population 14,214 → 14,229 (thm +13), unreached 6,510 → 6,525, A-campaign 1,295 → 1,310 —
+-- `TSLYamlStream` (structure, two projections) and the eleven DocBridge §α lemmas, reached by no root until the fold
+-- spends them (class (A), as items 520 / 522); B-roster unmoved.
+-- 2026-11-19 (#302 integrated over item 526 and #349, base 4f31fef): full Lean 4.35.0
+-- build 1,573/1,573; native `dead-census -- --check` measured population
+-- 14,304 → 14,309, thm 10,247 → 10,249, def 2,701 → 2,702, unreached
+-- 6,505 → 6,534 and A-campaign 1,281 → 1,310. The owner S3 development
+-- changed the cluster-root count 1,460 → 1,459; capstone:27, blueprint:223,
+-- C-api:1,414, D-test-only:277 and B-roster:3,533 are unchanged. The pin is
+-- read on the merged tree, not summed from the two parents.
 def expectedDeadCensus : String :=
-  "population=14304 thm=10247 def=2701 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6505 thm=4586 A-campaign=1281 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1460"
+  "population=14309 thm=10249 def=2702 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6534 thm=4612 A-campaign=1310 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

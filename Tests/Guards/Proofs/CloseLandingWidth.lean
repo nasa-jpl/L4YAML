@@ -496,7 +496,7 @@ def expectedSites : List String :=
    "accum_flow_open_depth0→flowKeyRoute_of_root.h_close → flowKeyRoute_of_root.h_close: spends=2 (node 2) handoffs=0 carries=0 NEITHER reach=1 reachJudged=0 reachBoth=false",
   -- Item 415: the h_vslot site row re-read — the two paid closeThenBlock arms (relay + ancestor-list copy) change its spends/handoffs/reach.
   -- Item 418: re-read again — h_vslot is spent twice more (the h_kslotUp arm and the domained h_explUp_chainD argument) and handed off once more.
-  "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=14 (node 14) handoffs=5 carries=0 NEITHER reach=3 reachJudged=6 reachBoth=false"]
+  "accum_block_pending→accum_block_on_closeThenBlock.h_vslot → accum_block_on_closeThenBlock.h_vslot: spends=14 (node 14) handoffs=6 carries=1 NEITHER reach=3 reachJudged=8 reachBoth=false"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-355 base.
 -- 2026-10-30 (item 405): the two `closeThenBlock` births destructure `hkv` beside `hkvUp` and apply the slot route per chain member (`rcases List.mem_cons`): the node spends are read once per branch (the slot's own head and the ancestors'), with the chain index `cur:nv` only.
@@ -514,13 +514,10 @@ def expectedSpends : List String :=
    "accum_block_on_closeThenBlock spend:node @sp_final arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,SCompactSeqTail.nil)) width=none index=direct[cur:nv,slot:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_end arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv,slot:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[≡nv]",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv,slot:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[≡nv]",
-   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=none index=direct[cur:nv] cmp=no",
    "accum_block_on_closeThenBlock spend:node @sp arg=prem:SBlockIndented width=none index=direct[cur:nv,slot:nv] cmp=no",
-   "accum_block_on_closeThenBlock handoff→relay.hP @— arg=— width=none index=direct[cur:nv] cmp=no",
    "accum_block_on_pendingBlock handoff→accum_block_on_closeThenBlock.h_close_pending @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=yes[hkn:¬k = n,_hge:n ≥ k]",
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
    "accum_block_on_pendingBlock spend:comments @sp_mid arg=prem:SSLComments width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[slot:n,tail:n,col:n,cur:n] cmp=no",
@@ -531,7 +528,12 @@ def expectedSpends : List String :=
    "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
    "flowKeyRoute_of_root spend:node @sp_mid arg=lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(prem:And)))) width=ind[ws:h_ws,ind:h_ind,ind:h_ind'] index=none cmp=no",
    "slotChainMap spend:node @sp_v arg=SBlockIndented.node(SBlockNode.blockMap(GOpt.none,prem:SSLComments,SBlockMapEntries.single(prem:SIndent,prem:SBlockMapEntry))) width=none index=direct[cur:nv] cmp=no",
-   "relay untyped @— arg=— width=none index=none cmp=no"]
+   "relay untyped @— arg=— width=none index=none cmp=no",
+   "accum_block_on_closeThenBlock handoff→relay.hP @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv] cmp=yes[hnk:nv ≤ k]",
+   "accum_block_on_closeThenBlock carry→And.intro @sp_mid arg=— width=ind[ws:hws,col:hcol_mid,ind:h_ind] index=direct[cur:nv,slot:nv] cmp=yes[hnk:nv ≤ k]",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[hxe:¬x = nv]",
+   "accum_block_on_closeThenBlock spend:node @sp_e arg=SBlockIndented.compactSeq(prem:SIndent,SCompactSeq.mk(prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)) width=ind[ind:h_iv] index=direct[cur:nv] cmp=yes[hxe:¬x = nv]",
+   "accum_block_on_closeThenBlock handoff→relay.hP @— arg=— width=none index=direct[cur:nv,slot:nv] cmp=no"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows StreamCompositions — the content/block parks close from `sp_gram` (run + gate).
 def expectedEdges : List String :=
   ["accum_block_on_closeThenBlock → slotChainMap.up",
@@ -601,7 +603,7 @@ def expectedEmpties : List String :=
 def expectedLine : String :=
 -- Item 371 (empties=25 → 27, emptyLemmas=6 → 8): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=24 spendsC=6 spendsE=0 spendsN=18 handoffs=6 carries=0 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=5 handDirect=6 handCmp=5 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=30 emptyLemmas=9 emptyInd=14 emptyCmp=6 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
+  "closeSites=5 closePairs=6 closePairsD=8 viaClose=3 params=5 spends=24 spendsC=6 spendsE=0 spendsN=18 handoffs=7 carries=1 untyped=1 edges=3 paramsWalked=7 widthInd=5 widthWs=1 widthNone=0 idxDirect=4 idxPacked=1 idxNone=1 cmp=0 cmpSame=0 both=4 bothCmp=0 handInd=6 handDirect=7 handCmp=6 sitesBoth=1 sitesWidth=2 sitesNeither=2 sitesBothAll=0 empties=30 emptyLemmas=9 emptyInd=14 emptyCmp=6 emptySame=2 emptyClose=2 sites=20 pairs=20 pairs21=20 pairs18=18 nonANoDrop=8 reach=38"
 
 /-! ## §5 The reading -/
 

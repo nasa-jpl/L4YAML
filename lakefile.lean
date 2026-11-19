@@ -454,6 +454,11 @@ lean_exe «scripts-check-hygiene» where
 lean_exe «scripts-release-asset» where
   root := `Scripts.Main.ReleaseAsset
 
+-- The doc's `graphs/*.svg` image references resolve in the tree (`lake run check-doc-graphs`).
+@[default_target]
+lean_exe «scripts-check-doc-graphs» where
+  root := `Scripts.Main.CheckDocGraphs
+
 -- Phase 4 (row 4): the publishing row — the HTML rewriting of svg-objects.py and
 -- html-to-pdf.py; WeasyPrint stays an external CLI (Q3).
 @[default_target]
@@ -513,6 +518,11 @@ script «check-import-closure» (args) do
 script «check-reflection-index» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-check-reflection-index" #[] args
 
+/-- Every `graphs/<path>.svg` the Verso doc embeds exists under `doc/Doc/L4YAML/graphs/`
+(`--strict` also requires the CI-rendered import graph). -/
+script «check-doc-graphs» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-doc-graphs" #[] args
+
 /-- DOCS.md closure-log items ascend, dated, gaps declared
 (`scripts/check-closure-log.sh` before phase 1). -/
 script «check-closure-log» (args) do
@@ -533,7 +543,7 @@ headers through `LEAN_PATH`, which this script sets from the workspace. -/
 script «docs-nav» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
 
-/-- `lake run census-dashboard [-- --check | --md FILE]`: every directed census (a pinned count driven
+/-- `lake run census-dashboard [-- --check | --md FILE | --diff REF]`: every directed census (a pinned count driven
     to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs` pin literals, its
     goal, the distance left and what moves it; then the pinned readings with no target (item 514).
     Reads source text only — no build of the library needed. -/

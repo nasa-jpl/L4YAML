@@ -406,26 +406,22 @@ namespace L4YAML.Tests.Guards.ConclusionRouteCensus
 -- 2026-10-30 (item 408): `flowKeyRoute_of_open#4` / `flowKeyRoute_of_root#2` — the value-line pair on the
 -- projection face: one more DECLINE each (the markless ks twin; the resumed landing's single route), of_root's
 -- pair no longer PAYs.
+-- 2026-11-17 (item 520, review round 2): `KmSound`'s base-slot stamp / marker `∨ True` conjuncts deleted (decided at
+-- `flowKeyPack_of_close` on the close state); `flowOpen_stamp` / `flowOpen_marker` deleted.
 def expectedRows : List String :=
-  ["back_col#0 :: FIELD of premise#3",
-  "back_col#1 :: FIELD of premise#3",
-  "close_col_of_base#0 :: FIELD of VIA KmSound.back_col",
-  "close_col_of_base#1 :: FIELD of VIA KmSound.back_col",
-  "dedent_cover_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
+  ["dedent_cover_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
   "deeperLandingResume#0 :: DECLINE | PAY | PAY | SPLIT Or.elim",
   "flowKeyHead#0 :: VIA L4YAML.Proofs.FlowKeyLift.flowNode_toBlockKey",
   "flowKeyRoute_of_open#0 :: DECLINE | DECLINE | DECLINE | DECLINE | PAY | PAY",
   "flowKeyRoute_of_open#1 :: UNREACHABLE under →/∀",
   "flowKeyRoute_of_open#2 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY",
   "flowKeyRoute_of_open#3 :: PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY | PAY",
-  "flowKeyRoute_of_open#4 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY",
+  "flowKeyRoute_of_open#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PARENT-DECLINED | PAY",
   "flowKeyRoute_of_root#0 :: DECLINE | DECLINE | PAY | PAY",
   "flowKeyRoute_of_root#1 :: UNREACHABLE under →/∀",
   "flowKeyRoute_of_root#2 :: DECLINE | DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED",
   "flowKeyRoute_of_root#3 :: PARENT-DECLINED | PARENT-DECLINED | PAY | PAY | PAY | PAY | PAY",
   "flowKeyRoute_of_root#4 :: DECLINE | DECLINE | PARENT-DECLINED | PARENT-DECLINED | PAY",
-  "flowOpen_marker#0 :: DECLINE | DECLINE | PAY",
-  "flowOpen_stamp#0 :: DECLINE | DECLINE | PAY",
   "keyctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
   "markerctx_of_landing#0 :: DECLINE | DECLINE | DECLINE | PAY",
   "nodocctx_of_preprocess#0 :: DECLINE | DECLINE | DECLINE | PAY | PAY",
@@ -443,8 +439,7 @@ def expectedRows : List String :=
 -- `explFrameValueLine` conclude in `∨ alt` and leave the `∨ True` survey.
 -- 2026-10-28 (item 385): positions 24 → 26, SPLIT 17, → 19,
 -- — the two item-385 helpers conclude by a split (`by_cases` on the landing's width).
-def expectedTally : String :=
-  "positions=24 skipped=0 [FIELD=4, SPLIT=17, UNREACHABLE=2, VIA=1]"
+def expectedTally : String := "positions=18 skipped=0 [SPLIT=15, UNREACHABLE=2, VIA=1]"
 
 /-- **The cross-instrument control.**  Route PAY-arms against `ConclusionCensus`'s
     `inl`, route DECLINE-arms against its `inr`, conjunct by conjunct under that
@@ -462,7 +457,7 @@ def expectedTally : String :=
 -- 2026-10-29 (item 387): agree 22 → 21 — `deeperLandingResumeSeq` left both instruments (plain conclusion).
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one agreeing conclusion fewer (agree 21 → 20).
 def expectedCross : List String :=
-  ["agree=20",
+  ["agree=14",
    "deeperLandingResume#0 route=2+1 term=2+2",
    "scanValue_ok_park_facts#0 route=1+1 term=0+0"]
 
@@ -496,6 +491,10 @@ def expectedCross : List String :=
 -- (Eq.rec pipes) that move the projection face from `s_prep` to the open's `s'`.
 -- 2026-11-02 (item 422): landed 78 → 73, total 109 → 104 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the openers'
 -- `h_outer` writes are `Classical.em (MarkedColsIn s_prep [k])` decisions now, both arms paid ((γ′)).
+-- 2026-11-17 (item 520, review round 1): landed 102 → 103, total 130 → 131 — the stamped open arms' `flowOpen_stamp` /
+-- `flowOpen_marker` payments land in a second consumer, the T base mask's `KmSound` witness (no new producer).
+-- 2026-11-17 (item 520, review round 2): landed 103 → 101, total 131 → 129 — the stamped arms' payments no longer land
+-- in a mask witness (the base slot's stamp / marker conjuncts are gone); round 1's +1 with them.
 def expectedPipeSplit : String :=
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): PIPE producers 46 → 47, total 109 → 110 (`h_refused` is one more Or.elim producer).
   -- 2026-10-26 (item 366): producers 47 → 49, total 110 → 112 — the two `h_outer` arguments of
@@ -505,7 +504,7 @@ def expectedPipeSplit : String :=
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` is a new producer relayed VIA at both flow closes (producers 32/10 → 34/11, landed 69 → 71, landed-producers 0 → 2).
 -- Item 519: producers 31 → 28, total 134 → 131 — the depth-0 open's three `frameChainUnion` ladders are gone.
-  "pipes=0/0 producers=28/10 landed=103 landed-producers=10 total=131"
+  "pipes=0/0 producers=28/10 landed=101 landed-producers=10 total=129"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

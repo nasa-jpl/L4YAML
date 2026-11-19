@@ -35,11 +35,17 @@ open Scripts.Path.CapstonePath
 -- 2026-11-09 (item 469): `FlowArm`/`GapRead`/`FlowStackKA` and `accum_step_flow_trace` — StreamAccum constants reached 1118/1254 → 1132/1274; every other count unmoved.
 -- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas on item 498's tree.
 -- 2026-11-14 (item 499): streamAccum-reached 1147/1254 → 1154/1264 — KeyArm (1 + 6 constructors + rec/casesOn…) in StreamAccum, 7 reached from accum_step_block's conclusion.
+-- 2026-11-17 (item 520, review round 2): positions 269 → 253 and the off / unresolved / off-honest / off-conclusion
+-- readings with it — `KmSound`'s base-slot `∨ True` stamp / marker conjuncts and `flowOpen_stamp` / `flowOpen_marker` deleted.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+-- 2026-11-17 (item 524, the deletion): the StreamAccum-reached totals shrink by the three `StreamAccum` preservation lemmas
+-- (`allowDirectives_update_implicitValueLine`, `ad_implicitValueLine`, `ad_docStartLine`) deleted on the owner's ruling; positions / on / off unmoved.
 def expectedSummary : String :=
 -- Item 519: off-honest 92 → 91, off-unread 55 → 56, on 8 → 6, off 43 → 41, unrooted-arms 89 → 93, arms 238 → 237 —
 -- the four flow-close `Classical.em` splits are gone (PAID from `vslot`), the open's three ladders with them; shrink-only.
 -- Item 519 (review round): arms 237 → 239 (the two fallback `match`es at the `vslot` writers), off-honest 91 → 92 / off-unread 56 → 55 (`pendingBlock.h_kslotUp` read again at the open).
-  "positions=269 on=7 off=189 unresolved=73 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=92 off-unread=55 off-conclusion=25 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=17 nested-unresolved=73 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=132 PackAlt=50 PackAltG=7 pack-declines: on=6 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1156/1266 unrooted-arms=93 arms=239 relays=145 drop-set=8/8"
+  "positions=253 on=7 off=179 unresolved=67 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=90 off-unread=55 off-conclusion=19 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=15 nested-unresolved=67 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=122 PackAlt=50 PackAltG=7 pack-declines: on=6 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1152/1262 unrooted-arms=94 arms=235 relays=138 drop-set=8/8"
 
 def expectedOn : List String :=
   -- Item 519: the four flow-close splits are PAID from `vslot` (shrink: `pendingContent.h_vpack` on-relay DECLINE 4 → 2).
@@ -70,12 +76,6 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.ImplicitKeyPackbody nested ∨ PackAlt nested-unresolved",
    "L4YAML.Proofs.StreamAccum.ImplicitKeyPackbody nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.ImplicitKeyPackbody nested ∨ True nested-unresolved",
-   "L4YAML.Proofs.StreamAccum.KmSoundbody nested ∨ True nested-unresolved",
-   "L4YAML.Proofs.StreamAccum.KmSoundbody nested ∨ True nested-unresolved",
-   "L4YAML.Proofs.StreamAccum.KmSound.back_col[ret] nested ∨ True off-conclusion",
-   "L4YAML.Proofs.StreamAccum.KmSound.back_col[ret] nested ∨ True off-conclusion",
-   "L4YAML.Proofs.StreamAccum.KmSound.push[15].h_stamp_new nested ∨ True nested-unresolved",
-   "L4YAML.Proofs.StreamAccum.KmSound.push[17].h_marker_new nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[11].h_framesS top ∨ True off-unread DECLINE=2",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[11].h_framesS nested ∨ True nested-unresolved DECLINE=2",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[12].h_framesV top ∨ PackAlt off-unread DECLINE=2",
@@ -184,8 +184,6 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.accum_content_on_pendingMapValue_indented[38].h_seqF168 top ∨ True off-honest",
    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused[11].h_tail top ∨ True off-unread",
    "L4YAML.Proofs.StreamAccum.bareNodeRoute_or_refused_content[12].h_tail top ∨ True off-unread",
-   "L4YAML.Proofs.StreamAccum.close_col_of_base[ret] nested ∨ True off-conclusion",
-   "L4YAML.Proofs.StreamAccum.close_col_of_base[ret] nested ∨ True off-conclusion",
    "L4YAML.Proofs.StreamAccum.colon_open_map[19].h_sfx_land top ∨ True off-honest",
    "L4YAML.Proofs.StreamAccum.colon_open_map[20].h_nodoc_land top ∨ True off-honest",
    "L4YAML.Proofs.StreamAccum.colon_open_map[21].h_mk_land top ∨ True off-honest",
@@ -254,8 +252,6 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[7].h_key nested ∨ PackAltG off-honest-nested",
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[7].h_key nested ∨ True off-honest-nested",
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[7].h_key nested ∨ PackAltG off-honest-nested",
-   "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[8].h_base nested ∨ True off-honest-nested",
-   "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close[8].h_base nested ∨ True off-honest-nested",
    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[12].h_compact top ∨ True off-honest DECLINE=1",
    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[13].h_compact_pair top ∨ PackAlt off-honest DECLINE=1",
    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_open[ret] top ∨ True off-conclusion",
@@ -274,10 +270,6 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] nested ∨ PackAltG off-conclusion",
    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] nested ∨ True off-conclusion",
    "L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root[ret] nested ∨ PackAltG off-conclusion",
-   "L4YAML.Proofs.StreamAccum.flowOpen_marker[4].h_doc top ∨ True off-honest",
-   "L4YAML.Proofs.StreamAccum.flowOpen_marker[ret] top ∨ True off-conclusion",
-   "L4YAML.Proofs.StreamAccum.flowOpen_stamp[4].h_ivl top ∨ True off-honest",
-   "L4YAML.Proofs.StreamAccum.flowOpen_stamp[ret] top ∨ True off-conclusion",
    "L4YAML.Proofs.StreamAccum.indicator_open_map[22].h_sfx_land top ∨ True off-unread DECLINE=3",
    "L4YAML.Proofs.StreamAccum.indicator_open_map[23].h_nodoc_land top ∨ True off-unread DECLINE=3",
    "L4YAML.Proofs.StreamAccum.indicator_open_map[24].h_mk_land top ∨ True off-unread DECLINE=3",
@@ -289,8 +281,6 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.indicator_open_map[30].h_resV_land top ∨ PackAlt off-unread DECLINE=1",
    "L4YAML.Proofs.StreamAccum.indicator_open_map[32].h_explUp_chainD top ∨ PackAlt off-unread DECLINE=2",
    "L4YAML.Proofs.StreamAccum.keyctx_of_preprocess[ret] top ∨ True off-conclusion",
-   "L4YAML.Proofs.StreamAccum.km_push_at_open[19].h_stamp_new nested ∨ True nested-unresolved",
-   "L4YAML.Proofs.StreamAccum.km_push_at_open[21].h_marker_new nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.markerctx_of_landing[11].h_mk top ∨ True off-honest",
    "L4YAML.Proofs.StreamAccum.markerctx_of_landing[ret] top ∨ True off-conclusion",
    "L4YAML.Proofs.StreamAccum.nodocctx_of_preprocess[ret] top ∨ True off-conclusion",

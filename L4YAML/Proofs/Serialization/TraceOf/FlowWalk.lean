@@ -1566,6 +1566,18 @@ def kmBit : FrameTail → Bool
 lemma kmBit_iff (tl : FrameTail) : kmBit tl = true ↔ ∃ kj, tl = .colon kj := by
   cases tl <;> simp [kmBit]
 
+/-- Item 520: the mask is one bit per frame — its size is the depth (the fold reads the arm's mask
+    effect off the sizes: `km` / `km.push b` / `km.pop` differ by one). -/
+lemma TFlowOpenStack.km_size {n d : Nat} {ks km : Array Bool} {tl : FrameTail} {a b : SurfPos}
+    {ev : List Event} (h : TFlowOpenStack n d ks km tl a b ev) : km.size = d := by
+  induction h <;> simp_all [Array.size_push]
+
+lemma TFlowStackB.km_size {n d : Nat} {ks km : Array Bool} {tl : FrameTail} {a b : SurfPos}
+    {ev : List Event} (h : TFlowStackB n d ks km tl a b ev) : km.size = d := by
+  cases h with
+  | nil => rfl
+  | «open» _ _ _ _ _ _ _ h => exact h.km_size
+
 /-! ## §8 The step on the T stack: `accum_step_flow_trace` = `FlowArm` → §6/§7 (item 469)
 
 `accum_step_flow` now returns, inside its `FlowStackKA` pack, the arm it took and the surface
@@ -1644,7 +1656,7 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
         ∃ sp_open, TFlowStackB n s'.flowLevel s'.flowStack #[false] (tailOf s'.tokens) sp_block' sp_open []) := by
   generalize hks : sc.flowStack = ks at hT
   cases arm with
-  | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl =>
+  | openBase b sp_br sp_open sp_block'' sp_flow'' h_depth h_c h_open h_fl h_ks h_tl _ _ =>
     rw [h_depth] at hT
     cases hT with
     | «open» _ _ _ _ _ _ _ h => cases h
@@ -1656,7 +1668,7 @@ lemma accum_step_flow_trace {n : Nat} {sc s' : L4YAML.Scanner.ScannerState} {c :
         exact TFlowStackB.openMapBase h_open' (GOpt.none sp_open)
       · have h_open' : GLit '[' sp_br sp_open := by subst h_c; simpa using h_open
         exact TFlowStackB.openSeqBase h_open' (GOpt.none sp_open)
-  | openNest b sp_flow₂ sp_br sp_open gap h_depth h_c h_tail h_lead h_open h_fl h_ks h_tl =>
+  | openNest b sp_flow₂ sp_br sp_open gap h_depth h_c h_tail _ h_lead h_open h_fl h_ks h_tl =>
     obtain ⟨d, hd⟩ : ∃ d, sc.flowLevel = d + 1 := ⟨sc.flowLevel - 1, by omega⟩
     rw [hd] at hT
     cases hT with

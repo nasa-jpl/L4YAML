@@ -110,7 +110,7 @@ example {sc : ScannerState} {kc : Nat} {sp_start sp_br sp_tok sp_key : SurfPos}
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
-    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
+    (tw108 : ∀ nv ∈ L4YAML.Proofs.RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e)
@@ -123,8 +123,7 @@ example {sc : ScannerState} {kc : Nat} {sp_start sp_br sp_tok sp_key : SurfPos}
   flowKeyPack_of_close (g := none)
     (Or.inl ⟨kc, sp_key, route, head, rfl, Or.inr trivial,
       Or.inl tw99, Or.inl tw108⟩)
-    -- Item 300: the base slot's third reading, the marker's line, declined here.
-    ⟨h_kc, Or.inr trivial, Or.inr trivial⟩ h_park h_content
+    h_kc h_park h_content
 
 -- §3 …and the frame type itself admits the paid key (the structure's field
 -- accepts what the props arm now builds), spent through `ofValue`'s twin
@@ -139,7 +138,7 @@ example {s0 : ScannerState} {sp_start sp_br sp_key : SurfPos} {kc : Nat}
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e)
-    (tw108 : ∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
+    (tw108 : ∀ nv ∈ L4YAML.Proofs.RegisterWitness.markedCols s0, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ kc) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry kc sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail kc sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e) :
