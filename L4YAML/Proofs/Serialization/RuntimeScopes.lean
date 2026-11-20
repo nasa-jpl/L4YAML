@@ -56,8 +56,18 @@ lemma prepareDocumentState_tagHandles_exact
     (ps' : L4YAML.TokenParser.ParseState)
     (h_ok : L4YAML.TokenParser.prepareDocumentState ps = .ok (dirs, ps')) :
     ps'.tagHandles = tagTableOfDirectives dirs := by
+  have hu : TagDirectivesUnique (L4YAML.TokenParser.parseDirectives ps).1 := by
+    by_cases hu : TagDirectivesUnique (L4YAML.TokenParser.parseDirectives ps).1
+    · exact hu
+    · have he : L4YAML.TokenParser.prepareDocumentState ps =
+          .error .duplicateTagDirective := by
+        simp [L4YAML.TokenParser.prepareDocumentState, hu, bind, Except.bind]
+        rfl
+      rw [he] at h_ok
+      cases h_ok
   unfold L4YAML.TokenParser.prepareDocumentState at h_ok
-  simp only [bind, Except.bind] at h_ok
+  simp only [hu, decide_true, Bool.not_true, Bool.false_eq_true, ↓reduceIte,
+    bind, Except.bind] at h_ok
   all_goals (first | split at h_ok | skip)
   all_goals (first | split at h_ok | skip)
   all_goals (first | split at h_ok | skip)

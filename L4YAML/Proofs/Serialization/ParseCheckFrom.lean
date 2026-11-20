@@ -1896,8 +1896,17 @@ lemma prepareDocumentState_cf (ps : ParseState) (dirs : Array Directive) (ps' : 
     (ps'.pos = ps.pos → emptyFollowerTok (tok ps.tokens ps.pos) = true →
       isDirectiveTok (tok ps.tokens ps.pos) = false ∧ tok ps.tokens ps.pos ≠ some .documentStart) ∧
     ∀ s : CS, ∃ s', runToks (seg ps.tokens ps.pos ps'.pos) s = some s' ∧ Rel ps' s' := by
+  have hu : TagDirectivesUnique (parseDirectives ps).1 := by
+    by_cases hu : TagDirectivesUnique (parseDirectives ps).1
+    · exact hu
+    · have he : prepareDocumentState ps = .error .duplicateTagDirective := by
+        simp [prepareDocumentState, hu, bind, Except.bind]
+        rfl
+      rw [he] at h
+      cases h
   unfold prepareDocumentState at h
-  simp only [bind, Except.bind] at h
+  simp only [hu, decide_true, Bool.not_true, Bool.false_eq_true, ↓reduceIte,
+    bind, Except.bind] at h
   generalize hpd : parseDirectives ps = pr at h
   obtain ⟨dirs₀, ps_d⟩ := pr
   obtain ⟨t_d, p1, p2, d_d, nd, lst, r⟩ := parseDirectives_cf ps dirs₀ ps_d hpd hsz
