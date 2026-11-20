@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 module
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
+public import L4YAML.Proofs.Serialization.TraceOf.ContentBridge
 public import L4YAML.Proofs.Foundation.SurfaceSpan
 
 /-!
@@ -36,6 +37,9 @@ open L4YAML.Proofs.StreamAccum (scannedDirective_toSL white_prepend_SSLComments)
 open L4YAML.Proofs.PreprocessProduction (SSLComments_to_GStar)
 open L4YAML.Proofs.SurfaceSpan (sslComments_suffix)
 open L4YAML.Proofs.StructureProduction L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.StreamAccum (ContentArm dispatchContent_blockScalar_prod)
+open L4YAML.Proofs.NodeProduction (SCDoubleQuoted_ctx_lift SCSingleQuoted_ctx_lift)
+open L4YAML.Proofs.Serialization.TraceOf.ContentBridge (accum_step_content_trace_out)
 
 /-- `[79]` at a line start extends the closed stream without an event (the twin of
 `ssl_comments_extend_stream`): the comments are `[202]` prefixes. -/
@@ -243,7 +247,76 @@ lemma docEnd_step {sp_start sp sp_prep : SurfPos} {s_prep s' : ScannerState} {ev
   exact ⟨sp', hcorr', ⟨TLYamlStream.extendComments hS'.stream h_col h_pre, by simpa using hS'.events⟩,
     TPendingNode.pendingDocEnd _ _ _ _ hm⟩
 
+/-- **The content step at a line-start park** (item 529, the twin of `content_dispatch_routed`'s two
+sites): from `noPending` at `sp`, the depth-0 content dispatch parks as `pendingContent` (a scalar, an
+alias) or `pendingProps` (`&` / `!`), the step's events read off `accum_step_content_trace_out`;
+`h_route` is how a completed node at the park re-enters the stream (`TLYamlStream.bareRoute` at the
+first document, `h_route`'s own shape at the parks below). -/
+lemma content_step_noPending {sp_start sp sp_prep sp_a : SurfPos} {s_prep s' : ScannerState} {c : Char}
+    {ev_c : List Event}
+    (hS : TSLYamlStream sp_start s_prep sp ev_c [] [])
+    (h_sep : SSeparateLines 0 sp sp_prep)
+    (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c)
+    (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_route : ∀ sp_m ev_n, TBlockNode 0 .blockIn sp sp_m ev_n →
+      TLYamlStream sp_start sp_m (ev_c ++ ev_n)) :
+    ∃ ev_n, TSLYamlStream sp_start s' sp ev_c ev_n [] ∧
+      TPendingNode sp_start false sp sp_a ev_c ev_n [] := by
+  obtain ⟨ev_n, hpt, hdisj⟩ := accum_step_content_trace_out arm hcorr hpeek h_depth h_dispatch
+  refine ⟨ev_n, ⟨hS.stream, by rw [hpt.goOut_at [], hS.events]; simp⟩, ?_⟩
+  rcases hdisj with ⟨hev, sp_gram, hT, hws, -⟩ | ⟨hev, hc, -⟩ | ⟨hev, hc, -⟩ | ⟨-, ha, -⟩ | ⟨-, ht, -⟩ | ⟨-, hal⟩
+  · subst hev
+    exact .pendingContent sp sp_a sp_gram ev_c []
+      (fun sp_mid h_ssl => h_route sp_mid [] (.flowInBlock 0 .blockIn sp sp_prep sp_gram sp_mid [] h_sep hT h_ssl))
+      hws
+  · subst hev
+    refine .pendingContent sp sp_a sp_a ev_c []
+      (fun sp_mid h_ssl => h_route sp_mid [] (.flowInBlock 0 .blockIn sp sp_prep sp_a sp_mid [] h_sep ?_ h_ssl))
+      (GStar.nil _)
+    cases arm with
+    | doubleQuoted _ _ hq _ _ =>
+      exact .content _ _ _ _ _ (.doubleQ _ _ _ _ (SCDoubleQuoted_ctx_lift hq (by decide) (by decide)))
+    | singleQuoted _ _ hq _ _ =>
+      exact .content _ _ _ _ _ (.singleQ _ _ _ _ (SCSingleQuoted_ctx_lift hq (by decide) (by decide)))
+    | plainIn _ _ hd _ _ => omega
+    | plain _ _ h_c _ _ _ _ _ => rcases hc with h | h <;> simp_all
+    | blockScalar _ h_c _ _ => rcases hc with h | h <;> rcases h_c with h' | h' <;> simp_all
+    | anchor _ h_c _ _ _ => rcases hc with h | h <;> simp_all
+    | tag _ h_c _ _ _ => rcases hc with h | h <;> simp_all
+    | alias _ h_c _ _ => rcases hc with h | h <;> simp_all
+  · subst hev
+    obtain ⟨sp_bs, -, hcorr_bs, h_absorb⟩ := dispatchContent_blockScalar_prod s_prep sp_prep hcorr hpeek hc h_dispatch
+    have heq := ScannerSurfCorr_unique hcorr_bs hcorr'
+    rw [heq] at h_absorb
+    exact .pendingContent sp sp_a sp_a ev_c []
+      (fun sp_mid h_ssl => h_route sp_mid [] ((h_absorb sp_mid h_ssl).elim
+        (fun hl => .blockLiteral 0 .blockIn sp sp_prep sp_prep sp_mid [] h_sep (TOpt.none _) hl)
+        (fun hf => .blockFolded 0 .blockIn sp sp_prep sp_prep sp_mid [] h_sep (TOpt.none _) hf)))
+      (GStar.nil _)
+  · exact .pendingProps sp sp_a sp sp_prep 0 ev_c [] ev_n h_sep
+      (by simpa using TCNsProperties.anchorFirst sp_prep sp_a sp_a ev_n [] ha (TOpt.none _))
+      (fun sp_m ev h => by simpa using h_route sp_m ev h)
+  · exact .pendingProps sp sp_a sp sp_prep 0 ev_c [] ev_n h_sep
+      (by simpa using TCNsProperties.tagFirst sp_prep sp_a sp_a ev_n [] ht (TOpt.none _))
+      (fun sp_m ev h => by simpa using h_route sp_m ev h)
+  · exact .pendingContent sp sp_a sp_a ev_c ev_n
+      (fun sp_mid h_ssl => h_route sp_mid ev_n
+        (.flowInBlock 0 .blockIn sp sp_prep sp_a sp_mid ev_n h_sep (.alias 0 .flowOut sp_prep sp_a ev_n hal) h_ssl))
+      (GStar.nil _)
+
 end TPendingNode
+
+/-- The bare-document route at the first document's line start: a completed `TBlockNode` at the park is
+the stream's `[210]` body (the twin of `nodocNodeRoute`). -/
+lemma TLYamlStream.bareRoute {sp_start sp : SurfPos}
+    (h_nodoc : GStar SLDocumentPrefix sp_start sp) :
+    ∀ sp_m ev_n, TBlockNode 0 .blockIn sp sp_m ev_n → TLYamlStream sp_start sp_m ev_n :=
+  fun sp_m ev_n h_bn => by
+    simpa using TLYamlStream.single sp_start sp sp_m sp_m ev_n [] h_nodoc
+      (TOpt.some _ _ _ (TLAnyDocument.bare _ _ _ (TLBareDocument.mk _ _ _ h_bn))) (TStar.nil _)
 
 end
 

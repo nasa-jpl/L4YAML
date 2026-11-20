@@ -54,6 +54,11 @@ open L4YAML.Proofs.StreamAccum (ContentArm FrameTail tailOf tailOf_push_prop Nex
 def PushesTrace (ts ts' : Array (Positioned YamlToken)) (ev : List Event) : Prop :=
   ∀ p, goOut ts'.toList p = ((goOut ts.toList p).1 ++ ev, (goOut ts.toList p).2)
 
+/-- `PushesTrace` read at one pending-handle state (the def's body is not exposed to importers). -/
+lemma PushesTrace.goOut_at {ts ts' : Array (Positioned YamlToken)} {ev : List Event}
+    (h : PushesTrace ts ts' ev) (p : List String) :
+    goOut ts'.toList p = ((goOut ts.toList p).1 ++ ev, (goOut ts.toList p).2) := h p
+
 lemma goOut_single (t : Positioned YamlToken) (p : List String)
     (hds : t.val ≠ .documentStart) (htd : ∀ h pfx, t.val ≠ .tagDirective h pfx) :
     goOut [t] p = ((tokenEvent t.val).toList, p) := by
