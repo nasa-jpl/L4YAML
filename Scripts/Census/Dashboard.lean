@@ -277,10 +277,14 @@ def roster : List Target := [
     serves := "Rule 1: no theorem without a capstone",
     moves := "each roster name is deleted (item 506 deleted 87 unreached scanner facts on the owner's word) or reached by a capstone chain (`DeadDeclarationRoster.lean` lists them)",
     basis := "items 476 / 477 (`lake run dead-census -- --check`)" },
-  { census := "DeadDeclarationCensus", pin := "expectedDeadCensus", field := "A-campaign", goal := .zero, move := .shrinkOnly,
-    serves := "Rule 1: declarations the campaign built that no root reaches YET",
-    moves := "lands when the lane's capstone chain composes them (S3's `scan_trace`, Row 19's step (3), R12's fixpoint); what is left when a lane closes moves to the (B) roster",
-    basis := "item 476 (class (A) campaign in progress)" },
+  -- Item 530 (the owner's word on #359): `A-campaign` — unreached-from-a-root — is the capstone's
+  -- distance, 0 only when the lane's chain lands, so every build-ahead item read AWAY; it is a
+  -- population reading now.  The directed census for the class is the ORPHANS: campaign
+  -- declarations no constant of the environment (library or test) references — built, never spent.
+  { census := "DeadDeclarationCensus", pin := "expectedDeadCensus", field := "A-orphan", goal := .zero, move := .shrinkOnly,
+    serves := "Rule 1: campaign declarations that no declaration anywhere consumes — built and never spent",
+    moves := "deleted on the owner's ruling (`lake run dead-census` lists them by name), or spent by the consumer they were built for (a fold, a Rule 2 instantiation)",
+    basis := "item 530 (`A-orphan`; `A-campaign` demoted to population)" },
   { census := "DeadDeclarationCensus", pin := "expectedDeadCensus", field := "unresolved", goal := .zero, move := .shrinkOnly,
     serves := "Blueprint/04 rows whose root name resolves to no constant",
     moves := "fix the row in `Blueprint/04-capstones.md` / `scripts/blueprint-capstones.txt` or restore the constant",

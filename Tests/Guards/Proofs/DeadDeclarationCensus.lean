@@ -63,8 +63,13 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
 -- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
 -- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
+-- 2026-11-20 (item 530, the owner's word on #359): the summary gains `A-orphan=140` — campaign declarations no
+-- constant of the environment (library or test module) references: built, never spent; the dashboard's directed
+-- row for the class (`A-campaign` is a population reading now).  Same item: structure-field defaults (`_default`,
+-- 139 generated defs) leave the population — population 14252 → 14113, def 2675 → 2536, unreached 6548 → 6409,
+-- A-campaign 1333 → 1325, C-api 1405 → 1274: a reclassification of generated names, not a deletion.
 def expectedDeadCensus : String :=
-  "population=14252 thm=10215 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6548 thm=4624 A-campaign=1333 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14113 thm=10215 def=2536 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6409 thm=4624 A-campaign=1325 A-orphan=140 C-api=1274 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
