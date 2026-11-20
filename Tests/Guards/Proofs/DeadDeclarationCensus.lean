@@ -59,8 +59,19 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-19 (item 528, β PR 2): population 14,242 → 14,249 (thm +2), unreached 6,538 → 6,545, A-campaign 1,323 → 1,330 —
 -- the five content-park constructors, `SSLComments_to_GStar_prefix` and the steps split by source park (five lemmas, were
 -- three), reached by no root until the fold spends them (class (A)); B-roster unmoved.
+-- 2026-11-19 (#302 integrated over item 526 and #349, base 4f31fef): full Lean 4.35.0
+-- build 1,573/1,573; native `dead-census -- --check` measured population
+-- 14,304 → 14,309, thm 10,247 → 10,249, def 2,701 → 2,702, unreached
+-- 6,505 → 6,534 and A-campaign 1,281 → 1,310. The owner S3 development
+-- changed the cluster-root count 1,460 → 1,459; capstone:27, blueprint:223,
+-- C-api:1,414, D-test-only:277 and B-roster:3,533 are unchanged. The pin is
+-- read on the merged tree, not summed from the two parents.
+-- 2026-11-20 (#302 against upstream b9e0a5b, S3 Items 527-528 and Python #299):
+-- The pin below is a compositional candidate from disjoint declarations, not a
+-- measured exact-tree census. Run native `dead-census -- --write` and `--check`
+-- on this source before upgrading the candidate to a warranted qualification.
 def expectedDeadCensus : String :=
-  "population=14249 thm=10212 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6545 thm=4621 A-campaign=1330 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14329 thm=10259 def=2702 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6554 thm=4622 A-campaign=1330 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
