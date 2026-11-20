@@ -76,6 +76,11 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- A-campaign 1343 → 1171, D-test-only 277 → 272, B-roster 3533 → 3308 (thm 3172 → 2961) — `scanFiltered_parseStream_ok_checkFrom_full`
 -- (ScannerShape) is a `@[capstone]`, so its proof's closure (S5(→): ParseCheckFrom, ScannerShape and the scanner lemmas
 -- they spend) is reached; population unmoved (no declaration added or removed).
+-- 2026-11-24 (item 530, the owner's word on #359; rebased over items 531–533): the summary gains `A-orphan` — campaign
+-- declarations no constant of the environment (library or test module) references: built, never spent; the dashboard's
+-- directed row for the class (`A-campaign` is a population reading now).  Same item: generated names leave the population
+-- (`_default` structure-field defaults; Lean 4.36's numbered auxiliaries `brecOn_1.eq`) — a reclassification, not a deletion
+-- (the numbers below are the rebased tree's `--write`).
 def expectedDeadCensus : String :=
   "population=14262 thm=10224 def=2676 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6156 thm=4298 A-campaign=1171 C-api=1405 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
