@@ -66,12 +66,13 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- changed the cluster-root count 1,460 → 1,459; capstone:27, blueprint:223,
 -- C-api:1,414, D-test-only:277 and B-roster:3,533 are unchanged. The pin is
 -- read on the merged tree, not summed from the two parents.
--- 2026-11-20 (#302 against upstream b9e0a5b, S3 Items 527-528 and Python #299):
--- The pin below is a compositional candidate from disjoint declarations, not a
--- measured exact-tree census. Run native `dead-census -- --write` and `--check`
--- on this source before upgrading the candidate to a warranted qualification.
+-- 2026-11-19 (item 529, β PR 3): population 14249 → 14252, thm 10212 → 10215, unreached 6545 → 6548, A-campaign
+-- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
+-- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
+-- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
+-- #302 over item 529: the three additional unreached theorems enter class (A).
 def expectedDeadCensus : String :=
-  "population=14329 thm=10259 def=2702 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6554 thm=4622 A-campaign=1330 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14332 thm=10262 def=2702 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6557 thm=4625 A-campaign=1333 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
