@@ -31,6 +31,7 @@ L4YAML/Proofs/EndToEndCorrectness.lean:parse_deterministic
 # Group 5 — value semantics
 L4YAML/Proofs/Soundness.lean:validYaml_construct
 L4YAML/Proofs/Soundness.lean:toYamlValue_correct
+L4YAML/Proofs/Schema/SchemaResolution.lean:coreTagCorrespondenceAll
 
 # Group 6 — round-trip
 L4YAML/Proofs/Output/EmitterScannability.lean:universal_roundtrip
