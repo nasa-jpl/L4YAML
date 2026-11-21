@@ -1,4 +1,4 @@
-name: TAG directive repair and actual proof consumers
+name: TAG directive repair full qualification
 on:
   push:
     branches: [fix/tag-directive-uniqueness]
@@ -8,11 +8,14 @@ permissions:
 jobs:
   qualify-repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 120
+    env:
+      LEAN_NUM_THREADS: 2
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
+          submodules: recursive
       - name: Install repository-pinned Lean
         shell: bash
         run: |
@@ -20,38 +23,151 @@ jobs:
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
           "$HOME/.elan/bin/elan" toolchain install "$(cat lean-toolchain)"
+      - name: Install binding and documentation prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y cmake libclang-dev graphviz python3-venv
+          python3 -m venv "$RUNNER_TEMP/tag-qualification-venv"
+          mkdir -p "$RUNNER_TEMP/tag-qualification-venv/empty-pythonpath"
+          export PYTHONPATH="$RUNNER_TEMP/tag-qualification-venv/empty-pythonpath"
+          export PYTHONNOUSERSITE=1
+          VPY="$RUNNER_TEMP/tag-qualification-venv/bin/python3"
+          "$VPY" -m pip install --quiet pytest
+          "$VPY" -m pytest --version
+          echo "$RUNNER_TEMP/tag-qualification-venv/bin" >> "$GITHUB_PATH"
+          echo "PYTHONPATH=$PYTHONPATH" >> "$GITHUB_ENV"
+          echo "PYTHONNOUSERSITE=1" >> "$GITHUB_ENV"
+          echo "L4YAML_LIB=$GITHUB_WORKSPACE/ffi/out/libl4yaml.so" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$GITHUB_WORKSPACE/ffi/out:$(lean --print-prefix)/lib/lean" >> "$GITHUB_ENV"
       - name: Bind source and proof identities
         shell: bash
         run: |
           set -euo pipefail
           git rev-parse HEAD HEAD^{tree} HEAD:L4YAML
-          git rev-parse HEAD^ HEAD^:L4YAML
+          git rev-parse 14eb6dbab845d2ac61f171a9ed61906d3f9ffb2f 14eb6dbab845d2ac61f171a9ed61906d3f9ffb2f:L4YAML
+          git submodule status
           cat lean-toolchain
           lean --version
+          rustc --version
+          cargo --version
+          python3 --version
           sha256sum Tests/Guards/Proofs/TagDirectiveRepair.lean Tests/Guards/Proofs/TagDirectiveSoundness.lean Tests/Guards/Proofs/TagDirectiveSoundnessIx.lean Tests/Guards/Proofs/TagDirectiveConsumer.lean
-      - name: Build library, affected consumers and executable regressions
+      - name: Build every default target and non-default test executables
         shell: bash
         run: |
           set -euo pipefail
-          lake build L4YAML adversarialinstantiation L4YAML.Proofs.Parser.StreamCompleteness L4YAML.Proofs.Serialization.RuntimeScopes L4YAML.Proofs.Serialization.ErrorCensus Tests.Guards.Proofs.TokenGrammarProbes Tests.Guards.Proofs.TokenEventExtractors Tests.Guards.Proofs.TagDirectiveRepair Tests.Guards.Proofs.TagDirectiveSoundness Tests.Guards.Proofs.TagDirectiveSoundnessIx Tests.Guards.Proofs.TagDirectiveConsumer 2>&1 | tee tag-repair-build.log
-      - name: Inspect exact theorem axiom profiles
+          lake build 2>&1 | tee tag-repair-build.log
+          JOBS=$(grep -oE '\([0-9]+ jobs\)' tag-repair-build.log | tail -1 | grep -oE '[0-9]+')
+          echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"
+          echo "BUILD_JOBS_PASSED=$JOBS" >> "$GITHUB_ENV"
+          lake build tests demo limittests 2>&1 | tee tag-repair-extra-build.log
+      - name: Check serialization and TAG axiom profiles
         shell: bash
         run: |
           set -euo pipefail
           for proof in TagDirectiveSoundness TagDirectiveSoundnessIx TagDirectiveConsumer; do
             lake env lean "Tests/Guards/Proofs/$proof.lean"
           done 2>&1 | tee tag-repair-axioms.log
-          if grep -E 'sorryAx|_native\.native_decide\.ax' tag-repair-axioms.log; then
-            exit 1
-          fi
+          lake run check-serialization-proofs -- --keep tag-repair-serialization 2>&1 | tee tag-repair-serialization.log
+          cat tag-repair-serialization/qualification.log tag-repair-axioms.log > tag-repair-combined-axioms.log
+          cp tag-repair-serialization/sites.txt tag-repair-combined-sites.txt
+          cat >> tag-repair-combined-sites.txt <<'SITES'
+          L4YAML.Tests.Guards.TagDirectiveSoundness.duplicate_directives_refused
+          L4YAML.Tests.Guards.TagDirectiveSoundness.duplicate_directives_refused_ix
+          L4YAML.Tests.Guards.TagDirectiveSoundness.parseStream_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundness.parseYamlRaw_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundness.parseYaml_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundnessIx.prepared_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundnessIx.document_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundnessIx.stream_loop_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundnessIx.parseStreamIx_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundnessIx.parseYamlRawIx_directives_unique
+          L4YAML.Tests.Guards.TagDirectiveSoundnessIx.parseYamlIx_directives_unique
+          L4YAML.Proofs.TokenGrammar.parseStream_accepts
+          L4YAML.Proofs.TokenGrammar.checkTokenGrammar_sound
+          L4YAML.Tests.Guards.TagDirectiveConsumer.single_scan
+          L4YAML.Tests.Guards.TagDirectiveConsumer.duplicate_scan
+          L4YAML.Tests.Guards.TagDirectiveConsumer.single_tokenGrammar
+          L4YAML.Tests.Guards.TagDirectiveConsumer.single_tokenStateOk
+          L4YAML.Tests.Guards.TagDirectiveConsumer.single_consumer
+          L4YAML.Tests.Guards.TagDirectiveConsumer.single_pipeline
+          L4YAML.Tests.Guards.TagDirectiveConsumer.duplicate_not_tokenGrammar
+          SITES
+          lake run check-serialization-proofs -- --validate tag-repair-combined-axioms.log tag-repair-serialization/sorry.log tag-repair-combined-sites.txt 2>&1 | tee tag-repair-axiom-validation.log
       - name: Run the adversarial suite with the external directive oracle
         shell: bash
         run: |
           set -euo pipefail
           lake exe adversarialinstantiation 2>&1 | tee tag-repair-adversarial.log
+      - name: Run all executable suites and measure the event axis
+        shell: bash
+        run: |
+          set -euo pipefail
+          lake run run-all-tests -- docs/reports 2>&1 | tee tag-repair-suites.log
+          # eventscore's exit code does not assert a conformance threshold;
+          # retain its measured pass/diff/reject and error-ok/miss counts.
+          lake exe eventscore --suite yaml-test-suite 2>&1 | tee tag-repair-events.log
+      - name: Check proof, documentation and census gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          for gate in check-theorem-keyword check-import-closure check-reflection-index check-doc-graphs check-closure-log check-gate-vocab check-scripts-lean check-pack-births; do
+            lake run "$gate" 2>&1 | tee "tag-repair-$gate.log"
+          done
+          lake run dead-census -- --check 2>&1 | tee tag-repair-dead-census.log
+          lake run census-dashboard -- --check 2>&1 | tee tag-repair-census.log
+          lake run census-dashboard -- --diff 14eb6dbab845d2ac61f171a9ed61906d3f9ffb2f 2>&1 | tee tag-repair-census-delta.log
+      - name: Build C and Rust bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -B ffi/out -S ffi 2>&1 | tee tag-repair-c-configure.log
+          cmake --build ffi/out --parallel 2 2>&1 | tee tag-repair-c-build.log
+          test -f ffi/out/libl4yaml.so
+          test -x ffi/out/tryparse_c
+          (cd rust/l4yaml && cargo build --release --example tryparse --jobs 2) 2>&1 | tee tag-repair-rust-build.log
+          cargo test --manifest-path rust/Cargo.toml --workspace --release --locked --jobs 2 -- --test-threads=1 2>&1 | tee tag-repair-rust-tests.log
+          sha256sum ffi/out/libl4yaml.so ffi/out/tryparse_c rust/target/release/examples/tryparse | tee tag-repair-binding-identities.log
+      - name: Run Python bindings and cross-language comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pytest Tests/test_python_ffi.py -v --tb=short --no-header --junitxml=docs/reports/python-ffi-junit.xml 2>&1 | tee docs/reports/python-ffi-tests.txt
+          python3 -m pytest python/tests/ -v --tb=short --no-header --junitxml=docs/reports/python-package-junit.xml 2>&1 | tee docs/reports/python-package-tests.txt
+          lake run cross-lang-compare -- docs/reports 2>&1 | tee docs/reports/cross-lang-comparison.txt
+      - name: Generate reports and check compiled-environment hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          lake run test-reports -- docs/reports 2>&1 | tee tag-repair-reports.log
+          lake exe collect-stats --emit-lean 2>&1 | tee tag-repair-stats.log
+          lake run check-hygiene -- docs/reports/stats.json 2>&1 | tee tag-repair-hygiene.log
+      - name: Build and render documentation on pinned dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd doc && lake build l4yaml-doc) 2>&1 | tee tag-repair-doc-build.log
+          lake build graph 2>&1 | tee tag-repair-graph-build.log
+          mkdir -p doc/Doc/L4YAML/graphs
+          lake exe graph --to=L4YAML.Scanner.Scanner,L4YAML.Parser.Composition,L4YAML.Surface.Document,L4YAML.Output.Dump,L4YAML.Output.Emitter,L4YAML.FFI.FFI,L4YAML.Schema.Api,L4YAML.Config.Config doc/Doc/L4YAML/graphs/import-graph.dot
+          dot -Tsvg doc/Doc/L4YAML/graphs/import-graph.dot -o doc/Doc/L4YAML/graphs/import-graph.svg
+          lake run check-doc-graphs -- --strict 2>&1 | tee tag-repair-doc-graphs.log
+          (cd doc && lake exe l4yaml-doc) 2>&1 | tee tag-repair-doc-render.log
+          lake run svg-objects -- doc/_out/html-multi 2>&1 | tee tag-repair-svg.log
+          lake build :docs 2>&1 | tee tag-repair-api-docs.log
+          git diff --exit-code -- lean-toolchain lake-manifest.json doc/lean-toolchain doc/lake-manifest.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: tag-directive-repair-qualification
-          path: tag-repair-*.log
+          name: tag-directive-repair-full-qualification
+          path: |
+            tag-repair-*.log
+            tag-repair-combined-sites.txt
+            tag-repair-serialization/
+            rust/Cargo.lock
+            docs/reports/*.txt
+            docs/reports/*.json
+            docs/reports/*junit.xml
           if-no-files-found: error

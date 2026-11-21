@@ -106,20 +106,81 @@ the narrower serialization checker is explicitly retained in
 
 ## Qualification and remaining obligations
 
-The dedicated qualification workflow binds commit/tree identities, prints
-the actual consumer and successful-result axiom profiles, builds the library
-and affected proofs, and runs the adversarial suite. Exact hosted results are
-recorded in SYNTHESIS and the associated Actions run.
+The initial targeted receipt is
+[Actions 44815216558](https://github.com/metalogiclabs/L4YAML/actions/runs/44815216558)
+at `d700d836fa4c5e26a1cbeac6a28019884dd92927`: **454 build jobs** and
+**62,403/62,403 adversarial checks** with the consumer/soundness axiom profiles
+inspected. The qualification follow-up preserves that production subtree,
+`23369a577ad9a583fe572ab263030e87a06e3c15`, while reconciling the full-build
+censuses, documenting their cause, and extending the reproducible workflow.
 
-The local adversarial executable passed **62,403/62,403 checks**. The affected
-`TokenGrammarProbes` guard also passed against the updated grammar. This is
-targeted library, consumer and regression qualification, not a claim that all
-default census/documentation gates or FFI bindings were qualified.
+The local full default build passed **1,576 jobs** after correcting the measured
+`NarrowingWorthCensus` tally from 6,450 to 6,451. The added theorem is the
+generated `ScanError.duplicateTagDirective.sizeOf_spec`; the no-op readings
+are unchanged. The fresh dead-declaration census also required these measured
+updates:
+
+| Reading | Before | After | Cause |
+|---|---:|---:|---|
+| Authored library population | 14,252 | 14,263 | Three lemmas, seven definitions/instances, one constructor |
+| Unreached by library roots | 6,548 | 6,555 | Seven new grammar/completeness helpers reached by tests |
+| B-roster | 3,533 | 3,344 | 189 existing dependencies reclassified through the actual test consumer |
+| D-test-only | 277 | 473 | Those 189 existing declarations plus the seven new helpers |
+
+No name enters the B-roster. Its removals comprise 114 declarations from
+`StreamCompleteness` and 75 from `TokenGrammar`; no library declaration was
+deleted. This is test reach, not capstone closure. The capstone/export/Blueprint
+root counts and campaign/API partitions are unchanged. The roster generator's
+header now describes test-only reclassification as well as deletion and
+library-root reach, matching its existing classifier.
+
+The vocabulary gate also exposed an inherited stale pin: the exact parent
+already has 524 matching mentions over 115 names, while its pin says 522.
+The TAG repair adds or removes none of those matching mentions. The pin is
+reconciled to the fresh measurement without changing the vocabulary scanner.
+
+The fresh executable qualification passed all 21 runner entries; the 17
+counted test suites report **2,173/2,173 checks**. The separate adversarial
+executable passed **62,403/62,403**. The YAML corpus acceptance result is
+**358/358 applicable cases**, with 48 skipped cases. The event-axis result
+remains **347/358**: 252 matching valid event streams, 11 event differences,
+no valid-input rejections, and 95 correctly rejected invalid inputs. This
+qualification does not promote acceptance coverage to full event conformance.
+
+The serialization gate and the explicit TAG consumer/soundness observations
+validate **68 required axiom profiles**, including the existing deliberate
+`sorry` negative control. Every observed profile uses only a subset of
+`propext`, `Classical.choice`, and `Quot.sound`; no placeholder or compiled
+reduction axiom is accepted by this gate.
+
+Freshly built C and Rust bindings support the local downstream checks:
+**78/78 Python FFI tests**, **180/180 Python package tests**, and **24 Rust
+integration tests plus one compile doctest** passed. The 145 independently
+labelled TAG controls (13 positive controls, four duplicate controls, and
+128 handle/prefix/document-scope pairs) also passed through each of the Lean,
+C, Python, and Rust unlimited APIs: **580/580 executions**. Each backend
+accepted the 125 positive cases and returned the duplicate-TAG diagnostic for
+the 20 negative cases. Toolchain and dependency pins are unchanged.
+
+The dedicated [qualification workflow](../../.github/workflows/tag-directive-repair.yml)
+now runs the full default build, all executable suites, the adversarial oracle,
+normal proof/documentation/census gates, C/Rust builds and Rust tests, both Python suites,
+cross-language comparison, compiled-environment hygiene, and pinned
+documentation builds. It binds source and binary identities and validates
+every expected TAG/serialization axiom observation against the allowed axioms,
+including the existing sorry negative control. Event-axis output is retained
+as a measurement, since that executable's exit code does not assert a threshold.
+Cross-language agreement compares pass/fail/skip/total tuples, not output bytes.
+
+Completed exact-head hosted receipts and any remaining qualification status
+are recorded on [PR #361](https://github.com/nasa-jpl/L4YAML/pull/361), with logs
+and artifacts in its linked Actions runs. Defining a workflow is not itself
+evidence that the workflow passed. The run must be read at its recorded head.
 
 This branch does not repair the source/annotated `implicitContinue` rules,
 retire `scannerDrop`, repair the four dependent source-stream routes, prove
-global source-to-token correspondence, or close Group 7.7. It does not claim
-FFI-specific qualification or validation by a separately implemented kernel.
+global source-to-token correspondence, or close Group 7.7. The qualification
+does not claim validation by a separately implemented kernel.
 
 The natural review decision is whether this explicit requirement allocation
 and paired runtime/token-contract repair should be adopted before continuing
