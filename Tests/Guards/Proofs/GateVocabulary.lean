@@ -124,8 +124,11 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-14 (item 491): mentions 519 → 520 — P119's docstring and item 491 name the key/value dispatcher and its checks.
 -- 2026-11-14 (item 492's rebase): mentions 520 → 521 — item 493's Priority 97 rows (merged without the
 -- re-pin) name the preprocess step's scanner lemma once more; the base read 521 against this pin.
+-- 2026-11-21 (TAG repair qualification): mentions 522 → 524 reconciles inherited pin drift.
+-- The parent 14eb6dba source already has 524 matching mentions over 115 names; the TAG repair
+-- and qualification source diff adds or removes none. The other measured fields are unchanged.
 def expectedGateVocab : String :=
-  "names=115 mentions=522 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=524 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

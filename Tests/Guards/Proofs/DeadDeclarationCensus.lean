@@ -12,7 +12,8 @@ convention, (D) Rule 2 / instrument-only and (B) the roster, and compares two pi
 * `expectedDeadCensus` — the one-line summary (counts); `--write` rewrites it.
 * `expectedDeadRoster` (`DeadDeclarationRoster.lean`) — class (B) as a SET of fully-qualified
   names, shrink-only: a name entering it is a declaration reached by nothing — Rule 1's finding;
-  a name leaving it was deleted or reached by a capstone.
+  a name leaving it was deleted, reached by a library root, or reclassified
+  (including test-only reach).
 
 The guard below ties the two: the roster's line count is the `B-roster=` the summary names, so
 neither can be edited without the other.
@@ -63,8 +64,14 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
 -- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
 -- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
+-- 2026-11-21 (TAG directive repair): population +11 = three lemmas, seven defs/instances,
+-- and one error constructor. Four runtime declarations are reached; seven grammar/completeness
+-- helpers are test-only. The actual TagDirectiveConsumer reaches 189 existing B-roster names,
+-- moving B 3533 → 3344 and D 277 → 473 (189 existing + seven new), with no library deletion.
+-- This is test reach, not capstone closure; A/C and the capstone/export/Blueprint roots are unchanged.
+-- Cluster-roots 1459 → 1456 is recomputed on the remaining B set.
 def expectedDeadCensus : String :=
-  "population=14252 thm=10215 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6548 thm=4624 A-campaign=1333 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14263 thm=10218 def=2682 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6555 thm=4627 A-campaign=1333 C-api=1405 D-test-only=473 B-roster=3344 thm=3066 cluster-roots=1456"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

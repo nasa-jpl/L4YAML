@@ -262,6 +262,8 @@ lemma parseStream_three_tokens_scalar (content : String)
   have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
     unfold prepareDocumentState
     rw [h_pd]
+    simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+      Bool.false_eq_true, ↓reduceIte]
     simp only [bind, Except.bind, Array.filterMap_empty]
     have h_th : { ps1 with tagHandles := #[] } = ps1 := by
       simp [ps1, ParseState.advance]
@@ -481,6 +483,8 @@ lemma parseStream_emitSequence (style : CollectionStyle) (items : Array YamlValu
     have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
       unfold prepareDocumentState
       rw [h_pd]
+      simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+        Bool.false_eq_true, ↓reduceIte]
       simp only [bind, Except.bind, Array.filterMap_empty]
       have h_th : { ps1 with tagHandles := #[] } = ps1 := by
         simp [ps1, ParseState.advance]
@@ -716,6 +720,8 @@ lemma parseStream_emitMapping (style : CollectionStyle) (pairs : Array (YamlValu
     have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
       unfold prepareDocumentState
       rw [h_pd]
+      simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+        Bool.false_eq_true, ↓reduceIte]
       simp only [bind, Except.bind, Array.filterMap_empty]
       have h_th : { ps1 with tagHandles := #[] } = ps1 := by
         simp [ps1, ParseState.advance]

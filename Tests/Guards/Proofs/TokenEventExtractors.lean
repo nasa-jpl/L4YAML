@@ -130,7 +130,6 @@ def agreeing : List String :=
   [ "", "a", "--- a\n", "--- a\n...\n--- b\n", "a\n---\nb",
     "%TAG !t! tag:x,2000:\n--- !t!a b",
     "%TAG !t! tag:x,2000:\n%TAG !u! tag:y,2000:\n--- !u!a b",
-    "%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b",
     "%YAML 1.2\n%TAG !t! tag:x,2000:\n--- !t!a b",
     "%TAG !t! tag:x,2000:\n%YAML 1.2\n--- !t!a b",
     "%TAG !t! tag:x,2000:\n--- !t!a b\n...\n%TAG !t! tag:y,2000:\n--- !t!c d",
@@ -143,11 +142,24 @@ def agreeing : List String :=
     "? a", "a: !t!x", "%TAG !t! tag:x,2000:\n---\n...\n--- !t!a",
     "%TAG !t! tag:x,2000:\n--- !t!a\n---\n!t!b" ]
 
-/- On the `%TAG`-before-`---`, duplicate-directive and redeclared-handle rows
+/- On the `%TAG`-before-`---` and legally redeclared-handle rows
 (and the anchor/alias rows) the two extractors agree, so `TokenStateOk` and
 `checkFrom {} (tokenEvents ts)` coincide there.  Capstone 7.7 via S5. -/
 #guard
     agreeing.all (fun s => (scanFiltered s).isOk && (checkFrom {} (ev₂ (scanOr s)) == parserOk (scanOr s))) = true
+
+/- YAML §6.8.2 forbids repeated declarations of one handle in a document.
+The serialization trace still satisfies its narrower anchor/use requirements;
+directive validity is an independent surface requirement, now enforced by the
+parser and the token-grammar premise of completeness. Keep this disagreement
+visible instead of broadening the serialization predicate's advertised scope. -/
+def duplicateTag : String :=
+  "%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b"
+
+#guard (scanFiltered duplicateTag).isOk &&
+  !parserOk (scanOr duplicateTag) &&
+  checkFrom {} (ev₂ (scanOr duplicateTag)) &&
+  !L4YAML.Proofs.TokenGrammar.checkTokenGrammar (scanOr duplicateTag)
 
 
 /-! ## Ruling (c) as stated — refuted under the old `TG.DocStart`, closed by narrowing it

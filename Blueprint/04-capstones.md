@@ -978,6 +978,21 @@ face at a level they write
 
 ---
 
+### Group 7.7 directive-validity allocation (§6.8.2)
+
+The token grammar's document constructor now requires `DirectiveHandlesUnique`
+on the complete directive-token span. This is an independent token projection
+that retains every explicit TAG handle, including `!` and `!!`, and requires
+`List.Nodup`. The existing `parseStream_accepts` consumer transfers it through
+the exact handle list produced by `parseDirectives` to pay the runtime guard
+in both-parser preparation (the completeness proof concerns the classic token
+parser). `TokenStateOk` and the serialization event representation are unchanged.
+
+The global source certificate must establish this directive-validity condition
+as part of the exact surface/token language. A serialization trace alone cannot
+establish it: builtin declarations are erased by `tokenEvents`. This does not
+close Group 7.7 or the independent Row 19 source-grammar obligations.
+
 ## Group 8 — Surface coupling (character ↔ implementation)
 
 Shows every scanner step's character-level behavior matches a
