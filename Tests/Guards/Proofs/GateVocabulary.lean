@@ -124,8 +124,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-14 (item 491): mentions 519 → 520 — P119's docstring and item 491 name the key/value dispatcher and its checks.
 -- 2026-11-14 (item 492's rebase): mentions 520 → 521 — item 493's Priority 97 rows (merged without the
 -- re-pin) name the preprocess step's scanner lemma once more; the base read 521 against this pin.
+-- 2026-11-23: the native reader observes two inherited item-529 comment citations
+-- in DispatchPrice and ParkGapWidth. No gate name or unresolved reference changed.
 def expectedGateVocab : String :=
-  "names=115 mentions=522 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=524 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

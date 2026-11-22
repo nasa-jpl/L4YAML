@@ -1757,14 +1757,18 @@ eventual P1/P2a/P2b/Bridge proofs must satisfy. -/
 #print axioms frame_matching_close_at_end
 
 /-! The P2b projection refutation and its corrected-form survival probe are `sorry`-free (the
-    `native_decide` axioms are the standard reflected-`decide` ones, as for every probe in this file). -/
+    `native_decide` axioms are the standard reflected-`decide` ones, as for every probe in this file).
+
+    2026-11-22, Lean v4.36.0: the last three axiom NAMES of `p2b_map_form_false` shift down by one
+    (`ax_1_6/7/8` → `ax_1_5/6/7`); the suffix is the elaborator's auxiliary-name counter, and the set is
+    still four `native_decide` call sites on the standard three. -/
 /-- info: 'NonAllScalarLocality.p2b_map_form_false' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
  p2b_map_form_false._native.native_decide.ax_1_2,
+ p2b_map_form_false._native.native_decide.ax_1_5,
  p2b_map_form_false._native.native_decide.ax_1_6,
- p2b_map_form_false._native.native_decide.ax_1_7,
- p2b_map_form_false._native.native_decide.ax_1_8] -/
+ p2b_map_form_false._native.native_decide.ax_1_7] -/
 #guard_msgs (whitespace := lax) in
 #print axioms p2b_map_form_false
 

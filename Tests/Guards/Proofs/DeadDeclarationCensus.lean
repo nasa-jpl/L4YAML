@@ -71,8 +71,11 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
 -- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
 -- #302 over item 529: the three additional unreached theorems enter class (A).
+-- Lean v4.36.0: native census population 14332 → 14333, def 2702 → 2703,
+-- unreached 6557 → 6558 and A-campaign 1333 → 1334. The new declaration is
+-- `SerializationWellFormed.decMemString`; the B roster is unchanged.
 def expectedDeadCensus : String :=
-  "population=14332 thm=10262 def=2702 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6557 thm=4625 A-campaign=1333 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14333 thm=10262 def=2703 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6558 thm=4625 A-campaign=1334 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

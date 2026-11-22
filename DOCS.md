@@ -38511,6 +38511,59 @@ records.
 None is a plan row; the numbers are recorded so the decision can be taken
 against them rather than against a forecast.
 
+* **Lean v4.36.0 — LANDED 2026-11-22.**  This branch and its doc workspace are
+  on `leanprover/lean4:v4.36.0`.  What the bump cost:
+  * **No proof broke; one instance was spelled out.**  v4.36.0 resolves
+    `BEq String` to `String.instLinearOrderPackage.toBEq` where v4.35.0 took
+    `instBEqOfDecidableEq`, and that package stands on `Classical.choice` and
+    `Quot.sound`.  The serialization trace checker's correctness theorem is
+    pinned at `[propext]` by `check-serialization-proofs`, and its
+    `List String` membership decisions (`AliasAllowed`, `TagHandleAllowed`)
+    were found by instance search; `SerializationWellFormed.decMemString` now
+    names the `DecidableEq` route, so the profile holds at `[propext]` and the
+    gate reads `48 observed profiles; exact headline sets`.  No statement
+    changed.
+  * **One dead `open` in the doc workspace.**  `Doc/L4YAML/StatsTable.lean`
+    opened `Lean.Doc.Syntax`, a namespace v4.36.0 no longer has, and used
+    nothing from it; the line is removed.
+  * **Six axiom audits moved, by elaboration alone.**  `resolveAliases_empty`
+    `[propext, Quot.sound]` → the standard three, and the four `contentEq*`
+    list lemmas `[propext]` → the standard three: the same `BEq String` route,
+    entering through the definitions the statements mention
+    (`ResolveAliasesEmpty`, `ContentListStepAlgebra`).  `wordChar_alnum` LOSES
+    `Classical.choice` (`TagShapeAxioms`): `Char`'s order now comes from
+    `Char.instIsLinearOrder`.  The native-decide suffixes in
+    `NonAllScalarLocality` read `ax_1_2`, `ax_1_5`, `ax_1_6`, `ax_1_7` (were
+    `…_2`, `_6`, `_7`, `_8`): the auxiliary-name counter shifted, four sites
+    as before.
+  * **Five pins moved, and no conclusion with them.**  `constants`
+    1760 → 1747 in BOTH `HypothesisReaderCensus` and `PremiseNecessityCensus`
+    (one loss seen through two peels): thirteen generated equation lemmas are
+    no longer realized — `FrameTail.leadFree.match_1.eq_1..4`,
+    `propertyScanFollowerOk.match_1.eq_1..2`, `SNbDoubleText.match_1.eq_1..6`,
+    `propsBlockLineCrossLoop.eq_def`; `decls` and every verdict lane held.
+    `NarrowingWorthCensus` `theorems` 6450 → 6422: twenty-eight generated
+    theorems (`eq_def` families, two `congr_simp`) likewise unrealized, with
+    `byElab` / `byWhnf` at 14 / 14.  `ValueLineOrigins` `liteNodes`
+    693828 → 693938 on the same lets, applications, alternatives and nodes:
+    term size.  `expectedDeadCensus` population 14252 → 14253 and A-campaign
+    1333 → 1334: `decMemString` itself, not the toolchain.  The rosters were
+    named this time by diffing declaration dumps of the kept v4.35.0 build
+    against the v4.36.0 one.
+  * **Pins.**  `LeanCopilot`, `importGraph`, `DocGen4` at their `v4.36.0`
+    tags; the doc workspace at verso's `v4.36.0` tag (`6674cf83`) with
+    subverso in lockstep at `f9c40d40`, verso's own `verso-v4.36.0` tag.
+    `lake update` also moved the `main`/`master`-tracking packages
+    (`leansqlite`, `Cli`, `UnicodeBasic`, `BibtexQuery`; `illuminate` and
+    `plausible` in the doc workspace); `MD4Lean` did not move.
+  * **Gates.**  Full `lake build` exit 0, 11 warnings as on v4.35.0; Lake
+    now reports 2645 jobs where v4.35.0 reported 1571 on the same tree (it
+    counts differently; no module was added).  Suite matrix 869 passed /
+    0 failed / 151 skipped, event score 347/358, FFI 78 and Python 180 tests
+    passed; the doc workspace builds 751 jobs and the site renders at 52
+    pages.  `check-gate-vocab` reads `mentions=524` against a pin of 522 on
+    the base under v4.35.0 already; this bump neither moved nor re-pinned it.
+
 * **Lean v4.35.0 — LANDED 2026-10-17.**  This branch and its doc workspace are
   on `leanprover/lean4:v4.35.0`.  The release-line branch `v4.35.0` exists for
   consumers that pin by release: it began as `v4.34.0` + `145afc52` (the same
