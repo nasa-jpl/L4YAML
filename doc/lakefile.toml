@@ -3,12 +3,12 @@ name = "L4YamlDoc"
 [leanOptions]
 "autoImplicit" = false
 
-# Verso pinned to the immutable `v4.35.0` tag, on the v4.35.0 toolchain.  This
+# Verso pinned to the immutable `v4.36.0` tag, on the v4.36.0 toolchain.  This
 # workspace requires no VersoBlueprint, so it takes verso's own release tag; the
 # blueprint workspaces in the family (PropertyKindCalculus/blueprint, soil-moisture-
-# model/technical-reference) pin the `v4.35.0`-branch commit their VersoBlueprint
+# model/technical-reference) pin the `v4.36.0`-branch commit their VersoBlueprint
 # builds with instead.  subverso moves in lockstep to the rev verso's own manifest
-# pins (its `verso-v4.35.0` tag).
+# pins (its `verso-v4.36.0` tag).
 # The `NicolasRouquette/verso` fork (`fix/combined-img-svg`) this replaced carried two
 # patches, both now provided project-side instead of in verso: SVG images embed as
 # `<object>` so Graphviz `URL=` node links stay clickable (`lake run svg-objects --
@@ -18,7 +18,7 @@ name = "L4YamlDoc"
 [[require]]
 name = "verso"
 git = "https://github.com/leanprover/verso"
-rev = "v4.35.0"
+rev = "v4.36.0"
 
 [[lean_lib]]
 name = "Doc.L4YAML"

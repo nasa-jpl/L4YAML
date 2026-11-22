@@ -24,7 +24,6 @@ import Doc.L4YAML.StatsData
 open Lean Elab
 open Verso Doc Elab
 open Verso.Genre Manual
-open Lean.Doc.Syntax
 open Doc.L4YAML.CellDsl
 
 namespace Doc.L4YAML.StatsTable

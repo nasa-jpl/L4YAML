@@ -919,7 +919,10 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-21 (TAG directive repair): theorems 6450 → 6451 — generated
 -- `ScanError.duplicateTagDirective.sizeOf_spec` for the new error constructor;
 -- the no-op readings are unchanged.
-def expectedNoopTally : String := "theorems=6451 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
+-- 2026-11-22 (Lean v4.36.0): theorems 6450 → 6422, the no-op readings unmoved. The 28 are generated theorems v4.35.0 realized
+-- and v4.36.0 does not: 26 `eq_def` unfold lemmas (the `YamlValue.resolveAliases*` / `adaptForFlowContext` / `stripAnchors` and
+-- `Grammar.toYamlValue` / `stripAnnotations` families, `Emit.emit`, three scanner loops, …) and `ValidNode.plainScalar{Block,Flow}.congr_simp`.
+def expectedNoopTally : String := "theorems=6423 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

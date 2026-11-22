@@ -67,16 +67,21 @@ instance (h : String) : Decidable (BuiltinTagHandle h) := by
 def AliasAllowed (env : Env) (name : String) : Prop :=
   name ∈ env.anchors
 
-instance (env : Env) (name : String) : Decidable (AliasAllowed env name) := by
-  unfold AliasAllowed
-  infer_instance
+/-- Membership in a `List String`, decided through `DecidableEq`'s own `BEq` / `LawfulBEq`.  From Lean v4.36.0
+instance search reaches `String.instLinearOrderPackage` (on `Classical.choice`) instead, and the checker's
+correctness theorem is pinned at `[propext]`. -/
+abbrev decMemString (a : String) (l : List String) : Decidable (a ∈ l) :=
+  @List.instDecidableMemOfLawfulBEq String instBEqOfDecidableEq instLawfulBEq a l
+
+instance (env : Env) (name : String) : Decidable (AliasAllowed env name) :=
+  decMemString name env.anchors
 
 def TagHandleAllowed (env : Env) (handle : String) : Prop :=
   BuiltinTagHandle handle ∨ handle ∈ env.tagHandles
 
-instance (env : Env) (handle : String) : Decidable (TagHandleAllowed env handle) := by
-  unfold TagHandleAllowed
-  infer_instance
+instance (env : Env) (handle : String) : Decidable (TagHandleAllowed env handle) :=
+  @instDecidableOr _ _ inferInstance
+    (decMemString handle env.tagHandles)
 
 /-- Declarative trace well-formedness.
 

@@ -70,8 +70,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- moving B 3533 → 3344 and D 277 → 473 (189 existing + seven new), with no library deletion.
 -- This is test reach, not capstone closure; A/C and the capstone/export/Blueprint roots are unchanged.
 -- Cluster-roots 1459 → 1456 is recomputed on the remaining B set.
+-- Lean v4.36.0 adds the unreached `SerializationWellFormed.decMemString` decision instance.
+-- The standalone native census must recheck this expectation before the PR is updated.
 def expectedDeadCensus : String :=
-  "population=14263 thm=10218 def=2682 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6555 thm=4627 A-campaign=1333 C-api=1405 D-test-only=473 B-roster=3344 thm=3066 cluster-roots=1456"
+  "population=14264 thm=10218 def=2683 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6556 thm=4627 A-campaign=1334 C-api=1405 D-test-only=473 B-roster=3344 thm=3066 cluster-roots=1456"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
