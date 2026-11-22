@@ -12,6 +12,8 @@ L4YAML exposes opaque handle types that must be explicitly freed:
 
 **Critical**: All handles returned by L4YAML functions must be freed with `l4yaml_free()` to prevent memory leaks.
 
+**Lifecycle**: Call `l4yaml_initialize()` exactly once before any parsing, and `l4yaml_finalize()` after all handles have been freed.
+
 ## C Usage
 
 ### Basic Pattern
@@ -19,8 +21,11 @@ L4YAML exposes opaque handle types that must be explicitly freed:
 ```c
 #include <l4yaml.h>
 
-// Parse YAML
-l4yaml_result_t result = l4yaml_parse_single(yaml_text, strlen(yaml_text));
+// Initialize the Lean runtime exactly once per process, before any parsing
+l4yaml_initialize();
+
+// Parse YAML (the third argument is a limit preset, one of L4YAML_LIMITS_*)
+l4yaml_result_t result = l4yaml_parse_single(yaml_text, strlen(yaml_text), L4YAML_LIMITS_DEFAULT);
 if (!result || !l4yaml_result_is_ok(result)) {
     if (result) l4yaml_free(result);
     return ERROR;
@@ -85,7 +90,7 @@ l4yaml_free(root);
 Always check for null handles and free on error paths:
 
 ```c
-l4yaml_result_t result = l4yaml_parse_single(text, len);
+l4yaml_result_t result = l4yaml_parse_single(text, len, L4YAML_LIMITS_DEFAULT);
 if (!result) {
     return ERROR;  // Allocation failed, nothing to free
 }
@@ -116,8 +121,9 @@ The `l4yaml_raii.hpp` header provides RAII wrappers that automatically manage me
 ```cpp
 #include <l4yaml_raii.hpp>
 
+// l4yaml_initialize() must already have been called once (see C Usage)
 // Parse YAML - automatic cleanup on scope exit
-l4yaml::ResultHandle result(l4yaml_parse_single(yaml_text, strlen(yaml_text)));
+l4yaml::ResultHandle result(l4yaml_parse_single(yaml_text, strlen(yaml_text), L4YAML_LIMITS_DEFAULT));
 if (!result || !l4yaml_result_is_ok(result.get())) {
     return ERROR;  // Automatic cleanup, no manual free needed
 }
