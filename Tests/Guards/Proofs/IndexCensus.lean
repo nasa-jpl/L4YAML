@@ -285,18 +285,18 @@ def expected : List String :=
    "seq/other/occ=2  ×3",
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` and its two close relays read `ResumeFrames (SLYamlStream sp_start) ks` once each (×3 → ×5).
    "stream/frames/occ=1  ×3",
-   "stream/frames/occ=2  ×10",
+   "stream/frames/occ=2  ×16",
    "stream/frames/occ=3  ×9",
    "stream/frames/occ=4  ×6",
    "stream/frames/occ=5  ×6",
   -- 2026-10-30 (item 405, Rule 8 fix): `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` re-indexed by the projection `markedCols sc` (no `∃ ns` binder): the ten `⟨nv0 :: ns, …⟩` relays into the `∃ ns` faces now pass `markedCols sc`, so the stream-class binders read twice fall 26 → 16.
-   "stream/other/occ=1  ×6",
-   "stream/other/occ=2  ×25",
+-- Item 519: two `∃ ns : List Nat` stream-lane occurrences gone with `FlowBaseRoutes.vslot`'s restatement (6 → 4).
+   "stream/other/occ=1  ×4",
+   "stream/other/occ=2  ×29",
+   "stream/other/occ=3  ×1",
    "stream/other/occ=4  ×4",
    "stream/other/occ=6  ×1",
-   "stream/other/occ=8  ×2",
-   "stream/other/occ=9  ×1",
-   "valueline/bottom/occ=1  ×34",
+   "stream/other/occ=8  ×3",
    "valueline/frames/occ=1  ×2",
    "valueline/frames/occ=2  ×10",
    "valueline/frames/occ=3  ×8",
@@ -310,9 +310,9 @@ def expected : List String :=
 
 /-- The three carriers a TYPE-ONLY census cannot see. -/
 def expectedSurface : List String :=
-  ["ImplicitKeyPack bodyOnly=3",
-   "PropsKeyPack bodyOnly=3",
-   "ResumeKeyCtx bodyOnly=4"]
+  ["ImplicitKeyPack bodyOnly=2",
+   "PropsKeyPack bodyOnly=2",
+   "ResumeKeyCtx bodyOnly=3"]
 
 /-- **Empty, and that is the reading.**  The binder called `nv` and the binder
     the term uses as a value line's index are the same 34 binders, so in this

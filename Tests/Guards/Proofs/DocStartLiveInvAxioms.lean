@@ -38,10 +38,6 @@ open L4YAML.Proofs.DocStartLiveInv in
 #guard_msgs in
 #print axioms scan_shape
 
-open L4YAML.Proofs.DocStartLiveInv in
-/-- info: 'L4YAML.Proofs.DocStartLiveInv.scanFiltered_liveF' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in
-#print axioms scanFiltered_liveF
 
 end Tests.Guards.DocStartLiveInvAxioms
 

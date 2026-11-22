@@ -43,11 +43,10 @@ namespace Scripts.Dead.Census
 
 /-- Class (A): capstone 7.7 (`parse_iff_grammar` converse) has no declaration yet; its S3 / S5
     chain lives here (`scanFiltered_parseStream_ok_checkFrom_full`, `TraceOf/*`, the Scanner
-    shape modules of items 446–452).  Alive by Rule 1's chain to a NAMED future capstone. -/
+    shape modules of items 446–452; `StructDepth` deleted on the owner's ruling).  Alive by Rule 1's chain to a NAMED future capstone. -/
 def campaignNamespaces : List Name :=
   [`L4YAML.Proofs.Serialization,
    `L4YAML.Proofs.Scanner.DocStartLiveInv,
-   `L4YAML.Proofs.Scanner.StructDepth,
    `L4YAML.Proofs.Scanner.TagShape]
 
 /-- The Rule 2 / instrument module roots (class (D)). -/

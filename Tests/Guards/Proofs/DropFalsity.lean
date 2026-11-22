@@ -388,7 +388,19 @@ example (s : String) : ([] : List Char) <:+ s.toList := List.nil_suffix
 /-- The census line, pinned. -/
 -- 2026-10-24 (B3 [66] col-0 threading): total 27 → 28, free 4 → 5 — `PendingNode.close_with_sslFrom`
 -- joins the transitive set (see `DropDependents.lean`); its conclusion is the same shape as `close_with_ssl`.
-def expectedTally : String := "bound=9 empty=10 free=5 negation=3 total=27"
+-- 2026-11-11 (item 484, ContentArm): total 27 → 28, bound 9 → 10 — `accum_step_content_core` (the renamed body)
+-- joins the transitive set beside `accum_step_content`, whose conclusion keeps the same bound `SLYamlStream` shape
+-- with `ContentArm` as its last conjunct.
+-- 2026-11-13 (item 489, the landing agreement): total 28 → 29, bound 10 → 11 — `accum_step_content_pairB`
+-- (ContentBridge §9) joins the transitive set; it re-packs the wrapper's tuple, so its conclusion keeps the
+-- bound `SLYamlStream` shape.
+-- 2026-11-14 (item 490, the ∀-floor fold): total 29 → 30, bound 11 → 12 — `accum_step_content_pairK`
+-- (ContentBridge §11) states `sc.flowLevel = d + 1` as `pairB` does.
+-- 2026-11-15 (item 520): bound 12 → 13, total 30 → 31 — `accum_step_flow_pairK` (ContentBridge) consumes
+-- `accum_step_flow` whole, one more `dropClose` dependent with the bound falsity shape.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+def expectedTally : String := "bound=14 empty=10 free=5 negation=3 total=32"
 
 /-- The arm the model omits. -/
 def drop : Name := `L4YAML.Surface.SLYamlStream.scannerDrop

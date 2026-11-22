@@ -298,7 +298,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- level admitted), one strict-width narrowing face fewer; `theorems` 6498 → 6499 is `ResumeFrames.strict`.
 -- 2026-11-10 (item 473, option (A)): heads 19 → 18 — the level constructors' `h_lt` and the park faces all read `≤`,
 -- one strict head shape fewer; binders/faces unchanged.
-def expectedFaceTally : String := "binders=160 faces=62 heads=18"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedFaceTally : String := "binders=158 faces=63 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -312,6 +314,8 @@ def expectedFaceTally : String := "binders=160 faces=62 heads=18"
 -- are bodies now ((γ′)).
 -- 2026-11-07 (item 448, (α) stage A): heads `lt` 30 → 26, `le` 11 → 15 — the four `:` park faces' width bound
 -- (`pendingMapValue.h_closeF`, the two `h_valF`, the `h_closeF` mirror) read `≤ n`, the park's own level admitted.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
 def expectedHeadCensus : List String :=
   -- Item 300: `Eq` 17 → 19, the two new optional binders (`h_markerline`, `h_marker_new`).
   -- Item 304: `ResumeFrames` 12 → 3 and `KeyFrames` 9 — the value-line stacks' heads.
@@ -323,7 +327,7 @@ def expectedHeadCensus : List String :=
   ["BareLandingFacts 7",
    "CompletedTail 4",
    "Covered 3",
-   "Eq 16",
+   "Eq 14",
    "FVAR 2",
    "Floor 16",
    "GStar 4",
@@ -339,11 +343,11 @@ def expectedHeadCensus : List String :=
    -- conclusion is a singleton `ResumeFrames` over the stream.
    "ResumeFrames 15",
    "SLYamlStream 5",
-   "SeqEntryTail 7",
+   "SeqEntryTail 1",
    "SuffixRun 6",
    -- 2026-11-10 (item 473, option (A)): `lt 26` + `le 15` → `le 41`: no strict width head remains — the level
    -- constructors, the park faces and the in-proof ascriptions all read `≤`.
-   "le 41"]
+   "le 47"]
 
 /-! ## §3  The rung-1 census: which faces are vacuous on their own
 
@@ -369,7 +373,8 @@ those heads and `expectedChainFaces` not naming a single one of them. -/
 def expectedChainFaces : List String :=
   -- Item 357: the marked-column domain reaches the `:`/`?` producers (`h_kslotD`, `h_explUp_chainD`) and the
   -- block-step `h_kslotUp` twins; the rung-1 faces read off the build.
-  ["FlowBaseRoutes.mk#9 (vslot)",
+-- Item 519: `FlowBaseRoutes.mk#9 (vslot)` left the rung-1 chain faces — its free `∃ ns` is gone (`∀ nv ∈ markedCols s0`).
+  [
    "accum_block_on_closeThenBlock#10 (h_vpack)",
    "accum_block_on_pendingContent#16 (h_vpack)",
    -- Item 409 (2026-10-30): the two `h_nodeV` faces left rung 1 (they carry `MarkedColsIn` now);
@@ -394,7 +399,9 @@ which of four reasons applies. -/
 -- 2026-10-28 (item 385): binders 166 → 167, surf 135 → 136
 -- — `deeperLandingResume.h_valF`: one more surface-shaped optional binder.
 -- 2026-11-02 (item 422): binders 163 → 161 — the two `h_outer` positions retired (see `expectedFaceTally`).
-def expectedFidelity : String := "binders=160 surf=133 state=27"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedFidelity : String := "binders=158 surf=133 state=25"
 
 /-- The 25 faces a state census COULD evaluate — 27 since item 300 — which is
     the population the mandate's instrument is actually defined over.  Two of them
@@ -404,6 +411,7 @@ def expectedFidelity : String := "binders=160 surf=133 state=27"
 -- 2026-10-24 (B3): indices shift with the new park fields (closeThenBlock 25→26, entryKeyPack 17→18,
 -- entryPropsKeyPack 16→17, flowKeyRoute_of_root 21→24).
 -- 2026-11-02 (item 422): 29 → 27 — `colon_open_map_explicit#21`; `compact_open_map#29` retired: the two `h_outer` `∨ True` binders are bodies now ((γ′)).
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` deleted with `KmSound`'s `∨ True` conjuncts.
 def expectedStateFaces : List String :=
   ["PreprocessIndentStable.IndentFloor.transport#3",
    "accum_block_on_closeThenBlock#26",
@@ -418,8 +426,6 @@ def expectedStateFaces : List String :=
    "entryKeyPack_of_dispatch#18",
    "entryPropsKeyPack_of_dispatch#17",
    "flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
-   "flowOpen_marker#4",
-   "flowOpen_stamp#4",
    "frameChainUnion#2",
    "frameChainUnion#3",
    "frameChainUnionD#3",
@@ -543,8 +549,8 @@ def chainKeySet : Std.HashSet String :=
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108 — `h_kslotUp`'s `Or.elim` decisions (see the ledger); pairs/sup unchanged.
 -- 2026-11-02 (item 422): the two re-counted `h_kslotUp` rows (see `expectedWorthLedger`).
 def expectedWorthTally : String :=
-  "pairs=37 splits=108 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
-innerSplits=57"
+  "pairs=37 splits=109 sup=100 chainPairs=0 chainSplits=0 innerPairs=13 \
+innerSplits=56"
 
 /-- The ledger, worth-first.  `chain` is §3's verdict — a narrowing here lands
     on another unconditional inhabitant; `inner` means the face carries a
@@ -578,13 +584,11 @@ innerSplits=57"
 -- 2026-11-02 (item 422): the `h_outer` rows and the `h_kslotUp` split counts at the five writes moved — K7 is decided at
 -- `s_prep` by one `Classical.em`, not read off `h_park`/`h_kslotUp`'s cover ((γ′)).
 def expectedWorthLedger : List String :=
-  [
-   -- 2026-10-26 (item 365): binder index #30 → #32 (`h_sound`/`h_fl0` inserted after `h_dead`); worth unchanged.
-   "splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#33",
+  ["splits=11 sup=1 inner h_closeFV_old :: accum_content_on_pendingBlock_indented#33",
    "splits=11 sup=1 inner h_closeF_old :: accum_content_on_pendingBlock_indented#14",
    "splits=8 sup=1 - h_kslot_old :: accum_content_on_pendingBlock_indented#13",
    "splits=7 sup=1 inner h_closeF99 :: accum_content_on_pendingMapValue_indented#18",
-   "splits=7 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
+   "splits=6 sup=1 inner h_closeFV_old :: accum_block_on_pendingBlock#31",
    "splits=5 sup=1 - h_seqF168 :: accum_content_on_pendingMapValue_indented#38",
    "splits=4 sup=1 - h_kslotUp :: accum_block_on_pendingBlock#30",
    "splits=4 sup=1 inner h_closeFV108 :: accum_content_on_pendingMapValue_indented#20",
@@ -593,6 +597,7 @@ def expectedWorthLedger : List String :=
    "splits=3 sup=1 - h_kslot :: accum_block_on_pendingBlock#13",
    "splits=3 sup=1 - h_kslot :: accum_content_on_pendingMapValue_indented#17",
    "splits=3 sup=1 - h_kslotUp_old :: accum_content_on_pendingBlock_indented#32",
+   "splits=3 sup=1 - h_resV_land :: question_open_map#27",
    "splits=3 sup=1 - h_seqF_old :: accum_content_on_pendingBlock_indented#15",
    "splits=3 sup=1 - h_vslot :: accum_content_on_pendingMapValue_indented#16",
    "splits=2 sup=1 - h_resV_land :: colon_open_map#26",
@@ -615,7 +620,6 @@ def expectedWorthLedger : List String :=
    "splits=1 sup=1 - h_kslotD :: colon_open_map_props#29",
    "splits=1 sup=1 - h_kslotUp :: accum_block_on_pendingBlockContent#35",
    "splits=1 sup=1 - h_mapFV108 :: accum_block_on_pendingContent#35",
-   "splits=1 sup=1 - h_resV_land :: question_open_map#27",
    "splits=1 sup=1 - h_routeS :: colon_open_map_implicit#27"]
 
 /-- **What the mandate's instrument could have answered.**  Of the 36 pairs a
@@ -633,7 +637,7 @@ def expectedWorthLedger : List String :=
 -- 2026-10-26 (item 370): splits 104 → 105 — the sibling `-` arm's split of `h_closeF_old`.
 -- 2026-10-28 (item 380, PR #146 review): splits 105 → 108, same cause; reach unchanged.
 -- 2026-11-02 (item 422): the five `h_outer` splits retired (see `expectedWorthLedger`).
-def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=108 stateSplits=3"
+def expectedBranchReach : String := "branchPairs=37 stateReachable=1 splits=109 stateSplits=3"
 
 open Meta in
 run_cmd do
@@ -706,7 +710,9 @@ rather than as a count. -/
 -- 2026-10-28 (item 385): syntactic 158 → 159, population 160 → 161
 -- — the same binder, syntactically optional.
 -- 2026-11-02 (item 422): syntactic 156 → 154, population 158 → 156 — the two `h_outer` positions retired.
-def expectedHiddenTally : String := "hiddenDefs=1 syntactic=154 hiddenOnly=2 population=156"
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+def expectedHiddenTally : String := "hiddenDefs=1 syntactic=152 hiddenOnly=2 population=154"
 
 def expectedHiddenDefs : List String := ["ResumeKeyCtx"]
 
@@ -902,7 +908,18 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-02 (item 422): theorems 6493 → 6494 — `RegisterWitness.exists_mem_ne_of_not_markedColsIn`.
 -- 2026-11-09 (item 469): theorems 6499 → 6502 (`gapRead_onT`, `accum_step_flow_trace`, `FlowStackKA.toK`); no-op tallies unmoved.
 -- 2026-11-10 (item 469, review round 1): theorems 6502 → 6505 (`gapTail_of_nil`/`gapTail_of_held`, `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; `FlowStackKA.toK`/`ofPack`/`ofK` out); no-op tallies unmoved.
-def expectedNoopTally : String := "theorems=6464 byElab=16 byWhnf=16 elabOnly=0 whnfOnly=0"
+-- 2026-11-11 (item 484): theorems 6464 → 6466 — `contentArm_of_dispatch` and the `accum_step_content` wrapper; the no-op tally itself unchanged.
+-- 2026-11-14 (item 492's rebase onto item 498): no-op theorems 6467 → 6469, the births' two lemmas.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+-- 2026-11-17 (item 524, the deletion): theorems 6473 → 6450 — the 23 `implicitValueLine` / `docStartLine` preservation lemmas
+-- (item 520's roster) deleted on the owner's ruling; the no-op readings unmoved.
+-- 2026-11-22 (Lean v4.36.0): theorems 6450 → 6422, the no-op readings unmoved. The 28 are generated theorems v4.35.0 realized
+-- and v4.36.0 does not: 26 `eq_def` unfold lemmas (the `YamlValue.resolveAliases*` / `adaptForFlowContext` / `stripAnchors` and
+-- `Grammar.toYamlValue` / `stripAnnotations` families, `Emit.emit`, three scanner loops, …) and `ValidNode.plainScalar{Block,Flow}.congr_simp`.
+def expectedNoopTally : String := "theorems=6422 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries
@@ -974,6 +991,8 @@ def expectedNoopTally : String := "theorems=6464 byElab=16 byWhnf=16 elabOnly=0 
     `mutual` block exports
     (`Tests.Guards.SurfaceSpanCensus.expectedMotiveExport`). -/
 -- 2026-10-20 (item 309): the three generic helpers conclude in `∨ alt` and are no `∨ True` no-ops.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts.
 def expectedNoopConclusions : List String :=
   ["FlowBaseRoutes.key",
    -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — a `∨ True` conclusion (§8: `Or.inr trivial` proves it; the informative side is what the flow closes relay).
@@ -986,8 +1005,6 @@ def expectedNoopConclusions : List String :=
    "flowKeyHead",
    "flowKeyRoute_of_open",
    "flowKeyRoute_of_root",
-   "flowOpen_marker",
-   "flowOpen_stamp",
    "keyctx_of_preprocess",
    "markerctx_of_landing",
    "nodocctx_of_preprocess",

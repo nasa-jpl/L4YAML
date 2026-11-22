@@ -246,7 +246,7 @@ lemma mem_of_findSome?_eq_some {A : Array (String × YamlValue)} {name : String}
   obtain ⟨⟨n, v⟩, hmem, hf⟩ := Array.exists_of_findSome?_eq_some h
   refine ⟨(n, v), hmem, ?_⟩
   by_cases hn : (n == name) = true
-  · simp only [hn, if_true, Option.some.injEq] at hf
+  · simp only [hn, ite_true, Option.some.injEq] at hf
     exact hf
   · simp [hn] at hf
 
@@ -265,10 +265,10 @@ lemma stripAnchors_resolveAliases (v : YamlValue) (A : Array (String × YamlValu
     unfold YamlValue.resolveAliases
     cases h_find : A.findSome? (fun (n, v) => if n == name then some v else none) with
     | some val =>
-      simp only [h_find]
+      simp only
       obtain ⟨p, hp, hpv⟩ := mem_of_findSome?_eq_some h_find
       rw [← hpv]; exact hA p hp
-    | none => simp only [h_find]; exact hs
+    | none => simp only; exact hs
   | .sequence style items tag anchor =>
     show YamlValue.sequence style
         (YamlValue.stripAnchors.stripList
@@ -315,10 +315,10 @@ lemma adaptForFlowContext_resolveAliases (v : YamlValue) (A : Array (String × Y
     unfold YamlValue.resolveAliases
     cases h_find : A.findSome? (fun (n, v) => if n == name then some v else none) with
     | some val =>
-      simp only [h_find]
+      simp only
       obtain ⟨p, hp, hpv⟩ := mem_of_findSome?_eq_some h_find
       rw [← hpv]; exact hA p hp
-    | none => simp only [h_find]; exact hs
+    | none => simp only; exact hs
   | .sequence style items tag anchor =>
     show YamlValue.sequence style
         (YamlValue.adaptForFlowContext.adaptList

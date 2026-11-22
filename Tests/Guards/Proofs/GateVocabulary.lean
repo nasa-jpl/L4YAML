@@ -115,8 +115,19 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-08 (item 463, S3 slice (2)): mentions 503 → 506 — item 463's gate paragraph names the guard rows it moved.
 -- 2026-11-08 (item 464, S3 slice (3) first PR): mentions 506 → 515 — item 464's gate paragraph names the seven guard files it re-pinned.
 -- 2026-11-08 (item 464, review): mentions 515 → 516 — the corrected key-context finding names `check-…` once more.
+-- 2026-11-11 (item 484, ContentArm): mentions 516 → 517 — the `ContentArm` docstring names the content dispatch
+-- step it is read off (not spelled here: it would move `self`); no name added or retired.
+-- 2026-11-12 (item 484, review round 1): names 114 → 115, mentions 517 → 519 — Priority 112's docstring names the
+-- flow-value indent check the scanner refuses an under-indented continuation with, and the preprocess / block-indicator
+-- dispatch steps it re-derives the arm from (not spelled here: it would move `self`).
+-- 2026-11-14 (item 499): mentions 520 → 522 — the KeyArm pins' cause comments name the gates they move.
+-- 2026-11-14 (item 491): mentions 519 → 520 — P119's docstring and item 491 name the key/value dispatcher and its checks.
+-- 2026-11-14 (item 492's rebase): mentions 520 → 521 — item 493's Priority 97 rows (merged without the
+-- re-pin) name the preprocess step's scanner lemma once more; the base read 521 against this pin.
+-- 2026-11-22: mentions 522 → 524 — item 529 (merged without the re-pin): the `DispatchPrice` and `ParkGapWidth` cause
+-- comments each name the content dispatch step whose per-function reading moved 186 → 187 (not spelled here: it would move `self`).
 def expectedGateVocab : String :=
-  "names=114 mentions=516 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=524 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

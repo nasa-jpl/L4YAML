@@ -145,6 +145,14 @@ lemma markedCols_congr {s s' : ScannerState}
 lemma MarkedColsIn.self (sc : ScannerState) : MarkedColsIn sc (markedCols sc) :=
   fun i l c hi hc => markedCols_mem.mpr ⟨i, l, c, hi, hc, rfl⟩
 
+/-- A cover holds every marked column: `x ∈ markedCols sc` lands in any `ns` with
+    `MarkedColsIn sc ns` (item 519 — the every-mark writers read a chain's cover at
+    the mark the field quantifies over). -/
+lemma MarkedColsIn.mem {sc : ScannerState} {ns : List Nat} (h : MarkedColsIn sc ns) {x : Nat}
+    (hx : x ∈ markedCols sc) : x ∈ ns := by
+  obtain ⟨i, l, c, hi, hc, rfl⟩ := markedCols_mem.mp hx
+  exact h i l c hi hc
+
 /-- The empty projection is the empty cover: a state with `markedCols sc = []` holds no mark
     (item 410 — the markless face's refusal reads it). -/
 lemma MarkedColsIn.of_markedCols_nil {sc : ScannerState} (h : markedCols sc = []) :
@@ -258,8 +266,8 @@ lemma pushMappingIndent_getElem?_of_lt (s : ScannerState) (col : Int) (i : Nat)
   split
   · simp only [ScannerState.indentColumns, ScannerState.emit]
     constructor
-    · rw [Array.getElem?_push, if_neg (by omega)]
-    · rw [Array.map_push, Array.getElem?_push, if_neg (by simpa using Nat.ne_of_lt hi)]
+    · rw [Array.getElem?_push, ite_eq_right (by omega)]
+    · rw [Array.map_push, Array.getElem?_push, ite_eq_right (by simpa using Nat.ne_of_lt hi)]
   · exact ⟨rfl, rfl⟩
 
 /-- **The seed.**  A `?` scanned outside flow marks the level at its own column, and
@@ -417,7 +425,7 @@ lemma SlotsWitness.push {input : String} {s s' : ScannerState} {sp_start : SurfP
       rcases hx : s.indents[i]? with _ | e
       · simp [hx] at hc
       · exact (Array.getElem?_eq_some_iff.1 hx).1
-    rw [indentColumns_getElem?, hind, Array.getElem?_push, if_neg (by omega)]
+    rw [indentColumns_getElem?, hind, Array.getElem?_push, ite_eq_right (by rw [← hsz]; assumption)]
     exact hc
 
 /-- Popping the top level keeps every remaining slot's witness. -/
@@ -431,7 +439,7 @@ lemma SlotsWitness.pop {input : String} {s s' : ScannerState} {sp_start : SurfPo
   split at hi
   · obtain ⟨c, sp_q, hc, hq⟩ := h i l hi
     refine ⟨c, sp_q, ?_, hq⟩
-    rw [indentColumns_getElem?, hind, Array.getElem?_pop, if_pos (by omega)]
+    rw [indentColumns_getElem?, hind, Array.getElem?_pop, ite_eq_left (by omega)]
     rw [indentColumns_getElem?] at hc; exact hc
   · cases hi
 
@@ -615,7 +623,7 @@ lemma MarkedColsIn.push {s s' : ScannerState} {ns : List Nat}
   split at hi
   · simp at hi
   · have hlt : i < s.pendingKeys.size := (Array.getElem?_eq_some_iff.1 hi).1
-    rw [indentColumns_getElem?, hind, Array.getElem?_push, if_neg (by omega)] at hc
+    rw [indentColumns_getElem?, hind, Array.getElem?_push, ite_eq_right (by omega)] at hc
     exact h i l c hi (by rw [indentColumns_getElem?]; exact hc)
 
 lemma MarkedColsIn.closeAt_eq {s s' : ScannerState} {ns : List Nat}
@@ -841,6 +849,30 @@ lemma refused_of_markedCols_eq_nil {s : ScannerState} (hs : Sound s) (hfl : s.fl
     (h : markedCols s = []) : s.explicitKeyLine = none :=
   refused_of_markedCols_nil hs hfl (MarkedColsIn.of_markedCols_nil h)
 
+/-- The converse of `refused_of_markedCols_nil`: outside flow a dead register
+    (`explicitKeyLine = none`) means NO slot is marked — `RegOk` reads the register off the
+    innermost pending key, and a marked slot would make that key `some`. -/
+lemma noMarks_of_explicitKeyLine_none {s : ScannerState} (hs : Sound s) (hfl : s.flowLevel = 0)
+    (h : s.explicitKeyLine = none) :
+    ∀ (i l : Nat), (s.pendingKeys[i]? : Option (Option Nat)) ≠ some (some l) := by
+  intro i l hil
+  have hr := hs.reg hfl
+  have hfst := congrArg Prod.fst hr
+  simp only at hfst
+  rw [h, PendingKeySound.innermostPendingKey_eq, PendingKeySound.innermost_eq_go] at hfst
+  have hi : i < s.pendingKeys.size := by
+    rcases Nat.lt_or_ge i s.pendingKeys.size with hlt | hge
+    · exact hlt
+    · rw [Array.getElem?_eq_none hge] at hil
+      cases hil
+  exact PendingKeySound.go_fst_some_of_marked _ _ _ i l hi hil hfst.symm
+
+/-- **The root closing fact** (item 508): a dead register outside flow leaves the marked
+    columns empty — the `MarkedColsIn s []` form the chain fields' empty-domain `Or.inl` takes. -/
+lemma MarkedColsIn.of_explicitKeyLine_none {s : ScannerState} (hs : Sound s)
+    (hfl : s.flowLevel = 0) (h : s.explicitKeyLine = none) : MarkedColsIn s [] :=
+  fun i l _ hil _ => absurd hil (noMarks_of_explicitKeyLine_none hs hfl h i l)
+
 lemma scanBlockEntry_markedCols {s s' : ScannerState} {ns : List Nat}
     (hnf : s.inFlow = false) (hok : scanBlockEntry s = .ok s')
     (h : MarkedColsIn s ns) (hs : SlotsOk s) : MarkedColsIn s' ns :=
@@ -911,8 +943,7 @@ lemma scanDocumentStart_witness {input : String} {s : ScannerState} {sp_start : 
   refine h.of_doc_reset hs ?_ ?_
   · unfold scanDocumentStart; simp [advanceN_preserves_pendingKeys, emit_pendingKeys]
   · unfold scanDocumentStart
-    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
-      L4YAML.Proofs.ScannerContracts.emit_indents]
+    simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents]
 
 lemma scanDocumentEnd_witness {input : String} {s s' : ScannerState} {sp_start : SurfPos}
     (hok : scanDocumentEnd s = .ok s') (h : SlotsWitness input s sp_start) (hs : SlotsOk s) :
@@ -924,8 +955,7 @@ lemma scanDocumentEnd_witness {input : String} {s s' : ScannerState} {sp_start :
   all_goals (simp only [Except.ok.injEq] at hok; subst hok)
   all_goals refine h.of_doc_reset hs ?_ ?_
   all_goals (try simp [advanceN_preserves_pendingKeys, emit_pendingKeys])
-  all_goals (try simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents,
-      L4YAML.Proofs.ScannerContracts.emit_indents])
+  all_goals (try simp [L4YAML.Proofs.IndentStackBase.advanceN_preserves_indents])
 
 /-- The four flow brackets and the flow entry never touch a slot. -/
 lemma scanFlowSequenceStart_witness {input : String} {s : ScannerState} {sp_start : SurfPos}

@@ -636,8 +636,8 @@ def expectedSites : List String :=
     "question_open_map:pendingMapValue.h_vslot [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] segments=2 comps=1",
     "question_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] segments=2 comps=1 NEW",
     "question_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] segments=2 comps=1 NEW",
-    "question_open_map:pendingMapValue.h_closeFV [SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_)] segments=2 comps=1 NEW",
-    "question_open_map:pendingMapValue.h_framesV [SSLComments ⇒ Key(_)▹ExplValueLine(_)] segments=2 comps=1 NEW",
+    "question_open_map:pendingMapValue.h_closeFV [SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_)] segments=2 comps=1",
+    "question_open_map:pendingMapValue.h_framesV [SSLComments ⇒ Key(_)▹ExplValueLine(_)] segments=2 comps=1",
     "colon_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] segments=2 comps=1",
     "colon_open_map:pendingMapValue.h_closeF [SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream] segments=2 comps=1 NEW",
     "colon_open_map:pendingMapValue.h_frames [SSLComments ⇒ Resume(_)▹Stream] segments=2 comps=1 NEW",
@@ -656,18 +656,21 @@ def expectedSites : List String :=
 -- `question_open_map` builds `h_expl`/`h_closeFV`/`h_framesV` from the bound tail route `h_route51F`.
 -- 2026-11-10 (item 473, option (A)): `ResumeFrames.level`'s bound reads `≤`, so every composition through it
 -- ends `level[var:∀→le,S]` (was `lt`); same sites, same shapes.
+-- 2026-11-14 (item 492, option (A) pay item 2): the eight `question_open_map` / `colon_open_map` `pendingMapValue`
+-- sites gain one hop — the root birth's route is wrapped by `ResumeFrames.one_of_route`, so the composition
+-- reads `▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]` once more before the pre-existing tail.
 def expectedSiteComps : List String :=
   [ "question_open_map:pendingMapValue.h_close ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
     "question_open_map:pendingMapValue.h_ivl ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
-    "question_open_map:pendingMapValue.h_expl ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S]",
+    "question_open_map:pendingMapValue.h_expl ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
     "question_open_map:pendingMapValue.h_vslot ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
-    "question_open_map:pendingMapValue.h_closeF ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
-    "question_open_map:pendingMapValue.h_frames ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
-    "question_open_map:pendingMapValue.h_closeFV ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
-    "question_open_map:pendingMapValue.h_framesV ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
+    "question_open_map:pendingMapValue.h_closeF ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]",
+    "question_open_map:pendingMapValue.h_frames ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]",
+    "question_open_map:pendingMapValue.h_closeFV ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
+    "question_open_map:pendingMapValue.h_framesV ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
     "colon_open_map:pendingMapValue.h_close ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
-    "colon_open_map:pendingMapValue.h_closeF ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
-    "colon_open_map:pendingMapValue.h_frames ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
+    "colon_open_map:pendingMapValue.h_closeF ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]",
+    "colon_open_map:pendingMapValue.h_frames ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]",
     "content_dispatch_after_close→content_dispatch_routed.h_route ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
     "accum_content_on_noPending→keyctx_of_preprocess.h_close ⟶ SLYamlStream.implicitContinue[S,GStar.cons(SLDocumentPrefix.comments,GStar.nil),GOpt.none,GStar.nil]",
     "accum_flow_open_depth0→flowKeyRoute_of_root.h_close ⟶ absorb:absorb_stacksB ▹ SLYamlStream.implicitContinue[S,GStar.cons(SLDocumentPrefix.comments,GStar.nil),GOpt.none,GStar.nil]",
@@ -683,7 +686,7 @@ def expectedSiteComps : List String :=
     "accum_block_pending→accum_block_on_closeThenBlock.h_vslot ⟶ (via)",
     "accum_structural_pending→dispatch_new_pending.h_dir_route ⟶ SLYamlStream.suffixContinue[S,GPlus.mk(SLDocumentSuffix.mk,GStar.nil),GStar.nil,GOpt.some(SLAnyDocument.directive(prem:SLDirectiveDocument)),GStar.nil]",
     "structural_dispatch_to_pending:pendingDocStart.h_doc_route ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.explicit(SLExplicitDocument.withContent)),GStar.nil]",
-    "question_open_map:pendingMapValue.h_kslot ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]"]
+    "question_open_map:pendingMapValue.h_kslot ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]"]
 
 -- Item 304: the bottom of the value-line compositions is `KeyFrames.bottom`.
 -- 2026-10-24 (B3 [66] col-0 threading): three composition shapes were only built at the dropped content-park sites.
@@ -691,7 +694,7 @@ def expectedComps : List String :=
   ["(fact)",
    "SLYamlStream.implicitContinue[S,GStar.cons(SLDocumentPrefix.comments,GStar.nil),GOpt.none,GStar.nil]",
    "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
-   "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
+   "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
    "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.explicit(SLExplicitDocument.withContent)),GStar.nil]",
    "SLYamlStream.scannerDrop[S,prem:SSLComments]",
    "SLYamlStream.suffixContinue[S,GPlus.mk(SLDocumentSuffix.mk,GStar.nil),GStar.nil,GOpt.none,GStar.nil]",
@@ -700,18 +703,18 @@ def expectedComps : List String :=
    "absorb:absorb_stacksB ▹ SLYamlStream.scannerDrop[S,prem:SSLComments]",
    "absorb:absorb_stacksB ▹ SLYamlStream.suffixContinue[S,GPlus.mk(SLDocumentSuffix.mk,GStar.nil),GStar.nil,GOpt.none,GStar.nil]",
    -- Item 371: the restated value-line pack — `ResumeFrames.one`'s level over its bottom (12 → 14)
-   "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S]",
+   "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
    "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
-   "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]"]
+   "SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows the dropped content-park sites above.
 -- 2026-10-29 (item 388): the two mapping-park compositions open on `SBlockNode(_+1,blockOut)` (see expectedSites).
 def expectedShapeComps : List String :=
   [ "GAlt(SLBareDocument,GSeq(SENode,SSLComments)) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.explicit(SLExplicitDocument.withContent)),GStar.nil]",
     "SBlockNode(0,blockIn) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
-    "SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
+    "SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
     "SBlockNode(_+1,blockOut) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
     "SLDirectiveDocument ⇒ Stream ⟶ SLYamlStream.suffixContinue[S,GPlus.mk(SLDocumentSuffix.mk,GStar.nil),GStar.nil,GOpt.some(SLAnyDocument.directive(prem:SLDirectiveDocument)),GStar.nil]",
-    "SSLComments ⇒ Resume(_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[var:∀→le,S]",
+    "SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
     "SSLComments ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.cons(SLDocumentPrefix.comments,GStar.nil),GOpt.none,GStar.nil]",
     "SSLComments ⇒ Stream ⟶ SLYamlStream.scannerDrop[S,prem:SSLComments]",
     "SSLComments ⇒ Stream ⟶ SLYamlStream.suffixContinue[S,GPlus.mk(SLDocumentSuffix.mk,GStar.nil),GStar.nil,GOpt.none,GStar.nil]",
@@ -721,12 +724,12 @@ def expectedShapeComps : List String :=
     "[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream ⟶ (fact)",
     "[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil]",
    -- Item 371: the restated value-line pack (`⇒ Resume(map(_)::[])▹Stream`, `ResumeFrames.one`'s level)
-   "SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S]",
-   "SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
-   "SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
-   "SSLComments ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
+   "SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S]",
+   "SBlockNode(_+1,blockIn) ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
+   "SBlockNode(_+1,blockOut) ⇒ Resume(map(_)::_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]",
+   "SSLComments ⇒ Key(_)▹ExplValueLine(_) ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ KeyFrames.bottom[S]",
    "[col(_)=_+1] SBlockIndented(_,blockOut) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ (fact)",
-   "SBlockMapEntry(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S]"]
+   "SSLComments ⇒ Resume(_)▹Stream ⟶ SLYamlStream.implicitContinue[S,GStar.nil,GOpt.some(SLAnyDocument.bare(SLBareDocument.mk)),GStar.nil] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.bottom[S] ▹ ResumeFrames.level[λ,S] ▹ ResumeFrames.level[var:∀→le,S]"]
 /-- 2026-10-18 (item 284): `unmarked` 218 -> 206 and nothing else.  The twelve are
     `accum_content_pending`'s `pendingFlow` arm, whose landings ran through the
     shared builder's four routes and now defer to the escape at every landing:
@@ -783,10 +786,19 @@ def expectedShapeComps : List String :=
 -- 2026-10-24 (B3 [66] col-0 threading): the content/block parks close from `sp_gram`; the site/composition
 -- tallies follow the lists above.  dropClose 0 → 1: `accum_block_pending` now composes through
 -- `close_with_sslFrom`, whose `pendingFlow` arm is the pre-existing drop ride (β.5 R3) — no new spend.
+-- 2026-11-14 (item 492, option (A) pay item 2): segHops 10 → 11 / hops 12 → 13 / hopMax 3 → 4 — the births' routes
+-- hop through `ResumeFrames.one_of_route` once more.
 def expectedLine : String :=
 -- Item 371 (comps=12 → 14, byCtor=9 → 11, obtainedSites=4 → 8, prev=17 → 14, new=4 → 7, prevStyle=17 → 14, newVsStyle=4 → 7, segHops=9 → 10, hops=11 → 12): the value-line compositions end in
 -- the one-level `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` are obtained from the bound tail route.
-  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=14 new=7 missing=1 prevStyle=14 prevStyleOff=0 newVsStyle=7 styleOnly=1 segHops=10 segAbsorb=3 single=0 dropClose=1 directive=1 hops=12 hopMax=3 approx=37 dead=6 opaque=0 unmarked=157 reach=38"
+  -- 2026-11-14 (item 499, KeyArm): dead 7 → 8 — `accum_step_block`'s depth-0 tuple ends one more conjunct by `absurd`
+  -- (the arm is vacuous at depth 0: `1 ≤ sc.flowLevel` is refuted); `dead` counts such ends on the walked segments (item 490).
+  -- 2026-11-13 (item 489, the landing agreement): dead 6 → 7 — `accum_step_content_pairB` (ContentBridge §9)
+  -- composes `accum_step_content` and is reached by no root until the ∀-floor fold (item 490) reads it.
+  -- 2026-11-14 (item 490, the ∀-floor fold): dead 7 → 7, predicted 8 and REFUTED by the build — the fold
+  -- `accum_step_content_pairK` composes `accum_step_content`, but `dead` counts `absurd`/`False.elim` ends on the
+  -- walked segments, and the fold's refutations sit inside the `_in`/`_in_props` twins it calls, not on its own walk.
+  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=16 new=5 missing=1 prevStyle=16 prevStyleOff=0 newVsStyle=5 styleOnly=1 segHops=11 segAbsorb=3 single=0 dropClose=1 directive=1 hops=13 hopMax=4 approx=37 dead=8 opaque=0 unmarked=157 reach=38"
 
 /-! ## §5 The reading -/
 

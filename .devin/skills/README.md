@@ -12,5 +12,5 @@ wrong.
 | [l4yaml-price-instruments](l4yaml-price-instruments/SKILL.md) | Running `*_price.py` / `lake exe scripts-flip` specs / `lake run flip-beta5` / `beta5-arms` |
 | [l4yaml-build-and-gates](l4yaml-build-and-gates/SKILL.md) | Building, re-pinning censuses, running the gates, axiom census |
 | [l4yaml-adversarial-before-proof](l4yaml-adversarial-before-proof/SKILL.md) | Stating a new lemma or auditing a sorry'd statement |
-| [l4yaml-lean-proof-patterns](l4yaml-lean-proof-patterns/SKILL.md) | A proof is stuck on Lean 4.35 / module-system mechanics |
+| [l4yaml-lean-proof-patterns](l4yaml-lean-proof-patterns/SKILL.md) | A proof is stuck on Lean 4.36 / module-system mechanics |
 | [l4yaml-pr-conventions](l4yaml-pr-conventions/SKILL.md) | Branching, committing, opening a PR |

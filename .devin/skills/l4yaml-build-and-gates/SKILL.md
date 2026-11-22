@@ -50,6 +50,8 @@ lake run check-closure-log            # DOCS.md items ascend / dated / gaps decl
 lake run check-serialization-proofs   # serialization hygiene: axiom profiles of every #print axioms site, sorry control
 lake run check-gate-vocab             # gate names cited in prose resolve (reads .olean headers via LEAN_PATH)
 lake run check-scripts-lean           # Rule 9: scripts/**/*.py and inline python3 sites are on scripts/scripts-ledger.txt (shrink-only pin)
+lake run census-dashboard             # every directed census off the Tests/Guards pin literals: reading, goal, distance left, what moves it (`-- --check` in CI; `-- --md FILE`; no library build needed)
+lake run census-dashboard -- --diff origin/fix-a-grammar-completeness   # only the pins this branch moved: directed (goal distance before → after, verdict) vs population; paste its table at the top of the PR body
 lake run check-hygiene -- docs/reports/stats.json   # zero sorries / custom axioms in the compiled environment (needs `lake exe collect-stats` first)
 lake run run-all-tests                # every test exe, collects failures
 lake exe suiterunner                  # matrix triple pass/fail/skip
@@ -76,7 +78,7 @@ Acceptable: `propext`, `Classical.choice`, `Quot.sound`, plus per-call-site
 failure even when the build is green (§8).  Some scripts delete
 `L4YAML/Scratch`; write the probe immediately before reading it (§9).
 
-## Module-system facts (Lean 4.35)
+## Module-system facts (Lean 4.36)
 
 - `requiresModuleSystem := true` on `L4YAML`: every library file starts with
   `module`; use `public import` for what downstream needs, `public section` /

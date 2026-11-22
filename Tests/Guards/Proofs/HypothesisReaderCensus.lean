@@ -632,6 +632,18 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound` for `strict`; the exactness readers live on
 -- the test side), FIELD 177 → 175 / READ +2 / RELAY +1 / eta +1 (the positional `ResumeWidths` is read by its
 -- projections, the `↔` fields are gone).
+-- 2026-11-14 (item 492's rebase onto item 498): constants 1742 → 1746, the births' two lemmas over item 498's tree.
+-- Item 508 (2026-11-14): READ 1423 → 1425 — `h_dead` is now READ (`.1` / `.2`) at the two entry
+-- producers' root arms besides the routed root writes; no other column moved.
+-- Item 519 (review round): constants / decls +2 (the `pendingBlock` / `pendingMapValue` `vslot` writers' fallback `match`es, two auxiliaries), READ +8 (`h_kslotUp_old`, `h_explUp_mv`, `h_expl`'s route and third conjunct, the covers, read again).
+-- 2026-11-17 (item 520): eta 608 → 611 — the three `FlowArm` carriers (`openBase.h_km` / `h_sp`, `openNest.h_klay`) are read
+-- eta-expanded at their producers; composed over item 521's module tally.
+-- 2026-11-17 (item 520, review round 2): constants 1,764 → 1,762, decls 1,394 → 1,392, READ 1,427 → 1,422, RELAY 2,933 → 2,911,
+-- RETURN 55 → 56 — `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with `KmSound`'s conjuncts.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+-- 2026-11-17 (item 524, the deletion): constants 1763 → 1760, decls 1393 → 1391, RELAY 2917 → 2913 — the three `StreamAccum`
+-- preservation lemmas deleted on the owner's ruling (item 520's roster); eta / FIELD / READ unmoved.
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -640,8 +652,11 @@ def expectedModuleTally : String :=
   -- `dispatchBlock_colon_notQuestion` and `explFrameValueLine`'s split alternative.
   -- 2026-10-26 (item 366): RELAY 2836 → 2838 — `h_sound` passed whole into the two new `Sound sc` binders.
   -- 2026-10-27 (item 371): constants/decls +1, READ +1 — `ResumeFrames.one` (its `h_tail` is read once).
-  "constants=1725 decls=1359 eta=506 FIELD=175 READ=1398 RELAY=2885 RETURN=54 \
-UNUSED=26"
+  -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else. The thirteen are generated equation lemmas
+  -- v4.35.0 realized in this module and v4.36.0 does not: `FrameTail.leadFree.match_1.eq_1..4`,
+  -- `propertyScanFollowerOk.match_1.eq_1..2`, `SNbDoubleText.match_1.eq_1..6`, `propsBlockLineCrossLoop.eq_def`.
+  "constants=1747 decls=1391 eta=611 FIELD=175 READ=1422 RELAY=2913 RETURN=56 \
+UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
 
@@ -655,7 +670,10 @@ UNUSED=26"
 def expectedUnused : List String :=
   -- Item 287: the wrapper reads its premises off the dispatch, so `_h_res` is
   -- its thirteenth binder.
-  [ "block_dispatch_deferred_inline#12 (_h_res)",
+  -- Item 519: `accum_step_flow`'s `h_mono` is read by nothing now — its only readers were the four flow-close
+  -- `Classical.em` splits on the closed state's marks (`PendingKeySound.preprocess_sound`), PAID from `vslot`.
+  [ "accum_step_flow#15 (h_mono)",
+    "block_dispatch_deferred_inline#12 (_h_res)",
     "block_dispatch_deferred_stamp_nopack#10 (_h_src)",
     "block_dispatch_deferred_stamp_nopack#11 (_h_indent)",
     "block_dispatch_deferred_stamp_nopack#12 (_h_park)",
@@ -754,7 +772,7 @@ inherit their parents' binders filtered out so the denominator is declarations. 
 -- — `deeperLandingResume.h_valF` is one more optional context, READ (destructured) inside the helper.
 -- 2026-11-02 (item 422): the OPTIONAL-CONTEXT census moved — the five `h_outer` writes read `s_prep` (one `Classical.em` over `MarkedColsIn s_prep [k]`)
 -- in place of `h_park`/`h_kslotUp`; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added (RegisterWitness).
-def expectedOptTally : String := "total=160 ETA=31 READ=90 RELAY=39"
+def expectedOptTally : String := "total=158 ETA=31 READ=88 RELAY=39"
 
 /-- The six item 212 enumerated, by verdict — seven since item 300.  Six are
     read in `content_dispatch_routed`'s own term (`h_markerline`, the marker
@@ -837,6 +855,8 @@ def expectedCoreTerminal : List String :=
     "colon_open_map#24 (h_cov_in)",
       "flowKeyRoute_of_root#24 (h_tail143)",  -- item 311: `{g}` precedes it
     "indicator_open_map#26 (h_ref_land)",
+    "indicator_open_map#30 (h_resV_land)",
+    "indicator_open_map#32 (h_explUp_chainD)",
     "question_open_map#23 (h_cov_in)",
     "question_open_map#24 (h_cov_nil)" ]
 

@@ -544,10 +544,10 @@ lemma scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
     · split at h
       · contradiction
       · injection h with h_eq; subst h_eq
-        simp only [advance_preserves_tokens, emit_tokens_size, markPendingKey_tokens]
+        simp only [advance_preserves_tokens, emit_tokens_size]
         have := pushMappingIndent_tokens_monotonic s s.col; omega
     · injection h with h_eq; subst h_eq
-      simp only [advance_preserves_tokens, emit_tokens_size, markPendingKey_tokens]
+      simp only [advance_preserves_tokens, emit_tokens_size]
       have := pushMappingIndent_tokens_monotonic s s.col; omega
   · -- inFlow → no pushMappingIndent
     split at h
@@ -5113,205 +5113,15 @@ lemma dispatchContent_preserves_docStartLine (s : ScannerState) (c : Char) (s' :
           | (simp_all; done)
 
 
-/-! ### … and through the FLOW indicators (item 103)
+/-! ### The flow indicators and the flow `:` (item 103) — the stamp chain is gone (item 524)
 
-The stamp has to cross a whole flow COLLECTION to reach the close that may
-read it as a key (`k: [1]: 2`), so the five indicators and the `?` are walked
-here too.  None of them writes the field — `scanValue` is still its only
-writer, and inside a flow even that one preserves it. -/
-
-lemma pushMappingIndent_preserves_implicitValueLine (s : ScannerState) (col : Int) :
-    (pushMappingIndent s col).implicitValueLine = s.implicitValueLine := by
-  unfold pushMappingIndent; split
-  · simp [emit_preserves_implicitValueLine]
-  · rfl
-
-/-- `docStartLine` twin of `pushMappingIndent_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma pushMappingIndent_preserves_docStartLine (s : ScannerState) (col : Int) :
-    (pushMappingIndent s col).docStartLine = s.docStartLine := by
-  unfold pushMappingIndent; split
-  · simp [emit_preserves_docStartLine]
-  · rfl
-
-lemma scanFlowSequenceStart_preserves_implicitValueLine (s : ScannerState) :
-    (scanFlowSequenceStart s).implicitValueLine = s.implicitValueLine := by
-  unfold scanFlowSequenceStart
-  simp [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanFlowSequenceStart_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanFlowSequenceStart_preserves_docStartLine (s : ScannerState) :
-    (scanFlowSequenceStart s).docStartLine = s.docStartLine := by
-  unfold scanFlowSequenceStart
-  simp [advance_preserves_docStartLine, emit_preserves_docStartLine]
-
-lemma scanFlowMappingStart_preserves_implicitValueLine (s : ScannerState) :
-    (scanFlowMappingStart s).implicitValueLine = s.implicitValueLine := by
-  unfold scanFlowMappingStart
-  simp [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanFlowMappingStart_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanFlowMappingStart_preserves_docStartLine (s : ScannerState) :
-    (scanFlowMappingStart s).docStartLine = s.docStartLine := by
-  unfold scanFlowMappingStart
-  simp [advance_preserves_docStartLine, emit_preserves_docStartLine]
-
-lemma scanFlowSequenceEnd_preserves_implicitValueLine (s : ScannerState) :
-    (scanFlowSequenceEnd s).implicitValueLine = s.implicitValueLine := by
-  unfold scanFlowSequenceEnd
-  simp [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanFlowSequenceEnd_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanFlowSequenceEnd_preserves_docStartLine (s : ScannerState) :
-    (scanFlowSequenceEnd s).docStartLine = s.docStartLine := by
-  unfold scanFlowSequenceEnd
-  simp [advance_preserves_docStartLine, emit_preserves_docStartLine]
-
-lemma scanFlowMappingEnd_preserves_implicitValueLine (s : ScannerState) :
-    (scanFlowMappingEnd s).implicitValueLine = s.implicitValueLine := by
-  unfold scanFlowMappingEnd
-  simp [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanFlowMappingEnd_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanFlowMappingEnd_preserves_docStartLine (s : ScannerState) :
-    (scanFlowMappingEnd s).docStartLine = s.docStartLine := by
-  unfold scanFlowMappingEnd
-  simp [advance_preserves_docStartLine, emit_preserves_docStartLine]
-
-lemma scanFlowEntry_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
-    (h : scanFlowEntry s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
-  unfold scanFlowEntry at h
-  simp only [bind, Except.bind] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (simp only [Except.ok.injEq] at h; subst h)
-  all_goals simp [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanFlowEntry_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanFlowEntry_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
-    (h : scanFlowEntry s = .ok s') : s'.docStartLine = s.docStartLine := by
-  unfold scanFlowEntry at h
-  simp only [bind, Except.bind] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (simp only [Except.ok.injEq] at h; subst h)
-  all_goals simp [advance_preserves_docStartLine, emit_preserves_docStartLine]
-
-lemma scanKey_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
-    (h : scanKey s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
-  unfold scanKey at h
-  simp only [bind, Except.bind] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (simp only [Except.ok.injEq] at h; subst h)
-  all_goals simp [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine,
-                  pushMappingIndent_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanKey_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanKey_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
-    (h : scanKey s = .ok s') : s'.docStartLine = s.docStartLine := by
-  unfold scanKey at h
-  simp only [bind, Except.bind] at h
-  repeat (any_goals (split at h))
-  all_goals (try contradiction)
-  all_goals (simp only [Except.ok.injEq] at h; subst h)
-  all_goals simp [advance_preserves_docStartLine, emit_preserves_docStartLine,
-                  pushMappingIndent_preserves_docStartLine]
-
-
-/-! ### … and the `:` that DECLINES to stamp (item 103)
-
-`scanValue` is the field's only writer, and inside a flow it writes what it
-read: `[a: b]`'s `:` is `[142] ns-flow-map-implicit-entry`'s, not `[194]`'s, so
-the stamp a block-context value indicator left outside the collection survives
-the collection's own entries. -/
-
-lemma scanValueClearKey_preserves_implicitValueLine (s : ScannerState) :
-    (scanValueClearKey s).implicitValueLine = s.implicitValueLine := by
-  unfold scanValueClearKey
-  split
-  · split
-    · rfl
-    · split <;> rfl
-  · rfl
-
-/-- `docStartLine` twin of `scanValueClearKey_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanValueClearKey_preserves_docStartLine (s : ScannerState) :
-    (scanValueClearKey s).docStartLine = s.docStartLine := by
-  unfold scanValueClearKey
-  split
-  · split
-    · rfl
-    · split <;> rfl
-  · rfl
-
-lemma scanValuePrepare_preserves_implicitValueLine (s : ScannerState) :
-    (scanValuePrepare s).implicitValueLine = s.implicitValueLine := by
-  unfold scanValuePrepare
-  split
-  · split
-    · split <;> rfl
-    · rfl
-  · split
-    · rfl
-    · split
-      · exact pushMappingIndent_preserves_implicitValueLine s s.col
-      · rfl
-
-/-- `docStartLine` twin of `scanValuePrepare_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma scanValuePrepare_preserves_docStartLine (s : ScannerState) :
-    (scanValuePrepare s).docStartLine = s.docStartLine := by
-  unfold scanValuePrepare
-  split
-  · split
-    · split <;> rfl
-    · rfl
-  · split
-    · rfl
-    · split
-      · exact pushMappingIndent_preserves_docStartLine s s.col
-      · rfl
-
-lemma scanValue_inFlow_implicitValueLine {s s' : ScannerState}
-    (h_flow : s.inFlow = true) (hok : scanValue s = .ok s') :
-    s'.implicitValueLine = s.implicitValueLine := by
-  unfold scanValue at hok
-  simp only [bind, Except.bind] at hok
-  split at hok
-  · exact absurd hok (by simp)
-  · split at hok
-    · exact absurd hok (by simp)
-    split at hok
-    · exact absurd hok (by simp)
-    · have h := Except.ok.inj hok
-      subst h
-      show (if s.inFlow || _ then _ else _) = _
-      rw [h_flow]
-      simp only [Bool.true_or, ite_eq_left]
-      show ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.implicitValueLine = _
-      rw [advance_preserves_implicitValueLine, emit_preserves_implicitValueLine,
-          scanValuePrepare_preserves_implicitValueLine,
-          scanValueClearKey_preserves_implicitValueLine]
-
-/-- `docStartLine` twin of `scanValue_inFlow_implicitValueLine` (item 299), with no
-    flow premise: `scanValue` writes `implicitValueLine` in block context and
-    `docStartLine` never, so the field rides through on both arms. -/
-lemma scanValue_preserves_docStartLine {s s' : ScannerState}
-    (hok : scanValue s = .ok s') :
-    s'.docStartLine = s.docStartLine := by
-  unfold scanValue at hok
-  simp only [bind, Except.bind] at hok
-  split at hok
-  · exact absurd hok (by simp)
-  · split at hok
-    · exact absurd hok (by simp)
-    split at hok
-    · exact absurd hok (by simp)
-    · have h := Except.ok.inj hok
-      subst h
-      show ((scanValuePrepare (scanValueClearKey s)).emit .value).advance.docStartLine = _
-      rw [advance_preserves_docStartLine, emit_preserves_docStartLine,
-          scanValuePrepare_preserves_docStartLine,
-          scanValueClearKey_preserves_docStartLine]
+Item 103 walked the stamp (`implicitValueLine` / `docStartLine`) through the five flow indicators,
+the `?` and the flow `:` so a close could read the stamp a block-context `:` left outside the
+collection (`k: [1]: 2`).  Item 520 made the close DECIDE the stamp on its own state instead
+(`flowKeyPack_of_close`), the transport lost its consumer, and the 23 preservation lemmas that
+stood here were deleted on the owner's ruling (item 524).  Nothing in this module states the
+field's preservation across a flow step any more; the per-step preservation lemmas above (the
+content dispatcher's) remain for their own consumers. -/
 
 lemma collectDirectiveNameLoop_preserves_simpleKey (s : ScannerState) (name : String) (fuel : Nat) :
     (collectDirectiveNameLoop s name fuel).snd.simpleKey = s.simpleKey := by

@@ -134,25 +134,10 @@ correctly into a single end-to-end pipeline.
   * `parseYaml` succeeds if and only if the input is valid YAML — the bridge between the implementation and the specification.
 :::
 
-### `parseYaml_pipeline`
 
-![parseYaml_pipeline dependency graph](graphs/parseYaml_pipeline.svg)
 
-### `parseYamlRaw_pipeline`
 
-![parseYamlRaw_pipeline dependency graph](graphs/parseYamlRaw_pipeline.svg)
 
-### `parseYamlRaw_ok_decompose`
-
-![parseYamlRaw_ok_decompose dependency graph](graphs/parseYamlRaw_ok_decompose.svg)
-
-### `emit_pipeline_decompose_ix`
-
-![emit_pipeline_decompose_ix dependency graph](graphs/emit_pipeline_decompose_ix.svg)
-
-### `parseYaml_ok_iff`
-
-![parseYaml_ok_iff dependency graph](graphs/parseYaml_ok_iff.svg)
 
 ## Scanner Correctness
 %%%
@@ -181,17 +166,8 @@ Properties of the character-to-token scanner:
   * A successful scan loop always terminates with a `STREAM_END` token.
 :::
 
-### `scan_produces_valid_tokens`
 
-![scan_produces_valid_tokens dependency graph](graphs/scan_produces_valid_tokens.svg)
 
-### `advance_offset_lt`
-
-![advance_offset_lt dependency graph](graphs/advance_offset_lt.svg)
-
-### `scanLoop_success_emits_streamEnd`
-
-![scanLoop_success_emits_streamEnd dependency graph](graphs/scanLoop_success_emits_streamEnd.svg)
 
 ## Parser Correctness
 %%%
@@ -224,21 +200,9 @@ Properties of the token-to-AST parser:
   * After `parseStream` completes, all output anchors are well-formed: every alias target exists and every anchor body is `Grammable`.
 :::
 
-### `parseStream_sound`
 
-![parseStream_sound dependency graph](graphs/parseStream_sound.svg)
 
-### `parseNode_anchors_grow`
 
-![parseNode_anchors_grow dependency graph](graphs/parseNode_anchors_grow.svg)
-
-### `parseNode_aliases_resolve'`
-
-![parseNode_aliases_resolve' dependency graph](graphs/parseNode_aliases_resolve_27.svg)
-
-### `parseStream_output_anchors_wellformed`
-
-![parseStream_output_anchors_wellformed dependency graph](graphs/parseStream_output_anchors_wellformed.svg)
 
 ## Soundness
 %%%
@@ -272,21 +236,9 @@ faithfully implements the YAML specification:
   * Scalar string content is preserved through the parsing pipeline — no characters are added, dropped, or reordered.
 :::
 
-### `toYamlValue_correct`
 
-![toYamlValue_correct dependency graph](graphs/toYamlValue_correct.svg)
 
-### `nodeToValue_total`
 
-![nodeToValue_total dependency graph](graphs/nodeToValue_total.svg)
-
-### `nodeToValue_deterministic`
-
-![nodeToValue_deterministic dependency graph](graphs/nodeToValue_deterministic.svg)
-
-### `scalar_content_preserved`
-
-![scalar_content_preserved dependency graph](graphs/scalar_content_preserved.svg)
 
 ## Round-Trip Properties
 %%%
@@ -323,25 +275,10 @@ Theorems about the parse → emit → parse cycle:
   * Tag URI escape and unescape are inverse operations.
 :::
 
-### `contentEq_refl`
 
-![contentEq_refl dependency graph](graphs/contentEq_refl.svg)
 
-### `contentEq_symm`
 
-![contentEq_symm dependency graph](graphs/contentEq_symm.svg)
 
-### `contentEq_trans`
-
-![contentEq_trans dependency graph](graphs/contentEq_trans.svg)
-
-### `emit_content_invariant`
-
-![emit_content_invariant dependency graph](graphs/emit_content_invariant.svg)
-
-### `escapeTag_roundtrip`
-
-![escapeTag_roundtrip dependency graph](graphs/escapeTag_roundtrip.svg)
 
 # Key Proof Modules
 %%%
@@ -428,7 +365,7 @@ theorems do not participate in the fibration at all.
 Only the headline + categoryCapstone entries (~11 theorems) are
 embedded here; the full catalogue is published as the
 `theorem-graphs-all.tar.gz` asset on the
-[`graphs-latest` release of L4YAML.FGM](https://github.jpl.nasa.gov/pass/L4YAML.FGM/releases/tag/graphs-latest)
+[`graphs-latest` release of L4YAML.FGM](https://github.com/nasa-jpl/L4YAML.FGM/releases/tag/graphs-latest)
 and is downloadable on demand.  Per-module hierarchical browsing
 of the full catalogue inside this site is a planned step.
 
@@ -608,7 +545,7 @@ predicate; does not itself expose a call chain.
 ## Generating graphs locally
 
 The `theoremgraph` tool lives in the
-[L4YAML.FGM](https://github.jpl.nasa.gov/pass/L4YAML.FGM) bridge
+[L4YAML.FGM](https://github.com/nasa-jpl/L4YAML.FGM) bridge
 project; see its `tools/README.md` for invocations.  Common
 starting points:
 

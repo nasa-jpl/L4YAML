@@ -241,7 +241,15 @@ def readDecl (prods : Std.HashSet Name) (n : Name) : MetaM R := do
 -- 2026-10-26 (item 367, `[82]`): `DigitRun`, `DirectiveStop`, `DirectiveTail`, `ScannedDirective` (StructureProduction) are typed over surface positions: prodTyped 165 → 169.
 -- 2026-11-09 (item 469): three typed productions added by the arm witness (`GapRead`, `FlowArm`, `FlowStackKA`); surf/spec unmoved.
 -- 2026-11-10 (item 469, review round 1): prodTyped 172 → 171 — `FlowStackKBody`/`FlowStackKA` deleted, `gapTail` added.
-def expectedAlphabet : String := "prodTyped=171 prodSurf=96 prodSpec=58"
+-- 2026-11-11 (item 484): prodTyped 171 → 172 — `StreamAccum.ContentArm`, the content step's arm (eight
+-- constructors off the dispatcher's `c` split); surf/spec unchanged, its fields are the existing surface relations.
+-- 2026-11-12 (item 487, the K caller): prodTyped 172 → 173 — `ContentLead` (ContentBridge §5), an inductive
+-- over surface positions and the frame tail; its constructors are not productions (item 484's reading).
+-- 2026-11-13 (item 489, the landing agreement): prodTyped 173 → 174 — `LastNonWhite` (ContentBridge §7, item 488's
+-- `SurfPos → SurfPos → Prop` def) enters the alphabet now that §7–§9 sit in a `public section`; item 488 shipped
+-- them module-private, so no census read them (a correction to item 488's "no pin moved").
+-- 2026-11-14 (item 499): prodTyped 174 → 175 — KeyArm, the ?/: flow arms' typed production (StreamAccum).
+def expectedAlphabet : String := "prodTyped=175 prodSurf=96 prodSpec=58"
 -- 133 → 137 on 2026-10-23: the four narrowed relations of `Proofs.Production.Acceptance.Quoted`
 -- (`DQCharOk`, `SQCharOk`, `SCDoubleQuotedOk`, `SCSingleQuotedOk`); not under `Surface`, no rule tag.
 
@@ -340,6 +348,14 @@ def expectedAlphabet : String := "prodTyped=171 prodSurf=96 prodSpec=58"
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): stepHolders 1942 → 1943 — `PendingKeysStable.preprocess_pendingKeys_of_inFlow` holds a preprocess step.
 -- 2026-11-08 ((γ1)): stepHolders 2084 → 2101, dispHolders 399 → 403 — `Proofs.Scanner.StructDepth`'s
 -- `DInv_dispatch*` / arm lemmas read the dispatchers.
+-- 2026-11-11 (item 484): stepHolders 2107 → 2109, dispHolders 410 → 412 — `contentArm_of_dispatch` and the
+-- `accum_step_content` wrapper each hold the `scanNextToken_dispatchContent` step equation.
+-- 2026-11-17 (item 520, review round 2): stepHolders 2,105 → 2,103 — `flowOpen_stamp` / `flowOpen_marker` (holders of
+-- `h_pre`) deleted with the base slot's stamp / marker conjuncts; preprocess decls 259 → 257 the same two.
+-- 2026-11-17 (item 522): stepHolders 2,103 → 2,108, dispHolders 422 → 426 — `scanValue_km_transport`, `dispatchBlock_km_faces`,
+-- `dispatchBlock_indents_of_inFlow`, `dispatchBlock_inFlow_cases` and `accum_step_key_pairK` hold the preprocess / block dispatcher; preprocess decls 257 → 261 (the four `h_pre` holders).
+-- 2026-11-17 (item 524, the deletion): stepHolders 2108 → 2100, preprocess decls 261 → 259 (`ad_implicitValueLine` / `ad_docStartLine` held `h_pre`) — the 23 `implicitValueLine` / `docStartLine` preservation lemmas
+-- (item 520's roster) deleted on the owner's ruling; eight of them held a scanner step as a premise.  dispHolders unmoved.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -371,7 +387,23 @@ def expectedSteps : String :=
   -- and the seven `ScannerShape.dispatchFlowIndicators_*` / `dispatchContent_*Quoted_trace` consumers.
   -- 2026-11-08 (item 464, review): stepHolders 2122 → 2124 — the key-context twins `FlowBridge.scanDoubleQuoted_key_trace` /
   -- `scanSingleQuoted_key_trace` hold the quoted scanner step; the two `*_blockKey_to_key` relabels hold none.
-  "stepHolders=2107 dispHolders=410 dispTwoCorr=31 fns=75 fnsIx=26"
+-- 2026-11-12 (item 486, S3 slice (4) PR 1): stepHolders 2109 → 2114, dispHolders 412 → 417 — `TraceOf/ContentBridge`:
+-- the three twins take `h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s'`, the two `dispatchContent_*_tokens` helpers `hok`.
+-- 2026-11-12 (item 487, the K caller): stepHolders 2114 → 2118 (`tailOf_preprocess_eq`, `contentLead_of_interior`,
+-- `content_prop_tail_kept`, `accum_step_content_traceK`), dispHolders 417 → 420 (the last three read `h_dispatch`),
+-- dispTwoCorr 31 → 32 (`contentLead_of_interior` reads the surface at `sc` and at `s_prep`).
+-- 2026-11-15 (item 520): stepHolders 2103 → 2105, dispHolders 420 → 422 — `accum_step_flow_pairK` and
+-- `dispatchFlow_km_faces` (ContentBridge §10) each hold `h_preprocess` + `h_dispatch` (the flow fold's two steps).
+-- 2026-11-18 (item 526, α): stepHolders 2100 → 2102 — `TSLYamlStream.docEnd` / `directive` (DocBridge §α) hold
+-- a step's `.ok` hypothesis (`scanDocumentEnd` / `scanDirective`), as the leaves they re-read do.
+-- 2026-11-18 (item 527, β PR 1): stepHolders 2102 → 2104 — `TPendingNode.directive_step` / `docEnd_step` (StreamBridge)
+-- hold a step's `.ok` hypothesis (`scanDirective` / `scanDocumentEnd`), as the leaves they re-read do.
+-- 2026-11-19 (item 529, β PR 3): stepHolders 2105 → 2106, dispHolders 426 → 427, dispTwoCorr 32 → 33 —
+-- `TPendingNode.content_step_noPending` (StreamBridge) holds the content dispatch's `.ok` with both
+-- `ScannerSurfCorr` ends (`hcorr` / `hcorr'`), as `content_dispatch_routed` does; P7 predicted stepHolders only.
+-- 2026-11-19 (item 528, β PR 2): stepHolders 2104 → 2105 — `directive_step_noPending` / `_run` / `docEnd_step` (StreamBridge)
+-- hold a step's `.ok` hypothesis (three, were two).
+  "stepHolders=2106 dispHolders=427 dispTwoCorr=33 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -384,8 +416,13 @@ def expectedSteps : String :=
 -- explicit JSON-key twins add two.
 -- 2026-10-29 (item 389): TYPED edge 22 → 23, SURF edge 20 → 21 — `contentLanding_indents_eq` holds the content dispatch typed through `ScannerSurfCorr`.
 -- 2026-10-29 (item 396): flowOpen_floor_at_prep deleted — one TYPED and one SURF holder fewer on the ladder.
+-- 2026-11-12 (item 487, the K caller): TYPED edge 22 → 23 — `accum_step_content_traceK` holds the content dispatch
+-- typed through `ScannerSurfCorr` (item 389's reading); SURF/SPEC unmoved.
+-- 2026-11-19 (item 529, β PR 3): TYPED edge 23 → 24, chain 4 → 5 — `TPendingNode.content_step_noPending` holds
+-- `scanNextToken_dispatchContent … = .ok s'` typed at the preprocessed state, one more rung on the content dispatch's
+-- ladder (the twin of `content_dispatch_routed`); the per-function reading `scanNextToken_dispatchContent` decls 186 → 187.
 def expectedLadder : List String :=
-  ["TYPED edge=22 chain=4 fnEdge=4 fnChain=2",
+  ["TYPED edge=24 chain=5 fnEdge=4 fnChain=2",
    "SURF edge=20 chain=3 fnEdge=3 fnChain=2",
    "SPEC edge=4 chain=1 fnEdge=2 fnChain=1"]
 
@@ -459,11 +496,24 @@ def expectedChainSpec : List Name :=
 -- 2026-11-08 (item 450): per-function decls `scanNextToken_dispatchContent` 168 → 169 (`TagExt_dispatchContent`), `scanNextToken_preprocess` 257 → 258 (`TagExt_preprocess`) — S3 (a).
 -- 2026-11-08 ((γ1)): dispatchContent 169 → 170, preprocess 258 → 259 — `StructDepth.DInv_dispatchContent`
 -- / `DInv_preprocess` hold the step equations.
+-- 2026-11-12 (item 487, the K caller): dispatchContent decls 180 → 183 — `contentLead_of_interior`,
+-- `content_prop_tail_kept`, `accum_step_content_traceK` (ContentBridge §5–§6); preprocess decls 251 → 254 —
+-- `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK` read `h_preprocess`.
+-- 2026-11-13 (item 489): dispatchContent 183 → 184, preprocess 254 → 255 — `accum_step_content_pairB` holds
+-- `h_dispatch` / `h_preprocess`.
+-- 2026-11-14 (item 490): dispatchContent 184 → 185, preprocess 255 → 256 — `accum_step_content_pairK` holds
+-- `h_dispatch` / `h_preprocess`.
 def expectedPerFn : List String :=
   -- 2026-11-08 (item 459, review): dispatchContent decls 170 → 173 — the three `ScannerShape.dispatchContent_*_trace` consumers.
   -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent decls 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
-  ["scanNextToken_dispatchContent decls=173 chain=1",
-   "scanNextToken_preprocess decls=250 chain=3"]
+  -- 2026-11-11 (item 484, ContentArm): dispatchContent decls 173 → 175 (`contentArm_of_dispatch`, the `accum_step_content`
+  -- wrapper), preprocess 250 → 251 (the wrapper holds the preprocess equation too).
+  -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent decls 175 → 180 — `TraceOf/ContentBridge`'s three twins and
+  -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
+  -- 2026-11-14: `StructDepth.DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling, items 446–452); 2026-11-15 (item 512): +1 / +1, `marks_step_content`
+  -- 2026-11-15 (item 517): +1 / +1, `content_km_transport_any` (`TraceOf/ContentBridge`) — the T mask's content-step transport.
+  ["scanNextToken_dispatchContent decls=187 chain=1",
+   "scanNextToken_preprocess decls=259 chain=3"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

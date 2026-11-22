@@ -228,8 +228,19 @@ def expectedBroken : List String :=
     inside `resume`". -/
 -- 2026-11-09 (item 469): `FlowArm.openNest` / `comma` / `closeNested` join the anchored class — the arm lands at the indicator's end (`sp_open` / `sp_tok`), tied to the lead by `GLit` but not by a directed chain from the stack's own `sp_block`, exactly as `FlowOpenStack`'s four arms.
 -- 2026-11-10 (item 469, review round 1): `GapRead.white` joins the anchored class — re-indexed by the state, its white arm lands at its own `sp_flow` (the gap `GStar SSWhite sp_flow sp_scan` reaches the cursor but the frame does not move), as `InteriorGap.props` sits here already.
+-- 2026-11-11 (item 484): `ContentArm.blockScalar` joins the anchored class — its landing is the disjunction
+-- `SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp'` that `scanBlockScalar_prod` concludes for the dispatcher's one `|`/`>` call,
+-- which the directed-chain walk does not read through; a literal/folded split is priced as that producer's split.
+-- 2026-11-12 (item 487): `ContentLead.white` / `.props` join the anchored class — the receive's premises at `sp_prep`,
+-- quantified over every floor `m ≤ minContentIndentOf sc` (`SSeparateLines m` / `PropsRun m` / `SSeparate m`), not one
+-- directed chain; they are what the core derives inside its proof, replayed (ContentBridge §5).
+-- 2026-11-14 (item 499): + KeyArm's six constructors — anchored-only like FlowArm's (surface positions and
+-- floor-read obligations, no carried stack).
 def expectedAnchoredOnly : List String :=
-  ["L4YAML.Proofs.StreamAccum.FlowArm.closeNested",
+  ["L4YAML.Proofs.Serialization.TraceOf.ContentBridge.ContentLead.props",
+   "L4YAML.Proofs.Serialization.TraceOf.ContentBridge.ContentLead.white",
+   "L4YAML.Proofs.StreamAccum.ContentArm.blockScalar",
+   "L4YAML.Proofs.StreamAccum.FlowArm.closeNested",
    "L4YAML.Proofs.StreamAccum.FlowArm.comma",
    "L4YAML.Proofs.StreamAccum.FlowArm.openNest",
    "L4YAML.Proofs.StreamAccum.FlowOpenStack.mapBase",
@@ -238,6 +249,12 @@ def expectedAnchoredOnly : List String :=
    "L4YAML.Proofs.StreamAccum.FlowOpenStack.seqNest",
    "L4YAML.Proofs.StreamAccum.GapRead.white",
    "L4YAML.Proofs.StreamAccum.InteriorGap.props",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonPropsQuestion",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonPropsSep",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonQuestion",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonSep",
+   "L4YAML.Proofs.StreamAccum.KeyArm.colonValue",
+   "L4YAML.Proofs.StreamAccum.KeyArm.question",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingContent",
@@ -256,10 +273,12 @@ def expectedReaders : List String :=
 
 /-- **The absorptions' readers** — the second wave, what the first propagates
     when it cannot be repaired in place. -/
+-- 2026-11-11 (item 484): `accum_step_content` → `accum_step_content_core` — the body that reads the absorptions is the renamed
+-- core; the `accum_step_content` wrapper re-packs its tuple and reads no absorption itself.
 def expectedAbsorbReaders : List String :=
   ["L4YAML.Proofs.StreamAccum.accum_flow_open_depth0",
    "L4YAML.Proofs.StreamAccum.accum_step_block",
-   "L4YAML.Proofs.StreamAccum.accum_step_content",
+   "L4YAML.Proofs.StreamAccum.accum_step_content_core",
    "L4YAML.Proofs.StreamAccum.accum_step_structural",
    "L4YAML.Proofs.StreamAccum.preprocessing_eof_extends_stream"]
 
@@ -288,10 +307,20 @@ def expectedAbsorbReaders : List String :=
 -- 2026-10-26 (item 367, `[82]`): `SLDirective` 1 → 3 arms (surfArms 182 → 184, surfDirect 181 → 183) and the four scanner-cut relations in StructureProduction: prods 165 → 169, ctors 308 → 313, direct 294 → 299; the carrier readers are unchanged.
 -- 2026-11-09 (item 469): prods 169 → 172, ctors 313 → 318 (`GapRead`, `FlowArm`, `FlowStackKA`); same 25 → 26 and direct 299 → 300 (`GapRead.white` keeps its position, `GapRead.props` lands at `sp_scan`); anchoredOnly 12 → 15 and broken 2 → 3 — `FlowArm`'s arms, as the two pins above record.
 -- 2026-11-10 (item 469, review round 1): prods 172 → 171 (`FlowStackKBody`/`FlowStackKA` out, `gapTail` in), ctors 318 → 320 (`GapRead`/`FlowArm` re-shaped), same 26 → 27 and direct 300 → 301 (`GapRead` is indexed by the state: its white arm keeps its own `sp_flow`, counted once more), anchoredOnly 15 → 16 (`GapRead.white`).
+-- 2026-11-11 (item 484, ContentArm): prods=171 → 172, ctors=320 → 328, direct=301 → 308, anchoredOnly=16 → 17, mentions=40 → 41 — `ContentArm` (eight
+-- constructors; `blockScalar` anchored, see above) and `accum_step_content_core` beside its wrapper.
+-- 2026-11-15 (item 520): mentions 43 → 44 — `accum_step_flow_pairK` (ContentBridge) mentions `FlowArm` in its
+-- conclusion; `broken=3` unmoved: `openBase` stays in the escape class though its landing is now carried (`h_sp`).
+-- 2026-11-17 (item 522): mentions 44 → 45 — `accum_step_key_pairK` concludes `KeyArm` (ContentBridge §12).
 def expectedLine : String :=
-  "prods=171 ctors=320 same=27 direct=301 anchoredOnly=16 broken=3 surfArms=184 \
-surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 \
-guardReaders=1 mentions=40 producers=21 absorbReaders=5 absorbPlainReaders=0"
+  -- 2026-11-12 (item 487): prods 172 → 173, ctors 328 → 330, anchoredOnly 17 → 19 — `ContentLead` (two anchored arms).
+  -- 2026-11-13 (item 489, the landing agreement): prods 173 → 174 (`LastNonWhite`, ContentBridge §7, read now that
+  -- §7–§9 are exported), mentions 41 → 42 (`accum_step_content_pairB` names the arm); arm classes unchanged.
+  -- 2026-11-14 (item 499, KeyArm): prods 174 → 175, ctors 330 → 336, anchoredOnly 19 → 25 — `KeyArm`'s six constructors,
+  -- all anchored (surface positions and floor-read obligations); mentions 43 unmoved (no lemma names the arm yet).
+  -- 2026-11-14 (item 490, the ∀-floor fold): mentions 42 → 43 (`accum_step_content_pairK` reads the arm in its
+  -- proof); prods and arm classes unchanged — §10's nine lemmas add no production.
+  "prods=175 ctors=336 same=27 direct=308 anchoredOnly=25 broken=3 surfArms=184 surfDirect=183 candidate=direct candidateNil=direct readers=3 libReaders=2 guardReaders=1 mentions=45 producers=21 absorbReaders=5 absorbPlainReaders=0"
 
 /-- Non-circularity, items 242–245's check: the closing lemma spends item 244's
     span (`glit`), lands in the candidate arm (`arm`), and routes through no

@@ -46,7 +46,6 @@ WANT=()
 WITH_MATRIX=0
 WITH_PUBLISH=0
 SKIP_API_DOCS=0
-SKIP_FGM=0
 FRESH_VENV=0
 
 usage() {
@@ -59,7 +58,7 @@ Phases
                   Python FFI + package pytest, 4-backend cross-language compare
   3  report       test-result HTML, collect-stats payload, four proof-hygiene
                   gates + the kernel-accurate sorry/axiom assertion
-  4  docs         doc/ build, import graph, FGM theorem graphs, Verso render,
+  4  docs         doc/ build, import graph, doc-graph gate, Verso render,
                   SVG <object> rewrite, swap into docs/, doc-gen4 API tree
   5  pdf          single-page HTML -> docs/L4YAML.pdf + landing-page link
   6  matrix       YAML Test Matrix vs other processors   (--with-matrix only)
@@ -70,7 +69,6 @@ Options
   --with-matrix     include phase 6 (needs a reachable Docker daemon)
   --publish         include phase 7
   --skip-api-docs   skip doc-gen4 in phase 4 (its longest step by far)
-  --skip-fgm        skip the L4YAML.FGM theorem-graph download in phase 4
   --fresh-venv      rebuild the hermetic Python venv from scratch
   -h, --help        print this and exit
 EOF
@@ -82,7 +80,6 @@ while [ $# -gt 0 ]; do
     --with-matrix)    WITH_MATRIX=1 ;;
     --publish)        WITH_PUBLISH=1 ;;
     --skip-api-docs)  SKIP_API_DOCS=1 ;;
-    --skip-fgm)       SKIP_FGM=1 ;;
     --fresh-venv)     FRESH_VENV=1 ;;
     1|2|3|4|5|6|7)    WANT+=("$1") ;;
     *) echo "error: unknown argument '$1' (try --list)" >&2; exit 2 ;;
@@ -349,30 +346,19 @@ if wants 4; then
     warn "dot missing — import graph not regenerated"; note 4 import-graph SKIPPED
   fi
 
-  # The ~20 headline theorem-dependency SVGs the verification chapter embeds.
-  # CI pulls them from a GHE release with its job token; locally that is `gh`.
-  # Non-fatal: the render succeeds without them, with those figures absent.
-  if [ "$SKIP_FGM" = 1 ]; then
-    note 4 fgm-graphs SKIPPED
+  # The headline theorem-dependency SVGs the verification chapter embeds are
+  # committed under doc/Doc/L4YAML/graphs/ (refreshed by PR from L4YAML.FGM);
+  # nothing is downloaded.  Verso renders without a missing image, so gate here;
+  # the CI-rendered import graph is required only when `dot` produced it above.
+  say "Phase 4 — doc graph references"
+  LOG="$LOGS/04-doc-graphs.log"
+  STRICT=""
+  [ -f doc/Doc/L4YAML/graphs/import-graph.svg ] && STRICT="--strict"
+  if lake run check-doc-graphs -- $STRICT > "$LOG" 2>&1; then
+    tail -1 "$LOG"
+    note 4 doc-graphs ok
   else
-    say "Phase 4 — theorem graphs from L4YAML.FGM"
-    LOG="$LOGS/04-fgm-graphs.log"
-    mkdir -p doc/Doc/L4YAML/graphs
-    if GH_HOST=github.jpl.nasa.gov gh release download graphs-latest \
-         --repo pass/L4YAML.FGM --pattern theorem-graphs-headlines.tar.gz \
-         --dir doc/Doc/L4YAML/graphs --clobber > "$LOG" 2>&1; then
-      tar xzf doc/Doc/L4YAML/graphs/theorem-graphs-headlines.tar.gz -C doc/Doc/L4YAML/graphs/
-      rm -f doc/Doc/L4YAML/graphs/theorem-graphs-headlines.tar.gz
-      # Recursive, and excluding the import graph: the tarball extracts into
-      # `L4YAML/`, `group/` and `module/`, so a top-level glob would match only
-      # `import-graph.svg` — the previous step's output, and none of these.
-      N="$(find doc/Doc/L4YAML/graphs -name '*.svg' -not -name 'import-graph.svg' | wc -l)"
-      echo "$N theorem-graph SVGs"
-      note 4 fgm-graphs "$N svgs"
-    else
-      warn "could not download theorem graphs (see $LOG) — chapter figures will be missing"
-      note 4 fgm-graphs UNAVAILABLE
-    fi
+    cat "$LOG"; warn "doc graph references unresolved — see $LOG"; note 4 doc-graphs FAILED
   fi
 
   say "Phase 4 — Verso render"

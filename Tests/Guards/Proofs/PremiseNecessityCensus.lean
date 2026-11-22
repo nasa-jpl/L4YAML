@@ -375,6 +375,17 @@ declarations' own binders and not by a rescoring of an existing one.
 -- 2026-11-07 (item 448, (α) stage A): constants 1742 → 1744, READ +3, RETURN +1 — `ResumeFrames.strict` and its `match` auxiliary.
 -- 2026-11-09 (item 469): `GapRead`/`FlowArm`/`FlowStackKBody`/`FlowStackKA` and `accum_step_flow_trace` — 20 constants, 16 decls; FIELD/READ/RELAY move with the arm fields.
 -- 2026-11-10 (item 469, review round 1): constants 1764 → 1766, decls 1395 → 1397, eta 506 → 508, READ 1491 → 1488, RELAY 2756 → 2760 — `FlowStackKBody`/`KA`/`toK`/`ofPack`/`ofK` out, `gapTail` (+2 lemmas), `head?_dropWhile_not`, `trailingPropertyRun_eq_nil_of_sync`, `FlowStackK.withArm` in; the arm's `∀ m` leads relayed at the sites (as HypothesisReaderCensus).
+-- 2026-11-14 (item 492's rebase onto item 498): the births' two lemmas over item 498's tree (as `HypothesisReaderCensus`).
+-- 2026-11-14 (item 508): READ 1487 → 1489 — `h_dead` READ (`.1` / `.2`) at the entry producers' root arms,
+-- as [[HypothesisReaderCensus]] reads the same move.
+-- 2026-11-17 (item 520): eta 608 → 611 — the three `FlowArm` carriers (`openBase.h_km` / `h_sp`, `openNest.h_klay`) read
+-- eta-expanded at their producers; composed over item 521's module tally.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+-- 2026-11-17 (item 524, the deletion): constants 1763 → 1760, decls 1393 → 1391, RELAY 2709 → 2705 — the three `StreamAccum`
+-- preservation lemmas (`allowDirectives_update_implicitValueLine`, `ad_implicitValueLine`, `ad_docStartLine`) deleted on the owner's ruling.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -394,7 +405,13 @@ def expectedModuleTallyP : String :=
 -- 2026-11-10 (item 473, option (A)): constants 1766 → 1767 / decls +1 (`ResumeFrames.bound`), FIELD 203 → 201, READ / RELAY /
 -- eta as counted — the positional `ResumeWidths` is read by projections, not `↔` fields.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` (+3 constants: the field, its projection, the structure's new arity), five more premise reads at the births and closes.
-  "constants=1725 decls=1359 eta=506 FIELD=201 READ=1465 RELAY=2675 RETURN=171 UNUSED=26"
+  -- 2026-11-14 (item 499): KeyArm in StreamAccum — constants +10, decls +9, eta +60, READ +6, RELAY +8 (composed over item 498's base).
+-- Item 519: constants/decls −1 (the open's ladders), READ 1482 → 1479, RELAY 2725 → 2724, UNUSED 26 → 27 — `accum_step_flow`'s
+-- `h_mono` is read by nothing once the four flow-close `Classical.em` splits are PAID from `vslot`.
+-- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
+  -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else — the thirteen generated equation lemmas
+  -- `HypothesisReaderCensus.expectedModuleTally` names, seen through this peel.
+  "constants=1747 decls=1391 eta=611 FIELD=201 READ=1485 RELAY=2705 RETURN=175 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -408,11 +425,13 @@ def expectedModuleTallyP : String :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 -- 2026-11-02 (item 422): the PEELED optional-context census moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
 -- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
 def expectedOptTallyP : String :=
   -- 2026-10-24 (item 350): total 163 → 159, ETA 33 → 31, READ 87 → 85 — the `h_expl`/`h_explUp` `inr`
   -- arms pay an empty chain and no longer read their alternative.
   -- 2026-10-28 (item 380, PR #146 review): READ 89 → 91, RELAY 40 → 38 — the two optional contexts eliminated by `Or.elim`.
-  "total=160 ETA=31 FIELD=4 READ=90 RELAY=33 RETURN=2"
+  "total=158 ETA=31 FIELD=4 READ=88 RELAY=33 RETURN=2"
 
 run_cmd do
   let env ← getEnv
@@ -516,8 +535,10 @@ def expectedNineResolved : List String :=
     "accum_block_on_pendingContent#33 (h_seqF168) => RETURN@L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent#33",
     "accum_content_on_pendingMapValue_indented#14 (h_ncol_old) => FIELD@L4YAML.Proofs.StreamAccum.PendingNode.pendingProps#19",
     "colon_open_map#24 (h_cov_in) => FIELD@And.intro#2",
-    "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",  -- item 311: `{g}` precedes it
+    "flowKeyRoute_of_root#24 (h_tail143) => RETURN@L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root#24",
     "indicator_open_map#26 (h_ref_land) => ELIM@L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRouteF_or_refused.match_1_1#4, ELIM@L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused#7>L4YAML.Proofs.StreamAccum.rootMapRoute_or_refused.match_1_1#4",
+    "indicator_open_map#30 (h_resV_land) => ELIM@L4YAML.Proofs.StreamAccum.colon_open_map#26>L4YAML.Proofs.StreamAccum.colon_open_map.match_1_9#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#27>L4YAML.Proofs.StreamAccum.question_open_map.match_1_10#8, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#27>L4YAML.Proofs.StreamAccum.question_open_map.match_1_6#6",
+    "indicator_open_map#32 (h_explUp_chainD) => ELIM@L4YAML.Proofs.StreamAccum.colon_open_map#28>L4YAML.Proofs.StreamAccum.colon_open_map.match_1_5#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map#29>L4YAML.Proofs.StreamAccum.question_open_map.match_1_8#6, ELIM@L4YAML.Proofs.StreamAccum.question_open_map.match_1_10#7>Or.casesOn#3",
     "question_open_map#23 (h_cov_in) => FIELD@And.intro#2",
     "question_open_map#24 (h_cov_nil) => FIELD@And.intro#2" ]
 
@@ -532,7 +553,7 @@ run_cmd do
   let nine : List (Name × Nat) :=
     [ (``accum_block_on_pendingBlock, 29), (``accum_block_on_pendingBlockContent, 34),
       (``accum_block_on_pendingContent, 33), (``accum_content_on_pendingMapValue_indented, 14),
-      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26),
+      (``colon_open_map, 24), (``flowKeyRoute_of_root, 24), (``indicator_open_map, 26), (``indicator_open_map, 30), (``indicator_open_map, 32),
       (``question_open_map, 23), (``question_open_map, 24) ]
   if nine.length != expectedCoreTerminal.length then
     throwError "item 225's shortlist is no longer nine rows"
@@ -710,6 +731,8 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.PackAlt.step_value#6 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.PackAltG.ofPark#2 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.accum_content_on_noPending#18 (h_alt) [family uniformity]",
+   -- Item 519: `accum_step_flow`'s `h_mono` — its only readers were the four flow-close `Classical.em` splits, PAID from `vslot`; the parameter stays for the family's uniformity (its deletion is owed with the callers).
+   "L4YAML.Proofs.StreamAccum.accum_step_flow#15 (h_mono) [family uniformity]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline#12 (_h_res) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#10 (_h_src) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#11 (_h_indent) [class marker]",
@@ -717,8 +740,10 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#11 (_h_src) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#12 (_h_indent) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#13 (_h_ne) [class marker]",
-   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#28 (h_alt) [promised step]",
-   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#31 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.content_dispatch_after_close#23 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.content_dispatch_routed#29 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#29 (h_alt) [promised step]",
+   "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#32 (h_alt) [promised step]",
    -- Item 409 (2026-10-30): `entryPropsKeyPack_of_dispatch.h_dispatch` is read now (the `MarkedColsIn` transport).
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close#11 (_) [conclusion binder]",
    "L4YAML.Proofs.StreamAccum.park_gate_of_peek#2 (_) [family uniformity]",
@@ -743,8 +768,13 @@ def deadReason : String → String
   -- `PackAlt.step_dispatch`/`step_content`/`step_preprocess` — the same chase, ending at the same unused step binder.
   -- Item 349: `content_dispatch_routed#29` left the set (its `h_alt` is read at the `k = 0` payment's `dif`);
   -- `accum_content_on_noPending`'s `h_alt` moved to #17 behind `h_dead` and reads as family uniformity.
+  -- Item 508: the root writes pay the chain field with the EMPTY domain at `k = 0` / `w = 0` (`h_dead.2`), so
+  -- `content_dispatch_routed#29 (h_alt)` is relayed only (promised step again, as at item 340) and
+  -- `content_dispatch_after_close#23`, which only hands it on, follows; the entry producers' `h_alt` moved one
+  -- binder behind their new `h_dead` (#28 → #29, #31 → #32).
   | "L4YAML.Proofs.StreamAccum.content_dispatch_routed#29"
-  | "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#28"
+  | "L4YAML.Proofs.StreamAccum.content_dispatch_after_close#23"
+  | "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#29"
   | "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#32"
   | "L4YAML.Proofs.StreamAccum.accum_content_on_noPending#17" => "promised step"
   | "L4YAML.Proofs.StreamAccum.PackAlt.ofRefused#1"
@@ -776,7 +806,9 @@ def deadReason : String → String
 -- wrappers; `entryPropsKeyPack_of_dispatch`'s `h_dispatch` moved from #30 to #31 behind the new binder.
 -- 2026-10-23 (item 349): `dead` 32 → 31, `RELAY` 5 → 4 — `content_dispatch_routed#29 (h_alt)` is read at the `k = 0` payment.
 -- 2026-10-24 (B3 [66] col-0 threading): dead 33 → 32 — `content_dispatch_routed#29 (h_alt)` is read on the item-354 base.
-def expectedDeadTally : String := "dead=30 RELAY=3 UNUSED=27 RELAY=3"  -- 2026-10-24 (B3): see `expectedDead`
+-- 2026-11-14 (item 508): dead 30 → 32, RELAY 3 → 5 — `content_dispatch_routed#29 (h_alt)` is no longer read at the
+-- `k = 0` payment (the root write pays with the empty domain) and `content_dispatch_after_close#23 (h_alt)` only relays it.
+def expectedDeadTally : String := "dead=33 RELAY=5 UNUSED=28 RELAY=5"
 
 run_cmd do
   let env ← getEnv
@@ -889,9 +921,11 @@ lemma opt_premise_is_no_premise {A P : Prop} : (A ∨ True → P) ↔ P :=
 -- — the two item-385 helpers; `deeperLandingResume.h_valF` is one more optional context (READ inside the helper).
 -- 2026-11-02 (item 422): the optional population moved — the five `h_outer` writes decide `MarkedColsIn s_prep [k]` (one `Classical.em`) in
 -- place of `h_park`/`h_kslotUp` reads; two opener `h_ref` relays; `exists_mem_ne_of_not_markedColsIn` added.
+-- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
+-- `KmSound`'s base-slot `∨ True` conjuncts (constants / decls −2, READ −5, RELAY −22, RETURN +1; optional total 160 → 158).
 def expectedOptPopulation : String :=
   -- 2026-10-24 (item 350): total 163 → 159, optTy 156 → 153, ctorFields 33 → 31 — as above.
-  "total=160 optTy=154 ctorFields=31"
+  "total=158 optTy=152 ctorFields=31"
 
 run_cmd do
   let env ← getEnv

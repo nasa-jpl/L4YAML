@@ -68,7 +68,9 @@ namespace Tests.Guards.ExitHandoff
 /-- The five: item 246's second wave, the absorptions' readers. -/
 def five : List Name :=
   [``preprocessing_eof_extends_stream, ``accum_step_structural,
-   ``accum_flow_open_depth0, ``accum_step_block, ``accum_step_content]
+   -- 2026-11-11 (item 484): the absorptions' reader is the renamed body `accum_step_content_core`; the
+   -- `accum_step_content` wrapper only re-packs its tuple (see CarrierArmPrice.expectedAbsorbReaders).
+   ``accum_flow_open_depth0, ``accum_step_block, ``accum_step_content_core]
 
 /-- One carrier slot of an accumulation package. -/
 structure Exit where
@@ -318,6 +320,7 @@ def expectedParks : List String :=
 
 /-- One line per walked producer: its input position, its slots by kind, the
     positions its `nil`s re-emit at, the parks and flow heads it hands to. -/
+-- 2026-11-11 (item 484): the `accum_step_content` row is now `accum_step_content_core`'s, exit for exit (the body was renamed).
 def expectedLines : List String :=
   ["absorb_stacks input=sp_block slots=0 nil=0 carrier=0 forward=0 other=0 loose=1 at=[] stream=[] flow=[] parks=[]",
    "absorb_stacksB input=sp_block slots=0 nil=0 carrier=0 forward=0 other=0 loose=1 at=[] stream=[] flow=[] parks=[]",
@@ -335,7 +338,7 @@ def expectedLines : List String :=
    -- spend where they spent `drop_ride`'s.
    "accum_flow_open_depth0 input=sp_block slots=8 nil=5 carrier=3 forward=0 other=0 loose=0 at=[bound(sp_mid):1,input(sp_block):4] stream=[bound:h_stream_block:=L4YAML.Proofs.StreamAccum.absorb_stacksB:4,bound:h_stream_mid:=bound:h_close:1,param:h_stream:3] flow=[bound:h_kpkg:=Exists.intro:8] parks=[noPending:8]",
    "accum_step_block input=sp_block slots=7 nil=0 carrier=6 forward=1 other=0 loose=0 at=[] stream=[bound:q1:1,param:h_stream:6] flow=[K:7] parks=[bound:q4:1,vacuous:6]",
-   "accum_step_content input=sp_block slots=7 nil=0 carrier=6 forward=1 other=0 loose=0 at=[] stream=[bound:q1:1,param:h_stream:6] flow=[K:7] parks=[bound:q4:1,vacuous:6]",
+   "accum_step_content_core input=sp_block slots=7 nil=0 carrier=6 forward=1 other=0 loose=0 at=[] stream=[bound:q1:1,param:h_stream:6] flow=[K:7] parks=[bound:q4:1,vacuous:6]",
    "accum_step_structural input=sp_block slots=1 nil=0 carrier=0 forward=1 other=0 loose=0 at=[] stream=[bound:q1:1] flow=[K:1] parks=[bound:q4:1]",
    "accum_structural_pending input=sp_block slots=3 nil=3 carrier=0 forward=0 other=0 loose=0 at=[bound(sp_mid):2,input(sp_block):1] stream=[bound:h_stream_mid:=bound:h_close:2,bound:h_stream_old:1] flow=[nil:3] parks=[bound:h_pend':1,bound:h_pend_new:2]",
    "block_dispatch_deferred input=sp_X slots=1 nil=1 carrier=0 forward=0 other=0 loose=0 at=[input(sp_X):1] stream=[param:h_stream:1] flow=[nil:1] parks=[pendingFlow:1]",

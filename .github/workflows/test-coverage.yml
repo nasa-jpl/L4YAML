@@ -10,6 +10,10 @@ on:
     branches: [ main, master, fix-a-grammar-completeness ]
   workflow_dispatch:
 
+# Default for any job that does not declare its own scopes.
+permissions:
+  contents: read
+
 jobs:
   docs-and-tests:
     runs-on: self-hosted
@@ -141,6 +145,7 @@ jobs:
             adversarialtests mutationtests propertytests productioncoverage \
             limittests \
             flowregressioncheck errorstagediag scalarstagediag \
+            l4yaml-fmt aligntest \
             2>&1 | tee "$RUNNER_TEMP/lake-build.log"
           if JOBS=$(grep -oE '\([0-9]+ jobs\)' "$RUNNER_TEMP/lake-build.log" | tail -1 | grep -oE '[0-9]+'); then
             echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"
@@ -284,11 +289,13 @@ jobs:
           lake run check-theorem-keyword
           lake run check-import-closure
           lake run check-reflection-index
+          lake run check-doc-graphs
           lake run check-closure-log
           lake build scripts-check-ledger
           lake run check-scripts-lean
           lake run check-pack-births
           lake run dead-census -- --check
+          lake run census-dashboard -- --check
           lake run check-hygiene -- docs/reports/stats.json
 
       # -------------------------------------------------------
@@ -334,39 +341,12 @@ jobs:
             -o doc/Doc/L4YAML/graphs/import-graph.svg
           ls -lh doc/Doc/L4YAML/graphs/import-graph.*
 
-      - name: Download theorem dependency graphs from L4YAML.FGM
-        # We fetch only the headlines tarball — the ~20 SVGs for headline
-        # and categoryCapstone entries embedded directly into the Verso
-        # verification doc. The full-catalogue tarball
-        # (`theorem-graphs-all.tar.gz`, ~400 SVGs) stays on the GitHub
-        # release and is linked from the doc for on-demand download.
-        run: |
-          mkdir -p doc/Doc/L4YAML/graphs
-          REPO="pass/L4YAML.FGM"
-          TAG="graphs-latest"
-          ASSET="theorem-graphs-headlines.tar.gz"
-          API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
-
-          # Fetch the release metadata to find the asset download URL
-          # (the field read is a Lean exe — Rule 9 — built here)
-          lake build scripts-release-asset
-          ASSET_URL=$(curl -sSf \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "${API_URL}" \
-            | .lake/build/bin/scripts-release-asset "${ASSET}")
-
-          # Download the asset
-          curl -sSfL \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            "${ASSET_URL}" \
-            -o "doc/Doc/L4YAML/graphs/${ASSET}"
-
-          # Extract SVGs
-          tar xzf "doc/Doc/L4YAML/graphs/${ASSET}" -C doc/Doc/L4YAML/graphs/
-          rm -f "doc/Doc/L4YAML/graphs/${ASSET}"
-          echo "Downloaded $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs from L4YAML.FGM release"
+      - name: Check the doc's graph references
+        # The theorem dependency graphs (headline + categoryCapstone chain and
+        # bipartite SVGs from L4YAML.FGM's `theoremgraph`) are committed under
+        # doc/Doc/L4YAML/graphs/ and refreshed by PR from L4YAML.FGM; nothing is
+        # downloaded here.  --strict also requires the import graph rendered above.
+        run: lake run check-doc-graphs -- --strict
 
       - name: Generate Verso documentation
         run: |
@@ -579,8 +559,9 @@ jobs:
       # -------------------------------------------------------
       - name: Upload documentation as artifact
         # Never let the convenience artifact block the gh-pages publish below.
+        if: github.server_url == 'https://github.com'
         continue-on-error: true
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: l4yaml-docs
           # The matrix's per-test detail pages are named with yaml-test-suite

@@ -201,7 +201,8 @@ example {sc s_prep : ScannerState} {c : Char}
           Covered lo ks sc) ∨ True) ∧
         ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
         ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
-    (h_fV : (∃ (nv : Nat) (ks : List FrameLevel),
+    -- Item 512: the value-line lane is every-mark — the premise ranges over `markedCols sc`.
+    (h_fV : (∀ nv ∈ L4YAML.Proofs.RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
         ((∃ lo n : Nat, Floor lo n ks ∧
           Covered lo ks sc) ∨ True) ∧
         ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →

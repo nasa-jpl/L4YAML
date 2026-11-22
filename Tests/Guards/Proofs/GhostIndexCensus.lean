@@ -270,6 +270,9 @@ it may only shrink. -/
 -- 2026-10-29 (item 389): the mapping-top conjunct inside `pendingBlock.h_closeF` / `pendingBlockContent.h_closeF` / `pendingProps.h_closeFE` adds its own `∨ True` (or 102 → 105) and NO binder: it resumes the park's own `ks` (PR #161 review dropped the first draft's `∃ ks'`; ghost stays 72).
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park chain fields `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` are RE-INDEXED by the projection `RegisterWitness.markedCols sc` (`∀ nv ∈ markedCols sc, …`, no `∃ ns`): the two ghost rows the head-form chain had added leave the roster (ghost 75 → 73, back to item 404's reading); `h_explUp` keeps its one new `∨ PackAlt sc` disjunct (or 106 → 107).
 -- 2026-11-09 (item 469, PR 2b-ii α2): `accum_step_flow` concludes `FlowStackKA` — four new carriers: `GapRead` (h_tuple's gap resolution), `FlowArm` (the arm witness; its 4 ghost rows are the post-gap tail `tl₂ : FrameTail`, h_tuple's own binder, the same kind as `FlowOpenStack`'s FrameTail rows — the projection `gapTail sc` is priced for (β)), `FlowStackKBody` / `FlowStackKA` (FlowStackK's pack verbatim, so its km/g/ks/tl rows twice more).  carriers 60 → 64, snapshot 9 → 11, ghost 72 → 84, or 109 → 117.
+-- 2026-11-14 (item 505): `pendingBlock.h_seqF` / `pendingBlockContent.h_seqF` carry the sequence's OUTER frames
+--   (`∃ ke ks, …`), the `List FrameLevel` kind this census files as ghost like every framed field (ghost 73 → 75;
+--   PendingNode 22 → 24).  No new index kind: a frame list, a mirror of `sc.indents` (item 332).
 -- 2026-11-10 (item 469, review round 1): the roster is back at its baseline — `FlowArm`'s post-gap tail is the
 -- projection `gapTail sc` and `GapRead` is indexed by the state (ghost 84 → 72, no `FrameTail` binder on either);
 -- `FlowStackKBody`/`FlowStackKA` deleted (carriers 64 → 62, snapshot 11 → 9); the leads read at every floor add a
@@ -277,7 +280,18 @@ it may only shrink. -/
 -- 2026-11-10 (item 473, option (A)): ghost 72 → 73 — the positional `ResumeWidths` names the levels above
 -- the landing (`pre`), a list of frames beside `ks`/`ks'` which the census already lists; no scanner-state
 -- index is introduced.
-def expectedSummary : String := "carriers=62 snapshot=9 ghost=73 or=121"
+-- 2026-11-11 (item 484): `ContentArm` joins the roster — one carrier (62 → 63), surface=12 state=2 prop=36
+-- scalar=2, ghost=0; two disjuncts (`blockScalar`'s `c = '|' ∨ c = '>'` and `SCLLiteral ∨ SCLFolded`), or 121 → 123.
+-- 2026-11-14 (item 499): KeyArm — the ?/: flow arms' carrier on accum_step_block's conclusion: carriers 63 → 64;
+-- or 123 → 141 (its six constructors read the lead/run/separator at every floor: 10 `∨ ¬ (m ≤ …)` + 8 inner `∨`).
+-- Item 519: `FlowBaseRoutes.vslot`'s free `∃ ns : List Nat` binder was a ghost index (Rule 8); the field
+-- ranges over `markedCols s0` now — ghost 75 → 74 (FlowBaseRoutes 4 → 3).
+-- 2026-11-15 (item 520): `FlowArm` prop 42 → 46, scalar 10 → 15, or 8 → 9 — three carried obligations for the
+-- T fold (`openBase.h_km` / `.h_sp`, `openNest.h_klay`, the last a disjunction); ghost unmoved (74 after item 519): none is a ghost index; or 141 → 142.
+-- 2026-11-17 (item 520, review round 2): or 142 → 140 — `KmSound`'s two `P ∨ True` stamp / marker conjuncts deleted.
+-- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
+-- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
+def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=139"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -288,18 +302,20 @@ def expectedSummary : String := "carriers=62 snapshot=9 ghost=73 or=121"
 -- scalar 8 → 9); pendingMapValue.h_closeF's cover lost its ghost level `m` (PendingNode
 -- scalar 63 → 62) — the cover is now `Floor lo n ks` at the park's own level.
 -- 2026-10-30 (item 407, flow carrier `pendingKeys` conjunct): FlowStackK prop 5 → 6 — the carrier gains `(0 < fl → sc.pendingKeys = s0.pendingKeys)`, an implication whose body is a STATE equality (classed `prop` like its indents twin); ghost 3 → 3, no proof-side list.
+-- 2026-11-17 (item 520, review round 2): the `KmSound`-bearing carrier rows lose the two `∨ True` stamp conjuncts.
 def expectedTally : List String :=
   ["BareLandingFacts: surface=0 state=2 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "BlockStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "CommentStop: surface=0 state=0 prop=0 scalar=1 snapshot=0 ghost=0 or=2",
    "CompletedTail: surface=0 state=1 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
+   "ContentArm: surface=12 state=2 prop=36 scalar=2 snapshot=0 ghost=0 or=2",
    "ContentRouteGate: surface=0 state=1 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "DanglingPred: surface=0 state=0 prop=0 scalar=6 snapshot=0 ghost=0 or=0",
    "ExplValueLine: surface=5 state=0 prop=3 scalar=1 snapshot=0 ghost=0 or=0",
    "ExplicitValueRefused: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
-   "FlowArm: surface=21 state=2 prop=42 scalar=10 snapshot=0 ghost=0 or=8",
+   "FlowArm: surface=21 state=2 prop=46 scalar=15 snapshot=0 ghost=0 or=9",
    "FlowBaseAnchor: surface=0 state=5 prop=0 scalar=4 snapshot=2 ghost=0 or=0",
-   "FlowBaseRoutes: surface=23 state=1 prop=29 scalar=9 snapshot=1 ghost=4 or=7",
+   "FlowBaseRoutes: surface=23 state=1 prop=30 scalar=9 snapshot=1 ghost=3 or=7",
    "FlowOpenHeld: surface=0 state=0 prop=0 scalar=3 snapshot=0 ghost=2 or=0",
    "FlowOpenStack: surface=31 state=1 prop=28 scalar=9 snapshot=1 ghost=11 or=2",
    "FlowStack: surface=2 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
@@ -308,15 +324,16 @@ def expectedTally : List String :=
    "GapRead: surface=4 state=1 prop=7 scalar=5 snapshot=0 ghost=0 or=4",
    "GateOf: surface=0 state=1 prop=0 scalar=1 snapshot=2 ghost=0 or=0",
    "ImplicitKeyHead: surface=2 state=0 prop=2 scalar=0 snapshot=0 ghost=0 or=0",
-   "ImplicitKeyPack: surface=16 state=1 prop=16 scalar=9 snapshot=0 ghost=4 or=7",
+   "ImplicitKeyPack: surface=16 state=1 prop=17 scalar=9 snapshot=0 ghost=4 or=7",
    "InlineResidue: surface=2 state=0 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "InteriorGap: surface=3 state=1 prop=30 scalar=11 snapshot=0 ghost=1 or=4",
+   "KeyArm: surface=19 state=2 prop=53 scalar=16 snapshot=0 ghost=0 or=17",
    "KeyFloor: surface=0 state=0 prop=1 scalar=7 snapshot=0 ghost=0 or=0",
    "KeyFrames: surface=4 state=0 prop=5 scalar=3 snapshot=0 ghost=2 or=0",
    "KeyPackPunt: surface=0 state=1 prop=9 scalar=0 snapshot=0 ghost=0 or=0",
    "KeyResv: surface=0 state=1 prop=1 scalar=1 snapshot=0 ghost=0 or=0",
    "KeyResvLe: surface=0 state=1 prop=1 scalar=1 snapshot=0 ghost=0 or=0",
-   "KmSound: surface=0 state=1 prop=9 scalar=21 snapshot=0 ghost=3 or=2",
+   "KmSound: surface=0 state=1 prop=9 scalar=21 snapshot=0 ghost=3 or=0",
    "MapFrame: surface=40 state=0 prop=38 scalar=7 snapshot=0 ghost=1 or=0",
    "MarkerNodeRoute: surface=4 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "NextIsSep: surface=0 state=1 prop=0 scalar=3 snapshot=0 ghost=0 or=0",
@@ -330,16 +347,14 @@ def expectedTally : List String :=
    "ParkCore: surface=0 state=2 prop=5 scalar=6 snapshot=0 ghost=1 or=0",
    "ParkFloor: surface=0 state=2 prop=4 scalar=4 snapshot=0 ghost=0 or=0",
    "ParkSlot: surface=0 state=2 prop=3 scalar=7 snapshot=0 ghost=0 or=1",
-   "PendingNode: surface=139 state=1 prop=287 scalar=64 snapshot=0 ghost=22 or=66",
-   "PropsKeyPack: surface=13 state=1 prop=13 scalar=7 snapshot=0 ghost=3 or=5",
+   "PendingNode: surface=141 state=1 prop=298 scalar=66 snapshot=0 ghost=24 or=66",
+   "PropsKeyPack: surface=13 state=1 prop=14 scalar=7 snapshot=0 ghost=3 or=5",
    "PropsNodeRoute: surface=6 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRideRoute: surface=7 state=0 prop=1 scalar=0 snapshot=0 ghost=0 or=0",
    "PropsRun: surface=14 state=0 prop=8 scalar=4 snapshot=0 ghost=0 or=0",
    "RestoreLayout: surface=0 state=1 prop=0 scalar=4 snapshot=0 ghost=0 or=0",
    "ResumeFrames: surface=4 state=0 prop=5 scalar=3 snapshot=0 ghost=2 or=0",
-   "ResumeKeyCtx: surface=7 state=1 prop=6 scalar=9 snapshot=0 ghost=3 or=6",
-   -- 2026-11-10 (item 473, option (A)): `ResumeWidths` is positional — two Prop conjuncts (the bound,
-   -- the split), the landing level `e` and its width as scalars, `pre` beside `ks`/`ks'` as a third ghost list.
+   "ResumeKeyCtx: surface=7 state=1 prop=7 scalar=9 snapshot=0 ghost=3 or=6",
    "ResumeWidths: surface=0 state=0 prop=2 scalar=4 snapshot=0 ghost=3 or=0",
    "ResvOk: surface=0 state=1 prop=2 scalar=5 snapshot=0 ghost=0 or=0",
    "ResvOkLe: surface=0 state=1 prop=2 scalar=5 snapshot=0 ghost=0 or=0",
@@ -368,7 +383,7 @@ def expectedGhost : List String :=
    "FlowBaseRoutes.mk[6].valueF ks : List IndentStackCover.FrameLevel",
    "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
    "FlowBaseRoutes.mk[8].key ks : List IndentStackCover.FrameLevel",
-   "FlowBaseRoutes.mk[9].vslot ns : List Nat",
+-- Item 519: `vslot`'s free `ns` left the ghost list (the field ranges over `markedCols s0`).
    "FlowOpenHeld.type[3].S S : List Nat",
    "FlowOpenHeld.body T : List Nat",
    "FlowOpenStack.type[3].g g : Option ScannerState",
@@ -420,9 +435,11 @@ def expectedGhost : List String :=
    "PendingNode.pendingProps[26].h_closeFV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingProps[28].h_closeFEV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlockContent[13].h_closeF ks : List IndentStackCover.FrameLevel",
+   "PendingNode.pendingBlockContent[16].h_seqF ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlockContent[17].h_kslotUp ns : List Nat",
    "PendingNode.pendingBlockContent[18].h_closeFV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlock[11].h_closeF ks : List IndentStackCover.FrameLevel",
+   "PendingNode.pendingBlock[13].h_seqF ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingBlock[14].h_kslotUp ns : List Nat",
    "PendingNode.pendingBlock[15].h_closeFV ks : List IndentStackCover.FrameLevel",
    "PendingNode.pendingMapValue[16].h_kslot ns : List Nat",
@@ -442,7 +459,6 @@ def expectedGhost : List String :=
    "ResumeKeyCtx.body ksq : List IndentStackCover.FrameLevel",
    "ResumeWidths.type[0].ks ks : List IndentStackCover.FrameLevel",
    "ResumeWidths.type[1].ks' ks' : List IndentStackCover.FrameLevel",
-   -- 2026-11-10 (item 473): the positional form's levels above the landing
    "ResumeWidths.body pre : List IndentStackCover.FrameLevel",
    "SeqFrame.type[2].a a : FrameTail"]
 
@@ -454,11 +470,17 @@ def expectedGhost : List String :=
 -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` — the flow value's frames twin, `∃ ks` relaying `pendingMapValue.h_closeF`'s list (Rule 8: a RELAY of an existing frames list, the one binder the field needs) with its own `∨ True` (ghost 72 → 73, or 105 → 106).
 -- 2026-10-29 (item 394, option B): 106 rows unchanged in count; FlowBaseRoutes' indices shift for
 -- `s0` and FlowStackK's colon-route disjunct now names `s0` in the FlowStackB it promises.
+-- 2026-11-14 (item 499): + KeyArm's 18 floor-read disjuncts (lead / run / separator at every floor `m`).
+-- 2026-11-17 (item 520, review round 2): the two `KmSound` base-slot `∨ True` disjuncts are gone (142 → 140).
 def expectedDisjuncts : List String :=
   ["CommentStop.body ∨ c = '\\n' ∨ c = '\\x0d'",
    "CommentStop.body ∨ c = '\\x0d'",
-   "FlowArm.openNest[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
-   "FlowArm.openNest[14].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true",
+   "ContentArm.blockScalar[5].h_c ∨ c = '>'",
+   "ContentArm.blockScalar[6].h_bs ∨ SCLFolded 0 sp sp'",
+   "FlowArm.openNest[14].h_klay ∨ EntryBoundaryLayout.KeyAfterValueLayout sc",
+   "FlowArm.openNest[15].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   -- 2026-11-14 (item 497): the ε lead also carries `trailingPropertyRun sc.tokens = []` (the strict-lead carry).
+   "FlowArm.openNest[15].h_lead ∨ sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = []",
    "FlowArm.comma[13].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "FlowArm.comma[13].h_lead ∨ sp_prep = sp_flow₂ ∧ (gapTail sc).closeFree = true",
    "FlowArm.closeNested[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
@@ -491,8 +513,23 @@ def expectedDisjuncts : List String :=
    "InteriorGap.props[8].h_lead ∨ sp_p = sp_flow ∧ tl.leadFree = true",
    "InteriorGap.props[9].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
    "InteriorGap.props[16].h_some ∨ ht = true",
-   "KmSound.body ∨ True",
-   "KmSound.body ∨ True",
+   "KeyArm.question[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.question[11].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonValue[12].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonValue[12].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonSep[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonSep[11].h_lead ∨ sp_prep = sp_flow",
+   "KeyArm.colonQuestion[11].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[14].h_lead ∨ sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree = true",
+   "KeyArm.colonPropsSep[15].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[16].h_sep ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsSep[16].h_sep ∨ sp_prep = sp_scan",
+   "KeyArm.colonPropsQuestion[14].h_lead ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsQuestion[14].h_lead ∨ sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree = true",
+   "KeyArm.colonPropsQuestion[15].h_run ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsQuestion[16].h_sep ∨ ¬m ≤ PreprocessIndentStable.minContentIndentOf sc",
+   "KeyArm.colonPropsQuestion[16].h_sep ∨ sp_prep = sp_scan",
    "OpenSeqEntry.body ∨ sameIndentSequenceOpen s.tokens ↑s.col = true",
    "ParkChoice.body ∨ ParkSlot sc0 s d",
    "ParkSlot.mk[5].slotRun ∨ ∃ j, prevRealIdx? sc0.tokens (propsRunStart sc0.tokens sc0.tokens.size) = some j ∧ sc0.tokens[j]!.val.offersNodeSlot = true",

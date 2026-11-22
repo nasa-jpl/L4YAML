@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, Iterator, NoReturn
 
 from l4yaml import _ffi
-from l4yaml.exceptions import ConfigError, L4YAMLError
+from l4yaml.exceptions import ConfigError, L4YAMLError, LimitError, ParseError
 from l4yaml.types import (
     _ALIAS,
     _MAPPING,
@@ -56,6 +56,7 @@ _NULL_VALS: frozenset[str] = frozenset({"null", "Null", "NULL", "~", ""})
 _POS_INF: frozenset[str] = frozenset({".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF"})
 _NEG_INF: frozenset[str] = frozenset({"-.inf", "-.Inf", "-.INF"})
 _NAN_VALS: frozenset[str] = frozenset({".nan", ".NaN", ".NAN"})
+_EXPLICIT_INT = re.compile(r"[-+]?(?:0[oO][0-7]+|0[xX][0-9a-fA-F]+|[0-9]+)\Z")
 
 # Exactly the YAML 1.2.2 §10.3.2 Core Schema numeric spelling classes.
 # Do not use Python's int/float as lexers: they accept underscores, signed
@@ -88,7 +89,6 @@ def _coerce_scalar(s: str) -> Any:
         try:
             return int(s, 10)
         except ValueError as exc:  # e.g. Python's large-int digit limit
-            from l4yaml.exceptions import LimitError
             raise LimitError("Core decimal integer cannot be represented") from exc
     if _CORE_OCTAL_INT.fullmatch(s):
         return int(s[2:], 8)
@@ -103,43 +103,67 @@ def _coerce_scalar(s: str) -> Any:
     if s in _NAN_VALS:
         return math.nan
     if _CORE_FLOAT.fullmatch(s):
-        try:
-            return float(s)
-        except ValueError as exc:
-            from l4yaml.exceptions import LimitError
-            raise LimitError("Core float cannot be represented") from exc
+        return float(s)
 
     return s
 
 
 def _scalar_to_python(v: YamlValue) -> Any:
     """Convert one scalar node to Python (kind checked by ``as_str``)."""
-    return _resolve_scalar_preserving_style(v, v.as_str())
-
-
-def _resolve_scalar_preserving_style(v: YamlValue, s: str) -> Any:
-    """Avoid implicit numeric conversion for quoted or block strings.
-
-    Explicit tags still pass through to the resolver, so a separate
-    explicit-tag implementation can take precedence over style.
-    """
-    if v._style_id != _PLAIN and v.tag is None:
-        return s
-    return _resolve_scalar(v, s)
+    return _resolve_scalar(v, v.as_str())
 
 
 def _resolve_scalar(v: YamlValue, s: str) -> Any:
     """Resolve the content ``s`` of the scalar node ``v``.
 
-    Core Schema resolution applies to PLAIN scalars only
-    (YAML 1.2 §10.3.2): a quoted or block scalar is always a string,
-    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.  The style
-    is fetched only when the content would resolve to a non-string.
+    Explicit tags take precedence over style. Otherwise, Core Schema
+    inference applies only to PLAIN scalars (YAML 1.2 §10.3.2).
+    Quoted and block scalars return their content before numeric conversion,
+    including when that content exceeds Python's integer-conversion limit.
     """
-    coerced: Any = _coerce_scalar(s)
-    if coerced is s:
+    # An explicit tag takes precedence over presentation style and implicit
+    # Core Schema inference.  The underlying Lean scalarType follows the same
+    # rule; preserve that decision across the C/Python conversion boundary.
+    tag = v.tag
+    if tag is not None:
+        if tag.startswith("!!"):
+            tag = "tag:yaml.org,2002:" + tag[2:]
+        elif tag.startswith("!<") and tag.endswith(">"):
+            tag = tag[2:-1]
+
+        if tag == "tag:yaml.org,2002:str":
+            return s
+        if tag == "tag:yaml.org,2002:null":
+            return None
+        if tag == "tag:yaml.org,2002:bool":
+            if s in _BOOL_TRUE:
+                return True
+            if s in _BOOL_FALSE:
+                return False
+            return s
+        if tag == "tag:yaml.org,2002:int":
+            if _EXPLICIT_INT.fullmatch(s):
+                try:
+                    return int(s, 0 if s.lstrip("+-").lower().startswith(("0x", "0o")) else 10)
+                except ValueError:
+                    pass
+            return s
+        if tag == "tag:yaml.org,2002:float":
+            if s in _POS_INF:
+                return math.inf
+            if s in _NEG_INF:
+                return -math.inf
+            if s in _NAN_VALS:
+                return math.nan
+            try:
+                return float(s)
+            except ValueError:
+                return s
+        return s  # Unknown explicit tags do not invoke implicit resolution.
+
+    if v._style_id != _PLAIN:
         return s
-    return coerced if v._style_id == _PLAIN else s
+    return _coerce_scalar(s)
 
 
 # ── Recursive conversion ─────────────────────────────────────────────
@@ -157,7 +181,7 @@ def to_python(v: YamlValue) -> Any:
     """
     kind: int = v._kind_id
     if kind == _SCALAR:
-        return _resolve_scalar_preserving_style(v, v._str_unchecked())
+        return _resolve_scalar(v, v._str_unchecked())
     if kind == _SEQUENCE:
         return [to_python(item) for item in v._seq_unchecked()]
     if kind == _MAPPING:
@@ -217,7 +241,6 @@ def _raise_configured_error(msg: str) -> NoReturn:
     (the parser does not fall back to default limits); the rest is a
     limit violation or a syntax error in the data.
     """
-    from l4yaml.exceptions import LimitError, ParseError
     if msg.startswith("config error:"):
         raise ConfigError(msg)
     if "limit" in msg.lower() or "exceeded" in msg.lower():
@@ -521,20 +544,40 @@ def _quote_scalar(s: str) -> str:
     """Quote a string if it could be misinterpreted as a non-string."""
     if not s:
         return "''"
+    # YAML single-quoted strings represent an apostrophe by doubling it.
+    single_quoted = "'" + s.replace("'", "''") + "'"
+    # A literal BOM at the start of a YAML stream is consumed as an
+    # encoding marker, and unescaped controls/separators can alter the
+    # scalar or make the stream invalid.  JSON's double-quote escapes
+    # cover C0; explicitly escape the remaining Unicode troublemakers.
+    escaped_codepoints = {0xFEFF, 0x2028, 0x2029, 0xFFFE, 0xFFFF}
+    if any(ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F
+           or ord(c) in escaped_codepoints for c in s):
+        quoted = json.dumps(s, ensure_ascii=False)
+        return "".join(
+            f"\\u{ord(c):04X}"
+            if 0x7F <= ord(c) <= 0x9F or ord(c) in escaped_codepoints
+            else c
+            for c in quoted
+        )
+    # These are reserved indicators at the start of a plain scalar;
+    # a document-end marker prefix must not be emitted as a plain scalar.
+    if s.startswith(("@", "`", "%", "...")):
+        return single_quoted
     # Values that need quoting
     if s in _NULL_VALS or s in _BOOL_TRUE or s in _BOOL_FALSE:
-        return f"'{s}'"
+        return single_quoted
     if s in _POS_INF or s in _NEG_INF or s in _NAN_VALS:
-        return f"'{s}'"
+        return single_quoted
     # Strings that look like numbers
     try:
         int(s, 0)
-        return f"'{s}'"
+        return single_quoted
     except (ValueError, TypeError):
         pass
     try:
         float(s)
-        return f"'{s}'"
+        return single_quoted
     except (ValueError, TypeError):
         pass
     # Strings with special YAML characters
@@ -545,9 +588,9 @@ def _quote_scalar(s: str) -> str:
             escaped = escaped.replace("\n", "\\n").replace("\r", "\\r")
             escaped = escaped.replace("\t", "\\t")
             return f'"{escaped}"'
-        return f"'{s}'"
+        return single_quoted
     if s.startswith(("-", "?", " ")) or s.endswith(" "):
-        return f"'{s}'"
+        return single_quoted
     return s
 
 

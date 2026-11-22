@@ -34,13 +34,13 @@ package L4YAML where
 -- config, so toggling it takes `lake -R` / a server restart to re-read.
 meta if (unsafeBaseIO (IO.getEnv "L4YAML_LEANCOPILOT")).isSome then
 require LeanCopilot from git
-  "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.35.0"
+  "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.36.0"
 
 require importGraph from git
-  "https://github.com/leanprover-community/import-graph" @ "v4.35.0"
+  "https://github.com/leanprover-community/import-graph" @ "v4.36.0"
 
 require DocGen4 from git
-  "https://github.com/leanprover/doc-gen4.git" @ "v4.35.0"
+  "https://github.com/leanprover/doc-gen4.git" @ "v4.36.0"
 
 
 @[default_target]
@@ -407,6 +407,11 @@ lean_exe «scripts-dead-census» where
 lean_exe «scripts-docs-nav» where
   root := `Scripts.Main.DocsNav
 
+-- Item 514: the census dashboard — every directed pin's reading, goal, distance and what moves it.
+@[default_target]
+lean_exe «scripts-census-dashboard» where
+  root := `Scripts.Main.CensusDashboard
+
 @[default_target]
 lean_exe «scripts-pack-census» where
   root := `Scripts.Main.PackCensus
@@ -448,6 +453,11 @@ lean_exe «scripts-check-hygiene» where
 @[default_target]
 lean_exe «scripts-release-asset» where
   root := `Scripts.Main.ReleaseAsset
+
+-- The doc's `graphs/*.svg` image references resolve in the tree (`lake run check-doc-graphs`).
+@[default_target]
+lean_exe «scripts-check-doc-graphs» where
+  root := `Scripts.Main.CheckDocGraphs
 
 -- Phase 4 (row 4): the publishing row — the HTML rewriting of svg-objects.py and
 -- html-to-pdf.py; WeasyPrint stays an external CLI (Q3).
@@ -508,6 +518,11 @@ script «check-import-closure» (args) do
 script «check-reflection-index» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-check-reflection-index" #[] args
 
+/-- Every `graphs/<path>.svg` the Verso doc embeds exists under `doc/Doc/L4YAML/graphs/`
+(`--strict` also requires the CI-rendered import graph). -/
+script «check-doc-graphs» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-doc-graphs" #[] args
+
 /-- DOCS.md closure-log items ascend, dated, gaps declared
 (`scripts/check-closure-log.sh` before phase 1). -/
 script «check-closure-log» (args) do
@@ -527,6 +542,13 @@ headers through `LEAN_PATH`, which this script sets from the workspace. -/
 -- remaining, steps, grep REGEX, section PREFIX) without paging it.
 script «docs-nav» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
+
+/-- `lake run census-dashboard [-- --check | --md FILE | --diff REF]`: every directed census (a pinned count driven
+    to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs` pin literals, its
+    goal, the distance left and what moves it; then the pinned readings with no target (item 514).
+    Reads source text only — no build of the library needed. -/
+script «census-dashboard» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-census-dashboard" #[] args
 
 -- `lake run pack-census -- flip|residue|classes [options]`: the PACK flip census (edits
 -- StreamAccum.lean in place, restores it; never beside another lake build) and the residue's classes.

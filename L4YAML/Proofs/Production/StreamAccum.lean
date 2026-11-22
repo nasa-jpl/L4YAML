@@ -784,6 +784,13 @@ lemma ResumeFrames.one {P : SurfPos → Prop} {k : Nat} {sp : SurfPos}
   ResumeFrames.level k [] sp (fun _ h => absurd h (List.not_mem_nil))
     (fun sp_end h => ResumeFrames.bottom sp_end (h_tail sp_end h))
 
+/-- Pay item 2 of option (A) (item 492): the compact tail of a mapping composes — the
+    entries after a birth's own route are the same level's siblings. -/
+lemma compactMapTail_append {n : Nat} : ∀ {s s₁ s₂ : SurfPos},
+    SCompactMapTail n s s₁ → SCompactMapTail n s₁ s₂ → SCompactMapTail n s s₂
+  | _, _, _, .nil _ _, h₂ => h₂
+  | _, _, _, .cons _ s sa sb _ hi he ht, h₂ => .cons _ s sa sb _ hi he (compactMapTail_append ht h₂)
+
 /-- Close every level with its empty tail, reaching whatever the bottom owes —
     the fused stream the pendings' existing closures end in, or the explicit
     frame's value line. -/
@@ -794,6 +801,17 @@ lemma ResumeFrames.close {P : SurfPos → Prop} :
   | _ :: _, sp, h => by
       cases h with
       | level k _ _ _ h_cont => exact (h_cont sp (SCompactMapTail.nil k sp)).close
+
+/-- …so a frameless route (`ResumeFrames P []`, the fused bottom) is the one own-level frame
+    (item 492): the frame continues through any further compact tail by appending it to the
+    route's own, and closes where the route did.  This is what the root births supply. -/
+lemma ResumeFrames.one_of_route {P : SurfPos → Prop} {k : Nat} {sp_key : SurfPos}
+    (route : ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [] sp_e) :
+    ∀ sp_v, SBlockMapEntry k sp_key sp_v →
+      ∀ sp_e, SCompactMapTail k sp_v sp_e → ResumeFrames P [FrameLevel.map k] sp_e :=
+  fun sp_v he _sp_e t =>
+    ResumeFrames.one fun sp_end t2 => (route sp_v he sp_end (compactMapTail_append t t2)).close
 
 /-- **What a landing at `j` leaves of the frames** (item 149): exactly the
     levels `j` stands above.  `resumeAt` used to report only the BOUND — every
@@ -1205,7 +1223,7 @@ def ImplicitKeyPack (sc : ScannerState) (sp_start sp_scan : SurfPos) : Prop :=
     -- what keeps `?⏎  a:⏎    b:⏎  c: 2⏎: - w`'s `c` a sibling of `a` with the
     -- `?`'s value line still owed.  Producers with no explicit frame — every
     -- root and every `[189]` slot — pass `Or.inr trivial`.
-    ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       -- Item 150: the value-line face's own cover, the item-148 field's twin.
       -- The stack is the same one the stream face reads — what differs is
       -- where the frames BOTTOM, and a dedent inside an explicit key pops this
@@ -1603,33 +1621,32 @@ lemma flowKeyPack_of_close {sc : ScannerState} {g : Option ScannerState} {n kc :
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧
-      ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+      ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAltG g)) ∨ True)
     -- Item 103: the close's own reading of the base slot, both halves at once
     -- (`close_col_of_base`) — the column the pack carries and the stamp the
     -- punt names.
-    (h_base : sc.simpleKey.pos.col = kc ∧
-      (sc.implicitValueLine = some sc.simpleKey.pos.line ∨ True) ∧
-      -- Item 300: and the marker's line, the base slot's third reading.
-      (sc.docStartLine = some sc.simpleKey.pos.line ∨ True))
+    -- Item 520 (review round 2): the stamp and the marker are not carried here any more — they
+    -- are decidable facts of THIS state, decided below where the punt is named.
+    (h_base : sc.simpleKey.pos.col = kc)
     (h_park : StalePark sc)
     (h_content : SFlowContent n .flowOut sp_br sp_tok) :
     sc.simpleKey.possible = true → sc.simpleKey.pos.line = sc.line →
       ImplicitKeyPack sc sp_start sp_tok ∨ KeyPackPunt sc := by
   intro _ h_kline
-  obtain ⟨h_kc, h_stamp, h_mark⟩ := h_base
+  have h_kc := h_base
   -- The punts this lemma can reach, named once: a stamped slot refutes (item
   -- 101), a slot on the marker's line refutes (item 300), and everything else
-  -- is the caller's missing key context.
+  -- is the caller's missing key context.  Item 520 (review round 2): the two
+  -- readings are decided HERE, on the close state — not relayed as options.
   have punt : KeyPackPunt sc := by
-    cases h_stamp with
-    | inl h => exact KeyPackPunt.implicitValue (by rw [h, h_kline]) h_kline h_park
-    | inr _ =>
-      cases h_mark with
-      | inl h => exact KeyPackPunt.markerLine (by rw [h, h_kline]) h_kline
-      | inr _ => exact KeyPackPunt.noKeyContext
+    by_cases h_stamp : sc.implicitValueLine = some sc.simpleKey.pos.line
+    · exact KeyPackPunt.implicitValue (by rw [h_stamp, h_kline]) h_kline h_park
+    · by_cases h_mark : sc.docStartLine = some sc.simpleKey.pos.line
+      · exact KeyPackPunt.markerLine (by rw [h_mark, h_kline]) h_kline
+      · exact KeyPackPunt.noKeyContext
   rcases h_key with ⟨k, sp_key, route, head, hkcol, h_pair, h_tw99, h_tw108⟩ | _
   · rcases head sp_tok h_content with h_head | _
     -- Item 96: the frame carries the value-line pair now, and it passes
@@ -1646,7 +1663,8 @@ lemma flowKeyPack_of_close {sc : ScannerState} {g : Option ScannerState} {n kc :
         -- Item 150: the value-line twin the same way — a flow collection's
         -- interior holds the block levels still, so this face carries widths
         -- and no stack either.
-        (h_tw108.imp (fun ⟨nv, ks, h_lt, r⟩ => ⟨nv, ks, h_lt, Or.inr trivial, r⟩)
+        -- Item 521: the pair's value-line twin at EVERY mark — `h_key` is over `sc` already.
+        (h_tw108.imp (fun h nv hm => (match h nv hm with | ⟨ks, h_lt, r⟩ => ⟨ks, h_lt, Or.inr trivial, r⟩))
           PackAlt.ofGateClose), Or.inr trivial⟩
     · exact Or.inr punt
   · exact Or.inr punt
@@ -1825,7 +1843,7 @@ def PropsKeyPack (sc : ScannerState) (sp_start sp_p sp_scan : SurfPos) : Prop :=
       ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧
     -- Item 111: …and the value-line-bottomed one (item 108's shape).
-    ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       -- Item 150: the value-line face's cover, as at `ImplicitKeyPack`.
       ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map k :: ks) sc) ∨ True) ∧
@@ -2144,7 +2162,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
         ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)
-      (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),
+      (h_framesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
         ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
@@ -2423,7 +2441,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →
         ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
-      (h_closeFV : (∃ (nv : Nat) (ks : List FrameLevel),
+      (h_closeFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
         ((∃ lo m : Nat, IndentStackCover.Floor lo m ks ∧
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →
@@ -2455,7 +2473,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- punted `pendingBlockContent.h_closeFV` at all three entry-content
       -- producers for want of exactly this. ═══
       -- Item 305: …and the levels above stand strictly left of the entry (`pendingBlock.h_closeFV`'s note).
-      (h_closeFEV : (∃ (ne nv : Nat) (ks : List FrameLevel), n = ne + 1 ∧ (∀ fr ∈ ks, fr.width ≤ ne) ∧
+      (h_closeFEV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ne : Nat) (ks : List FrameLevel), n = ne + 1 ∧ (∀ fr ∈ ks, fr.width ≤ ne) ∧
         ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →
         ∀ sp_end : SurfPos, SCompactSeqTail ne sp_m sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
@@ -2779,10 +2797,12 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- re-open (`- - a⏎- b`).  Paid by the entry-content relay off a
       -- `pendingBlock` that carries one; punted where the park's enclosing
       -- levels are fused.
-      (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+      (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+        ∀ sp_mid : SurfPos,
         SSLComments sp_gram sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-        SeqEntryTail sp_start ke sp_end) ∨ True)
+        ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
       -- **Item 190 — `h_kslot`'s twin ONE FRAME UP** (LAST, so the patterns
       -- naming the older fields still bind them), `pendingBlock.h_kslotUp`
       -- read across this park's own content: the entry's node has arrived, so
@@ -2828,7 +2848,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- Item 305: the levels above stand strictly LEFT of the entry — the bound
       -- item 198 left out because nothing read it; `KeyFrames.seqLevel` reads it
       -- when the nested `-` pushes this entry's own level on the stack.
-      (h_closeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+      (h_closeFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
         -- Item 364: K1-fresh — the cover `h_closeF` has carried since item 155, on the
         -- value-line twin (`h_closeFV_old`'s shape, item 358).
         ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
@@ -2986,10 +3006,12 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- the NESTED `-` (`- - a`), where the outer park's own `h_close_entry`
       -- is the enclosing tail verbatim; punted by every landed producer, whose
       -- `[183]` stands under no entry.
-      (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+      (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+        ∀ sp_mid : SurfPos,
         SBlockIndented n .blockIn sp_scan sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-        SeqEntryTail sp_start ke sp_end) ∨ True)
+        ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+        ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
       -- ═══ **Item 190 — `h_kslot`'s twin ONE FRAME UP** (LAST, so the patterns
       -- naming the older fields still bind them).  `h_kslot` is the value line
       -- of the frame this entry's collection FILLS; this is the line of the
@@ -3026,7 +3048,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- neither, and a field that asks its payer for more than its consumer
       -- reads is a field nobody can pay. ═══
       -- Item 305: the levels above stand strictly LEFT of the entry (`pendingBlockContent`'s note).
-      (h_closeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+      (h_closeFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
         -- Item 364: K1-fresh — the cover `h_closeF` carries, on the value-line twin.
         ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
@@ -3319,7 +3341,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
       -- a dedent landing pops.  Payers are the `?` producer (`ks = []`, the
       -- bottom read straight off `h_expl`) and every implicit `:` beneath one;
       -- the rest pass `Or.inr trivial`.
-      (h_closeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+      (h_closeFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
         -- **Item 150: the cover rides the VALUE-LINE face too**, over the list
         -- this face already names — `h_closeFV`'s widths run to `n` INCLUSIVE,
         -- so `ks` here is what `h_closeF` writes as `FrameLevel.map n :: ks`.  The FLOOR is
@@ -3334,7 +3356,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_mid →
         KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)
-      (h_framesV : (∃ (nv : Nat) (ks : List FrameLevel),
+      (h_framesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
         -- Item 150: and the dedent face's own, which is the one the landing
         -- spends — same list, same floor one column above the `?`.
         ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
@@ -5301,9 +5323,11 @@ def KmSound (sc : ScannerState) (km : Array Bool) (kc : Nat) : Prop :=
     -- is on the line the open's key sits on, the `:` after the close is a
     -- mapping entry on the marker's line (`--- [1]: b`), which §9.1.1 refuses.
     -- Optional for the same reason as the stamp, and decided the same way.
+    -- Item 520 (review round 2): the stamp and marker conjuncts items 103 / 300 carried here as
+    -- `P ∨ True` are GONE — each is a decidable fact of the state that reads it, decided at the
+    -- reader (`flowKeyPack_of_close`), so the slot carries the column and the possibility only.
     (0 < km.size → ∃ key, sc.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧
-      (sc.implicitValueLine = some key.pos.line ∨ True) ∧
-      (sc.docStartLine = some key.pos.line ∨ True) ∧ key.possible = true)
+      key.possible = true)
 
 /-- The empty mask is sound in every state — it promises nothing: both bit
     quantifiers range over no bit, and the base-column promise is conditional
@@ -5333,8 +5357,6 @@ lemma RestoreLayout.transport {sc s' : ScannerState} {k : SimpleKeyState}
 /-- The mask rides along any step that leaves the key stack alone. -/
 lemma KmSound.transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc)
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_dsl : s'.docStartLine = sc.docStartLine)
     (h_sks : s'.simpleKeyStack = sc.simpleKeyStack)
     (h_pref : ∀ i, i < sc.tokens.size → s'.tokens[i]? = sc.tokens[i]?)
     (h_off : sc.offset ≤ s'.offset)
@@ -5347,9 +5369,7 @@ lemma KmSound.transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat}
   obtain ⟨off, h_al, h_bits, h_floor, h_base⟩ := h
   refine ⟨off, by rw [h_sks]; exact h_al, fun i hi hb => ?_, fun i hi hb => ?_,
     fun hpos => (h_base hpos).imp
-      (fun _ ⟨h_get, h_col, h_st⟩ => ⟨by rw [h_sks]; exact h_get, h_col,
-        h_st.imp (fun h => by rw [h_ivl]; exact h)
-          (fun h2 => h2.imp (fun h => by rw [h_dsl]; exact h) id)⟩)⟩
+      (fun _ ⟨h_get, h_col, h_kp⟩ => ⟨by rw [h_sks]; exact h_get, h_col, h_kp⟩)⟩
   · obtain ⟨k, h_get, hRL⟩ := h_bits i hi hb
     exact ⟨k, by rw [h_sks]; exact h_get, hRL.transport h_pref h_off h_size⟩
   · obtain ⟨h_above, h_pending⟩ := h_floor i hi hb
@@ -5390,14 +5410,6 @@ lemma KmSound.push {sc s' : ScannerState} {km : Array Bool} {b : Bool}
     -- frame's mask, which is never empty (`FlowOpenStack.km_pos`), so the
     -- premise is discharged by refutation at both call sites.
     (h_base_new : km.size = 0 → k.pos.col = kc)
-    -- Item 103: the base open's own stamp reading, the twin of `h_base_new` and
-    -- discharged the same way — `Or.inr trivial` wherever the mask came from a
-    -- frame, a `by_cases` on the key's line where the base is actually opened.
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_stamp_new : km.size = 0 → (s'.implicitValueLine = some k.pos.line ∨ True))
-    -- Item 300: the marker's twin of the stamp pair, discharged the same way.
-    (h_dsl : s'.docStartLine = sc.docStartLine)
-    (h_marker_new : km.size = 0 → (s'.docStartLine = some k.pos.line ∨ True))
     -- Item 293: and its possibility, discharged the same way.
     (h_poss_new : km.size = 0 → k.possible = true)
     (h_new : b = true → RestoreLayout s' k) : KmSound s' (km.push b) kc := by
@@ -5415,21 +5427,17 @@ lemma KmSound.push {sc s' : ScannerState} {km : Array Bool} {b : Bool}
   -- Item 79: and a push onto an EMPTY mask is a base open, whose own key IS
   -- the slot — `h_base_new`, refuted wherever the mask came from a frame.
   have h_base' : 0 < (km.push b).size →
-      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧
-        (s'.implicitValueLine = some key.pos.line ∨ True) ∧
-        (s'.docStartLine = some key.pos.line ∨ True) ∧ key.possible = true := by
+      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧ key.possible = true := by
     intro _
     by_cases h0 : km.size = 0
-    · refine ⟨k, ?_, h_base_new h0, h_stamp_new h0, h_marker_new h0, h_poss_new h0⟩
+    · refine ⟨k, ?_, h_base_new h0, h_poss_new h0⟩
       rw [h_sks, Array.getElem?_push, ite_eq_left (by omega)]
-    · obtain ⟨key, h_get, h_col, h_st, h_mk, h_kp⟩ := h_base (by omega)
+    · obtain ⟨key, h_get, h_col, h_kp⟩ := h_base (by omega)
       have hlt : off < sc.simpleKeyStack.size := by
         rcases Nat.lt_or_ge off sc.simpleKeyStack.size with hh | hh
         · exact hh
         · rw [Array.getElem?_eq_none hh] at h_get; exact absurd h_get (by simp)
-      exact ⟨key, by rw [h_sks, Array.getElem?_push, ite_eq_right (by omega)]; exact h_get, h_col,
-        h_st.imp (fun h => by rw [h_ivl]; exact h) id,
-        h_mk.imp (fun h => by rw [h_dsl]; exact h) id, h_kp⟩
+      exact ⟨key, by rw [h_sks, Array.getElem?_push, ite_eq_right (by omega)]; exact h_get, h_col, h_kp⟩
   refine ⟨off, by rw [h_sks]; simp [Array.size_push]; omega,
     fun i hi hb => ?_, fun i hi hb => ?_, h_base'⟩
   · rw [Array.size_push] at hi
@@ -5487,8 +5495,6 @@ lemma KmSound.pop {sc s' : ScannerState} {km : Array Bool} {b : Bool} {kc : Nat}
     (h_pref : ∀ i, i < sc.tokens.size → s'.tokens[i]? = sc.tokens[i]?)
     (h_off : sc.offset ≤ s'.offset)
     (h_size : sc.tokens.size ≤ s'.tokens.size)
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_dsl : s'.docStartLine = sc.docStartLine)
     (h_sk' : s'.simpleKey = sc.simpleKeyStack.back?.getD {}) : KmSound s' km kc := by
   obtain ⟨off, h_al, h_bits, h_floor, h_base⟩ := h
   rw [Array.size_push] at h_al
@@ -5501,14 +5507,10 @@ lemma KmSound.pop {sc s' : ScannerState} {km : Array Bool} {b : Bool} {kc : Nat}
   -- of a NESTED level leaves the outermost stacked key where it was.  Item 79:
   -- a pop that EMPTIES the mask owes nothing, and says so by its own premise.
   have h_base' : 0 < km.size →
-      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧
-        (s'.implicitValueLine = some key.pos.line ∨ True) ∧
-        (s'.docStartLine = some key.pos.line ∨ True) ∧ key.possible = true := by
+      ∃ key, s'.simpleKeyStack[off]? = some key ∧ key.pos.col = kc ∧ key.possible = true := by
     intro hpos
-    obtain ⟨key, h_get, h_col, h_st, h_mk, h_kp⟩ := h_base (by rw [Array.size_push]; omega)
-    exact ⟨key, by rw [h_sks, Array.getElem?_pop, ite_eq_left (by omega)]; exact h_get, h_col,
-      h_st.imp (fun h => by rw [h_ivl]; exact h) id,
-      h_mk.imp (fun h => by rw [h_dsl]; exact h) id, h_kp⟩
+    obtain ⟨key, h_get, h_col, h_kp⟩ := h_base (by rw [Array.size_push]; omega)
+    exact ⟨key, by rw [h_sks, Array.getElem?_pop, ite_eq_left (by omega)]; exact h_get, h_col, h_kp⟩
   refine ⟨off, by rw [h_sks, Array.size_pop]; omega,
     fun i hi hb => ?_, fun i hi hb => ?_, h_base'⟩
   · have hb' : (km.push b)[i]'(by rw [Array.size_push]; omega) = true := by
@@ -5583,13 +5585,11 @@ lemma KmSound.back_of_true {sc : ScannerState} {km : Array Bool} {b : Bool} {kc 
     in a stamped value slot, and the ones that are say so at the open. -/
 lemma KmSound.back_col {sc : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc) (h1 : km.size = 1) :
-    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc ∧
-      (sc.implicitValueLine = some key.pos.line ∨ True) ∧
-      (sc.docStartLine = some key.pos.line ∨ True) := by
+    ∃ key, sc.simpleKeyStack.back? = some key ∧ key.pos.col = kc := by
   obtain ⟨off, h_al, -, -, h_base⟩ := h
   rw [h1] at h_al
-  obtain ⟨key, h_get, h_col, h_st, h_mk, -⟩ := h_base (by omega)
-  refine ⟨key, ?_, h_col, h_st, h_mk⟩
+  obtain ⟨key, h_get, h_col, -⟩ := h_base (by omega)
+  refine ⟨key, ?_, h_col⟩
   rw [Array.back?_eq_getElem?, show sc.simpleKeyStack.size - 1 = off from by omega]
   exact h_get
 
@@ -5600,7 +5600,7 @@ lemma KmSound.back_poss {sc : ScannerState} {km : Array Bool} {kc : Nat}
     ∃ key, sc.simpleKeyStack.back? = some key ∧ key.possible = true := by
   obtain ⟨off, h_al, -, -, h_base⟩ := h
   rw [h1] at h_al
-  obtain ⟨key, h_get, -, -, -, h_kp⟩ := h_base (by omega)
+  obtain ⟨key, h_get, -, h_kp⟩ := h_base (by omega)
   refine ⟨key, ?_, h_kp⟩
   rw [Array.back?_eq_getElem?, show sc.simpleKeyStack.size - 1 = off from by omega]
   exact h_get
@@ -6683,7 +6683,7 @@ structure FlowBaseRoutes (sp_start : SurfPos) (n : Nat) (sp_br : SurfPos)
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧
-    ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    ((∀ nv ∈ RegisterWitness.markedCols s0, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
       KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAltG g)) ∨ True
@@ -6695,7 +6695,7 @@ structure FlowBaseRoutes (sp_start : SurfPos) (n : Nat) (sp_br : SurfPos)
   -- own frame onto the ancestors it was handed, and the close hands the whole
   -- list to the park it re-parks as (the close arms, inline; the `flowVPack_of_close`
   -- restatement was unconsumed and deleted at item 478).
-  vslot : (∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →
+  vslot : (∀ nv ∈ RegisterWitness.markedCols s0, ∀ sp_end, SFlowContent n .flowOut sp_br sp_end →
     ∀ sp_mid sp_i sp_c, SSLComments sp_end sp_mid → SIndent nv sp_mid sp_i →
       GLit ':' sp_i sp_c → ∀ sp_v, SBlockIndented nv .blockOut sp_c sp_v →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAltG g
@@ -7121,13 +7121,21 @@ inductive FlowArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : 
     SurfPos → SurfPos → Prop where
   | openBase (b : Bool) (sp_br sp_open sp_block' sp_flow' : SurfPos)
       (h_depth : sc.flowLevel = 0) (h_c : c = if b then '[' else '{') (h_open : GLit c sp_br sp_open)
-      (h_fl : s'.flowLevel = 1) (h_ks : s'.flowStack = #[b]) (h_tl : tailOf s'.tokens = .sep) :
+      (h_fl : s'.flowLevel = 1) (h_ks : s'.flowStack = #[b]) (h_tl : tailOf s'.tokens = .sep)
+      -- Item 520: the T fold's base mask — the pushed key is possible, read where the park said so.
+      (h_km : ∃ kc, KmSound s' #[false] kc)
+      (h_sp : sp_flow' = sp_open) :
       FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow'
   | openNest (b : Bool) (sp_flow₂ sp_br sp_open : SurfPos)
       (gap : GapRead sc sp_flow sp_scan sp_flow₂)
       (h_depth : 1 ≤ sc.flowLevel) (h_c : c = if b then '[' else '{')
       (h_tail : ∀ kj, tailOf sc.tokens ≠ .value kj)
-      (h_lead : ∀ m, (SSeparateLines m sp_flow₂ sp_br ∨ (sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true)) ∨
+      (h_klay : ∀ kj, tailOf sc.tokens = .colon kj →
+        (sc.simpleKeyAllowed = true ∧ sc.explicitKeyLine = none ∧
+          ∃ tok, sc.tokens[sc.tokens.size - 1]? = some tok ∧ tok.val = .value) ∨
+        KeyAfterValueLayout sc)
+      (h_lead : ∀ m, (SSeparateLines m sp_flow₂ sp_br ∨
+          (sp_br = sp_flow₂ ∧ (gapTail sc).leadFree = true ∧ trailingPropertyRun sc.tokens = [])) ∨
         ¬ (m ≤ minContentIndentOf sc))
       (h_open : GLit c sp_br sp_open)
       (h_fl : s'.flowLevel = sc.flowLevel + 1) (h_ks : s'.flowStack = sc.flowStack.push b)
@@ -7159,6 +7167,68 @@ inductive FlowArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : 
       (h_fl : s'.flowLevel = 0) (h_ks : s'.flowStack = #[]) (h_tl : tailOf s'.tokens = .value true) :
       FlowArm sc s' c sp_block sp_flow sp_scan sp_block sp_block
 
+/-- The arm `accum_step_block` took INSIDE a flow collection (`1 ≤ sc.flowLevel`): the `?` / `:`
+    indicators are `scanNextToken_dispatchBlockIndicators`' (item 491).  Rule 8: the constructor is the
+    projection `(c, tailOf sc.tokens, trailingPropertyRun sc.tokens)`; every field is a surface position,
+    an obligation over surface positions read at every floor `m` (`InteriorGap`'s own shape), or a
+    projection of `sc` / `s'`.  `colonValue` carries the scanner's refusal of `:` after a completed pair
+    (`saveSimpleKey`'s guard: the token before the saved key slot is not `.value`) as the projection the
+    T twin refutes `betweenEntries` with.  A one-step CONCLUSION for the T coupling, never an index. -/
+inductive KeyArm (sc s' : ScannerState) (c : Char) (sp_block sp_flow sp_scan : SurfPos) :
+    SurfPos → SurfPos → Prop where
+  | question (sp_prep sp_tok : SurfPos)
+      (h_c : c = '?') (h_tail : tailOf sc.tokens = .sep) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit '?' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .question) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonValue (kj : Bool) (sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .value kj) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_layout : ¬ KeyAfterValueLayout sc)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon kj) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonSep (sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .sep) (h_run : trailingPropertyRun sc.tokens = [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonQuestion (sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .question) (h_run : trailingPropertyRun sc.tokens = [])
+      -- Item 522: the `:` never abuts its `?` (`flowKeyFollowerOk`: the `?`'s `s-separate` is
+      -- mandatory), so the lead is `SSeparateLines` alone — the T twin's `(eq ∧ tl.leadFree)`
+      -- disjunct is empty at a `.question` tail, and the fold could not refute `eq` itself.
+      (h_lead : ∀ m, SSeparateLines m sp_flow sp_prep ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonPropsSep (ha ht : Bool) (sp_p sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .sep) (h_held : trailingPropertyRun sc.tokens ≠ [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_p ∨ (sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree)) ∨
+        ¬ (m ≤ minContentIndentOf sc))
+      (h_run : ∀ m, PropsRun m (inFlowCtx .flowOut) ha ht sp_p sp_scan ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_sep : ∀ m, (SSeparateLines m sp_scan sp_prep ∨ sp_prep = sp_scan) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+  | colonPropsQuestion (ha ht : Bool) (sp_p sp_prep sp_tok : SurfPos)
+      (h_c : c = ':') (h_tail : tailOf sc.tokens = .question) (h_held : trailingPropertyRun sc.tokens ≠ [])
+      (h_lead : ∀ m, (SSeparateLines m sp_flow sp_p ∨ (sp_p = sp_flow ∧ (tailOf sc.tokens).leadFree)) ∨
+        ¬ (m ≤ minContentIndentOf sc))
+      (h_run : ∀ m, PropsRun m (inFlowCtx .flowOut) ha ht sp_p sp_scan ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_sep : ∀ m, (SSeparateLines m sp_scan sp_prep ∨ sp_prep = sp_scan) ∨ ¬ (m ≤ minContentIndentOf sc))
+      (h_lit : GLit ':' sp_prep sp_tok)
+      (h_fl : s'.flowLevel = sc.flowLevel) (h_ks : s'.flowStack = sc.flowStack)
+      (h_tl : tailOf s'.tokens = .colon false) :
+      KeyArm sc s' c sp_block sp_flow sp_scan sp_block sp_tok
+
 /-- `FlowStackK` for the post-state with the step's `FlowArm` alongside, built arm-first so a producer's
     existing body tuple is kept verbatim.  `h` spells `FlowStackK`'s pack body: this lemma's elaboration
     is the drift check (it breaks if the pack changes), and it is a lemma, not a carrier. -/
@@ -7181,6 +7251,38 @@ lemma FlowStackK.withArm {sp_start : SurfPos} {sc s' : ScannerState} {c : Char} 
     FlowStackK sp_start s' fl ks tl sp_block' sp_flow' ∧
       FlowArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow' :=
   ⟨⟨n, kc, km, g, s0, h⟩, arm⟩
+
+/-- The arm `accum_step_content` took, read off the dispatched character `c` (the scanner's own
+    `scanNextToken_dispatchContent` split) — a one-step CONCLUSION for the T coupling (slice (4)),
+    never an index of the invariant.  Rule 8: every field is a surface position, a surface relation on
+    surface positions (the flow-in plain at every floor `n` the stack's index can take, bounded by the
+    projection `sc.currentIndent`), or a projection of `sc`/`s'`.  The `alias` arm carries NO field about
+    a held property run: `&a⏎*a` scans (items 482/483); the parser refuses it, and the T twin reads that. -/
+inductive ContentArm (sc s' : ScannerState) (c : Char) (sp : SurfPos) : SurfPos → Prop where
+  | plain (sp_gram sp' : SurfPos) (h_c : c ≠ '&' ∧ c ≠ '*' ∧ c ≠ '!' ∧ c ≠ '|' ∧ c ≠ '>' ∧ c ≠ '"' ∧ c ≠ '\'')
+      (h_depth : sc.flowLevel = 0)
+      (h_node : SFlowNode 0 .flowOut sp sp_gram) (h_ws : GStar SSWhite sp_gram sp')
+      (h_hash : sp_gram = sp' → s'.peek? ≠ some '#') (h_corr : ScannerSurfCorr s' sp') :
+      ContentArm sc s' c sp sp'
+  | plainIn (sp' : SurfPos) (h_c : c ≠ '&' ∧ c ≠ '*' ∧ c ≠ '!' ∧ c ≠ '|' ∧ c ≠ '>' ∧ c ≠ '"' ∧ c ≠ '\'')
+      (h_depth : 1 ≤ sc.flowLevel) (h_corr : ScannerSurfCorr s' sp')
+      (h_node : ∀ n : Nat, (n : Int) ≤ max 0 (sc.currentIndent + 1) →
+        ∃ sp_gram, SFlowNode n .flowIn sp sp_gram ∧ GStar SSWhite sp_gram sp' ∧
+          (sp_gram = sp' → s'.col ≠ 0 → ¬ (CommentOk s' ∧ s'.peek? = some '#'))) :
+      ContentArm sc s' c sp sp'
+  | doubleQuoted (sp' : SurfPos) (h_c : c = '"') (h_q : SCDoubleQuoted 0 .blockIn sp sp')
+      (h_back : s'.peekBack? = some '"') (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | singleQuoted (sp' : SurfPos) (h_c : c = '\'') (h_q : SCSingleQuoted 0 .blockIn sp sp')
+      (h_back : s'.peekBack? = some '\'') (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | blockScalar (sp' : SurfPos) (h_c : c = '|' ∨ c = '>')
+      (h_bs : SCLLiteral 0 sp sp' ∨ SCLFolded 0 sp sp') (h_corr : ScannerSurfCorr s' sp') :
+      ContentArm sc s' c sp sp'
+  | anchor (sp' : SurfPos) (h_c : c = '&') (h_prop : SCNsAnchorProperty sp sp') (h_next : NextIsSep s')
+      (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | tag (sp' : SurfPos) (h_c : c = '!') (h_prop : SCNsTagProperty sp sp') (h_next : NextIsSep s')
+      (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
+  | alias (sp' : SurfPos) (h_c : c = '*') (h_node : SCNsAliasNode sp sp')
+      (h_corr : ScannerSurfCorr s' sp') : ContentArm sc s' c sp sp'
 
 /-- **The flow stack's floor, transported** (item 67).  A step that leaves the
     indent stack alone carries the reading index's floor forward unchanged —
@@ -9812,14 +9914,7 @@ lemma allowDirectives_update_pendingKeys (s : ScannerState) :
     else s).pendingKeys = s.pendingKeys := by
   split <;> rfl
 
-/-- …and the implicit value's stamp (item 103). -/
-lemma allowDirectives_update_implicitValueLine (s : ScannerState) :
-    (if s.allowDirectives then
-      { s with allowDirectives := false, documentEverStarted := true }
-    else s).implicitValueLine = s.implicitValueLine := by
-  split <;> rfl
-
-/-- `docStartLine` twin of `allowDirectives_update_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+/-- The `allowDirectives` update leaves `docStartLine` (item 299; its `implicitValueLine` twin was deleted under item 520's ruling): the field has one writer, `scanDocumentStart`. -/
 lemma allowDirectives_update_docStartLine (s : ScannerState) :
     (if s.allowDirectives then
       { s with allowDirectives := false, documentEverStarted := true }
@@ -12397,7 +12492,7 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
       -- INHABITATION on the premise, and both callers that pay it hand a
       -- one-element chain — so `h_compact_pair` says `nv0 :: ns` now and this
       -- conjunct is paid on the compact arm.
-      ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+      ((∀ nv ∈ RegisterWitness.markedCols s_prep, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAltG g)) ∨ True := by
@@ -12430,8 +12525,8 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
           -- keeps taking siblings (`k:⏎  [1]: b⏎  c: 2`) and the enclosing
           -- entry's node closes once, at the end.  Nothing stands below it —
           -- the node was what the park awaited — so the stack is empty.
-          Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-            valueMapRouteF hnw h_node h_landS h_ind'⟩,
+          Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+            ResumeFrames.one_of_route (valueMapRouteF hnw h_node h_landS h_ind')⟩,
           Or.inr trivial⟩
         rw [landing_or_park_save h_noflow h_land.2.2.2 h_park h_preprocess,
           ← hcorr_prep.col_eq]
@@ -12462,8 +12557,8 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
             -- **Item 202: the compact arm's, the same twin one route over.**
             -- `compactMapRoute` was filling `SCompactMap.mk`'s tail slot with
             -- `nil`; the continuation goes in that slot (`- [1]: b⏎  c: 2`).
-            Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-              compactMapRouteF h_cp.1 h_ind'⟩,
+            Or.inl ⟨[FrameLevel.map (nc + 1 + w)], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+              ResumeFrames.one_of_route (compactMapRouteF h_cp.1 h_ind')⟩,
             ?_⟩
           · cases h_compact_pair with
             | inr _ => exact Or.inr trivial
@@ -12490,13 +12585,12 @@ lemma flowKeyRoute_of_open {n nc m : Nat} {g : Option ScannerState} {cc : YamlCo
           · cases h_compact_pair with
             | inr _ => exact Or.inr trivial
             | inl h_pr =>
-              match hmc : RegisterWitness.markedCols sc with
-              | [] => exact Or.inr trivial
-              | nv0 :: _ =>
-              exact Or.inl ⟨nv0, [], fun _ h => absurd h (List.not_mem_nil),
+              -- Item 521: at EVERY mark of the open state (the pre-state's marks, carried across
+              -- the preprocess), not the head mark alone.
+              exact Or.inl fun nv hm => ⟨[], fun _ h => absurd h (List.not_mem_nil),
                 fun sp_v h_entry sp_e h_tail =>
                   KeyFrames.bottom sp_e
-                    (h_pr nv0 (hmc ▸ List.Mem.head _) sp_e
+                    (h_pr nv ((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)).mem hm) sp_e
                       (SBlockIndented.compactMap nc cc w sp_scan sp_prep sp_e h_ind'
                         (SCompactMap.mk (nc + 1 + w) sp_prep sp_v sp_e h_entry h_tail)))⟩
         · exact Or.inr trivial
@@ -12587,7 +12681,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
     -- stand inside a `?` frame (`?⏎  a: 1⏎  [1]: b⏎: w`, accepted).  The
     -- payers are `pendingContent.h_framesV` and `pendingBlockContent.h_closeFV`
     -- (read at the empty tail), exactly as `h_mapF`'s are their stream twins.
-    (h_mapFV : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_mapFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
       ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc) :
     (∃ (k : Nat) (sp_key : SurfPos),
@@ -12614,7 +12708,7 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True) ∧
-      ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+      ((∀ nv ∈ RegisterWitness.markedCols s_prep, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_v : SurfPos, SBlockMapEntry k sp_key sp_v →
         ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
         KeyFrames (ExplValueLine sp_start nv) ks sp_e) ∨ PackAltG g)) ∨ True := by
@@ -12661,13 +12755,19 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
       -- `h_res_land` verbatim at `ExplValueLine sp_start nv`, and the frame
       -- that survives the landing is the `?` the collection's level stands
       -- inside. ═══
-      have h_resV_land : (∃ (nv : Nat) (ks' : List FrameLevel), (∀ fr ∈ ks', fr.width ≤ w) ∧
+      -- Item 521: at EVERY mark — one decision for all of them (does each mark's frame
+      -- list hold `map w`?), then the resume per mark; a mark whose list does not is the
+      -- named decline the single-mark build already had.
+      have h_resV_land : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks' : List FrameLevel),
+          (∀ fr ∈ ks', fr.width ≤ w) ∧
           ∀ sp_end : SurfPos, SCompactMapTail w sp_mid sp_end →
             KeyFrames (ExplValueLine sp_start nv) ks' sp_end) ∨ PackAlt sc := by
-        rcases h_mapFV with ⟨nv, ks, fV⟩ | h_alt
-        · by_cases hmem : FrameLevel.map w ∈ ks
-          · obtain ⟨ks', h_w, cont⟩ := (fV sp_mid h_landS).resumeAtMap hmem
-            exact Or.inl ⟨nv, ks', h_w.le, cont⟩
+        rcases h_mapFV with hall | h_alt
+        · rcases Classical.em (∀ nv (hm : nv ∈ RegisterWitness.markedCols sc),
+              FrameLevel.map w ∈ (hall nv hm).choose) with hallmem | _
+          · refine Or.inl fun nv hm => ?_
+            obtain ⟨ks', h_w, cont⟩ := ((hall nv hm).choose_spec sp_mid h_landS).resumeAtMap (hallmem nv hm)
+            exact ⟨ks', h_w.le, cont⟩
           · exact Or.inr trivial
         · exact Or.inr h_alt
       refine Or.inl ⟨w, sp_prep,
@@ -12702,24 +12802,26 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
          | Or.inl ⟨ks', h_lt, cont⟩, _, _ =>
              Or.inl ⟨ks', h_lt, resumeMapRouteF h_ind' cont⟩
          | Or.inr _, Or.inl sfx, _ =>
-             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               suffixMapRouteF h_land.2.1 (sfx sp_mid h_landS) h_ind'⟩
+             Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+               ResumeFrames.one_of_route (suffixMapRouteF h_land.2.1 (sfx sp_mid h_landS) h_ind')⟩
          | Or.inr _, Or.inr _, Or.inl nd =>
-             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               nodocMapRouteF h_land.2.1 (nd sp_mid h_landS) h_ind'⟩
+             Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+               ResumeFrames.one_of_route (nodocMapRouteF h_land.2.1 (nd sp_mid h_landS) h_ind')⟩
          | Or.inr _, Or.inr _, Or.inr _ =>
-             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-               rootMapRouteF_or_refused h_ref_land h_land.2.1
+             Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+               ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref_land h_land.2.1
                  (h_close (dangling_none_of_check h_dn h_ska_land)
-                   (underIndented_none_of_check h_fv h_ska_land) sp_mid h_landS) h_ind'⟩),
+                   (underIndented_none_of_check h_fv h_ska_land) sp_mid h_landS) h_ind')⟩),
         -- **Item 201: and the VALUE-LINE twin of the line above**, off the
         -- park's own `h_framesV`/`h_closeFV` rather than off `h_mapF` — which
         -- is why item 197 could name this conjunct and not pay it: the input
         -- it had was stream-bottomed, and a stream bottom cannot be widened
         -- into a value line (§19.3's refusal at `BlockDeferralClasses`).
         (match h_resV_land with
-         | Or.inl ⟨nv, ks', h_lt, cont⟩ =>
-             Or.inl ⟨nv, ks', h_lt, resumeMapRouteK h_ind' cont⟩
+         | Or.inl hall => Or.inl fun nv hm =>
+             let ⟨ks', h_lt, cont⟩ := hall nv
+               ((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)).mem hm)
+             ⟨ks', h_lt, resumeMapRouteK h_ind' cont⟩
          | Or.inr _ => Or.inr trivial)⟩
       rw [landing_or_park_save h_noflow h_land.2.2.2 h_park h_preprocess,
         ← hcorr_prep.col_eq]
@@ -12747,9 +12849,9 @@ lemma flowKeyRoute_of_root {m : Nat} {g : Option ScannerState} {sp_start sp_scan
           -- collection keys is the stream's FIRST document, and the park
           -- made after its value offers the next landing the level's own
           -- resume (`[1]: a⏎[2]: b`, `[1]: a⏎b: 2⏎c: 3`).
-          Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-            nodocMapRouteF h_col0.1
-              (h_col0.2 sp_scan (sslComments_refl_of_col0 h_col0.1)) h_ind'⟩,
+          Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+            ResumeFrames.one_of_route (nodocMapRouteF h_col0.1
+              (h_col0.2 sp_scan (sslComments_refl_of_col0 h_col0.1)) h_ind')⟩,
           Or.inr trivial⟩
         rw [(preprocess_saved_key_col h_sk h_noflow h_preprocess).2, ← hcorr_prep.col_eq]
         have := SIndent_col' h_ind'
@@ -13478,46 +13580,8 @@ lemma InteriorGap.col_pos {sc : ScannerState} {tl : FrameTail} {sp_flow sp_scan 
     exact propsRun_col_gt ((h_run 0).resolve_right (fun h => h (Nat.zero_le _)))
       (Nat.zero_le _)
 
-/-- **The stamp a depth-0 flow OPEN records** (item 103), and the `by_cases`
-    that decides it.
-
-    The mask's base slot answers a question about the key the open stacks: was
-    the line that key sits on already stamped by a value indicator?  The park
-    knows the first half (`pendingMapValue`'s own `h_ivl`, and a props park's
-    punt), preprocessing carries the field unchanged, and the second half — is
-    the saved key still on the park's line — is decidable, so the reading is a
-    case split rather than a premise.  A key that reached the bracket across a
-    break lands on a LATER line, which is exactly the input the stamp must not
-    claim (`k:⏎  [1]: b` is legal). -/
-lemma flowOpen_stamp {sc s_prep s' : ScannerState} {c : Char}
-    (h_ivl : sc.implicitValueLine = some sc.line ∨ True)
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ivl' : s'.implicitValueLine = s_prep.implicitValueLine) :
-    s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True := by
-  by_cases hln : s_prep.simpleKey.pos.line = sc.line
-  · cases h_ivl with
-    | inl h =>
-      exact Or.inl (by
-        rw [h_ivl', preprocess_preserves_implicitValueLine sc s_prep c h_pre, h, hln])
-    | inr _ => exact Or.inr trivial
-  · exact Or.inr trivial
-
-/-- `docStartLine` twin of `flowOpen_stamp` (item 300): the open records whether
-    the `---` marker is on the line the base key sits on, by the same case split.
-    A key that reached the bracket across a break lands on a later line, which is
-    exactly the input the marker must not claim (`---⏎[1]: b` is legal). -/
-lemma flowOpen_marker {sc s_prep s' : ScannerState} {c : Char}
-    (h_doc : sc.docStartLine = some sc.line ∨ True)
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_dsl' : s'.docStartLine = s_prep.docStartLine) :
-    s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True := by
-  by_cases hln : s_prep.simpleKey.pos.line = sc.line
-  · cases h_doc with
-    | inl h =>
-      exact Or.inl (by
-        rw [h_dsl', preprocess_preserves_docStartLine sc s_prep c h_pre, h, hln])
-    | inr _ => exact Or.inr trivial
-  · exact Or.inr trivial
+-- Item 520 (review round 2): `flowOpen_stamp` / `flowOpen_marker` (items 103 / 300) deleted — the base
+-- slot no longer carries the stamp and marker as `P ∨ True`; the close decides both on its own state.
 
 /-- A real final slot is the one `prevRealIdx?` lands on. -/
 lemma lastTokenReal_prevRealIdx {ts : Array (Positioned YamlToken)}
@@ -13666,11 +13730,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     -- structure), which is what carries the pending's floor onto the stack.
     (h_ind' : s'.indents = s_prep.indents)
     (h_pk' : s'.pendingKeys = s_prep.pendingKeys)
-    -- Item 103: nor does it write the stamp, which is what carries a value
-    -- indicator's line into the collection and out at its close.
-    (h_ivl_open : s'.implicitValueLine = s_prep.implicitValueLine)
-    -- Item 300: nor the marker's line, which the base slot carries to the close.
-    (h_dsl_open : s'.docStartLine = s_prep.docStartLine)
     -- Item 143: §9.2's landing refusal, threaded from `scanNextToken` through
     -- `accum_step_flow` — the last step that did not carry it.  It runs BEFORE
     -- the allowDirectives update and before §8.1's floor, so the state it reads
@@ -13717,7 +13776,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open := by
   rw [h_fl1]
   -- Item 363: every `PackAlt sc` face of the open is typed over the BLOCK state `sc`
   -- (`h_fl0`), so the flow lane's K7 fact is a projection of that state, decided once
@@ -13735,15 +13795,13 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       FlowStackB sp_start n s_prep.simpleKey.pos.col g s' 1 s'.flowStack #[false]
         (tailOf s'.tokens) sp_before sp_open :=
     fun g n sp_before v => mk g n sp_before (.ofValue v)
-  -- Item 103: the base slot's stamp is the open's to record, and only the
-  -- park knows it — so `h_km0` takes the reading and each arm below supplies
-  -- one (`Or.inr trivial` wherever the park cannot be in a stamped slot).
-  have h_km0 : (s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True) →
-      (s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True) →
-      s_prep.simpleKey.possible = true →
-      KmSound s' #[false] s_prep.simpleKey.pos.col := fun h_st h_mk h_kp => by
+  -- Item 520 (review round 2): the base slot's stamp and marker (items 103 / 300) are no longer
+  -- recorded at the open — `KmSound` carries the column and the possibility; the close decides
+  -- the stamp and the marker on its own state (`flowKeyPack_of_close`).
+  have h_km0 : s_prep.simpleKey.possible = true →
+      KmSound s' #[false] s_prep.simpleKey.pos.col := fun h_kp => by
     refine ⟨s'.simpleKeyStack.size - 1, by simp; omega,
-      fun i hi hb => ?_, fun i hi hb => ?_, fun _ => ⟨_, h_kc, rfl, h_st, h_mk, h_kp⟩⟩ <;>
+      fun i hi hb => ?_, fun i hi hb => ?_, fun _ => ⟨_, h_kc, rfl, h_kp⟩⟩ <;>
     · have h0 : i = 0 := by simp at hi; omega
       subst h0
       exact absurd hb (by simp)
@@ -13752,9 +13810,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
   -- opens a stack whose interior cannot read a multi-line token at `n` — the
   -- deferral narrows to those parks rather than to the whole open.
   have h_kpkg : ∀ (g : Option ScannerState) (n : Nat) sp_b sp_f,
-      (s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True) →
-      -- Item 300: the base slot's marker reading, the stamp's twin.
-      (s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True) →
       -- Item 293: the open's own saved key is live — each arm says why.
       s_prep.simpleKey.possible = true →
       n ≤ minContentIndentOf s' →
@@ -13765,9 +13820,9 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       FlowStackB sp_start n s_prep.simpleKey.pos.col g s' 1 s'.flowStack #[false]
       (tailOf s'.tokens) sp_b sp_f →
       FlowStackK sp_start s' 1 s'.flowStack (tailOf s'.tokens) sp_b sp_f :=
-    fun g n _ _ h_st h_mk h_kp hfl h_anch h_b =>
+    fun g n _ _ h_kp hfl h_anch h_b =>
       ⟨n, _, #[false], g, s', h_b, h_ks1, fun _ => rfl, fun _ => rfl, hfl,
-        fun _ => ⟨h_km0 h_st h_mk h_kp, h_anch, fun kj hv => absurd hv (h_nv kj),
+        fun _ => ⟨h_km0 h_kp, h_anch, fun kj hv => absurd hv (h_nv kj),
           s'.simpleKeyStack.size, by simp, ResvOk.top h_opsk⟩⟩
   -- Item 67: the pending's floor, carried onto the stack the open pushes.  It
   -- needs the park's own COLUMN (`h_start`) — the separator alone cannot say
@@ -13853,7 +13908,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
           ScannerSurfCorr s' sp_scan' ∧
           ((1 : Nat) ≥ 1 →
             InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-            LastTokenReal s'.tokens ∧ s'.allowDirectives = false)) →
+            LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+            (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open) →
       -- Item 118: the park's open suffix arm (item 117's skeleton face at the
       -- flow open) — a `...` park lands the completed collection in
       -- `suffixContinue`'s own slot; only `pendingDocEnd`'s arm pays.
@@ -13877,7 +13933,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- frame's value line across the bracket (`?⏎  a: 1⏎  [1]: b⏎: w`).  The
       -- two content parks pay (`h_framesV`, `h_closeFV` at the empty tail);
       -- the marker parks take their own arms and `pendingFlow` has nothing.
-      ((∃ (nv : Nat) (ks : List FrameLevel),
+      ((∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
         ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
         KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc) →
       ∃ sp_gram' sp_block' sp_flow' sp_scan',
@@ -13888,7 +13944,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open := by
     intro sp_g h_trail h_gateM h_close h_nobreak h_sfx h_tail143 h_mapF176 h_mapFV201
     rcases preprocess_flow_thread sc sp_scan sp_prep s_prep c h_corr hcorr_prep h_preprocess
         h_noflow_prep h_park h_trail h_gateM with
@@ -13903,7 +13960,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         h_tail143.imp (fun h_tl =>
           ⟨h_bare, h_preprocess, h_noflow_prep, h_ska, h_tl, h_base⟩) id
       exact ⟨sp_mid, sp_mid, sp_open, sp_open, h_stream_mid, BlockStack.nil sp_mid,
-             h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess) (Nat.zero_le _) trivial (mk none 0 sp_mid ⟨fun _ _ => Or.inr trivial, (fun _ =>
+             h_kpkg none _ _ _ (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess) (Nat.zero_le _) trivial (mk none 0 sp_mid ⟨fun _ _ => Or.inr trivial, (fun _ =>
                -- Item 118: the value route chosen by the face — the open
                -- arm's slot for a closed `...`, `implicitContinue` otherwise.
                match h_sfx with
@@ -13922,7 +13979,9 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (RegisterWitness.markedCols_congr h_pk' h_ind') ▸
                flowKeyRoute_of_root (Or.inr trivial) h_noflow_prep h_park h_close h_dn h_fv h_corr
                  hcorr_prep h_preprocess h_trail h_gateM h_sfx (Or.inr trivial) h_bare h_base h_tail143
-                 h_mapF176 h_mapFV201,
+                 h_mapF176 (match h_mapFV201 with
+                   | Or.inl hall => Or.inl hall
+                   | Or.inr h => Or.inr h),
                -- **Item 201: `vslot` stays punted here, and the reason is the
                -- PARK's shape rather than a missing field.**  The lane's seven
                -- open sites pay the frame's explicit-key route at three
@@ -13944,7 +14003,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0 (preprocess_saved_key_possible_post h_ska h_noflow_prep h_preprocess)⟩, rfl⟩
     · exact h_nobreak hcol hws
   -- The completed constructs cannot reach a same-line `[`/`{`: their producers'
   -- trailing validation left the rest of the line inert (`h_line`), and the
@@ -13959,7 +14019,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_line hcol hws =>
       (LineNoOpen.no_open_across_whites (h_line.resolve_left hcol) hws h_head h_c).elim
   -- The OPAQUE resume (item 46: `pendingFlow`'s alone).  The deferred state
@@ -14054,17 +14115,19 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_kp_drop =>
     ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil _,
-     h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) h_kp_drop (Nat.zero_le _) trivial (mkv none 0 sp_block (fun _ sp_ne sp_m _ h_ssl =>
+     h_kpkg none _ _ _ h_kp_drop (Nat.zero_le _) trivial (mkv none 0 sp_block (fun _ sp_ne sp_m _ h_ssl =>
        dropClose h_stream_block sp_ne sp_m h_ssl)),
      PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
-     fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+     fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+     ⟨_, h_km0 h_kp_drop⟩, rfl⟩
   have opaque_resume : s_prep.simpleKey.possible = true →
       sp_scan.col ≠ 0 → GStar SSWhite sp_scan sp_prep →
       ∃ sp_gram' sp_block' sp_flow' sp_scan',
@@ -14075,7 +14138,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_kp _ _ => drop_ride h_kp
   -- **Item 285 (step 12.2): the ride the SLOT pays for.**  `drop_ride`'s own
   -- term with the gate the open's park can now name — `some s_prep`, anchored
@@ -14109,12 +14173,13 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         ScannerSurfCorr s' sp_scan' ∧
         ((1 : Nat) ≥ 1 →
           InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) :=
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+          (∃ kc, KmSound s' #[false] kc) ∧ sp_flow' = sp_open :=
     fun h_alt h_gateS hmem hrun hska =>
       match h_optok with
       | ⟨_, htok, hop, hpos⟩ =>
         ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil _,
-         h_kpkg (some s_prep) 0 _ _ (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess) (Nat.zero_le _)
+         h_kpkg (some s_prep) 0 _ _ (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess) (Nat.zero_le _)
            ⟨Or.inr (ParkSlot.ofOpen htok hop h_ind' h_noflow_prep
               (by rw [hpos]; exact hmem) hrun),
             ⟨KeyFloor.cleared h_opsk, fun i hlo hhi => absurd hhi (by omega)⟩⟩
@@ -14129,7 +14194,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
            (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
            (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
-         fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+         fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+     ⟨_, h_km0 (preprocess_saved_key_possible_post hska h_noflow_prep h_preprocess)⟩, rfl⟩
   cases h_pending with
   | noPending _ _ h_col h_armN h_nodoc h_noekN _ h_gateN =>
     -- Nothing to close: the leading separation rides in the fresh bare
@@ -14152,7 +14218,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     have h_col0 := h_col.resolve_right
       (show ¬ sc.inFlow = true by rw [h_scflow]; simp)
     exact ⟨_, _, sp_open, sp_open, h_stream_block, BlockStack.nil _,
-           h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial)
+           h_kpkg none _ _ _
              (preprocess_saved_key_fresh (h_armN.resolve_right (by rw [h_scflow]; simp)).1 h_noflow_prep h_preprocess).1 (Nat.zero_le _) trivial
              (mk none 0 _ ⟨fun _ _ => Or.inr trivial, (fun _ => nodocFlowResumeSep (h_nodoc h_scflow)
                  (h_sep.resolve_right (fun h => absurd h.2.2 (by omega)))),
@@ -14172,7 +14238,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0 (preprocess_saved_key_fresh (h_armN.resolve_right (by rw [h_scflow]; simp)).1 h_noflow_prep h_preprocess).1⟩, rfl⟩
   | pendingContent _ _ _ _ h_line h_closableA _ _ _ _ h_frS176 h_frV201 _ h_tail143 _ _ h_runA h_gateA _ =>
     -- Item 37: §7.5's set weakens to item 10's here, exactly as `[204]`'s does.
     -- Item 143: …and this park's producer finished a node, so it PAYS §9.2's
@@ -14187,7 +14254,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     exact main h_runA h_gateA h_closableA (refuted (h_line.imp id LineNodeStop.toLineNoOpen))
       (Or.inr trivial) (Or.inl h_tail143)
       (h_frS176.imp (fun ⟨ks, _, f⟩ => ⟨ks, f⟩) id)
-      (h_frV201.imp (fun ⟨nv, ks, _, f⟩ => ⟨nv, ks, f⟩) id)
+      (h_frV201.imp (fun hall nv hm => let ⟨ks, _, f⟩ := hall nv hm; ⟨ks, f⟩) id)
   | pendingDocEnd _ _ _ h_line h_marker _ _ _ h_noekE h_nextE =>
     -- Item 36: `[204]`'s suffix set weakens to item 10's at the CONSUMER.
     -- ═══ Item 118: the `...` park pays the flow open's suffix face — the
@@ -14223,8 +14290,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       -- entry's content.  `flowKeyRoute_of_root` declines the sequence case, so
       -- a flow key landing at the entry's own column is payable here and not
       -- yet informative.
-      (h_cFV201.imp (fun ⟨nv, ks, h_ltk, _, closeFV⟩ =>
-        ⟨nv, FrameLevel.seq n176 :: ks, fun sp_m h_ssl =>
+      (h_cFV201.imp (fun hall nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm;
+        ⟨FrameLevel.seq n176 :: ks, fun sp_m h_ssl =>
           KeyFrames.seqLevel n176 ks sp_m h_ltk (fun sp_end h_tail =>
             closeFV sp_m h_ssl sp_end h_tail)⟩) id)
   | pendingFlow _ _ _ _ _ _ _ h_live0F h_gateF =>
@@ -14254,31 +14321,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
         h_corr h_preprocess (GStar.nil _) (fun _ _ => (h_gateP (noflow_of_fl0 h_fl0)).gate)
     have h_pe : sp_gap = sp_prep := ScannerSurfCorr_unique hcorr_gap hcorr_prep
     rw [h_pe] at h_sep_or
-    -- Item 103: the props park needs no field of its own for the stamp — its
-    -- `h_key` already carries one where there is one to carry.  A run parked in
-    -- a stamped value slot punts `implicitValue` (item 102), and that
-    -- constructor's first component IS the reading the flow open records.
-    have h_stamp_p : s'.implicitValueLine = some s_prep.simpleKey.pos.line ∨ True := by
-      rcases h_pkey with _ | punt
-      · exact Or.inr trivial
-      · cases punt with
-        | implicitValue h_ivl _ _ =>
-          exact flowOpen_stamp (Or.inl h_ivl) h_preprocess h_ivl_open
-        | tab _ _ => exact Or.inr trivial
-        | markerLine _ _ => exact Or.inr trivial
-        | noKeyContext => exact Or.inr trivial
-    -- Item 300: and the marker's line the same way — a run whose park sits on
-    -- the `---` line hands `markerLine` (`--- &p [1]: b`), and the open records it
-    -- on the base slot for the close to refuse.
-    have h_marker_p : s'.docStartLine = some s_prep.simpleKey.pos.line ∨ True := by
-      rcases h_pkey with _ | punt
-      · exact Or.inr trivial
-      · cases punt with
-        | markerLine h_doc _ =>
-          exact flowOpen_marker (Or.inl h_doc) h_preprocess h_dsl_open
-        | implicitValue _ _ _ => exact Or.inr trivial
-        | tab _ _ => exact Or.inr trivial
-        | noKeyContext => exact Or.inr trivial
     -- **Item 165: the gate this arm opens at, and what it pays for.**  The
     -- frame's construction is polymorphic in `g` (item 163), so the choice is
     -- made once here and the route term below is written once — the break arm
@@ -14301,7 +14343,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
              -- Item 68: the run's park is at or past its route index, so the
              -- collection this open pushes reads its interior AT that index.
              -- Item 84: the floor arrives WITH the separator now.
-             h_kpkg gp _ _ _ h_stamp_p h_marker_p (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess) (openFloorT h_floor_prep) h_anch_p (mk gp n sp_block ⟨fun _ _ => Or.inr trivial, (fun h_g sp_ne sp_m h_content h_ssl =>
+             h_kpkg gp _ _ _ (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess) (openFloorT h_floor_prep) h_anch_p (mk gp n sp_block ⟨fun _ _ => Or.inr trivial, (fun h_g sp_ne sp_m h_content h_ssl =>
                h_route (h_pay_p h_g) sp_m (flowInBlock_blockNode h_sep_run
                  (SFlowNode.propsContent n .flowOut sp_p sp_scan sp_prep sp_ne
                    h_run.toProperties h_sep h_content) h_ssl)),
@@ -14349,7 +14391,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                     (h_tw99p.imp (fun ⟨ks, h_lt, _, r⟩ => ⟨ks, h_lt, r⟩) id),
                     -- Item 150: and the value-line twin's, dropped at the same
                     -- boundary.
-                    (h_tw108p.imp (fun ⟨nv, ks, h_lt, _, r⟩ => ⟨nv, ks, h_lt, r⟩) PackAltG.ofPark)⟩
+                    (h_tw108p.imp (fun h nv hm => match h nv (((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)).transport h_pk' h_ind').mem hm) with | ⟨ks, h_lt, _, r⟩ => ⟨ks, h_lt, r⟩) PackAltG.ofPark)⟩
                 -- Item 295: no inherited pack, and the collection may still be a
                 -- key — a break between the run and the bracket re-saved the key
                 -- AT the bracket (`&p⏎[1]: b`, accepted), so the landing's own
@@ -14367,19 +14409,20 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- closes it (`? &p [1]⏎: - w`); the twin item 91 installed
                -- fires on the same node the value route above builds.
                (match h_kslot_p with
-                | Or.inl ⟨ns, _, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
-                    (fun sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
-                      kslot nv hmem sp_m (flowInBlock_blockNode h_sep_run
+                | Or.inl ⟨ns, hdom, kslot⟩ => Or.inl
+                    (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
+                      kslot nv (((RegisterWitness.preprocess_markedCols h_preprocess hdom).transport h_pk' h_ind').mem hmem) sp_m (flowInBlock_blockNode h_sep_run
                         (SFlowNode.propsContent n .flowOut sp_p sp_scan sp_prep sp_end
                           h_run.toProperties h_sep h_content) h_ssl)
-                        sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
+                        sp_i sp_c h_iv h_lit sp_v h_sbi)
                 | Or.inr _ => Or.inr trivial)⟩),
              PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
            (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open,
-             fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+             fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0 (preprocess_possible_of_live0 (Or.inr h_possP0) h_noflow_prep h_preprocess)⟩, rfl⟩
     · -- Item 172: the run-end half of the under-run is no longer the scanner's
       -- refusal — §8.1's floor is read at the CLOSE now, so the open STEP
       -- scans (`k:⏎  b:⏎    &x⏎[1]`) and this arm has to build.  The park is
@@ -14418,9 +14461,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
       fun sp h_node =>
         h_doc_route sp (GAlt.left sp_scan sp (SLBareDocument.mk sp_scan sp h_node))
     exact ⟨sp_block, sp_block, sp_open, sp_open, h_stream_block, BlockStack.nil sp_block,
-           h_kpkg none _ _ _ (Or.inr trivial)
-              -- Item 300: `--- [1]: b` — the marker's line rides the base slot to the close.
-              (flowOpen_marker (Or.inl h_doclineD) h_preprocess h_dsl_open)
+           h_kpkg none _ _ _
               (preprocess_saved_key_fresh h_armD.1 h_noflow_prep h_preprocess).1 (Nat.zero_le _) trivial (mk none 0 sp_block ⟨fun _ _ => Or.inr trivial, (fun _ sp_ne sp_m h_content h_ssl =>
              h_docnode sp_m (SBlockNode.flowInBlock 0 .blockIn sp_scan sp_prep sp_ne sp_m
                h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)),
@@ -14434,7 +14475,8 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+     ⟨_, h_km0 (preprocess_saved_key_fresh h_armD.1 h_noflow_prep h_preprocess).1⟩, rfl⟩
   | pendingBlock _ _ _ n_old h_close _ h_floor_old h_sk_old h_col59 h_kslot_old _ _ _
       h_kslotUp_old _ _ h_offer_b h_gateB =>
     -- Item 46: the stack opens at the ENTRY's index, so the resume's node
@@ -14456,7 +14498,7 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
     rcases h_sep_or with ⟨h_sep, h_floor_prep⟩ |
       ⟨sp_mid2, _h_ssl2, h_col02, h_ur, h_ltsl2, h_landed_ur, h_ska_ur⟩
     · exact ⟨sp_gram, sp_block, sp_open, sp_open, h_stream, h_stack,
-             h_kpkg none _ _ _ (Or.inr trivial) (Or.inr trivial) (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1 (openFloorT h_floor_prep) trivial (mk none (n_old + 1) sp_block ⟨fun _ _ => Or.inr trivial, (fun _ sp_ne sp_m h_content h_ssl =>
+             h_kpkg none _ _ _ (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1 (openFloorT h_floor_prep) trivial (mk none (n_old + 1) sp_block ⟨fun _ _ => Or.inr trivial, (fun _ sp_ne sp_m h_content h_ssl =>
                h_close sp_m (SBlockIndented.node n_old .blockIn sp_scan sp_m
                  (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_ne sp_m
                    h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))),
@@ -14493,43 +14535,39 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- `?`'s compact-SEQUENCE key, and the landed `:` closes it
                -- (`? - [1]⏎: - w`); the wrap is the value closure's own.
                --
-               -- ═══ **Item 192: …and the park's WHOLE CHAIN with it.**  The
-               -- park holds one value line for the frame its collection FILLS
-               -- (`h_kslot`, above) and one for each frame it stands INSIDE
-               -- (`h_kslotUp`, items 190–191), and a flow collection in the
-               -- entry's node slot is where the chain used to stop: this arm
-               -- read `h_kslot` alone, so `?⏎  ? - [1]⏎: w` — accepted, landing
-               -- one frame up — left through `_stamp_offcol` where its block
-               -- twin `?⏎  ? -⏎: w` was paid at item 190.  The wrap is the same
-               -- term for every ancestor, so one `frameChainUnion` carries the
-               -- ladder: `?⏎  ?⏎    ? - [1]⏎: w` lands two up, and each rung
-               -- deeper is accepted with no largest member. ═══
-               (frameChainUnion
-                 (match h_kslot_old with
-                  | Or.inl kslot => Or.inl ⟨RegisterWitness.markedCols sc,
+               -- ═══ **Item 192: …and the park's WHOLE CHAIN with it** — the ancestors'
+               -- `h_kslotUp` ladder rode beside `h_kslot` in a `frameChainUnion` (`?⏎  ?⏎    ? - [1]⏎: w`
+               -- lands two up).  Item 519: the field ranges over every mark, so the park's
+               -- every-mark `h_kslot` covers the ladder and the union is gone. ═══
+               -- Item 519: `vslot` ranges over every mark of the open state; the park's
+               -- every-mark `h_kslot` pays it, and where that is declined the ancestors'
+               -- cover `h_kslotUp` (Devin Review on item 519: item 192's union, kept).
+               (match h_kslot_old with
+                | Or.inl kslot => Or.inl
+                    (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
+                      kslot nv (((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)).transport h_pk' h_ind').mem hmem) sp_m
+                        (SBlockIndented.node n_old .blockIn sp_scan sp_m
+                          (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                            h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))
+                        sp_m (SCompactSeqTail.nil n_old sp_m)
+                        sp_i sp_c h_iv h_lit sp_v h_sbi)
+                | Or.inr _ =>
+                  match h_kslotUp_old with
+                  | Or.inl ⟨nsU, hdomU, upU⟩ => Or.inl
                       (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
-                        kslot nv hmem sp_m
+                        upU nv (((RegisterWitness.preprocess_markedCols h_preprocess hdomU).transport h_pk' h_ind').mem hmem) sp_m
                           (SBlockIndented.node n_old .blockIn sp_scan sp_m
                             (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
                               h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))
                           sp_m (SCompactSeqTail.nil n_old sp_m)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi)⟩
-                  | Or.inr _ => Or.inr trivial)
-                 (match h_kslotUp_old with
-                  | Or.inl ⟨nsU, _, upU⟩ => Or.inl ⟨nsU, fun nvU hmem =>
-                      fun sp_end h_content sp_m sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi =>
-                        upU nvU hmem sp_m
-                          (SBlockIndented.node n_old .blockIn sp_scan sp_m
-                            (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                              h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))
-                          sp_m (SCompactSeqTail.nil n_old sp_m)
-                          sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-                  | Or.inr _ => Or.inr trivial))⟩),
+                          sp_i sp_c h_iv h_lit sp_v h_sbi)
+                  | Or.inr _ => Or.inr trivial)⟩),
              PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0 (preprocess_saved_key_fresh h_sk_old h_noflow_prep h_preprocess).1⟩, rfl⟩
     · -- Item 73: `pendingBlock`'s floor is a measurement, not an option, which
       -- is what LOCATES the under-run; item 265 measures which half the
       -- location refutes.
@@ -14567,9 +14605,6 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
              -- open so the close can read it — `k: [1]: 2` is the flow twin of
              -- item 101's `k: a: 1`, one construct over.
              h_kpkg none _ _ _
-               (flowOpen_stamp (h_ivl_mv.imp id (fun _ => trivial)) h_preprocess h_ivl_open)
-               -- Item 300: a value park is not a `---` park; the marker reading declines.
-               (Or.inr trivial)
                (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1
                (openFloorT h_floor_prep) trivial
                (mk none (n_old + 1) sp_block ⟨(fun sp_ne h_content => h_closeF_mv.elim (fun ⟨ks, _, hcov, route⟩ => hcov.elim
@@ -14611,58 +14646,61 @@ lemma accum_flow_open_depth0 (sc : ScannerState)
                -- inner entry's VALUE, and the landed `:` closes the OUTER
                -- entry (`? a: [1]⏎: - w`).
                --
-               -- ═══ **Item 192: all THREE funders ride, where two shadowed.**
-               -- This park can hold its own `?` frame (`h_expl`, at `n_old`),
-               -- the frame that one stands inside (`h_kslot`, item 93) and the
-               -- whole chain above it (`h_explUp`, items 190–191) — and the
-               -- match below answered with the first it found, which is item
-               -- 189's shadowing in the flow lane.  `?⏎  ? [1]⏎: w` is accepted
-               -- and lands on the OUTER frame, so the preference chose wrong
-               -- there; the chain carries every one of them and the landing
-               -- decides by column. ═══
-               (frameChainUnion
-                 (frameChainUnion
-                   (match h_expl with
-                    | Or.inl ⟨sp_q, h_qlit, route, _⟩ => Or.inl ⟨[n_old], frameChainOne (a := n_old)
-                        (fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                          ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n_old sp_q sp_scan sp_m sp_i sp_c sp_v
-                            h_qlit
-                            (SBlockIndented.node n_old .blockOut sp_scan sp_m
-                              (SBlockNode_blockIn_to_blockOut
-                                (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                                  h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)))
-                            h_ind h_lit h_sbi)))⟩
-                    | Or.inr _ => Or.inr trivial)
-                   -- Item 196: the mapping-lane field is a CHAIN now, so the
-                   -- crossing carries the whole of it instead of its head.
-                   (match h_kslot_mv with
-                    | Or.inl ⟨ns, _, kslot⟩ => Or.inl ⟨ns, fun nv hmem =>
-                        (fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                          kslot nv hmem sp_m
-                            (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                              h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
-                            sp_i sp_c h_ind h_lit sp_v h_sbi)⟩
-                    | Or.inr _ => Or.inr trivial))
-                 -- Items 190–191: the ancestors, reached by closing THIS `?`'s
-                 -- entry empty around the key the collection just filled —
-                 -- `[188]`'s `explicitEmpty`, the `e-node` value the inner
-                 -- frame never got — with the outer `:` line following.
-                 (match h_explUp_mv with
-                  | Or.inl ⟨sp_q, nsU, h_qlit, _, up⟩ => Or.inl ⟨nsU, fun nvU hmem =>
-                      fun sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
-                        up nvU hmem sp_m
-                          (SBlockMapEntry.explicitEmpty n_old sp_q sp_scan sp_m h_qlit
-                            (SBlockIndented.node n_old .blockOut sp_scan sp_m
-                              (SBlockNode_blockIn_to_blockOut
-                                (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
-                                  h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl))))
-                          sp_i sp_c h_ind h_lit sp_v h_sbi⟩
-                  | Or.inr _ => Or.inr trivial))⟩),
+               -- ═══ **Item 192: all THREE funders ride, where two shadowed** — the `?`'s own
+               -- frame (`h_expl`), the frame it stands inside (`h_kslot`) and the ladder above
+               -- (`h_explUp`) were unioned so `?⏎  ? [1]⏎: w` lands on the OUTER frame.  Item 519:
+               -- each funder is an every-mark route now (a COVER or item 512's field), read in order —
+               -- Devin Review on item 519: `h_kslot_mv` is written by `question_open_map` off the
+               -- ANCESTORS' chain, so a root `? [1]⏎: w` (virgin park, chain declined) has it
+               -- declined while `h_expl` holds the own mark's route and item 512's every-mark
+               -- route for the older marks; each funder pays EVERY mark or declines whole. ═══
+               (match h_kslot_mv with
+                | Or.inl ⟨ns, hdom, kslot⟩ => Or.inl
+                    (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi =>
+                      kslot nv (((RegisterWitness.preprocess_markedCols h_preprocess hdom).transport h_pk' h_ind').mem hmem) sp_m
+                        (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                          h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
+                        sp_i sp_c h_ind h_lit sp_v h_sbi)
+                | Or.inr _ =>
+                  (match h_expl with
+                   | Or.inl ⟨sp_q, h_qlit, route, rest⟩ =>
+                     (match rest, h_explUp_mv with
+                      | Or.inl rest, _ => Or.inl
+                          (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi => by
+                            have hnode := SBlockNode_blockIn_to_blockOut
+                              (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                                h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
+                            by_cases hEq : nv = n_old
+                            · subst hEq
+                              exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp_m sp_i sp_c sp_v
+                                h_qlit (SBlockIndented.node _ .blockOut sp_scan sp_m hnode) h_ind h_lit h_sbi))
+                            · exact rest nv (((RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self _)).transport h_pk' h_ind').mem hmem)
+                                hEq sp_m (SBlockMapEntry.explicitEmpty n_old sp_q sp_scan sp_m h_qlit
+                                  (SBlockIndented.node n_old .blockOut sp_scan sp_m hnode))
+                                sp_i sp_c h_ind h_lit sp_v h_sbi)
+                      | Or.inr _, Or.inl ⟨sp_q', nsU, h_qlit', hdomU, up⟩ => Or.inl
+                          (fun nv hmem sp_end h_content sp_m sp_i sp_c h_ssl h_ind h_lit sp_v h_sbi => by
+                            have hnode := SBlockNode_blockIn_to_blockOut
+                              (SBlockNode.flowInBlock (n_old + 1) .blockIn sp_scan sp_prep sp_end sp_m
+                                h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)
+                            have hmemU : nv ∈ n_old :: nsU :=
+                              ((RegisterWitness.preprocess_markedCols h_preprocess hdomU).transport h_pk' h_ind').mem hmem
+                            by_cases hEq : nv = n_old
+                            · subst hEq
+                              exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp_m sp_i sp_c sp_v
+                                h_qlit (SBlockIndented.node _ .blockOut sp_scan sp_m hnode) h_ind h_lit h_sbi))
+                            · exact up nv ((List.mem_cons.1 hmemU).resolve_left hEq) sp_m
+                                (SBlockMapEntry.explicitEmpty n_old sp_q' sp_scan sp_m h_qlit'
+                                  (SBlockIndented.node n_old .blockOut sp_scan sp_m hnode))
+                                sp_i sp_c h_ind h_lit sp_v h_sbi)
+                      | Or.inr _, Or.inr _ => Or.inr trivial)
+                   | Or.inr _ => Or.inr trivial))⟩),
              PendingNode.noPending sp_start sp_open (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (Or.inr (inFlow_of_flowLevel_eq h_fl1))
                (nodoc_of_flowLevel_succ h_fl1) (noek_of_flowLevel_succ h_fl1)
                (ntop_of_flowLevel_succ h_fl1)
-           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩⟩
+           (noPending_gate_of_inFlow (inFlow_of_flowLevel_eq h_fl1)), hcorr_open, fun _ => ⟨.white (GStar.nil _) h_sync h_colon h_opencol (fun _ => h_gate_open) (fun _ _ _ _ => ⟨closeFree_of_leadFree h_free_open, fun _ => h_free_open⟩) (fun h => absurd h h_q_open), h_real, h_ad⟩,
+             ⟨_, h_km0 (preprocess_saved_key_fresh h_sk_mv h_noflow_prep h_preprocess).1⟩, rfl⟩
     · -- Item 68: the TAB half is §6.1's refusal, for `pendingProps`' reason.
       -- Item 82: the park's floor is REAL, which is what locates the run-end
       -- half; item 265 measures that the location it names is downstream
@@ -17462,6 +17500,14 @@ lemma blockEntry_landing_openSeq {sc s_prep s' : ScannerState} {c : Char}
     exact Or.inr (dispatchBlockEntry_sameIndentSeq h_dispatch
       (by split <;> exact h_noflow) (nodeSlotAwaited_false_of_landing h_tail h_pre) h_map)
 
+/-- Two compact sequence tails at the same width are one (item 505). -/
+lemma SCompactSeqTail_append {k : Nat} :
+    ∀ {s s' s'' : SurfPos}, SCompactSeqTail k s s' → SCompactSeqTail k s' s'' →
+      SCompactSeqTail k s s''
+  | _, _, _, .nil _ _, h₂ => h₂
+  | _, _, _, .cons _ s s₁ s₂ s₃ _ h_ind h_dash h_gnot h_node h_tail, h₂ =>
+      .cons _ s s₁ s₂ s₃ _ h_ind h_dash h_gnot h_node (SCompactSeqTail_append h_tail h₂)
+
 /-- **What item 166's branch was missing, spent** (item 167) — the landed `-`
     read as the open collection's NEXT ENTRY rather than as a new document's
     first one.
@@ -19071,30 +19117,6 @@ lemma preprocess_pending_cases {sc s_prep : ScannerState} {c : Char}
       rw [h_tk_skip]
     · exact Or.inl h_sk_skip
 
-/-- **The stamp reaches the dispatched state** (item 103): preprocessing does
-    not write `implicitValueLine` and neither does the `allowDirectives`
-    update, so every flow step's transport reads the field at `sc`. -/
-lemma ad_implicitValueLine {sc s_prep s_ad : ScannerState} {c : Char}
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ad_def : (if s_prep.allowDirectives = true then
-        { s_prep with allowDirectives := false, documentEverStarted := true }
-      else s_prep) = s_ad) :
-    s_ad.implicitValueLine = sc.implicitValueLine := by
-  have h := preprocess_preserves_implicitValueLine sc s_prep c h_pre
-  rw [← h_ad_def]
-  split <;> exact h
-
-/-- `docStartLine` twin of `ad_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
-lemma ad_docStartLine {sc s_prep s_ad : ScannerState} {c : Char}
-    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_ad_def : (if s_prep.allowDirectives = true then
-        { s_prep with allowDirectives := false, documentEverStarted := true }
-      else s_prep) = s_ad) :
-    s_ad.docStartLine = sc.docStartLine := by
-  have h := preprocess_preserves_docStartLine sc s_prep c h_pre
-  rw [← h_ad_def]
-  split <;> exact h
-
 /-- The mask a nested flow open leaves (item 10): the incoming mask rides
     through preprocessing and the bracket push, and the pushed bit's evidence
     — when it is armed — is the dispatch-time key the open stacks. -/
@@ -19119,15 +19141,6 @@ lemma km_push_at_open {sc s_prep s_ad s' : ScannerState} {c : Char}
     -- Item 79: `KmSound.push`'s base-open premise, refuted at both call sites
     -- from the parent frame (`FlowOpenStack.km_pos`).
     (h_base_new : km.size = 0 → s_ad.simpleKey.pos.col = kc)
-    -- Item 103: the stamp's twin of the pair above — the open's own reading of
-    -- the field, and the base-open promise refuted the same way.
-    (h_ivl' : s'.implicitValueLine = s_ad.implicitValueLine)
-    (h_stamp_new : km.size = 0 →
-      (s'.implicitValueLine = some s_ad.simpleKey.pos.line ∨ True))
-    -- Item 300: the marker's twin of the stamp pair, refuted the same way.
-    (h_dsl' : s'.docStartLine = s_ad.docStartLine)
-    (h_marker_new : km.size = 0 →
-      (s'.docStartLine = some s_ad.simpleKey.pos.line ∨ True))
     -- Item 293: and the base open's possibility, refuted the same way.
     (h_poss_new : km.size = 0 → s_ad.simpleKey.possible = true) :
     KmSound s' (km.push b_new) kc := by
@@ -19168,8 +19181,7 @@ lemma km_push_at_open {sc s_prep s_ad s' : ScannerState} {c : Char}
     · exact Or.inl (h_ad_sk.trans h_eq)
     · exact Or.inr (fun _ => by rw [h_ad_sk, h_ti]; exact Nat.le_refl _)
   refine KmSound.push (k := s_ad.simpleKey) h_km ?_ h_pref' ?_ h_size h_kcase h_poss'
-    h_base_new (h_ivl'.trans (ad_implicitValueLine h_pre h_ad_def)) h_stamp_new
-    (h_dsl'.trans (ad_docStartLine h_pre h_ad_def)) h_marker_new h_poss_new ?_
+    h_base_new h_poss_new ?_
   · rw [h_sks', h_ad_sks, h_psks]
   · omega
   · intro hb
@@ -19330,20 +19342,12 @@ lemma close_col_of_base {sc s_prep s_ad s' : ScannerState} {c : Char}
         { s_prep with allowDirectives := false, documentEverStarted := true }
       else s_prep) = s_ad)
     (h_sk' : s'.simpleKey = s_ad.simpleKeyStack.back?.getD {})
-    (h_tk' : ∃ p : Positioned YamlToken, s'.tokens = s_ad.tokens.push p)
-    -- Item 103: the second datum the same slot carries, read at the same close.
-    (h_ivl' : s'.implicitValueLine = s_ad.implicitValueLine)
-    -- Item 300: and the third, the marker's line, read the same way.
-    (h_dsl' : s'.docStartLine = s_ad.docStartLine) :
-    s'.simpleKey.pos.col = kc ∧
-      (s'.implicitValueLine = some s'.simpleKey.pos.line ∨ True) ∧
-      (s'.docStartLine = some s'.simpleKey.pos.line ∨ True) := by
+    (h_tk' : ∃ p : Positioned YamlToken, s'.tokens = s_ad.tokens.push p) :
+    s'.simpleKey.pos.col = kc := by
   obtain ⟨-, h_sks_ad⟩ := close_transports h_flow h_pre h_ad_def h_tk'
-  obtain ⟨k, h_back, h_col, h_st, h_mk⟩ := h_km.back_col h1
+  obtain ⟨k, h_back, h_col⟩ := h_km.back_col h1
   rw [h_sk', h_sks_ad, h_back]
-  exact ⟨h_col, h_st.imp
-    (fun h => by rw [h_ivl', ad_implicitValueLine h_pre h_ad_def]; exact h) id,
-    h_mk.imp (fun h => by rw [h_dsl', ad_docStartLine h_pre h_ad_def]; exact h) id⟩
+  exact h_col
 
 /-- **The key the outermost close restores is live** (item 293) —
     `close_col_of_base`'s twin, over the possibility `KmSound.back_poss` reads.
@@ -19377,9 +19381,7 @@ lemma close_km_pop {sc s_prep s_ad s' : ScannerState} {c : Char}
     (h_sks' : s'.simpleKeyStack = s_ad.simpleKeyStack.pop)
     (h_sk' : s'.simpleKey = s_ad.simpleKeyStack.back?.getD {})
     (h_tk' : ∃ p : Positioned YamlToken, s'.tokens = s_ad.tokens.push p)
-    (h_off' : s_ad.offset ≤ s'.offset)
-    (h_ivl' : s'.implicitValueLine = s_ad.implicitValueLine)
-    (h_dsl' : s'.docStartLine = s_ad.docStartLine) :
+    (h_off' : s_ad.offset ≤ s'.offset) :
     KmSound s' km kc := by
   obtain ⟨h_pref', h_sks_ad⟩ := close_transports h_flow h_pre h_ad_def h_tk'
   obtain ⟨_, h_poff, _⟩ := preprocess_inFlow_facts h_flow h_pre
@@ -19397,8 +19399,6 @@ lemma close_km_pop {sc s_prep s_ad s' : ScannerState} {c : Char}
     rw [hp, Array.size_push]
     omega
   exact h_km.pop (by rw [h_sks', h_sks_ad]) h_pref' (by omega) h_size
-    (h_ivl'.trans (ad_implicitValueLine h_pre h_ad_def))
-    (h_dsl'.trans (ad_docStartLine h_pre h_ad_def))
     (by rw [h_sk', h_sks_ad])
 
 
@@ -19594,10 +19594,6 @@ lemma comma_km_transport {sc s_prep s_ad s_fe : ScannerState} {c : Char}
     rw [hp, Array.size_push]
     omega
   exact h_km.transport
-    ((ScannerCorrectness.scanFlowEntry_preserves_implicitValueLine s_ad s_fe hfe).trans
-      (ad_implicitValueLine h_pre h_ad_def))
-    ((ScannerCorrectness.scanFlowEntry_preserves_docStartLine s_ad s_fe hfe).trans
-      (ad_docStartLine h_pre h_ad_def))
     (by rw [ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s_ad s_fe hfe, h_sks_ad])
     h_pref' (by omega) h_size
     (Or.inr (Or.inl (ScannerCorrectness.scanFlowEntry_clears_simpleKey s_ad s_fe hfe)))
@@ -19635,10 +19631,6 @@ lemma scanKey_km_transport {sc s_prep s_ad s_k : ScannerState} {c : Char}
     rw [hp, Array.size_push]
     omega
   exact h_km.transport
-    ((ScannerCorrectness.scanKey_preserves_implicitValueLine s_ad s_k hk).trans
-      (ad_implicitValueLine h_pre h_ad_def))
-    ((ScannerCorrectness.scanKey_preserves_docStartLine s_ad s_k hk).trans
-      (ad_docStartLine h_pre h_ad_def))
     (by rw [ScannerCorrectness.scanKey_preserves_simpleKeyStack s_ad s_k hk, h_sks_ad])
     h_pref' (by omega) h_size
     (Or.inr (Or.inl (ScannerCorrectness.scanKey_clears_simpleKey s_ad s_k hk)))
@@ -19744,7 +19736,7 @@ lemma accum_step_flow (sc : ScannerState)
       subst hs
       have h_pos := h_flow.pos_eq_of_depth_zero
       subst h_pos
-      obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+      obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, q7, q8⟩ :=
         accum_flow_open_depth0 sc sp_start sp_gram _ sp_scan sp_prep sp_open
           s_prep _ '[' h_stream h_stack (h_pending h0) h_corr h_sound h_preprocess hcorr_prep
           hcorr_open (by rw [h_fl, h_ad0])
@@ -19770,10 +19762,6 @@ lemma accum_step_flow (sc : ScannerState)
                   allowDirectives_update_indents])
           (by rw [L4YAML.Proofs.PendingKeysStable.scanFlowSequenceStart_preserves_pendingKeys,
                   allowDirectives_update_pendingKeys])
-          (by rw [ScannerCorrectness.scanFlowSequenceStart_preserves_implicitValueLine,
-                  allowDirectives_update_implicitValueLine])
-          (by rw [ScannerCorrectness.scanFlowSequenceStart_preserves_docStartLine,
-                  allowDirectives_update_docStartLine])
           h_bare h_dn h_fv h_base
           -- Item 165: the bracket's push and the key it clears.
           ⟨_, by rw [scanFlowSequenceStart_tokens, allowDirectives_update_tokens], rfl,
@@ -19784,7 +19772,7 @@ lemma accum_step_flow (sc : ScannerState)
                 (tailOf_scanFlowSequenceStart _).1,
                 show (#[] : Array Bool).push true = #[true] from rfl]
             exact FlowStackB.openSeqBase false resume h_open (GOpt.none sp_open))
-      exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase true sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks0]; rfl) (tailOf_scanFlowSequenceStart _).1⟩, fun _ => q4, q5, q6⟩
+      exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase true sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks0]; rfl) (tailOf_scanFlowSequenceStart _).1 q7 q8⟩, fun _ => q4, q5, q6⟩
     · split at h_dispatch
       · -- c == ']' at depth 0: `if flowLevel == 0 then .error` — flowLevel = 0 ⇒ error.
         rw [h_ad0] at h_dispatch; simp at h_dispatch
@@ -19808,7 +19796,7 @@ lemma accum_step_flow (sc : ScannerState)
           subst hs
           have h_pos := h_flow.pos_eq_of_depth_zero
           subst h_pos
-          obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+          obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, q7, q8⟩ :=
             accum_flow_open_depth0 sc sp_start sp_gram _ sp_scan sp_prep sp_open
               s_prep _ '{' h_stream h_stack (h_pending h0) h_corr h_sound h_preprocess hcorr_prep
               hcorr_open (by rw [h_fl, h_ad0])
@@ -19834,10 +19822,6 @@ lemma accum_step_flow (sc : ScannerState)
                       allowDirectives_update_indents])
               (by rw [L4YAML.Proofs.PendingKeysStable.scanFlowMappingStart_preserves_pendingKeys,
                       allowDirectives_update_pendingKeys])
-              (by rw [ScannerCorrectness.scanFlowMappingStart_preserves_implicitValueLine,
-                      allowDirectives_update_implicitValueLine])
-              (by rw [ScannerCorrectness.scanFlowMappingStart_preserves_docStartLine,
-                      allowDirectives_update_docStartLine])
               h_bare h_dn h_fv h_base
               -- Item 165: the bracket's push and the key it clears.
               ⟨_, by rw [scanFlowMappingStart_tokens, allowDirectives_update_tokens], rfl,
@@ -19848,7 +19832,7 @@ lemma accum_step_flow (sc : ScannerState)
                     (tailOf_scanFlowMappingStart _).1,
                     show (#[] : Array Bool).push false = #[false] from rfl]
                 exact FlowStackB.openMapBase false resume h_open (GOpt.none sp_open))
-          exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase false sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks0]; rfl) (tailOf_scanFlowMappingStart _).1⟩, fun _ => q4, q5, q6⟩
+          exact ⟨g', bl', fl', sn', q1, q2, ⟨q3, .openBase false sp_prep sp_open bl' fl' h0 rfl h_open (by omega) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks0]; rfl) (tailOf_scanFlowMappingStart _).1 q7 q8⟩, fun _ => q4, q5, q6⟩
         · split at h_dispatch
           · -- c == '}' at depth 0: error (flowLevel == 0).
             rw [h_ad0] at h_dispatch; simp at h_dispatch
@@ -20019,7 +20003,8 @@ lemma accum_step_flow (sc : ScannerState)
           (∀ m, (SSeparateLines m sp_flow₂ sp_prep ∨ (sp_prep = sp_flow₂ ∧ tl₂.closeFree)) ∨
             ¬ (m ≤ minContentIndentOf sc)) ∧
           ((c = '[' ∨ c = '{') → ∀ m,
-            (SSeparateLines m sp_flow₂ sp_prep ∨ (sp_prep = sp_flow₂ ∧ tl₂.leadFree)) ∨
+            (SSeparateLines m sp_flow₂ sp_prep ∨
+              (sp_prep = sp_flow₂ ∧ tl₂.leadFree ∧ trailingPropertyRun sc.tokens = [])) ∨
             ¬ (m ≤ minContentIndentOf sc))) := by
       cases h_gap with
       | white h_ws h_sync h_colon_sc _ h_gate_w h_free_w =>
@@ -20047,13 +20032,16 @@ lemma accum_step_flow (sc : ScannerState)
               ¬ (m ≤ minContentIndentOf sc) :=
             fun m => (h_lead_at m).imp (fun h => h.imp id (fun h => ⟨h.1.trans h.2.symm, (h_fr h).1⟩)) id
           have h_lead_of_m : (c = '[' ∨ c = '{') → ∀ m,
-              (SSeparateLines m sp_flow sp_prep ∨ (sp_prep = sp_flow ∧ tl.leadFree)) ∨
+              (SSeparateLines m sp_flow sp_prep ∨
+                (sp_prep = sp_flow ∧ tl.leadFree ∧ trailingPropertyRun sc.tokens = [])) ∨
               ¬ (m ≤ minContentIndentOf sc) :=
             fun hc m => (h_lead_at m).imp (fun h => h.imp id (fun h => ⟨h.1.trans h.2.symm,
-              (h_fr h).2 (by rcases hc with rfl | rfl <;> decide)⟩)) id
+              (h_fr h).2 (by rcases hc with rfl | rfl <;> decide),
+              trailingPropertyRun_eq_nil_of_sync h_sync⟩)) id
           have h_lead_of : (c = '[' ∨ c = '{') →
               SSeparateLines nn sp_flow sp_prep ∨ (sp_prep = sp_flow ∧ tl.leadFree) :=
-            fun hc => (h_lead_of_m hc nn).resolve_right (fun hn => hn h_floorK)
+            fun hc => ((h_lead_of_m hc nn).resolve_right (fun hn => hn h_floorK)).imp id
+              (fun h => ⟨h.1, h.2.1⟩)
           have h_nil : trailingPropertyRun sc.tokens = [] := trailingPropertyRun_eq_nil_of_sync h_sync
           exact ⟨tl, sp_flow, h_fos, h_lead,
             (fun hc h_tail kj sp_ne h_c hj =>
@@ -20158,7 +20146,7 @@ lemma accum_step_flow (sc : ScannerState)
           ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks,
           (tailOf_scanFlowSequenceStart _).1]
       exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-        FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest true sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [← h_gt]; exact h_lead_open (Or.inl rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks, hks]) (tailOf_scanFlowSequenceStart _).1) ⟨
+        FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest true sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [htl]; exact h_klay) (by rw [← h_gt]; exact h_lead_open (Or.inl rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowSequenceStart_pushes_true, h_ad_ks, hks]) (tailOf_scanFlowSequenceStart _).1) ⟨
          .open (d + 1 + 1) (ks.push true) (km.push b_new) .sep sp_block sp_tok
           (.seqNest (d + 1) ks km b_new .sep sp_block sp_prep sp_tok sp_tok sp_tok
             h_bprom
@@ -20176,10 +20164,6 @@ lemma accum_step_flow (sc : ScannerState)
                exact ⟨h1, h2, h3, by omega, h5⟩)
              -- Item 79: the parent frame's mask has a bottom, so this open is
              -- not a base open and owes no column.  Item 103: nor a stamp.
-             (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-             (ScannerCorrectness.scanFlowSequenceStart_preserves_implicitValueLine s_ad)
-             (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-             (ScannerCorrectness.scanFlowSequenceStart_preserves_docStartLine s_ad)
              (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
              (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega)),
            -- Item 164: a nested `[` deepens the hold by one and stacks the
@@ -20257,19 +20241,18 @@ lemma accum_step_flow (sc : ScannerState)
                           s_ad)
                         (by unfold ScannerState.inFlow; simp [h_fl']) hnd hui)
                       sp_tok sp_m (SFlowContent.flowSeq _ _ _ _ h_seq) h_ssl)
-                    (flowKeyPack_of_close ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ resume.key)
+                    (flowKeyPack_of_close ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))).symm ▸ resume.key)
                       (close_col_of_base (by omega) h_km rfl h_preprocess h_ad_def
                         (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad)
-                        ⟨_, scanFlowSequenceEnd_tokens s_ad⟩
-                        (ScannerCorrectness.scanFlowSequenceEnd_preserves_implicitValueLine s_ad)
-                        (ScannerCorrectness.scanFlowSequenceEnd_preserves_docStartLine s_ad))
+                        ⟨_, scanFlowSequenceEnd_tokens s_ad⟩)
                       (staleNodeTail_scanFlowSequenceEnd s_ad).toStalePark
                       (SFlowContent.flowSeq _ _ _ _ h_seq))
                       (fun _ => staleNodeTail_scanFlowSequenceEnd _)
                       -- Item 362: `h_vpack` PAID when the closed state has no marked slot — a
                       -- projection of the state the face is about, decided here (Rule 8: no
                       -- carrier), so the flow close restores a dead register.
-                      ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowSequenceEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowSequenceEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                      -- Item 519: `h_vpack` PAID at EVERY mark from the frame's `vslot` — the open wrote it over `markedCols s0`, the close reads it at the closed state through `markedCols_congr`; the markless case is no longer a split.
+                      (match resume.vslot with | Or.inl vs => Or.inl ⟨RegisterWitness.markedCols (scanFlowSequenceEnd s_ad), RegisterWitness.MarkedColsIn.self _, fun nv hmem sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi⟩ | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                       (Or.inr (by have := glit_col h_close_lit; omega))
                       -- Item 200: `h_framesS`/`h_framesV`.  The value-line half is
                       -- PAYABLE here — `h_vpack` above is `h_framesV` at `ks = []`
@@ -20279,7 +20262,8 @@ lemma accum_step_flow (sc : ScannerState)
                       -- stack-shaped source for either bottom.  Item 362: `h_framesV`
                       -- PAID as `h_vpack` above.
                       ((resume.valueF sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq)).imp (fun ⟨ks, ⟨lo, hfl, hcov⟩, f⟩ => ⟨ks, Or.inl ⟨lo, _, hfl, IndentStackCover.Covered.of_indents_eq hcov ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))⟩, f⟩) id)
-                      ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowSequenceEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowSequenceEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                      -- Item 519: `h_framesV` at `ks = []` from the frame's every-mark `vslot`; the cover at `[]` is the field's existing True alternative.
+                      (match resume.vslot with | Or.inl vs => Or.inl (fun nv hmem => ⟨[], Or.inr trivial, fun sp_mid h_ssl => KeyFrames.bottom sp_mid (fun sp_i sp_c h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowSequenceEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowSequenceEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi)⟩) | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                     ((ScannerAllowDirectives.scanFlowSequenceEnd_preserves_allowDirectives _).trans h_ad_false)
                     (staleNodeTail_scanFlowSequenceEnd s_ad).toCompletedTail
                     -- **Item 207: and the park's own indent check, from the OTHER side.**  The
@@ -20316,9 +20300,7 @@ lemma accum_step_flow (sc : ScannerState)
                    fun _ => ⟨close_km_pop (by omega) h_km h_preprocess h_ad_def
                        (ScannerCorrectness.scanFlowSequenceEnd_stack_popped s_ad)
                        (ScannerCorrectness.scanFlowSequenceEnd_simpleKey_restored s_ad)
-                       ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
-                       (ScannerCorrectness.scanFlowSequenceEnd_preserves_implicitValueLine s_ad)
-                       (ScannerCorrectness.scanFlowSequenceEnd_preserves_docStartLine s_ad),
+                       ⟨_, scanFlowSequenceEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt),
                      -- Item 164: a nested `]` shallows the hold, and the arm
                      -- knows its depth only to be POSITIVE — which is what
                      -- `seqEndPos` is for.
@@ -20405,7 +20387,7 @@ lemma accum_step_flow (sc : ScannerState)
               ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks,
               (tailOf_scanFlowMappingStart _).1]
           exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
-            FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest false sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [← h_gt]; exact h_lead_open (Or.inr rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks, hks]) (tailOf_scanFlowMappingStart _).1) ⟨
+            FlowStackK.withArm nn kc (km.push b_new) gt s0 (.openNest false sp_flow₂ sp_prep sp_tok h_gap₂ (by rw [hd]; omega) rfl (by rw [htl]; exact h_tail) (by rw [htl]; exact h_klay) (by rw [← h_gt]; exact h_lead_open (Or.inr rfl)) h_open_lit (by rw [h_fl, h_ad_fl]) (by rw [ScannerFlowCollection.scanFlowMappingStart_pushes_false, h_ad_ks, hks]) (tailOf_scanFlowMappingStart _).1) ⟨
              .open (d + 1 + 1) (ks.push false) (km.push b_new) .sep sp_block sp_tok
               (.mapNest (d + 1) ks km b_new .sep sp_block sp_prep sp_tok sp_tok sp_tok
                 h_bprom
@@ -20423,10 +20405,6 @@ lemma accum_step_flow (sc : ScannerState)
                    exact ⟨h1, h2, h3, by omega, h5⟩)
                  -- Item 79: the parent frame's mask has a bottom.  Item 103:
                  -- nor is this open where a stamp is recorded.
-                 (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-                 (ScannerCorrectness.scanFlowMappingStart_preserves_implicitValueLine s_ad)
-                 (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
-                 (ScannerCorrectness.scanFlowMappingStart_preserves_docStartLine s_ad)
                  (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega))
                  (fun h0 => absurd h0 (by have := h_fos₂.km_pos; omega)),
                -- Item 164: the mapping twin of the nested open's hold.
@@ -20498,23 +20476,23 @@ lemma accum_step_flow (sc : ScannerState)
                               s_ad)
                             (by unfold ScannerState.inFlow; simp [h_fl']) hnd hui)
                           sp_tok sp_m (SFlowContent.flowMap _ _ _ _ h_map) h_ssl)
-                        (flowKeyPack_of_close ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ resume.key)
+                        (flowKeyPack_of_close ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))).symm ▸ resume.key)
                           (close_col_of_base (by omega) h_km rfl h_preprocess h_ad_def
                             (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad)
-                            ⟨_, scanFlowMappingEnd_tokens s_ad⟩
-                        (ScannerCorrectness.scanFlowMappingEnd_preserves_implicitValueLine s_ad)
-                        (ScannerCorrectness.scanFlowMappingEnd_preserves_docStartLine s_ad))
+                            ⟨_, scanFlowMappingEnd_tokens s_ad⟩)
                       (staleNodeTail_scanFlowMappingEnd s_ad).toStalePark
                           (SFlowContent.flowMap _ _ _ _ h_map))
                       (fun _ => staleNodeTail_scanFlowMappingEnd _)
                       -- Item 362: `h_vpack` PAID from the closed state, as at the sequence close.
-                        ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowMappingEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowMappingEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                        -- Item 519: `h_vpack` PAID at EVERY mark from the frame's `vslot` (the mapping twin).
+                        (match resume.vslot with | Or.inl vs => Or.inl ⟨RegisterWitness.markedCols (scanFlowMappingEnd s_ad), RegisterWitness.MarkedColsIn.self _, fun nv hmem sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowMap _ _ _ _ h_map) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi⟩ | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                       (Or.inr (by have := glit_col h_close_lit; omega))
                       -- Item 200: as at the sequence close above — payable at
                       -- `ks = []` off `h_vpack`, and a restatement if paid.  Item 362:
                       -- `h_framesV` PAID from the closed state.
                       ((resume.valueF sp_tok (SFlowContent.flowMap _ _ _ _ h_map)).imp (fun ⟨ks, ⟨lo, hfl, hcov⟩, f⟩ => ⟨ks, Or.inl ⟨lo, _, hfl, IndentStackCover.Covered.of_indents_eq hcov ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))⟩, f⟩) id)
-                      ((Classical.em (RegisterWitness.MarkedColsIn (scanFlowMappingEnd s_ad) [])).elim (fun h => Or.inr (PackAlt.ofRefused (RegisterWitness.refused_of_markedCols_nil (PendingKeySound.scanFlowMappingEnd_sound s_ad (PendingKeySound.Sound.of_eq (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl)) (by rw [← h_ad_def]; first | rfl | (split <;> rfl))) h_ad_pos) (by first | exact h_fl' | (rw [h_fl']; rfl) | (rw [h_fl']; omega)) h))) (fun _ => Or.inr trivial))
+                      -- Item 519: `h_framesV` at `ks = []` from the frame's every-mark `vslot` (the mapping twin).
+                      (match resume.vslot with | Or.inl vs => Or.inl (fun nv hmem => ⟨[], Or.inr trivial, fun sp_mid h_ssl => KeyFrames.bottom sp_mid (fun sp_i sp_c h_iv h_lit sp_v h_sbi => vs nv ((RegisterWitness.markedCols_congr ((L4YAML.Proofs.PendingKeysStable.scanFlowMappingEnd_preserves_pendingKeys s_ad).trans (h_pk_ad.trans h_pk_park)) ((L4YAML.Proofs.EmitterScannability.scanFlowMappingEnd_preserves_indents s_ad).trans (h_ind_ad.trans h_ind_park))) ▸ hmem) sp_tok (SFlowContent.flowMap _ _ _ _ h_map) sp_mid sp_i sp_c h_ssl h_iv h_lit sp_v h_sbi)⟩) | Or.inr h => Or.inr (PackAlt.ofGateClose h))
                         ((ScannerAllowDirectives.scanFlowMappingEnd_preserves_allowDirectives _).trans h_ad_false)
                         (staleNodeTail_scanFlowMappingEnd s_ad).toCompletedTail
                         -- **Item 207: and the park's own indent check, from the OTHER side.**  The
@@ -20547,9 +20525,7 @@ lemma accum_step_flow (sc : ScannerState)
                        fun _ => ⟨close_km_pop (by omega) h_km h_preprocess h_ad_def
                            (ScannerCorrectness.scanFlowMappingEnd_stack_popped s_ad)
                            (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s_ad)
-                           ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt)
-                           (ScannerCorrectness.scanFlowMappingEnd_preserves_implicitValueLine s_ad)
-                           (ScannerCorrectness.scanFlowMappingEnd_preserves_docStartLine s_ad),
+                           ⟨_, scanFlowMappingEnd_tokens s_ad⟩ (Nat.le_of_lt h_off_lt),
                          -- Item 164: the mapping twin of the nested close.
                          h_panch_ad.mapEndPos (by
                            have := FlowOpenStack_depth_pos
@@ -21402,8 +21378,6 @@ lemma FlowBaseAnchor.flowValue {g : Option ScannerState} {s s' : ScannerState} {
     DEEP in the array (a restored collection key, `[{x: y}: b]`). -/
 lemma KmSound.colon_transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat}
     (h : KmSound sc km kc)
-    (h_ivl : s'.implicitValueLine = sc.implicitValueLine)
-    (h_dsl : s'.docStartLine = sc.docStartLine)
     (h_sks : s'.simpleKeyStack = sc.simpleKeyStack)
     (h_off : sc.offset ≤ s'.offset)
     (h_size : sc.tokens.size ≤ s'.tokens.size)
@@ -21415,9 +21389,7 @@ lemma KmSound.colon_transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat
   obtain ⟨off, h_al, h_bits, h_floor, h_base⟩ := h
   refine ⟨off, by rw [h_sks]; exact h_al, fun i hi hb => ?_, fun i hi hb => ?_,
     fun hpos => (h_base hpos).imp
-      (fun _ ⟨h_get, h_col, h_st⟩ => ⟨by rw [h_sks]; exact h_get, h_col,
-        h_st.imp (fun hh => by rw [h_ivl]; exact hh)
-          (fun h2 => h2.imp (fun hh => by rw [h_dsl]; exact hh) id)⟩)⟩
+      (fun _ ⟨h_get, h_col, h_kp⟩ => ⟨by rw [h_sks]; exact h_get, h_col, h_kp⟩)⟩
   · obtain ⟨k, h_get, h1, h2, ⟨tok, h3, h4⟩, h5, h6⟩ := h_bits i hi hb
     have h_get' : sc.simpleKeyStack[off + i]! = k := by
       rw [Array.getElem!_eq_getD, Array.getD_eq_getD_getElem?, h_get]
@@ -21439,6 +21411,67 @@ lemma KmSound.colon_transport {sc s' : ScannerState} {km : Array Bool} {kc : Nat
       rw [h_poss']; exact nofun)⟩
     rw [h_sks] at hjs h_jposs ⊢
     exact h_above j hj hjs h_jposs
+
+
+/-- The mask across a flow `:` (`scanValue`): the key stack is kept, the pending key cleared, the
+    token prefix kept off the pending key's slot and its successor (the `key` insertion) — the
+    premises of `KmSound.colon_transport`, read off `scanValue_inFlow_facts` /
+    `scanValue_prefix_off_targets` and the preprocess facts.  Item 522: the `:` arms' twin of
+    `scanKey_km_transport`, so the key fold (`accum_step_key_pairK`) re-packs `KmSound` without
+    seeing the dispatcher's internals; `accum_step_block`'s `.value`-tail site calls it too. -/
+lemma scanValue_km_transport {sc s_prep s_ad s_v : ScannerState} {c : Char}
+    {km : Array Bool} {kc : Nat}
+    (h_flow : 0 < sc.flowLevel)
+    (h_inflow : s_ad.inFlow = true)
+    (h_km : KmSound sc km kc)
+    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_ad_def : (if s_prep.allowDirectives = true then
+        { s_prep with allowDirectives := false, documentEverStarted := true }
+      else s_prep) = s_ad)
+    (hsv : scanValue s_ad = .ok s_v) :
+    KmSound s_v km kc := by
+  have h_facts := scanValue_inFlow_facts h_inflow hsv
+  have h_ad_sk_eq : s_ad.simpleKey = s_prep.simpleKey := by
+    rw [← h_ad_def]; split <;> rfl
+  have h_ad_tk_eq : s_ad.tokens = s_prep.tokens := by
+    rw [← h_ad_def]; split <;> rfl
+  have h_ad_off_eq : s_ad.offset = s_prep.offset := by
+    rw [← h_ad_def]; split <;> rfl
+  have h_ad_sks_eq : s_ad.simpleKeyStack = s_prep.simpleKeyStack := by
+    rw [← h_ad_def]; split <;> rfl
+  obtain ⟨h_ppref, h_poff, h_psks⟩ := preprocess_inFlow_facts h_flow h_pre
+  have h_mono_ad : sc.tokens.size ≤ s_ad.tokens.size := by
+    obtain ⟨s_skip5, hsk5, hsave5⟩ := preprocess_inFlow_elim h_flow h_pre
+    have h_m5 := ScannerCorrectness.saveSimpleKey_tokens_monotonic s_skip5
+    have h_tk5 := ScannerCorrectness.skipToContent_preserves_tokens sc s_skip5 hsk5
+    rw [h_ad_tk_eq, hsave5]
+    rw [h_tk5] at h_m5
+    omega
+  have h_size_v : sc.tokens.size ≤ s_v.tokens.size := by
+    rw [h_facts.1, Array.size_push]
+    have h1 := ScannerCorrectness.scanValuePrepare_tokens_monotonic (scanValueClearKey s_ad)
+    have h2 := (scanValueClearKey_fields s_ad).2.2.2.2.2.2.2.1
+    rw [h2] at h1
+    omega
+  refine KmSound.colon_transport h_km ?_ ?_ h_size_v h_facts.2.2.2.1 ?_
+  · rw [h_facts.2.2.2.2.1, h_ad_sks_eq, h_psks]
+  · have h_off_v := h_facts.2.2.2.2.2.2.1
+    omega
+  · intro j hj h_guard
+    have h1 := h_ppref j hj
+    rw [← h_ad_tk_eq] at h1
+    rw [scanValue_prefix_off_targets h_inflow hsv j (by omega) ?_]
+    · exact h1
+    · intro h_poss_ad
+      rcases preprocess_pending_cases h_flow h_pre with h_eq5 | ⟨h_p5, h_ti5⟩
+      · have h_keq : s_ad.simpleKey = sc.simpleKey := h_ad_sk_eq.trans h_eq5
+        rw [h_keq]
+        rcases h_guard (by rw [← h_keq]; exact h_poss_ad) with h_g | h_g
+        · exact ⟨by omega, by omega⟩
+        · exact ⟨by omega, by omega⟩
+      · have h_tif : s_ad.simpleKey.tokenIndex = sc.tokens.size := by
+          rw [h_ad_sk_eq, h_ti5]
+        exact ⟨by omega, by omega⟩
 
 /-- The `:` step's grammar production: a `GLit ':'` from the cursor. -/
 lemma scanValue_prod (sc : ScannerState) (sp : SurfPos)
@@ -22274,6 +22307,27 @@ lemma ekl_disp_none_of_park_none {sc s_prep : ScannerState} {c : Char}
     · rfl
   exact h_norm.trans (ExplicitKeyCoupling.preprocess_explicitKeyLine_none sc s_prep c h h0)
 
+/-- **Every mark is at or left of the stack top** (item 497).  A mark is an indent column
+    (`markedCols_mem`), and on a monotone stack every entry sits at or left of
+    `currentIndent` (`Mono.le_currentIndent`); so where the top is at or left of the landing
+    column `k`, so is every mark.  This is the landing lemma items 493 / 495 owed, stated on
+    the POST-step state: a mark the unwind popped is no longer there to be bounded, which is
+    why it is a fact about `s'` and never about the park state `sc` (P97: 12 pre-unwind marks
+    right of the `-`, 0 after). -/
+lemma markedCols_le_of_top {s : ScannerState} {k : Nat} (hm : IndentStackMono.Mono s)
+    (htop : s.currentIndent ≤ (k : Int)) : ∀ m ∈ RegisterWitness.markedCols s, m ≤ k := by
+  intro m hmem
+  obtain ⟨i, l, c, _, hc, rfl⟩ := RegisterWitness.markedCols_mem.mp hmem
+  rw [L4YAML.Proofs.PendingKeySound.indentColumns_getElem?] at hc
+  obtain ⟨e, he, hec⟩ : ∃ e ∈ s.indents, e.column = c := by
+    cases h : s.indents[i]? with
+    | none => rw [h] at hc; simp at hc
+    | some e =>
+      rw [h] at hc; simp only [Option.map_some, Option.some.injEq] at hc
+      exact ⟨e, Array.mem_of_getElem? h, hc⟩
+  have hle := hm.le_currentIndent e he
+  exact Int.toNat_le.mpr (by omega)
+
 /-- Item 354: the marked-column domain is carried through the content step (the preprocess
     only unwinds/closes/saves, the dispatch moves neither `pendingKeys` nor `indents`). -/
 lemma MarkedColsIn.step_content {sc s_prep s' : ScannerState} {c : Char} {ns : List Nat}
@@ -22309,6 +22363,20 @@ lemma PackAlt.step_content {sc s_prep s' : ScannerState} {c : Char}
     else s_prep) c = .ok s')
     (_h : PackAlt sc) : PackAlt s' :=
   trivial  -- refused: ExplicitValueRefused.step_content _h_preprocess _h_dispatch _h
+
+/-- Item 512: the marks after a content dispatch are marks of the pre-state — the
+    value-line lane's every-mark fields are carried across the step on this projection. -/
+lemma marks_step_content {sc s_prep s' : ScannerState} {c : Char}
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_dispatch : scanNextToken_dispatchContent (if s_prep.allowDirectives then
+      { s_prep with allowDirectives := false, documentEverStarted := true }
+    else s_prep) c = .ok s') :
+    ∀ nv ∈ RegisterWitness.markedCols s', nv ∈ RegisterWitness.markedCols sc :=
+  RegisterWitness.MarkedColsIn.relay
+    (RegisterWitness.dispatchContent_markedCols h_dispatch
+      ((RegisterWitness.preprocess_markedCols h_preprocess
+        (RegisterWitness.MarkedColsIn.self sc)).transport (by split <;> rfl) (by split <;> rfl)))
+    (fun _ h => h)
 
 /-- The dispatch-only step on the named alternative (`trivial` while `PackAlt` is `True`, its
     proof promised after `-- refused:`). -/
@@ -24256,7 +24324,7 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
     -- one level DOWN does: once the enclosing `?`'s value line has been spent,
     -- a second `:` at the same column is that level's next entry and the
     -- OUTER frame's line is still owed (`?⏎  ?⏎    - a⏎  : b⏎  : c⏎: w`).
-    (h_resV_land : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    (h_resV_land : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
     -- **Item 322 (LAST): the alternative's TRANSPORT across the `:`.**  This lemma states its
@@ -24266,13 +24334,11 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
     -- **Item 417: the `?` chain ONE FRAME UP over the entry this `:` builds** (item 412's
     -- `h_explUp_chainD`, relayed by the caller) and the `:`'s own mark step — a `:` adds no
     -- mark (`h_mcstep_ne`).  The new park's `h_kslot` is this chain read at the `[189]` entry.
-    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
+    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_mstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ns)
     (h_top_in : s'.currentIndent ≤ (k : Int)) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
@@ -24331,25 +24397,25 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
     | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>
         ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩
     | Or.inr _, Or.inl sfxrun, _, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          suffixMapRouteF hcol_land sfxrun h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (suffixMapRouteF hcol_land sfxrun h_ind)⟩
     | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          nodocMapRouteF hcol_land nodoc h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (nodocMapRouteF hcol_land nodoc h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          markerMapRouteF mk h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (markerMapRouteF mk h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          propsMapRouteF pn h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (propsMapRouteF pn h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind)⟩
   exact ⟨sp_land, sp_land, sp_land, sp_scan', h_stream_land,
          BlockStack.nil sp_land, FlowStackB.nil sp_land .sep,
          PendingNode.pendingMapValue (h_next := fun _ => dispatchBlock_colon_next h_noflow_disp hpeek_disp h_dispatch) (h_offer := dispatchBlock_colon_offerPred h_dispatch) sp_start sp_land sp_scan' k
@@ -24382,7 +24448,7 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
            -- chain over EVERY marked column at the `[189]` entry this `:` builds from the node.
            (match h_explUp_chainD with
             | Or.inl ⟨ns, hdom, chain⟩ =>
-                Or.inl ⟨ns, h_mstep ns hdom,
+                Or.inl ⟨ns, hdom,
                   fun nv hmem sp_m h_node =>
                     chain nv hmem sp_m
                       (SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_m h_lit
@@ -24418,8 +24484,8 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
            -- the awaited node, or closed empty on the landing's comments — so
            -- a DEEPER landing chains onto this bottom instead of dropping it.
            (match h_resV_land with
-            | Or.inl ⟨nv, ksV, h_ltV, contV⟩ =>
-                Or.inl ⟨nv, FrameLevel.map k :: ksV,
+            | Or.inl hall => Or.inl (fun nv hm => let ⟨ksV, h_ltV, contV⟩ := hall nv hm;
+                ⟨FrameLevel.map k :: ksV,
                   (by
                     rintro k' hk'
                     rcases List.mem_cons.mp hk' with rfl | h'
@@ -24430,15 +24496,15 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
                     KeyFrames.mapLevel k ksV sp_v h_ltV
                       (resumeMapRouteK h_ind contV sp_v
                         (SBlockMapEntry.emptyKeyNode k sp_ind sp_scan' sp_v h_lit
-                          (SBlockNode_blockIn_to_blockOut h_node)))⟩
+                          (SBlockNode_blockIn_to_blockOut h_node)))⟩)
             | Or.inr h_alt => Or.inr (h_alt_step h_alt))
            (match h_resV_land with
-            | Or.inl ⟨nv, ksV, h_ltV, contV⟩ =>
-                Or.inl ⟨nv, FrameLevel.map k :: ksV, Or.inr trivial,
+            | Or.inl hall => Or.inl (fun nv hm => let ⟨ksV, h_ltV, contV⟩ := hall nv hm;
+                ⟨FrameLevel.map k :: ksV, Or.inr trivial,
                   fun sp_m h_ssl =>
                     KeyFrames.mapLevel k ksV sp_m h_ltV
                       (resumeMapRouteK h_ind contV sp_m
-                        (SBlockMapEntry.emptyKeyEmpty k sp_ind sp_scan' sp_m h_lit h_ssl))⟩
+                        (SBlockMapEntry.emptyKeyEmpty k sp_ind sp_scan' sp_m h_lit h_ssl))⟩)
             | Or.inr h_alt => Or.inr (h_alt_step h_alt))
            (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
            -- Item 190: and no `?` literal either, so no entry route to compose
@@ -24567,7 +24633,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
     -- and the frame's value line is what stands underneath.  Both readings end
     -- in the same body, and this lemma unions them — which is why the park
     -- carries one chain and the landed `:` still picks by column.
-    (h_resV_land : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    (h_resV_land : (∀ nv ∈ RegisterWitness.markedCols s', nv ≠ k → ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
     -- **Item 209 (LAST): the `?`'s own stack TOP**, the slot's half of the
@@ -24577,13 +24643,11 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
     -- `?` is the one opener whose `[186]` KEY slot a compact `-`/`?`/`:` can
     -- fill, which is what the top is carried for.
     (h_top_in : s'.currentIndent ≤ (k : Int))
-    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
+    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' (k :: ns) ∧ ∀ nv ∈ ns,
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24640,25 +24704,25 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
     | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>
         ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩
     | Or.inr _, Or.inl sfxrun, _, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          suffixMapRouteF hcol_land sfxrun h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (suffixMapRouteF hcol_land sfxrun h_ind)⟩
     | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          nodocMapRouteF hcol_land nodoc h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (nodocMapRouteF hcol_land nodoc h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          markerMapRouteF mk h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (markerMapRouteF mk h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          propsMapRouteF pn h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (propsMapRouteF pn h_ind)⟩
     | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>
-        ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,
-          rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind⟩
+        ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
+          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h.cons k⟩) id,
+          ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref_land hcol_land h_stream_land h_ind)⟩
   -- Item 371: the `?` route with its TAIL — the restated value-line pack's own element.
   have h_route51F : ∀ sp_k, SBlockMapEntry k sp_ind sp_k →
       ∀ sp_e, SCompactMapTail k sp_k sp_e → SLYamlStream sp_start sp_e :=
@@ -24679,8 +24743,11 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc :=
     frameChainUnion h_explUp_chain
       (match h_resV_land with
-       | Or.inl ⟨nv, _, _, contV⟩ =>
-           Or.inl ⟨[nv], frameChainOne (a := nv) (resumeFrameRouteK h_ind contV)⟩
+       | Or.inl hall =>
+           Or.inl ⟨(RegisterWitness.markedCols s').filter (fun x => decide (x ≠ k)), fun nv hm => by
+             obtain ⟨hm', hne⟩ := List.mem_filter.mp hm
+             obtain ⟨_, _, contV⟩ := hall nv hm' (of_decide_eq_true hne)
+             exact resumeFrameRouteK h_ind contV⟩
        | Or.inr h_alt => Or.inr h_alt)
   exact ⟨sp_land, sp_land, sp_land, sp_scan', h_stream_land,
          BlockStack.nil sp_land, FlowStackB.nil sp_land .sep,
@@ -24708,7 +24775,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
              | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl (fun nv hnv hne sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi => by
                  obtain ⟨i, l, c, hi, hc, rfl⟩ := RegisterWitness.markedCols_mem.mp hnv
                  have hmem : c.toNat ∈ k :: nsU := by
-                   have h := h_mcstep nsU hdomU; rw [hk] at h; exact h i l c hi hc
+                   exact hdomU i l c hi hc
                  rcases List.mem_cons.1 hmem with h | h
                  · exact absurd h hne
                  · exact up _ h sp_v h_entry sp_i sp_c h_iv h_clit sp_w h_sbi)
@@ -24745,7 +24812,7 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
            -- reaches this park by a route the composition above cannot take.
            (match h_explUp_chainD with
             | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl ⟨k :: nsU,
-                (by have h := h_mcstep nsU hdomU; rwa [hk] at h), fun nv hmem =>
+                hdomU, fun nv hmem =>
                 fun sp_m h_node sp_i sp_c h_iv h_clit sp_v h_sbi => by
                   rcases List.mem_cons.1 hmem with rfl | hmem'
                   · exact ResumeFrames.one (h_route51F sp_v (SBlockMapEntry.explicit _ sp_ind sp_scan' sp_m sp_i sp_c sp_v
@@ -24786,32 +24853,60 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
            -- instead of `explicitEmpty`.  The two faces differ only in how the
            -- KEY slot is filled: by the awaited node, or empty on the
            -- landing's comments. ═══
-           (Or.inl ⟨k, [], fun _ h => absurd h (List.not_mem_nil),
-             -- **Item 150: the value-line stack's cover, seeded.**  `ks = []`
-             -- names no frame, and the cover over it is not vacuous — it says
-             -- the `?`'s own push left the stack with nothing at or right of
-             -- `k + 1`, which is exactly where this lane's floor stands.
-             h_cov_nil.imp (fun h =>
-               ⟨k + 1, ⟨Nat.le_refl _, fun _ hx => absurd hx (List.not_mem_nil)⟩, h⟩) id,
-             fun sp_v h_node =>
-               KeyFrames.bottom sp_v
-                 (fun sp_i sp_c h_iv h_colon sp_w h_sbi =>
-                   ResumeFrames.one (h_route51F sp_w
-                     (SBlockMapEntry.explicit k sp_ind sp_scan' sp_v sp_i sp_c sp_w h_lit
-                       (SBlockIndented.node k .blockOut sp_scan' sp_v
-                         (SBlockNode_blockIn_to_blockOut h_node))
-                       h_iv h_colon h_sbi)))⟩)
-           (Or.inl ⟨k, [],
-             -- Item 150: the same seed on the face the dedent landing pops.
-             h_cov_nil.imp (fun h =>
-               ⟨k + 1, ⟨Nat.le_refl _, fun _ hx => absurd hx (List.not_mem_nil)⟩, h⟩) id,
-             fun sp_m h_ssl =>
-               KeyFrames.bottom sp_m
-                 (fun sp_i sp_c h_iv h_colon sp_w h_sbi =>
-                   ResumeFrames.one (h_route51F sp_w
-                     (SBlockMapEntry.explicit k sp_ind sp_scan' sp_m sp_i sp_c sp_w h_lit
-                       (SBlockIndented.empty k .blockOut sp_scan' sp_m h_ssl)
-                       h_iv h_colon h_sbi)))⟩)
+           -- Item 512: EVERY mark of the post-state — the `?`'s own at `ks = []` (item 108's
+           -- payment, unchanged), the older ones under this `?`'s `map k` frame off the
+           -- landing's every-mark `h_resV_land`.
+           (match h_resV_land with
+            | Or.inl hall => Or.inl (fun nv hm => by
+                by_cases hk' : nv = k
+                · subst hk'
+                  exact ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                    h_cov_nil.imp (fun h =>
+                      ⟨nv + 1, ⟨Nat.le_refl _, fun _ hx => absurd hx (List.not_mem_nil)⟩, h⟩) id,
+                    fun sp_v h_node =>
+                      KeyFrames.bottom sp_v
+                        (fun sp_i sp_c h_iv h_colon sp_w h_sbi =>
+                          ResumeFrames.one (h_route51F sp_w
+                            (SBlockMapEntry.explicit nv sp_ind sp_scan' sp_v sp_i sp_c sp_w h_lit
+                              (SBlockIndented.node nv .blockOut sp_scan' sp_v
+                                (SBlockNode_blockIn_to_blockOut h_node))
+                              h_iv h_colon h_sbi)))⟩
+                · obtain ⟨ksV, h_ltV, contV⟩ := hall nv hm hk'
+                  exact ⟨FrameLevel.map k :: ksV,
+                    fun fr hfr => by
+                      rcases List.mem_cons.mp hfr with rfl | h'
+                      · exact Nat.le_refl _
+                      · exact h_ltV fr h',
+                    Or.inr trivial,
+                    fun sp_v h_node =>
+                      KeyFrames.mapLevel k ksV sp_v h_ltV
+                        (resumeMapRouteK h_ind contV sp_v
+                          (SBlockMapEntry.explicitEmpty k sp_ind sp_scan' sp_v h_lit
+                            (SBlockIndented.node k .blockOut sp_scan' sp_v
+                              (SBlockNode_blockIn_to_blockOut h_node))))⟩)
+            | Or.inr h_alt => Or.inr h_alt)
+           (match h_resV_land with
+            | Or.inl hall => Or.inl (fun nv hm => by
+                by_cases hk' : nv = k
+                · subst hk'
+                  exact ⟨[],
+                    h_cov_nil.imp (fun h =>
+                      ⟨nv + 1, ⟨Nat.le_refl _, fun _ hx => absurd hx (List.not_mem_nil)⟩, h⟩) id,
+                    fun sp_m h_ssl =>
+                      KeyFrames.bottom sp_m
+                        (fun sp_i sp_c h_iv h_colon sp_w h_sbi =>
+                          ResumeFrames.one (h_route51F sp_w
+                            (SBlockMapEntry.explicit nv sp_ind sp_scan' sp_m sp_i sp_c sp_w h_lit
+                              (SBlockIndented.empty nv .blockOut sp_scan' sp_m h_ssl)
+                              h_iv h_colon h_sbi)))⟩
+                · obtain ⟨ksV, h_ltV, contV⟩ := hall nv hm hk'
+                  exact ⟨FrameLevel.map k :: ksV, Or.inr trivial,
+                    fun sp_m h_ssl =>
+                      KeyFrames.mapLevel k ksV sp_m h_ltV
+                        (resumeMapRouteK h_ind contV sp_m
+                          (SBlockMapEntry.explicitEmpty k sp_ind sp_scan' sp_m h_lit
+                            (SBlockIndented.empty k .blockOut sp_scan' sp_m h_ssl)))⟩)
+            | Or.inr h_alt => Or.inr h_alt)
            (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
            -- ═══ **Item 190: the SLOT-premised twin of item 189's payment.**
            -- `h_kslot` above narrows `h_kslot_up` to the awaited BLOCK NODE,
@@ -24830,18 +24925,20 @@ lemma question_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) 
            -- (a superset of the marked columns is still a domain).  A park whose
            -- upstream chain is declined DECLINES here (ruling (a)).
            (match h_explUp_chainD, h_resV_land with
-            | Or.inl ⟨nsD, hdomD, upD⟩, Or.inl ⟨nv, _, _, contV⟩ =>
-                Or.inl ⟨sp_ind, nv :: nsD, h_lit,
-                  RegisterWitness.MarkedColsIn.mono (by have h := h_mcstep nsD hdomD; rwa [hk] at h)
+            | Or.inl ⟨nsD, hdomD, upD⟩, Or.inl hall =>
+                Or.inl ⟨sp_ind, (RegisterWitness.markedCols s').filter (fun x => decide (x ≠ k)) ++ nsD, h_lit,
+                  RegisterWitness.MarkedColsIn.mono hdomD
                     (fun x hx => (List.mem_cons.mp hx).elim (fun h => List.mem_cons.mpr (Or.inl h))
-                      (fun h => List.mem_cons.mpr (Or.inr (List.mem_cons.mpr (Or.inr h))))),
+                      (fun h => List.mem_cons.mpr (Or.inr (List.mem_append_right _ h)))),
                   by
                     rintro x hx
-                    rcases List.mem_cons.mp hx with rfl | hx'
-                    · exact resumeFrameRouteK h_ind contV
+                    rcases List.mem_append.mp hx with hx' | hx'
+                    · obtain ⟨hm', hne⟩ := List.mem_filter.mp hx'
+                      obtain ⟨_, _, contV⟩ := hall x hm' (of_decide_eq_true hne)
+                      exact resumeFrameRouteK h_ind contV
                     · exact upD x hx'⟩
             | Or.inl ⟨nsD, hdomD, upD⟩, Or.inr _ =>
-                Or.inl ⟨sp_ind, nsD, h_lit, (by have h := h_mcstep nsD hdomD; rwa [hk] at h), upD⟩
+                Or.inl ⟨sp_ind, nsD, h_lit, hdomD, upD⟩
             | Or.inr _, _ => Or.inr (Or.inr trivial)),
          hcorr_result⟩
 
@@ -25496,7 +25593,7 @@ lemma indicator_open_map {sc : ScannerState}
     -- value, the second a sibling entry).  `h_res_land` is the same stack at
     -- the stream bottom; item 194 named this one and could not pay it because
     -- the arm it would have paid did not exist.
-    (h_resV_land : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    (h_resV_land : (∀ nv ∈ RegisterWitness.markedCols s', (c = '?' → nv ≠ k) → ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc)
     -- **Item 209 (LAST): the DISPATCH's floor**, required rather than
@@ -25506,17 +25603,12 @@ lemma indicator_open_map {sc : ScannerState}
     -- `h_park_top`).  So the floor stops being a bundle's passenger and
     -- becomes the premise `question_open_map`'s top is built from.
     (h_top_prep : s_prep.currentIndent ≤ (s_prep.col : Int))
-    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,
+    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn s' (k :: ns) ∧
+      (c ≠ '?' → RegisterWitness.MarkedColsIn s' ns) ∧ ∀ nv ∈ ns,
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))
-    -- Item 417: the `:` twin of the step — a non-`?` indicator adds no mark — relayed to
-    -- `colon_open_map` for its `h_kslot`.
-    (h_mcstep_ne : c ≠ '?' → ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ns) :
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25549,11 +25641,11 @@ lemma indicator_open_map {sc : ScannerState}
       hpeek h_noflow_disp h_nic_disp h_dispatch (h_src rfl) h_sfx_land h_nodoc_land
       h_mk_land h_res_land h_ref_land
       ((h_cov_in ':' (Or.inl rfl) h_preprocess h_dispatch).imp And.left id)
-      h_pr_land h_resV_land
+      h_pr_land (h_resV_land.imp (fun h nv hm => h nv hm (fun hq => absurd hq (by decide))) id)
       -- Item 322: the alternative's transport, from this lemma's own step facts (`c = ':'` here).
       (PackAlt.step_value h_preprocess h_dispatch (noflow_of_noflow_disp h_noflow_disp))
-      -- Item 417: the chain one frame up and the `:`'s mark step, relayed for `h_kslot`.
-      h_explUp_chainD (h_mcstep_ne (by decide))
+      -- Item 417 / 498: the chain one frame up, its domain on the post-state (no mark step needed).
+      (h_explUp_chainD.imp (fun ⟨ns, _, hne, ch⟩ => ⟨ns, hne (by decide), ch⟩) id)
       (indicator_top_kv_at_col (Or.inl rfl) hcol_ind hcorr_prep h_save h_noflow_disp h_top_prep h_dispatch)
   | inr h =>
     subst h
@@ -25567,13 +25659,13 @@ lemma indicator_open_map {sc : ScannerState}
       -- Item 150: the value-line seed, off the same measurement — the `?`'s own
       -- level is the top, so nothing stands at or right of `k + 1`.
       ((h_cov_in '?' (Or.inr rfl) h_preprocess h_dispatch).imp And.right id)
-      h_pr_land h_explUp_chain h_resV_land
+      h_pr_land h_explUp_chain (h_resV_land.imp (fun h nv hm hne => h nv hm (fun _ => hne)) id)
       -- Item 209: the `?`'s own TOP, off the dispatch floor this relay now
       -- takes — `[187]`'s push goes to the indicator's column, so the floor
       -- that reached it bounds the stack it leaves.
       (indicator_top_kv_at_col (Or.inr rfl) hcol_ind hcorr_prep h_save
         h_noflow_disp h_top_prep h_dispatch)
-      h_explUp_chainD h_mcstep
+      (h_explUp_chainD.imp (fun ⟨ns, hkd, _, ch⟩ => ⟨ns, hkd, ch⟩) id)
 
 /-- The head IS `[188]`, arm for arm: the plain head is `[193]`'s YAML key
     directly (`SNsPlain 0 .blockKey` IS `SNsPlainOneLine .blockKey`), a flow
@@ -25631,7 +25723,7 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
     -- Item 108: the pack's value-line-bottomed twin, handed on the same way —
     -- this is the hop that carries an enclosing `?` frame down one mapping
     -- level, so a landing deeper inside the key can still pop back to it.
-    (h_routeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    (h_routeFV : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       -- Item 150: the value-line pack field's cover, handed across the `:`.
       ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧
@@ -25792,7 +25884,8 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
              -- that pops to `k` here is a SIBLING inside the explicit key and
              -- the key is still open when its `:` line arrives.
              (match h_routeFV with
-              | Or.inl ⟨nv, ks, h_lt, h_covV, routeFV⟩ => Or.inl ⟨nv, FrameLevel.map k :: ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_lt, h_covV, routeFV⟩ := hall nv hm;
+                ⟨FrameLevel.map k :: ks,
                   fun k' hk' => by
                     rcases List.mem_cons.mp hk' with h | h
                     · subst h; dsimp only; omega
@@ -25808,10 +25901,11 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
                         routeFV sp_mid
                           (SBlockMapEntry.implicitKeyNode k sp_key sp_ws sp_scan' sp_mid
                             h_ik h_lit (SBlockNode_blockIn_to_blockOut h_node))
-                          sp_end h_tail)⟩
+                          sp_end h_tail)⟩)
               | Or.inr h_alt => Or.inr (h_alt_step h_alt))
              (match h_routeFV with
-              | Or.inl ⟨nv, ks, h_lt, h_covV, routeFV⟩ => Or.inl ⟨nv, FrameLevel.map k :: ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_lt, h_covV, routeFV⟩ := hall nv hm;
+                ⟨FrameLevel.map k :: ks,
                   -- Item 150: the value-line chain's own hop — the widths grow by
                   -- this entry's level, and the floor climbs only as far as the
                   -- park's index demands (`n + 1` here, `n` at the pack).
@@ -25823,7 +25917,7 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
                         routeFV sp_mid
                           (SBlockMapEntry.implicitKeyEmpty k sp_key sp_ws sp_scan' sp_mid
                             h_ik h_lit h_ssl)
-                          sp_end h_tail)⟩
+                          sp_end h_tail)⟩)
               | Or.inr h_alt => Or.inr (h_alt_step h_alt))
            (nodir_of_block_dispatch h_dispatch)
            -- **Item 168: the sequence face, carried onto the park.**  The
@@ -25869,7 +25963,7 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_p sp_v →
       ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
       ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ True)
-    (h_routeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    (h_routeFV : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       -- Item 150: the value-line pack field's cover, handed across the `:`.
       ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧
         IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧
@@ -26013,7 +26107,8 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
                           sp_end h_tail)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_routeFV with
-              | Or.inl ⟨nv, ks, h_lt, h_covV, routeFV⟩ => Or.inl ⟨nv, FrameLevel.map k :: ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_lt, h_covV, routeFV⟩ := hall nv hm;
+                ⟨FrameLevel.map k :: ks,
                   fun k' hk' => by
                     rcases List.mem_cons.mp hk' with h | h
                     · subst h; dsimp only; omega
@@ -26029,10 +26124,11 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
                         routeFV sp_mid
                           (SBlockMapEntry.implicitKeyNode k sp_p sp_prep sp_scan' sp_mid
                             h_ik h_lit (SBlockNode_blockIn_to_blockOut h_node))
-                          sp_end h_tail)⟩
+                          sp_end h_tail)⟩)
               | Or.inr h_alt => Or.inr (PackAlt.step_value h_preprocess h_dispatch h_noflow h_alt))
              (match h_routeFV with
-              | Or.inl ⟨nv, ks, h_lt, h_covV, routeFV⟩ => Or.inl ⟨nv, FrameLevel.map k :: ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_lt, h_covV, routeFV⟩ := hall nv hm;
+                ⟨FrameLevel.map k :: ks,
                   -- Item 150: the value-line chain's own hop — the widths grow by
                   -- this entry's level, and the floor climbs only as far as the
                   -- park's index demands (`n + 1` here, `n` at the pack).
@@ -26044,7 +26140,7 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
                         routeFV sp_mid
                           (SBlockMapEntry.implicitKeyEmpty k sp_p sp_prep sp_scan' sp_mid
                             h_ik h_lit h_ssl)
-                          sp_end h_tail)⟩
+                          sp_end h_tail)⟩)
               | Or.inr h_alt => Or.inr (PackAlt.step_value h_preprocess h_dispatch h_noflow h_alt))
            (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
            -- Item 190: the props-headed implicit key opens no `?` entry either.
@@ -26843,12 +26939,7 @@ lemma accum_block_on_noPending
     -- width is at or right of, and the one no other producer can name (item
     -- 254).  The caller has carried it since item 147.
     (h_mono : IndentStackMono.Mono sc)
-    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
-    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))
-    -- Item 417: the `:` twin of the step, relayed through `indicator_open_map` to `colon_open_map`.
-    (h_mcstep_ne : c ≠ '?' → ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ns) :
+    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -27049,7 +27140,7 @@ lemma accum_block_on_noPending
           -- indicator over.
           (dash_dispatch_floor h_base
             (by have := h_ntop h_scflow; omega) h_preprocess)
-            (Or.inr (PackAlt.ofRefused (h_noek (noflow_park_of_noflow h_preprocess h_noflow)))) h_mcstep h_mcstep_ne
+            (Or.inr (PackAlt.ofRefused (h_noek (noflow_park_of_noflow h_preprocess h_noflow))))
       -- ═══ Item 186: the `:`'s stamp source is DECIDED here, not split on.
       -- A virgin block-context park is the stream's seed (item 116 counted the
       -- constructor's producers and the other seven are flow-interior), so its
@@ -27249,7 +27340,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc) ∧
       -- **Item 191: a LIST of ancestors** — the park may stand inside several
       -- open `?` frames at once and the landing names one of them.
-      ((∃ nsU : List Nat, RegisterWitness.MarkedColsIn sc (nv :: nsU) ∧ ∀ nvU ∈ nsU,
+      ((∀ nvU ∈ RegisterWitness.markedCols sc,
         ∀ sp_m : SurfPos, SBlockIndented nv .blockOut sp_gram sp_m →
         ∀ sp_i sp_c : SurfPos, SIndent nvU sp_m sp_i → GLit ':' sp_i sp_c →
         ∀ sp_v : SurfPos, SBlockIndented nvU .blockOut sp_c sp_v →
@@ -27348,8 +27439,10 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- SEQUENCE-lane callers pay (`accum_block_on_pendingBlock`'s dedent and
     -- `accum_block_on_pendingBlockContent`'s `k ≠ n`, both from their park's
     -- own `h_seqF`); every other caller punts.
-    (h_seqF : (∃ ke : Nat, ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
-      SeqEntryTail sp_start ke sp_mid) ∨ True)
+    (h_seqF : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_mid sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- **Item 173 (LAST, so the existing argument order stands): the closed
     -- park's still-open MAPPING levels.**  The `:`/`?` arm reads them at the
     -- landing's width and hands the opener the RESUME face where the width
@@ -27385,7 +27478,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- leaves the frame's line owed.  The payer is `pendingContent.h_framesV`,
     -- which has carried this stack since item 108 and had no arm to spend it
     -- into; every other caller punts.
-    (h_mapFV : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_mapFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
       ((∃ lo m : Nat, IndentStackCover.Floor lo m ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
@@ -27410,7 +27503,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- fallback (`h_slotV'`) never reads the alternative, so `∨ PackAlt sc` here was a
     -- carrier no payer could fill (a content park awaits no node: a deeper landing
     -- after a complete node is `invalidBareDocument`, a column-0 `-` refutes `nn < k`).
-    (h_valFV : (∃ (nn nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nn) ∧
+    (h_valFV : (∃ nn : Nat, ∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nn) ∧
       ∀ sp_mid : SurfPos, SBlockNode (nn + 1) .blockIn sp_gram sp_mid →
       KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ True)
     -- **Item 208 (LAST): the park's own INDENT CHECK where it stands AT a line
@@ -27512,10 +27605,11 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                  -- (`hkvUp`) follow it, and the DOMAIN is the slot's, unchanged by
                  -- a `-` (`h_mcstep_ne`); an undomained ancestor chain DECLINES.
                  (match hkv, hkvUp with
-                  | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ => Or.inl (RegisterWitness.MarkedColsIn.relay
-                      (h_mcstep_ne (by decide) _ hdomU) <| by
+                  -- Item 521: `hkvUp` ranges over EVERY mark of `sc` (the slot's own route `kv` for the slot's mark).
+                  | Or.inl kv, Or.inl kvU => Or.inl (RegisterWitness.MarkedColsIn.relay
+                      (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) <| by
                       rintro x hx
-                      rcases List.mem_cons.mp hx with hxe | hx'
+                      by_cases hxe : x = nv
                       · rw [hxe]
                         intro sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi
                         exact kv sp_e
@@ -27524,7 +27618,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                               h_dash2 h_gnot2 h_bi h_tail))
                           sp_i sp_c h_iv h_lit sp_v h_sbi
                       · intro sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi
-                        exact kvU x hx' sp_e
+                        exact kvU x hx sp_e
                           (SBlockIndented.compactSeq nv .blockOut m sp_mid _ sp_e h_ind
                             (SCompactSeq.mk (nv + 1 + m) _ sp_scan' sp_m sp_e
                               h_dash2 h_gnot2 h_bi h_tail))
@@ -27572,13 +27666,14 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                  -- Item 191: and the whole list rides it — the fill term is
                  -- the same for every ancestor.
                  (match hkvUp with
-                  | Or.inl ⟨nsU, hdomU, kvU⟩ =>
+                  | Or.inl kvU =>
                       -- Item 415: the whole list rides the fill term, as the `∀` face above (item 405) — the
                       -- slot's own route heads it, the ancestors follow, the domain is the slot's.
+                      -- Item 521: the list is the projection `markedCols sc` itself.
                       (match hkv with
-                       | Or.inl kv => Or.inl ⟨nv :: nsU, h_mcstep_ne (by decide) _ hdomU, by
+                       | Or.inl kv => Or.inl ⟨RegisterWitness.markedCols sc, h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc), by
                            rintro x hx
-                           rcases List.mem_cons.mp hx with hxe | hx'
+                           by_cases hxe : x = nv
                            · rw [hxe]
                              intro sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi
                              exact kv sp_e
@@ -27586,7 +27681,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                                  (SCompactSeq.mk (nv + 1 + m) _ sp_scan' sp_m sp_e h_dash2 h_gnot2 h_bi h_tail))
                                sp_i sp_c h_iv h_lit sp_v h_sbi
                            · intro sp_m h_bi sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi
-                             exact kvU x hx' sp_e
+                             exact kvU x hx sp_e
                                (SBlockIndented.compactSeq nv .blockOut m sp_mid _ sp_e h_ind
                                  (SCompactSeq.mk (nv + 1 + m) _ sp_scan' sp_m sp_e h_dash2 h_gnot2 h_bi h_tail))
                                sp_i sp_c h_iv h_lit sp_v h_sbi⟩
@@ -27618,7 +27713,9 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                  -- stack is handed to neither.  The term is `h_kslot`'s, under
                  -- `KeyFrames.bottom`. ═══
                  (match hkv with
-                  | Or.inl kv => Or.inl ⟨nv, [], fun _ h => absurd h (List.not_mem_nil),
+                  | Or.inl kv => if hms : RegisterWitness.markedCols s' = [nv] then Or.inl (fun nv' hm => by
+                      rw [hms] at hm; rw [List.mem_singleton.mp hm]
+                      exact ⟨[], fun _ h => absurd h (List.not_mem_nil),
                       -- Item 364: K1-fresh PAID on the compact fill — `h_closeF`'s literal cover
                       -- (floor `nv + 1`, empty frames), the same transport as the twin above.
                       Or.inl ⟨nv + 1,
@@ -27633,7 +27730,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                         KeyFrames.bottom sp_e (kv sp_e
                           (SBlockIndented.compactSeq nv .blockOut m sp_mid _ sp_e h_ind
                             (SCompactSeq.mk (nv + 1 + m) _ sp_scan' sp_m sp_e
-                              h_dash2 h_gnot2 h_bi h_tail)))⟩
+                              h_dash2 h_gnot2 h_bi h_tail)))⟩) else Or.inr trivial
                   | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
                  -- ═══ ~~**Item 208: ring 1's SEVENTH producer, and the one this
                  -- item does not pay.**~~  **Item 209 pays it**, and the reading
@@ -27716,11 +27813,11 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               -- heads it, the ancestors' (`hkvUp`) follow, on the slot's domain `nv :: nsU`; a
               -- declined half is RELAYED, not re-written.
               (match hkv, hkvUp with
-               | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ => Or.inl (RegisterWitness.MarkedColsIn.relay hdomU <| by
+               | Or.inl kv, Or.inl kvU => Or.inl (RegisterWitness.MarkedColsIn.relay (RegisterWitness.MarkedColsIn.self sc) <| by
                    rintro x hx
-                   rcases List.mem_cons.mp hx with hxe | hx'
-                   · rw [hxe]; exact kv
-                   · exact kvU x hx')
+                   by_cases hxe : x = nv
+                   · subst hxe; exact kv
+                   · exact kvU x hx)
                | Or.inl _, Or.inr h => Or.inr h
                | Or.inr h, _ => Or.inr h)
               h_mcstep
@@ -27835,16 +27932,35 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
   -- already indifferent to what the stack stands on (item 108's parameter), so
   -- the term is item 173's verbatim; what differs is which face the opener
   -- spends it on — the chain rather than the route. ═══
-  have h_resV_land : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+  have h_markBack : ∀ nv ∈ RegisterWitness.markedCols s', (c = '?' → nv ≠ k) →
+      nv ∈ RegisterWitness.markedCols sc := by
+    intro nv hm hne
+    by_cases hq : c = '?'
+    · have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1
+      have h2 := SIndent_col h_ind
+      have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc)
+      rw [Int.toNat_natCast] at h
+      rw [show ((s_prep.col : Nat) : Nat) = k by omega] at h
+      rcases List.mem_cons.mp (RegisterWitness.MarkedColsIn.relay h (fun x hx => hx) nv hm) with rfl | h'
+      · exact absurd rfl (hne hq)
+      · exact h'
+    · exact RegisterWitness.MarkedColsIn.relay
+        (h_mcstep_ne hq _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm
+  have h_resV_land : (∀ nv ∈ RegisterWitness.markedCols s', (c = '?' → nv ≠ k) →
+      ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
       ∀ sp_end : SurfPos, SCompactMapTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc := by
-    rcases h_mapFV with ⟨nv, ks, hcov, fV⟩ | h_alt
-    · by_cases hmem : FrameLevel.map k ∈ ks
-      · obtain ⟨ks', h_w, cont⟩ := (fV sp_mid h_ssl).resumeAtMap hmem
-        exact Or.inl ⟨nv, ks', h_w.le, cont⟩
-      · -- Item 358: under a carried cover, a sibling `?`/live-key `:` at or right of
+    rcases h_mapFV with hall | h_alt
+    · by_cases hmem : ∀ nv (hm : nv ∈ RegisterWitness.markedCols s') (hne : c = '?' → nv ≠ k),
+          FrameLevel.map k ∈ (hall nv (h_markBack nv hm hne)).choose
+      · exact Or.inl (fun nv hm hne => by
+          obtain ⟨ks', h_w, cont⟩ :=
+            ((hall nv (h_markBack nv hm hne)).choose_spec.2 sp_mid h_ssl).resumeAtMap (hmem nv hm hne)
+          exact ⟨ks', h_w.le, cont⟩)
+      · simp only [Classical.not_forall] at hmem
+        obtain ⟨nv, hm, hne, hmem⟩ := hmem
         -- the floor IS a frame — the negative arm is refuted; the rest is K1's residue.
-        rcases hcov with ⟨lo, _, _, hC⟩ | _
+        rcases (hall nv (h_markBack nv hm hne)).choose_spec.1 with ⟨lo, _, _, hC⟩ | _
         · by_cases h_pay : lo ≤ s_prep.col ∧ s_prep.currentIndent = (s_prep.col : Int) ∧
               s_prep.col = k ∧ (c = '?' ∨
                 ∀ top, s_prep.indents.back? = some top → top.isSequence = false)
@@ -27933,19 +28049,32 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- reading is `h_seqRoute`'s: the entries are a fresh bare document's node
     -- and `[211]`'s continuation appends it.  Both closures below are built
     -- from THIS, so the two readings are chosen once. ═══
-    have h_entryTail : ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
-        ∀ sp_end, SCompactSeqTail k sp_final sp_end → SLYamlStream sp_start sp_end := by
+    -- Item 505: the entry tail with the sequence's OUTER frames — the maps the
+    -- `[183]` at `k` stands inside, relayed by `h_seqF` when its `ke` is this
+    -- landing's width; `h_doc`'s root route keeps `[]`.
+    obtain ⟨ks_e, h_wks_e, h_entryTailF⟩ : ∃ ks_e : List FrameLevel, (∀ fr ∈ ks_e, fr.width ≤ k) ∧
+        ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
+        ∀ sp_end, SCompactSeqTail k sp_final sp_end →
+        ResumeFrames (SLYamlStream sp_start) ks_e sp_end := by
       have h_doc : ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
           ∀ sp_end, SCompactSeqTail k sp_final sp_end → SLYamlStream sp_start sp_end :=
         fun _ h_indented sp_end h_tail =>
           h_seqRoute sp_end
             (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)
-      rcases h_seqF with ⟨ke, seqF⟩ | _
+      rcases h_seqF with ⟨ke, ks, h_wks, seqF⟩ | _
       · by_cases hke : ke = k
         · subst hke
-          exact seqEntryTail_cons (seqF sp_mid h_ssl) h_ind h_dash h_gnot
-        · exact h_doc
-      · exact h_doc
+          exact ⟨ks, h_wks, fun sp_final h_indented sp_end h_tail =>
+            seqF sp_mid h_ssl sp_end
+              (SCompactSeqTail.cons ke sp_mid _ sp_scan' sp_final sp_end
+                h_ind h_dash h_gnot h_indented h_tail)⟩
+        · exact ⟨[], fun _ h => absurd h List.not_mem_nil, fun sp_final h_indented sp_end h_tail =>
+            ResumeFrames.bottom sp_end (h_doc sp_final h_indented sp_end h_tail)⟩
+      · exact ⟨[], fun _ h => absurd h List.not_mem_nil, fun sp_final h_indented sp_end h_tail =>
+          ResumeFrames.bottom sp_end (h_doc sp_final h_indented sp_end h_tail)⟩
+    have h_entryTail : ∀ sp_final, SBlockIndented k .blockIn sp_scan' sp_final →
+        ∀ sp_end, SCompactSeqTail k sp_final sp_end → SLYamlStream sp_start sp_end :=
+      fun sp_final h_indented sp_end h_tail => (h_entryTailF sp_final h_indented sp_end h_tail).close
     -- The `-` opens a SEQUENCE level, and the frames record mapping levels
     -- only — so the cover crosses this step untouched, and the lift is the
     -- stack equation and nothing else.
@@ -27957,11 +28086,6 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           (dispatchBlockIndicators_dash_scan h_dispatch).2
           ((IndentStackCover.preprocess_cover h_preprocess hc).of_indents_eq
             (by split <;> rfl))
-    have h_seqBottom : ∀ sp_final : SurfPos, SBlockIndented k .blockIn sp_scan' sp_final →
-        ∀ sp_end : SurfPos, SCompactSeqTail k sp_final sp_end →
-        ResumeFrames (SLYamlStream sp_start) [] sp_end :=
-      fun sp_final h_indented sp_end h_tail =>
-        ResumeFrames.bottom sp_end (h_entryTail sp_final h_indented sp_end h_tail)
     have h_seqFrames : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ k) ∧
         ((∃ lo : Nat, IndentStackCover.Floor lo k ks ∧
           IndentStackCover.Covered lo ks s') ∨ True) ∧
@@ -28012,10 +28136,8 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                 (closeF sp_end (valueLandedSeq hnk h_ssl
                   (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))).level_inv
                   sp_fin (by obtain rfl : nv = k := (by omega); exact h_mt))⟩
-          · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-              Or.inr trivial, h_seqBottom, Or.inr trivial⟩
-      · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
-          Or.inr trivial, h_seqBottom, Or.inr h_tr⟩
+          · exact Or.inl ⟨ks_e, h_wks_e, Or.inr trivial, h_entryTailF, Or.inr trivial⟩
+      · exact Or.inl ⟨ks_e, h_wks_e, Or.inr trivial, h_entryTailF, Or.inr h_tr⟩
     -- ═══ **Item 198: the same step at the VALUE-LINE bottom.**  `h_valFV` is
     -- `h_valF`'s twin and `nestedBlockSeq` is indifferent to what the stack
     -- stands on, so the term is the branch above verbatim with two things
@@ -28031,17 +28153,21 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- `:` line — the same term item 188 pays `h_kslot` with, under
     -- `KeyFrames.bottom`.  This is the first entry's stack, which the entries
     -- inside it push onto and the dedent back to this column resumes. ═══
-    have h_slotV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    have h_slotV : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc :=
       match h_vslot with
       | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl hkv, _⟩ =>
           if hnk : nv ≤ k then
-            Or.inl ⟨nv, [], fun _ h => absurd h (List.not_mem_nil),
-              fun _ h_indented sp_e h_tail =>
-                KeyFrames.bottom sp_e (hkv sp_e (slotLandedSeq hnk h_ssl
-                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))⟩
+            if hms : RegisterWitness.markedCols s' = [nv] then
+              Or.inl (fun nv' hm => by
+                rw [hms] at hm; rw [List.mem_singleton.mp hm]
+                exact ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                  fun _ h_indented sp_e h_tail =>
+                    KeyFrames.bottom sp_e (hkv sp_e (slotLandedSeq hnk h_ssl
+                      (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))⟩)
+            else Or.inr trivial
           else Or.inr trivial
       -- Item 320: the slot's own alternative, handed on (the catch-all below keeps the residue arm).
       | Or.inl ⟨_, _, _, _, _, _, _, _, _, Or.inr h_alt, _⟩ => Or.inr h_alt
@@ -28055,16 +28181,20 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
     -- and, closed, its own `h_kslot`.  A mapping level at `k` declines here (a `-` at a
     -- mapping's width is refuted elsewhere).  `h_vslot`'s bottom (item 305) stays
     -- first; this is the fallback behind it. ═══
-    have h_resSeqV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    have h_resSeqV : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc := by
-      rcases h_mapFV with ⟨nv, ks, hcov, fV⟩ | h_alt
-      · by_cases hmem : FrameLevel.seq k ∈ ks
-        · obtain ⟨ks', h_w, contS⟩ := (fV sp_mid h_ssl).resumeAtSeq hmem
-          exact Or.inl ⟨nv, ks', h_w.le, fun sp_m h_node sp_e h_tail =>
-            contS sp_e (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
-              h_ind h_dash h_gnot h_node h_tail)⟩
+      rcases h_mapFV with hall | h_alt
+      · by_cases hmem : ∀ nv (hm : nv ∈ RegisterWitness.markedCols s'),
+            FrameLevel.seq k ∈ (hall nv (h_markBack nv hm (fun h => absurd h (by decide)))).choose
+        · exact Or.inl (fun nv hm => by
+            obtain ⟨ks', h_w, contS⟩ :=
+              ((hall nv (h_markBack nv hm (fun h => absurd h (by decide)))).choose_spec.2
+                sp_mid h_ssl).resumeAtSeq (hmem nv hm)
+            exact ⟨ks', h_w.le, fun sp_m h_node sp_e h_tail =>
+              contS sp_e (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
+                h_ind h_dash h_gnot h_node h_tail)⟩)
         · exact Or.inr trivial
       · exact Or.inr h_alt
     -- The same resume, CLOSED: the new park's own value line (`h_kslot`).
@@ -28074,26 +28204,32 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
         ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc :=
       match h_resSeqV with
-      | Or.inl ⟨nv, _, _, cont⟩ => Or.inl ⟨nv, fun sp_m h_node sp_e h_tail =>
-          (cont sp_m h_node sp_e h_tail).close⟩
+      | Or.inl hall =>
+          match hms : RegisterWitness.markedCols s' with
+          | [] => Or.inr trivial
+          | nv :: _ =>
+            let ⟨_, _, cont⟩ := hall nv (hms ▸ List.mem_cons_self)
+            Or.inl ⟨nv, fun sp_m h_node sp_e h_tail => (cont sp_m h_node sp_e h_tail).close⟩
       | Or.inr h_alt => Or.inr h_alt
-    have h_slotV' : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    have h_slotV' : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc :=
       match h_slotV with
       | Or.inl x => Or.inl x
       | Or.inr _ => h_resSeqV
-    have h_seqFramesV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+    have h_seqFramesV : (∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc := by
-      rcases h_valFV with ⟨nn, nv, ksv, h_lev, closeFV⟩ | _
+      rcases h_valFV with ⟨nn, hall⟩ | _
       · by_cases hnn : nn < k
-        · exact Or.inl ⟨nv, ksv, fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_lev k' hk') hnn),
-            fun sp_final h_indented sp_end h_tail =>
-              closeFV sp_end (nestedBlockSeq hnn h_ssl
-                (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))⟩
+        · exact Or.inl (fun nv hm => by
+            obtain ⟨ksv, h_lev, closeFV⟩ := hall nv (h_markBack nv hm (fun h => absurd h (by decide)))
+            exact ⟨ksv, fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_lev k' hk') hnn),
+              fun sp_final h_indented sp_end h_tail =>
+                closeFV sp_end (nestedBlockSeq hnn h_ssl
+                  (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))⟩)
         · exact h_slotV'
       · exact h_slotV'
     exact ⟨sp_mid, sp_mid, sp_mid, sp_scan', h_stream_new,
@@ -28131,14 +28267,14 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- A slot with no inner pack, or a landing LEFT of the frame,
              -- keeps the deferral. ═══
              (match h_vslot with
-              | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl hkv, Or.inl ⟨nsU, hdomU, kvU⟩⟩ =>
+              | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl hkv, Or.inl kvU⟩ =>
                   if hnk : nv ≤ k then
-                    Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ hdomU) <| by
+                    Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) <| by
                       rintro x hx _ h_indented sp_e h_tail
-                      rcases List.mem_cons.mp hx with hxe | hx'
-                      · rw [hxe]; exact hkv sp_e (slotLandedSeq hnk h_ssl
+                      by_cases hxe : x = nv
+                      · subst hxe; exact hkv sp_e (slotLandedSeq hnk h_ssl
                           (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))
-                      · exact kvU x hx' sp_e (slotLandedSeq hnk h_ssl
+                      · exact kvU x hx sp_e (slotLandedSeq hnk h_ssl
                           (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))
                   -- Item 307/405: behind the slot, the resumed stack's slot route
                   -- (`h_resKslot`) is a singleton with no domain — DECLINED (ruling (a)).
@@ -28151,7 +28287,12 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- where there was one** — built above, because the bottomed
              -- reading is the fallback rather than the answer.
              h_seqFrames
-             (nodir_of_block_dispatch h_dispatch) (Or.inr trivial)
+             (nodir_of_block_dispatch h_dispatch)
+             -- Item 505: the new park's own `[183]` tail, with the frames the
+             -- `-` landing read — the sequence at `k` goes on and then its maps.
+             (h_seqFrames.imp (fun ⟨ks, hw, _, f3, _⟩ => ⟨k, ks, hw,
+               fun sp_mid h_bi sp_end h_tail sp_fin h_tail2 =>
+                 f3 sp_mid h_bi sp_fin (SCompactSeqTail_append h_tail h_tail2)⟩) id)
              -- ═══ **Item 190: the frame ABOVE the slot, across the same
              -- crossing.**  `slotLandedSeq` fills the `?`'s key with the
              -- collection this `-` opens; item 188 then read the frame's OWN
@@ -28159,7 +28300,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- stands inside.  Same carrier, same bound — what differs is only
              -- which `:` is owed. ═══
              (match h_vslot with
-              | Or.inl ⟨nv, _, _, _, _, _, _, _, _, hkv, Or.inl ⟨nsU, hdomU, kvU⟩⟩ =>
+              | Or.inl ⟨nv, _, _, _, _, _, _, _, _, hkv, Or.inl kvU⟩ =>
                   if hnk : nv ≤ k then
                     -- Item 191: the crossing is indifferent to WHICH ancestor's
                     -- line follows, so the whole list rides one term.  Item 418: the
@@ -28168,12 +28309,12 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
                     -- own line was declined upstream, that alternative is carried.
                     match hkv with
                     | Or.inl hkv =>
-                        Or.inl ⟨nv :: nsU, h_mcstep_ne (by decide) _ hdomU, by
+                        Or.inl ⟨RegisterWitness.markedCols sc, h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc), by
                           rintro x hx _ h_indented sp_e h_tail
-                          rcases List.mem_cons.mp hx with hxe | hx'
-                          · rw [hxe]; exact hkv sp_e (slotLandedSeq hnk h_ssl
+                          by_cases hxe : x = nv
+                          · subst hxe; exact hkv sp_e (slotLandedSeq hnk h_ssl
                               (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))
-                          · exact kvU x hx' sp_e (slotLandedSeq hnk h_ssl
+                          · exact kvU x hx sp_e (slotLandedSeq hnk h_ssl
                               (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail))⟩
                     | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt)
                   else Or.inr trivial
@@ -28183,7 +28324,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               | _ => Or.inr trivial)
              -- **Item 198: the value-line stack, across the same step.**  Built above
              -- from `h_valFV`, exactly as `h_closeF` is built from `h_valF`.
-             (h_seqFramesV.imp (fun ⟨nv, ks, hw, fV⟩ => ⟨nv, ks, hw, Or.inr trivial, fV⟩) (PackAlt.step_blockEntry h_preprocess h_dispatch))
+             (h_seqFramesV.imp (fun hall nv hm => let ⟨ks, hw, fV⟩ := hall nv hm; ⟨ks, hw, Or.inr trivial, fV⟩) (PackAlt.step_blockEntry h_preprocess h_dispatch))
              -- Item 208: and the entry's TOP, off the landing's own floor — from the
              -- walk's unwind where the park stood off a line start, from item 207's
              -- flag where it stood on one.
@@ -28252,20 +28393,20 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
            | Or.inl ⟨nv, _, _, _, _, _, _, _, _, hkv, hkvUp⟩ =>
                if hnk : nv + 1 ≤ k then
                  match hkv, hkvUp with
-                 | Or.inl kv, Or.inl ⟨nsU, _, kvU⟩ =>
-                     Or.inl ⟨nv :: nsU, slotChainMap hnk h_ssl h_ind (by
+                 | Or.inl kv, Or.inl kvU =>
+                     Or.inl ⟨RegisterWitness.markedCols sc, slotChainMap hnk h_ssl h_ind (by
                        rintro nvX hmem
-                       rcases List.mem_cons.mp hmem with rfl | hmem'
-                       · exact kv
-                       · exact kvU nvX hmem')⟩
+                       by_cases hxe : nvX = nv
+                       · subst hxe; exact kv
+                       · exact kvU nvX hmem)⟩
                  | Or.inl kv, Or.inr _ =>
                      Or.inl ⟨[nv], slotChainMap hnk h_ssl h_ind (by
                        rintro nvX hmem
                        rcases List.mem_cons.mp hmem with rfl | hmem'
                        · exact kv
                        · exact absurd hmem' (List.not_mem_nil))⟩
-                 | Or.inr _, Or.inl ⟨nsU, _, kvU⟩ =>
-                     Or.inl ⟨nsU, slotChainMap hnk h_ssl h_ind kvU⟩
+                 | Or.inr _, Or.inl kvU =>
+                     Or.inl ⟨RegisterWitness.markedCols sc, slotChainMap hnk h_ssl h_ind kvU⟩
                  | Or.inr h_alt, Or.inr _ => Or.inr h_alt
                else Or.inr trivial
            | _ => Or.inr trivial)
@@ -28282,16 +28423,37 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
            | Or.inl ⟨nv, _, _, _, _, _, _, _, _, hkv, hkvUp⟩ =>
                if hnk : nv + 1 ≤ k then
                  match hkv, hkvUp with
-                 | Or.inl kv, Or.inl ⟨nsU, hdomU, kvU⟩ =>
-                     Or.inl ⟨nv :: nsU, hdomU, slotChainMap hnk h_ssl h_ind (by
+                 | Or.inl kv, Or.inl kvU =>
+                     Or.inl ⟨RegisterWitness.markedCols sc, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc); rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ (RegisterWitness.MarkedColsIn.self sc)), slotChainMap hnk h_ssl h_ind (by
                        rintro nvX hmem
-                       rcases List.mem_cons.mp hmem with rfl | hmem'
-                       · exact kv
-                       · exact kvU nvX hmem')⟩
+                       by_cases hxe : nvX = nv
+                       · subst hxe; exact kv
+                       · exact kvU nvX hmem)⟩
                  | Or.inl _, Or.inr h_alt => Or.inr h_alt
                  | Or.inr h_alt, _ => Or.inr h_alt
+               else if hnil : RegisterWitness.markedCols s' = [] then
+                 -- Item 498: no mark survives the landing — the chain's domain on `s'` is empty and the
+                 -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
+                 Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
+                   fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+               else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', k ≤ m then
+                 -- Item 498: no mark survives BELOW the landing; the landing lemma bounds every mark of `s'`
+                 -- by `k` from above, so the only survivor is the `?`'s own mark and the chain's domain is empty.
+                 have h_mono' : IndentStackMono.Mono s' :=
+                   IndentStackMono.dispatchBlockIndicators_mono h_dispatch
+                     ((IndentStackMono.preprocess_mono h_preprocess h_mono).of_indents_eq (by split <;> rfl))
+                     ((IndentStackBase.preprocess_base h_preprocess h_base).of_indents_eq (by split <;> rfl))
+                 have h_top' : s'.currentIndent ≤ (k : Int) :=
+                   indicator_top_kv_at_col hcv (by have := SIndent_col h_ind; rw [hcol_mid] at this; omega) hcorr_prep
+                     (landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess) (noflow_disp_of_noflow h_noflow)
+                     (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess) h_dispatch
+                 have h_eq : ∀ m ∈ RegisterWitness.markedCols s', m = k := fun m hm =>
+                   Nat.le_antisymm (markedCols_le_of_top h_mono' h_top' m hm) (hallq.2 m hm)
+                 Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
+                     (h_eq _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+                   fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
                else Or.inr trivial
-           | _ => Or.inr trivial) h_mcstep h_mcstep_ne
+           | _ => Or.inr trivial)
       by_cases hc_colon : c = ':'
       · subst hc_colon
         -- Item 51: an explicit-value pack fires on the `:` at its OWN column —
@@ -28554,10 +28716,26 @@ lemma colon_fires_props_key (sc : ScannerState)
           · exact Or.inr h)
         -- Item 150: and the value-line twin's, across the same pops.
         (by
-          rcases h_resFV_pk with ⟨nv, ks, h_lt, h_cov, r⟩ | h
-          · exact Or.inl ⟨nv, ks, h_lt,
-              h_cov.imp (fun ⟨lo, hb, hc⟩ =>
-                ⟨lo, hb, IndentStackCover.preprocess_cover h_preprocess hc⟩) id, r⟩
+          -- Item 521: the `:` is not a `?`, so the post-state's marks are the pre-state's
+          -- (`dispatchBlockIndicators_markedCols_of_ne` across the preprocess); the pack's
+          -- every-mark twin pays every mark of `s'` — the SINGLETON bridge is gone.
+          have hmemBack : ∀ nv' ∈ RegisterWitness.markedCols s', nv' ∈ RegisterWitness.markedCols sc := by
+            intro nv' hm
+            have h_sp : PendingKeySound.Sound s_prep :=
+              PendingKeySound.preprocess_sound h_preprocess h_sound h_mono
+            have h_p := RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)
+            split at h_dispatch
+            · exact RegisterWitness.MarkedColsIn.mem (RegisterWitness.dispatchBlockIndicators_markedCols_of_ne
+                (s := { s_prep with allowDirectives := false, documentEverStarted := true })
+                h_dispatch (by decide) (h_p.transport rfl rfl) (h_sp.of_eq rfl rfl rfl rfl rfl rfl).slots) hm
+            · exact RegisterWitness.MarkedColsIn.mem
+                (RegisterWitness.dispatchBlockIndicators_markedCols_of_ne h_dispatch (by decide) h_p h_sp.slots) hm
+          rcases h_resFV_pk with hall | h
+          · exact Or.inl (fun nv' hm =>
+                let ⟨ks, h_lt, h_cov, r⟩ := hall nv' (hmemBack nv' hm)
+                ⟨ks, h_lt,
+                  h_cov.imp (fun ⟨lo, hb, hc⟩ =>
+                    ⟨lo, hb, IndentStackCover.preprocess_cover h_preprocess hc⟩) id, r⟩)
           · exact Or.inr h)
         h_props h_ws h_poss h_kcol h_inh
         (by rw [h_inh, h_line_pp]; exact h_skline)
@@ -28777,10 +28955,25 @@ lemma colon_fires_implicit_key
               · exact Or.inr h)
             -- Item 150: and the value-line twin's, across the same pops.
             (by
-              rcases h_rfrV_pk with ⟨nv, ks, h_lt, h_cov, r⟩ | h
-              · exact Or.inl ⟨nv, ks, h_lt,
-                  h_cov.imp (fun ⟨lo, hb, hc⟩ =>
-                    ⟨lo, hb, IndentStackCover.preprocess_cover h_preprocess hc⟩) id, r⟩
+              -- Item 521: as at `colon_fires_props_key` — the `:` keeps the marks, the pack's
+              -- every-mark twin pays every mark of `s'`.
+              have hmemBack : ∀ nv' ∈ RegisterWitness.markedCols s', nv' ∈ RegisterWitness.markedCols sc := by
+                intro nv' hm
+                have h_sp : PendingKeySound.Sound s_prep :=
+                  PendingKeySound.preprocess_sound h_preprocess h_sound h_mono
+                have h_p := RegisterWitness.preprocess_markedCols h_preprocess (RegisterWitness.MarkedColsIn.self sc)
+                split at h_dispatch
+                · exact RegisterWitness.MarkedColsIn.mem (RegisterWitness.dispatchBlockIndicators_markedCols_of_ne
+                    (s := { s_prep with allowDirectives := false, documentEverStarted := true })
+                    h_dispatch (by decide) (h_p.transport rfl rfl) (h_sp.of_eq rfl rfl rfl rfl rfl rfl).slots) hm
+                · exact RegisterWitness.MarkedColsIn.mem
+                    (RegisterWitness.dispatchBlockIndicators_markedCols_of_ne h_dispatch (by decide) h_p h_sp.slots) hm
+              rcases h_rfrV_pk with hall | h
+              · exact Or.inl (fun nv' hm =>
+                    let ⟨ks, h_lt, h_cov, r⟩ := hall nv' (hmemBack nv' hm)
+                    ⟨ks, h_lt,
+                      h_cov.imp (fun ⟨lo, hb, hc⟩ =>
+                        ⟨lo, hb, IndentStackCover.preprocess_cover h_preprocess hc⟩) id, r⟩)
               · exact Or.inr h)
             h_ol
             (gstar_sswhite_append h_tws h_ws)
@@ -28973,7 +29166,7 @@ lemma accum_block_on_pendingContent
     -- landing opens resumes the level and the frame's `:` line is what the
     -- level closes onto (`?⏎  ?⏎    a: b⏎  ? c⏎: w`) — the residue item 194
     -- named as a BOTTOM.
-    (h_mapFV108 : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_mapFV108 : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
       ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
     -- **Item 208 (LAST): the park's own INDENT CHECK**, item 154's field made
@@ -29005,11 +29198,14 @@ lemma accum_block_on_pendingContent
   -- collection's own width says — the frames are read at their bottom and no
   -- width is ever compared.  That is why this lane carries no cover: the only
   -- consumer of the list closes it whole.
-  have h_seqLanding : (∃ ke : Nat, ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
-      SeqEntryTail sp_start ke sp_mid) ∨ True :=
+  have h_seqLanding : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_mid sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True :=
     h_seqF168.imp (fun ⟨ke, kk, _ks, _h_ltq, seqF⟩ =>
-      ⟨ke, fun sp_mid h_ssl =>
-        (seqF sp_mid h_ssl sp_mid (SCompactMapTail.nil kk sp_mid)).close⟩) id
+      ⟨ke, [], fun _ h => absurd h List.not_mem_nil, fun sp_mid h_ssl sp_fin h_t =>
+        ResumeFrames.bottom sp_fin
+          ((seqF sp_mid h_ssl sp_mid (SCompactMapTail.nil kk sp_mid)).close sp_fin h_t)⟩) id
   by_cases hc : c = ':'
   · subst hc
     exact colon_fires_implicit_key sc sp_start sp_block sp_scan s_prep s' sp_prep sp_scan'
@@ -29027,7 +29223,7 @@ lemma accum_block_on_pendingContent
         -- Item 175: a content park holds no property run.
         (Or.inr trivial)
         -- Item 197: …and the same levels under an open `?` frame.
-        (h_mapFV108.imp (fun ⟨nv, ks, fV⟩ => ⟨nv, ks, Or.inr trivial, fV⟩) id)
+        (h_mapFV108.imp (fun hall nv hm => let ⟨ks, fV⟩ := hall nv hm; ⟨ks, Or.inr trivial, fV⟩) id)
         -- Item 198: a content park awaits no node, so the relay this lemma's
         -- `-` arm spends off a CLOSED value park has no payer here.
         (Or.inr trivial)
@@ -29041,12 +29237,12 @@ lemma accum_block_on_pendingContent
       sp_prep sp_scan' h_close_pending
       -- Item 307: the pack is the park's own stack (`h_mapFV108`, handed on below),
       -- closed at the landing — the third γ root of item 301.
-      (match h_mapFV108 with
-       | Or.inl ⟨nv, _, fV⟩ => Or.inl ⟨[nv],
+      (h_mapFV108.elim
+       (fun hall => Or.inl ⟨RegisterWitness.markedCols sc,
            fun nv' hmem sp_m sp_i sp_c h_ssl_m h_iv h_lit sp_v h_sbi => by
-             obtain rfl := List.mem_singleton.mp hmem
-             exact (fV sp_m h_ssl_m).close sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-       | Or.inr h_alt => Or.inr h_alt)
+             obtain ⟨_, fV⟩ := hall nv' hmem
+             exact (fV sp_m h_ssl_m).close sp_i sp_c h_iv h_lit sp_v h_sbi⟩)
+       (fun h_alt => Or.inr h_alt))
       (Or.inr (fun h_res _ => (nodeStop_refutes_inline_residue h_line
         ((block_indicator_char h_dispatch).imp id (fun h => h.resolve_left hc)) h_res).elim)) hcorr_prep hcorr_result h_corr h_noflow
       h_park h_preprocess h_dispatch (Or.inr trivial) (Or.inr trivial)
@@ -29061,7 +29257,7 @@ lemma accum_block_on_pendingContent
       -- Item 175: a content park holds no property run.
       (Or.inr trivial)
       -- Item 197: …and the same levels under an open `?` frame.
-      (h_mapFV108.imp (fun ⟨nv, ks, fV⟩ => ⟨nv, ks, Or.inr trivial, fV⟩) id)
+      (h_mapFV108.imp (fun hall nv hm => let ⟨ks, fV⟩ := hall nv hm; ⟨ks, Or.inr trivial, fV⟩) id)
       -- Item 198: and no awaited node, as at the `:` half above.
       (Or.inr trivial)
 
@@ -29138,10 +29334,12 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     (h_tail139 : CompletedTail sc)
     -- **Item 167 (LAST): the park's ENCLOSING collection**
     -- (`pendingBlockContent.h_seqF`), spent at the `k ≠ n` arm below.
-    (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+    (h_seqF_old : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos,
       SSLComments sp_gram sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-      SeqEntryTail sp_start ke sp_end) ∨ True)
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- **Item 190 (LAST): the park's SECOND frame** (`pendingBlockContent.h_kslotUp`),
     -- `h_kslot`'s twin at the outer `?`'s column.  The `_stamp_offcol` branch
     -- below tries the park's own frame at `k` first and this one after, so a
@@ -29177,7 +29375,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
     -- what it stands on, and that is the whole difference between a dedent that
     -- closes the enclosing `?` with an `e-node` and one that leaves its line
     -- owed.  Spent at the `:`/`?` arm's `h_mapFV` (item 197).
-    (h_closeFV_old : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+    (h_closeFV_old : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →
@@ -29260,6 +29458,20 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
       (tab_refutes_dispatch h_noflow h_corr hsuf_mid hcol_mid hcorr_prep hws h_tab
         h_preprocess h_dispatch).elim)
     obtain ⟨k, h_ind⟩ := h_ind
+    have h_markBack : ∀ nv ∈ RegisterWitness.markedCols s', (c = '?' → nv ≠ k) →
+        nv ∈ RegisterWitness.markedCols sc := by
+      intro nv hm hne
+      by_cases hq : c = '?'
+      · have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1
+        have h2 := SIndent_col h_ind
+        have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc)
+        rw [Int.toNat_natCast] at h
+        rw [show ((s_prep.col : Nat) : Nat) = k by omega] at h
+        rcases List.mem_cons.mp (RegisterWitness.MarkedColsIn.relay h (fun x hx => hx) nv hm) with rfl | h'
+        · exact absurd rfl (hne hq)
+        · exact h'
+      · exact RegisterWitness.MarkedColsIn.relay
+          (h_mcstep_ne hq _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm
     by_cases hc : c = '-'
     · subst hc
       -- The snoc index is the collection's; a `-` at a DIFFERENT indentation
@@ -29339,8 +29551,8 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                  -- Item 198: relayed from this park's own field, by consing the
                  -- new entry onto its tail — `h_kslot`'s relay above, at the
                  -- other bottom (`?⏎  ?⏎    - a⏎    - b⏎  ? c⏎: w`).
-                 (match h_closeFV_old with
-                  | Or.inl ⟨nv, ks, h_ltk, hcov, closeFV⟩ => Or.inl ⟨nv, ks, h_ltk,
+                 (h_closeFV_old.elim
+                  (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, hcov, closeFV⟩ := hall nv (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm); ⟨ks, h_ltk,
                       hcov.imp (fun ⟨lo, h_floor, hc⟩ => ⟨lo, h_floor,
                         IndentStackCover.scanBlockEntry_cover
                           (dispatchBlockIndicators_dash_scan h_dispatch).1
@@ -29350,8 +29562,8 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
                       fun sp_m h_bi sp_e h_tail =>
                         closeFV sp_mid h_ssl sp_e
                           (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
-                            h_ind h_dash2 h_gnot2 h_bi h_tail)⟩
-                  | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
+                            h_ind h_dash2 h_gnot2 h_bi h_tail)⟩))
+                  (fun h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt)))
                   -- Item 208: the entry's TOP, off the landing's own floor.
                   (indicator_top_dash hcol_mid h_ind hcorr_prep
                     (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess)
@@ -29368,13 +29580,13 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
           _ sp_scan' h_close_pending
           -- Item 307: the pack, from the stack — the entry is complete and the sequence
           -- at `n` ends at the landing (`accum_block_on_pendingBlock`'s note).
-          (match h_closeFV_old with
-           | Or.inl ⟨nv, _, _, _, closeFV⟩ => Or.inl ⟨[nv],
+          (h_closeFV_old.elim
+           (fun hall => Or.inl ⟨RegisterWitness.markedCols sc,
                fun nv' hmem sp_m sp_i sp_c h_ssl_m h_iv h_lit sp_v h_sbi => by
-                 obtain rfl := List.mem_singleton.mp hmem
+                 obtain ⟨_, _, _, closeFV⟩ := hall nv' hmem
                  exact (closeFV sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)).close
-                   sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-           | Or.inr h_alt => Or.inr h_alt)
+                   sp_i sp_c h_iv h_lit sp_v h_sbi⟩)
+           (fun h_alt => Or.inr h_alt))
           (Or.inr (fun h_res _ => (nodeStop_refutes_inline_residue h_line (Or.inl rfl) h_res).elim)) hcorr_prep hcorr_result h_corr h_noflow
           h_park h_preprocess h_dispatch (Or.inr trivial) (Or.inr trivial)
           h_bare h_dn h_fv h_base h_mono (Or.inl h_tail139) (Or.inr trivial)
@@ -29382,7 +29594,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
           -- park's entry already has its node, so its own `[183]` at `n` is
           -- complete and closes with a `nil` tail; what the landing lands in is
           -- the collection outside it (`- - a⏎- b`).
-          (h_seqF_old.imp (fun ⟨ke, seqF⟩ => ⟨ke, fun sp_m h_ssl_m =>
+          (h_seqF_old.imp (fun ⟨ke, ks, hw, seqF⟩ => ⟨ke, ks, hw, fun sp_m h_ssl_m =>
             seqF sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)⟩) id)
           -- Item 173: the landing here is a `-`, which the resume face's
           -- `:`/`?` arm never reads — this park's mapping lane has no carrier.
@@ -29391,10 +29603,10 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
           (Or.inr trivial)
           -- ~~Item 197: nor a value-line-bottomed one, for both reasons at once.~~
           -- **Item 307: the stack, for the `-` arm's resume.**
-          (match h_closeFV_old with
-           | Or.inl ⟨nv, ks, _, hcov, closeFV⟩ => Or.inl ⟨nv, ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, n, hf⟩) id, fun sp_m h_ssl_m =>
-               closeFV sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)⟩
-           | Or.inr h_alt => Or.inr h_alt)
+          (h_closeFV_old.elim
+           (fun hall => Or.inl (fun nv hm => let ⟨ks, _, hcov, closeFV⟩ := hall nv hm; ⟨ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, n, hf⟩) id, fun sp_m h_ssl_m =>
+               closeFV sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)⟩))
+           (fun h_alt => Or.inr h_alt))
           -- Item 198: this park's own `h_closeFV` is a SEQUENCE face (the
           -- collection's tail), not the awaited-node face this relay carries;
           -- the `-` landing here conses onto the collection and spends it at
@@ -29522,12 +29734,17 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
             -- hands the opener the level it landed on, with the enclosing
             -- `?`'s line still owed underneath (`?⏎  ?⏎    - a⏎  ? b⏎: w`). ═══
             (by
-              rcases h_closeFV_old with ⟨nv, ks, _, hcov, closeFV⟩ | h_alt
-              · have fV := closeFV sp_mid h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)
-                by_cases hmem : FrameLevel.map k ∈ ks
-                · obtain ⟨ks', h_w, cont⟩ := fV.resumeAtMap hmem
-                  exact Or.inl ⟨nv, ks', h_w.le, cont⟩
-                · -- Item 358: under a carried cover, a sibling `?`/live-key `:` at or right of
+              rcases h_closeFV_old with hall | h_alt
+              · by_cases hmem : ∀ nv (hm : nv ∈ RegisterWitness.markedCols s') (hne : c = '?' → nv ≠ k),
+                    FrameLevel.map k ∈ (hall nv (h_markBack nv hm hne)).choose
+                · exact Or.inl (fun nv hm hne => by
+                    have fV := (hall nv (h_markBack nv hm hne)).choose_spec.2.2 sp_mid h_ssl sp_mid (SCompactSeqTail.nil n sp_mid)
+                    obtain ⟨ks', h_w, cont⟩ := fV.resumeAtMap (hmem nv hm hne)
+                    exact ⟨ks', h_w.le, cont⟩)
+                · simp only [Classical.not_forall] at hmem
+                  obtain ⟨nv, hm, hne, hmem⟩ := hmem
+                  have hcov := (hall nv (h_markBack nv hm hne)).choose_spec.2.1
+                  -- Item 358: under a carried cover, a sibling `?`/live-key `:` at or right of
                   -- the floor IS a frame — the negative arm is refuted; the rest is K1's residue.
                   rcases hcov with ⟨lo, _, hC⟩ | _
                   · by_cases h_pay : lo ≤ s_prep.col ∧ s_prep.currentIndent = (s_prep.col : Int) ∧
@@ -29545,7 +29762,7 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
             -- Item 209: the dispatch's floor, required now — item 208's `h_nic0`
             -- closes the column-0 half the `h_cov` bundle used to punt on.
             (dash_landing_floor h_noflow h_larm h_nic0 h_base h_preprocess)
-            (Or.inr trivial) h_mcstep h_mcstep_ne
+            (Or.inr trivial)
         -- Item 92: the frame's VALUE line fires on the `:` at its own column
         -- (`[190]`'s `s-indent(nv)` is exact) — the parked content closes as
         -- the compact KEY with a nil tail (`? - a⏎: - w`); any other shape
@@ -29723,10 +29940,12 @@ lemma accum_block_on_pendingBlock
     -- The DEDENT arm below is where it is spent: `nestedBlockSeq`'s `m` cannot
     -- go negative, so the landing is not this entry's node — it is the next
     -- entry of the collection this entry itself belongs to.
-    (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+    (h_seqF_old : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos,
       SBlockIndented n .blockIn sp_scan sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-      SeqEntryTail sp_start ke sp_end) ∨ True)
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- **Item 190 (LAST): the park's SECOND frame** (`pendingBlock.h_kslotUp`),
     -- `h_kslot`'s twin at the outer `?`'s column — tried at `k` after the
     -- park's own, so a park inside a single frame behaves exactly as before.
@@ -29743,7 +29962,7 @@ lemma accum_block_on_pendingBlock
     -- that opens a sibling entry in an intervening mapping can resume it and
     -- still leave the frame's line owed.  Spent at the `:`/`?` arm's `h_mapFV`,
     -- the door item 197 built and this lane could not reach.
-    (h_closeFV_old : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+    (h_closeFV_old : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →
@@ -29816,6 +30035,20 @@ lemma accum_block_on_pendingBlock
     (tab_refutes_dispatch h_noflow h_corr hsuf_mid hcol_mid hcorr_prep hws h_tab
       h_preprocess h_dispatch).elim)
   obtain ⟨k, h_ind⟩ := h_ind
+  have h_markBack : ∀ nv ∈ RegisterWitness.markedCols s', (c = '?' → nv ≠ k) →
+      nv ∈ RegisterWitness.markedCols sc := by
+    intro nv hm hne
+    by_cases hq : c = '?'
+    · have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1
+      have h2 := SIndent_col h_ind
+      have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc)
+      rw [Int.toNat_natCast] at h
+      rw [show ((s_prep.col : Nat) : Nat) = k by omega] at h
+      rcases List.mem_cons.mp (RegisterWitness.MarkedColsIn.relay h (fun x hx => hx) nv hm) with rfl | h'
+      · exact absurd rfl (hne hq)
+      · exact h'
+    · exact RegisterWitness.MarkedColsIn.relay
+        (h_mcstep_ne hq _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm
   by_cases hc : c = '-'
   · subst hc
     -- Item 22: `[72] e-node` closes the previous entry at whatever indent the
@@ -29893,8 +30126,8 @@ lemma accum_block_on_pendingBlock
                -- Item 198: the awaited entry closes EMPTY on the landing's
                -- comments and the sibling conses, as `h_kslot` does above
                -- (`?⏎  ?⏎    -⏎    - b⏎  ? c⏎: w`).
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, hcov, closeFV⟩ => Or.inl ⟨nv, ks, h_ltk,
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, hcov, closeFV⟩ := hall nv (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm); ⟨ks, h_ltk,
                     hcov.imp (fun ⟨lo, h_floor, hc⟩ => ⟨lo, h_floor,
                       IndentStackCover.scanBlockEntry_cover
                         (dispatchBlockIndicators_dash_scan h_dispatch).1
@@ -29904,8 +30137,8 @@ lemma accum_block_on_pendingBlock
                     fun sp_m h_bi sp_e h_tail =>
                       closeFV sp_mid h_node_old sp_e
                         (SCompactSeqTail.cons k sp_mid _ sp_scan' sp_m sp_e
-                          h_ind h_dash2 h_gnot2 h_bi h_tail)⟩
-                | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
+                          h_ind h_dash2 h_gnot2 h_bi h_tail)⟩))
+                (fun h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt)))
                 -- Item 208: the entry's TOP.  This park sits at `n + 1`, never at column
                 -- 0, so the walk that brought it down crossed a break and the unwind RAN
                 -- — the one arm that pays without the park saying anything.
@@ -30010,12 +30243,13 @@ lemma accum_block_on_pendingBlock
                  -- open around it.  `h_close_inner` above is this same term
                  -- with the tail already closed at `nil`, which is the fold
                  -- that reads `- - a⏎- b`'s landing as a second bare document.
-                 (Or.inl ⟨n, fun sp_final h_indented sp_end h_tail =>
-                   h_close_entry_old sp_end
+                 (Or.inl ⟨n, [], fun _ h => absurd h List.not_mem_nil,
+                   fun sp_final h_indented sp_end h_tail sp_fin h_tail2 =>
+                   ResumeFrames.bottom sp_fin (h_close_entry_old sp_end
                      (SBlockIndented.node n .blockIn sp_scan sp_end
                        (nestedBlockSeq hlt h_ssl
                          (SBlockSeqEntries_of_compactTail h_ind h_dash2 h_gnot2
-                           h_indented h_tail)))⟩)
+                           h_indented h_tail))) sp_fin h_tail2)⟩)
                  -- Item 190: and the second frame, folded at the same nil.
                  (match h_kslotUp with
                   | Or.inl ⟨ns, hdom, kslot⟩ => Or.inl ⟨ns, h_mcstep_ne (by decide) _ hdom,
@@ -30035,8 +30269,8 @@ lemma accum_block_on_pendingBlock
                  -- open.**  Closing it `nil` here is what lost the dedent (`?⏎-⏎  - a⏎- b⏎: w`):
                  -- the `-` that lands back at `n` conses onto THIS level's tail, and
                  -- `KeyFrames.resumeAt` finds it only if the stack names it. ═══
-                 (match h_closeFV_old with
-                  | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks,
+                 (h_closeFV_old.elim
+                  (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm); ⟨FrameLevel.seq n :: ks,
                       fun k' hk' => by
                         rcases List.mem_cons.mp hk' with rfl | h'
                         · exact Nat.le_of_lt hlt
@@ -30050,8 +30284,8 @@ lemma accum_block_on_pendingBlock
                               (nestedBlockSeq hlt h_ssl
                                 (SBlockSeqEntries_of_compactTail h_ind h_dash2 h_gnot2
                                   h_bi h_tail)))
-                            sp_end h_tail')⟩
-                  | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
+                            sp_end h_tail')⟩))
+                  (fun h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt)))
                   -- Item 208: the same, across the sibling's step.
                   (indicator_top_dash hcol_mid h_ind hcorr_prep
                     (landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess)
@@ -30075,13 +30309,13 @@ lemma accum_block_on_pendingBlock
           -- (`?⏎-⏎  -⏎: w`).  Item 301 read this root as "the pack available upstream,
           -- not threaded"; threaded now, and the stack itself rides as `h_mapFV`
           -- below for the `-` arm's resume. ═══
-          (match h_closeFV_old with
-           | Or.inl ⟨nv, _, _, _, closeFV⟩ => Or.inl ⟨[nv],
+          (h_closeFV_old.elim
+           (fun hall => Or.inl ⟨RegisterWitness.markedCols sc,
                fun nv' hmem sp_m sp_i sp_c h_ssl_m h_iv h_lit sp_v h_sbi => by
-                 obtain rfl := List.mem_singleton.mp hmem
+                 obtain ⟨_, _, _, closeFV⟩ := hall nv' hmem
                  exact (closeFV sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl_m)
-                   sp_m (SCompactSeqTail.nil n sp_m)).close sp_i sp_c h_iv h_lit sp_v h_sbi⟩
-           | Or.inr h_alt => Or.inr h_alt)
+                   sp_m (SCompactSeqTail.nil n sp_m)).close sp_i sp_c h_iv h_lit sp_v h_sbi⟩)
+           (fun h_alt => Or.inr h_alt))
           (Or.inr (fun h_res _ => (sslComments_refutes_inline_residue h_ssl (Or.inl rfl) h_res).elim)) hcorr_prep hcorr_result
           h_corr h_noflow (Or.inr (by omega)) h_preprocess h_dispatch (Or.inr trivial)
           (Or.inr trivial) h_bare h_dn h_fv h_base h_mono (Or.inr trivial) (Or.inr trivial)
@@ -30090,7 +30324,7 @@ lemma accum_block_on_pendingBlock
           -- collection this park stands INSIDE is still open underneath it — so
           -- a `-` back at that width is its next entry (`-⏎  -⏎- b`), which is
           -- the frame the note above says the pending does not carry.
-          (h_seqF_old.imp (fun ⟨ke, seqF⟩ => ⟨ke, fun sp_m h_ssl_m =>
+          (h_seqF_old.imp (fun ⟨ke, ks, hw, seqF⟩ => ⟨ke, ks, hw, fun sp_m h_ssl_m =>
             seqF sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl_m)
               sp_m (SCompactSeqTail.nil n sp_m)⟩) id)
           -- Item 173: a `-` landing again — the mapping resume has no reader
@@ -30101,19 +30335,19 @@ lemma accum_block_on_pendingBlock
           -- ~~Item 197: and the value-line-bottomed resume, for the same reason.~~
           -- **Item 307: the stack, for the `-` arm's resume** — the empty entry and
           -- the ended sequence, exactly as the pack above.
-          (match h_closeFV_old with
-           | Or.inl ⟨nv, ks, _, hcov, closeFV⟩ => Or.inl ⟨nv, ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, n, hf⟩) id, fun sp_m h_ssl_m =>
+          (h_closeFV_old.elim
+           (fun hall => Or.inl (fun nv hm => let ⟨ks, _, hcov, closeFV⟩ := hall nv hm; ⟨ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, n, hf⟩) id, fun sp_m h_ssl_m =>
                closeFV sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl_m)
-                 sp_m (SCompactSeqTail.nil n sp_m)⟩
-           | Or.inr h_alt => Or.inr h_alt)
+                 sp_m (SCompactSeqTail.nil n sp_m)⟩))
+           (fun h_alt => Or.inr h_alt))
           -- Item 344: the awaited-node face relays `h_closeFV_old` (node-domained here), `nn = n`.
-          (match h_closeFV_old with
-           | Or.inl ⟨nv, ks, h_lt, _, closeFV⟩ => Or.inl ⟨n, nv, ks,
+          (h_closeFV_old.imp
+           (fun hall => ⟨n, fun nv hm => let ⟨ks, h_lt, _, closeFV⟩ := hall nv hm; ⟨ks,
                h_lt,
                fun sp_mid h_node => closeFV sp_mid
                  (SBlockIndented.node n .blockIn sp_scan sp_mid h_node)
-                 sp_mid (SCompactSeqTail.nil n sp_mid)⟩
-           | Or.inr _ => Or.inr trivial)
+                 sp_mid (SCompactSeqTail.nil n sp_mid)⟩⟩)
+           (fun _ => trivial))
           -- Item 208: this park sits at `n + 1`, so the premise is refuted.
           (nic0_of_col_pos (by omega))
           (GStar.nil _) (fun _ _ => (h_next (sc_noflow_of_prep h_preprocess h_noflow)).gate) h_mcstep
@@ -30267,14 +30501,17 @@ lemma accum_block_on_pendingBlock
           -- entry closing EMPTY on the landing's comments where the content
           -- park next door closes on its own node (`?⏎  ?⏎    -⏎  ? b⏎: w`).
           (by
-            rcases h_closeFV_old with ⟨nv, ks, _, hcov, closeFV⟩ | h_alt
-            · have fV := closeFV sp_mid
-                (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl)
-                sp_mid (SCompactSeqTail.nil n sp_mid)
-              by_cases hmem : FrameLevel.map k ∈ ks
-              · obtain ⟨ks', h_w, cont⟩ := fV.resumeAtMap hmem
-                exact Or.inl ⟨nv, ks', h_w.le, cont⟩
-              · -- Item 358: under a carried cover, a sibling `?`/live-key `:` at or right of
+            rcases h_closeFV_old with hall | h_alt
+            · by_cases hmem : ∀ nv (hm : nv ∈ RegisterWitness.markedCols s') (hne : c = '?' → nv ≠ k),
+                  FrameLevel.map k ∈ (hall nv (h_markBack nv hm hne)).choose
+              · exact Or.inl (fun nv hm hne => by
+                  have fV := (hall nv (h_markBack nv hm hne)).choose_spec.2.2 sp_mid (SBlockIndented.empty n .blockIn sp_scan sp_mid h_ssl) sp_mid (SCompactSeqTail.nil n sp_mid)
+                  obtain ⟨ks', h_w, cont⟩ := fV.resumeAtMap (hmem nv hm hne)
+                  exact ⟨ks', h_w.le, cont⟩)
+              · simp only [Classical.not_forall] at hmem
+                obtain ⟨nv, hm, hne, hmem⟩ := hmem
+                have hcov := (hall nv (h_markBack nv hm hne)).choose_spec.2.1
+                -- Item 358: under a carried cover, a sibling `?`/live-key `:` at or right of
                 -- the floor IS a frame — the negative arm is refuted; the rest is K1's residue.
                 rcases hcov with ⟨lo, _, hC⟩ | _
                 · by_cases h_pay : lo ≤ s_prep.col ∧ s_prep.currentIndent = (s_prep.col : Int) ∧
@@ -30295,17 +30532,38 @@ lemma accum_block_on_pendingBlock
           (if hnk : n + 1 ≤ k then
             match h_kslot, h_kslotUp with
             | Or.inl kslot, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
-                Or.inl ⟨RegisterWitness.markedCols sc ++ nsU, (RegisterWitness.MarkedColsIn.self sc).union_left,
+                Or.inl ⟨RegisterWitness.markedCols sc ++ nsU, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep (RegisterWitness.markedCols sc ++ nsU) ((RegisterWitness.MarkedColsIn.self sc).union_left); rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne (RegisterWitness.markedCols sc ++ nsU) ((RegisterWitness.MarkedColsIn.self sc).union_left)),
                   entryChainMap hnk h_ssl h_ind (fun x hx => (List.mem_append.mp hx).elim (kslot x) (kslotU x))⟩
             | Or.inr _, Or.inl ⟨nsU, hdomU, kslotU⟩ =>
-                Or.inl ⟨nsU, hdomU, entryChainMap hnk h_ssl h_ind kslotU⟩
+                Or.inl ⟨nsU, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ hdomU; rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ hdomU), entryChainMap hnk h_ssl h_ind kslotU⟩
             -- Item 418: the park's own domained line alone covers (`markedCols sc` is its
             -- own cover); both declined, the own line's alternative is carried.
             | Or.inl kslot, Or.inr _ =>
-                Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,
+                Or.inl ⟨RegisterWitness.markedCols sc, (by have h1 := (RegisterWitness.AtCol.of_corr hcorr_prep).1; have h2 := SIndent_col h_ind; have h := h_mcstep _ (RegisterWitness.MarkedColsIn.self sc); rw [Int.toNat_natCast] at h; rwa [show ((s_prep.col : Nat) : Nat) = k by omega] at h), (fun hne => h_mcstep_ne hne _ (RegisterWitness.MarkedColsIn.self sc)),
                   entryChainMap hnk h_ssl h_ind kslot⟩
             | Or.inr h_alt, Or.inr _ => Or.inr h_alt
-          else Or.inr trivial) h_mcstep h_mcstep_ne
+          else if hnil : RegisterWitness.markedCols s' = [] then
+            -- Item 498: no mark survives the landing — the chain's domain on `s'` is empty and the
+            -- `else` pays with the empty list; a surviving ancestor's chain is item (2)'s premise.
+            Or.inl ⟨[], (RegisterWitness.MarkedColsIn.of_markedCols_nil hnil).mono (fun _ h => absurd h List.not_mem_nil),
+              fun _ => RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+          else if hallq : c = '?' ∧ ∀ m ∈ RegisterWitness.markedCols s', k ≤ m then
+            -- Item 498: no mark survives BELOW the landing; the landing lemma bounds every mark of `s'`
+            -- by `k` from above, so the only survivor is the `?`'s own mark and the chain's domain is empty.
+            have h_mono' : IndentStackMono.Mono s' :=
+              IndentStackMono.dispatchBlockIndicators_mono h_dispatch
+                ((IndentStackMono.preprocess_mono h_preprocess h_mono).of_indents_eq (by split <;> rfl))
+                ((IndentStackBase.preprocess_base h_preprocess h_base).of_indents_eq (by split <;> rfl))
+            have h_top' : s'.currentIndent ≤ (k : Int) :=
+              indicator_top_kv_at_col hcv (by have := SIndent_col h_ind; rw [hcol_mid] at this; omega) hcorr_prep
+                (preprocess_saved_key_col h_sk h_noflow h_preprocess).2 (noflow_disp_of_noflow h_noflow)
+                (landing_floor_of_arm h_noflow h_larm (by omega) h_base h_preprocess) h_dispatch
+            have h_eq : ∀ m ∈ RegisterWitness.markedCols s', m = k := fun m hm =>
+              Nat.le_antisymm (markedCols_le_of_top h_mono' h_top' m hm) (hallq.2 m hm)
+            Or.inl ⟨[], fun i l c' hi hc => List.mem_singleton.mpr
+                (h_eq _ (RegisterWitness.markedCols_mem.mpr ⟨i, l, c', hi, hc, rfl⟩)),
+              fun hne => absurd hallq.1 hne, fun _ h => absurd h List.not_mem_nil⟩
+          else Or.inr trivial)
       -- Item 92: the frame's VALUE line fires on the `:` at its own column —
       -- the awaited entry closes empty into the compact KEY (`? -⏎: - w`);
       -- any other shape falls back to the generic close-and-reopen.
@@ -30531,8 +30789,8 @@ lemma accum_block_on_pendingBlock
                -- payment spendable, the empty list being unspendable at
                -- `resumeAt`'s membership gate (item 155). ═══
                -- Item 305: the outer entry's level PUSHED, as at the landed nested arm.
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks,
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) (fun _ h => h) nv hm); ⟨FrameLevel.seq n :: ks,
                     fun k' hk' => by
                       rcases List.mem_cons.mp hk' with rfl | h'
                       · dsimp only; omega
@@ -30545,8 +30803,8 @@ lemma accum_block_on_pendingBlock
                           (SBlockIndented.compactSeq n .blockIn m sp_mid sp_sc sp_e h_ind
                             (SCompactSeq.mk (n + 1 + m) sp_sc sp_scan' sp_m sp_e
                               h_dash2 h_gnot2 h_bi h_tail))
-                          sp_end h_tail')⟩
-                | Or.inr h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt))
+                          sp_end h_tail')⟩))
+                (fun h_alt => Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch h_alt)))
                 -- **Item 208: the INLINE arm's top, from the park's OWN.**  No break was
                 -- crossed, so preprocessing wrote no indents and the stack the `-` pushes
                 -- onto is this park's; the whites in front of the indicator only move the
@@ -30766,7 +31024,7 @@ lemma accum_block_pending (sc : ScannerState)
       h_ntop208 h_base
       -- Item 256: and its shape, which with the empty stack pays the root's
       -- resume frames at floor 0.
-      h_mono (fun hnf hcol => absurd (h_col.resolve_right (by simp [hnf])) hcol) h_mcstep h_mcstep_ne
+      h_mono (fun hnf hcol => absurd (h_col.resolve_right (by simp [hnf])) hcol)
   | pendingDocEnd _ _ _ h_line h_marker h_arm77 h_nic0E _ h_noekE h_nextE =>
     -- Item 36: `[204] l-document-suffix` ends the marker with `s-l-comments`,
     -- so a `-`/`?`/`:` on the marker's own line is a state the scanner refuses
@@ -30847,7 +31105,7 @@ lemma accum_block_pending (sc : ScannerState)
       -- **Item 197: and the VALUE-LINE face beside it** — `h_framesV`, paid on
       -- this park since item 108 and read by nothing until now.  This is the
       -- payer the residue item 194 named was waiting on.
-      (h_framesV108.imp (fun ⟨nv, ks, _, fV⟩ => ⟨nv, ks, fV⟩) id)
+      (h_framesV108.imp (fun hall nv hm => let ⟨ks, _, fV⟩ := hall nv hm; ⟨ks, fV⟩) id)
       -- Item 208: the park's own indent check (item 154's field, item 207's
       -- unconditional reading), for the closed-park landing below.
       h_nic0C h_live290 h_mcstep h_mcstep_ne h_cf h_lkt
@@ -30903,11 +31161,9 @@ lemma accum_block_pending (sc : ScannerState)
           h_pr175
           -- Item 197: no value-line-bottomed one either, for item 173's reason.
           -- Item 198: and a `[96]` park awaits no node.
-          (match h_closeFV_p with
-           | Or.inl ⟨nv, ks, hcov, closeFV⟩ => Or.inl ⟨nv, ks, hcov, fun sp_m h_ssl =>
+          (h_closeFV_p.imp (fun hall nv hm => let ⟨ks, hcov, closeFV⟩ := hall nv hm; ⟨ks, hcov, fun sp_m h_ssl =>
                closeFV sp_m (flowInBlock_blockNode h_sep_p
-                 (SFlowNode.propsEmpty _ .flowOut sp_p sp_scan h_run.toProperties) h_ssl)⟩
-           | Or.inr h_alt => Or.inr h_alt)
+                 (SFlowNode.propsEmpty _ .flowOut sp_p sp_scan h_run.toProperties) h_ssl)⟩) id)
           (Or.inr trivial)
           -- Item 208: refuted from the park's own column, as above.
           (nic0_of_col_pos h_col0_p) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate) h_mcstep)
@@ -30938,11 +31194,9 @@ lemma accum_block_pending (sc : ScannerState)
         h_pr175
         -- Item 197: no value-line-bottomed frames at a `[96]` park either.
         -- Item 198: and no awaited node.
-        (match h_closeFV_p with
-         | Or.inl ⟨nv, ks, hcov, closeFV⟩ => Or.inl ⟨nv, ks, hcov, fun sp_m h_ssl =>
+        (h_closeFV_p.imp (fun hall nv hm => let ⟨ks, hcov, closeFV⟩ := hall nv hm; ⟨ks, hcov, fun sp_m h_ssl =>
              closeFV sp_m (flowInBlock_blockNode h_sep_p
-               (SFlowNode.propsEmpty _ .flowOut sp_p sp_scan h_run.toProperties) h_ssl)⟩
-         | Or.inr h_alt => Or.inr h_alt)
+               (SFlowNode.propsEmpty _ .flowOut sp_p sp_scan h_run.toProperties) h_ssl)⟩) id)
         (Or.inr trivial)
         -- Item 208: a property run holds a column, so the premise is refuted.
         (nic0_of_col_pos h_col0_p) (GStar.nil _) (fun _ _ => (h_nextP (sc_noflow_of_prep h_preprocess h_noflow)).gate) h_mcstep
@@ -31018,14 +31272,14 @@ lemma accum_block_pending (sc : ScannerState)
         -- comments, the still-open levels resume, and what stands underneath
         -- them is the enclosing `?` frame's unpaid `:` line rather than the
         -- finished stream.
-        (h_framesV108.imp (fun ⟨nv, ks, hcov, fV⟩ => ⟨nv, ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, _, hf⟩) id, fV⟩) id)
+        (h_framesV108.imp (fun hall nv hm => let ⟨ks, hcov, fV⟩ := hall nv hm; ⟨ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, _, hf⟩) id, fV⟩) id)
         -- ═══ **Item 198: and the CLOSE face beside `h_closeF155`.**  Item 155
         -- handed this lemma the awaited node read as frames and took the
         -- stream-bottomed field; the value-line-bottomed one has stood in this
         -- very pattern since item 108, bound to `_` at this very door.  Both
         -- faces now cross together, and the `-` arm builds the new park's two
         -- stacks from one step. ═══
-        (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
+        (h_closeFV108.imp (fun hall => ⟨nmv, fun nv hm => let ⟨ks, h_le, _, fV⟩ := hall nv hm; ⟨ks, h_le, fV⟩⟩) id)
         -- Item 208: refuted from the park's own column, as above.
         (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate) h_mcstep
     · exact accum_block_on_closeThenBlock (h_sound := h_sound) (h_mcstep_ne := h_mcstep_ne) sc sp_start sp_scan s_prep s' c sp_prep sp_scan'
@@ -31101,11 +31355,21 @@ lemma accum_block_pending (sc : ScannerState)
              -- `explicitEmpty`, the `e-node` value the inner frame never got —
              -- and the outer `:` line follows (`?⏎  ? -⏎: w`). ═══
              (match h_explUp190 with
-              | Or.inl ⟨sp_q, nsU, h_qlit, hdom, up⟩ => Or.inl ⟨nsU, hdom,
-                  fun nvU hmem sp_m h_bo sp_i sp_c h_iv h_lit sp_v h_sbi =>
-                    up nvU hmem sp_m
-                      (SBlockMapEntry.explicitEmpty nmv sp_q sp_scan sp_m h_qlit h_bo)
-                      sp_i sp_c h_iv h_lit sp_v h_sbi⟩
+              -- Item 521: EVERY mark — the `?`'s own (its entry route, `h_expl`) and the ancestors
+              -- (`h_explUp`'s cover `nmv :: nsU` holds every mark; one not the own is in `nsU`).
+              | Or.inl ⟨sp_q, nsU, h_qlit, hdom, up⟩ =>
+                  (match h_expl51 with
+                   | Or.inl ⟨sp_q', h_qlit', route, _⟩ => Or.inl
+                      fun nvU hmem sp_m h_bo sp_i sp_c h_iv h_lit sp_v h_sbi => by
+                        by_cases hEq : nvU = nmv
+                        · subst hEq
+                          exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q' sp_scan sp_m sp_i sp_c sp_v
+                            h_qlit' h_bo h_iv h_lit h_sbi))
+                        · exact up nvU ((List.mem_cons.1 (hdom.mem hmem)).resolve_left hEq) sp_m
+                            (SBlockMapEntry.explicitEmpty nmv sp_q sp_scan sp_m h_qlit h_bo)
+                            sp_i sp_c h_iv h_lit sp_v h_sbi
+                   -- a chain with no own `?` route: the own mark has no line to pay — DECLINED, named.
+                   | Or.inr _ => Or.inr trivial)
               -- Item 405: a park with no `?` chain (the `NotQuestionPark` fallback,
               -- item 404's third STARVED birth) names no domain — DECLINED (ruling (a)).
               | Or.inr _ => Or.inr trivial)⟩
@@ -31124,9 +31388,9 @@ lemma accum_block_pending (sc : ScannerState)
         -- Item 175: the explicit twin holds no property run either.
         (Or.inr trivial)
         -- Item 197: and the same value-line-bottomed face, likewise.
-        (h_framesV108.imp (fun ⟨nv, ks, hcov, fV⟩ => ⟨nv, ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, _, hf⟩) id, fV⟩) id)
+        (h_framesV108.imp (fun hall nv hm => let ⟨ks, hcov, fV⟩ := hall nv hm; ⟨ks, hcov.imp (fun ⟨lo, hf⟩ => ⟨lo, _, hf⟩) id, fV⟩) id)
         -- Item 198: the explicit twin pays the close face too.
-        (h_closeFV108.imp (fun ⟨nv, ks, h_le, _, fV⟩ => ⟨nmv, nv, ks, h_le, fV⟩) id)
+        (h_closeFV108.imp (fun hall => ⟨nmv, fun nv hm => let ⟨ks, h_le, _, fV⟩ := hall nv hm; ⟨ks, h_le, fV⟩⟩) id)
         -- Item 208: a value park is never at column 0, so the premise is refuted.
         (nic0_of_col_pos h_col0_mv) (GStar.nil _) (fun _ _ => (h_nextM (sc_noflow_of_prep h_preprocess h_noflow)).gate) h_mcstep
   | pendingBlockContent _ _ _ _ n_old h_line h_closableBC h_entry_old h_key_old h_stale47 h_arm77 h_kslot92 h_closeF99 _ h_tail139 h_seqF167 h_kslotUp190 h_closeFV198 h_nic0B h_runBC h_gateBC h_live290 =>
@@ -31144,7 +31408,7 @@ lemma accum_block_pending (sc : ScannerState)
       h_closeF99
       -- Item 198: and the same stack at the VALUE-LINE bottom, which the
       -- opener's arm has been waiting for since item 197.
-      (h_closeFV198.imp (fun ⟨nv, ks, hw, hcov, fV⟩ => ⟨nv, ks, hw, hcov, fV⟩) id)
+      (h_closeFV198.imp (fun hall nv hm => let ⟨ks, hw, hcov, fV⟩ := hall nv hm; ⟨ks, hw, hcov, fV⟩) id)
       -- Item 208: the park's own indent check, read at the block landing.
       h_nic0B h_live290 h_runBC h_gateBC h_mcstep h_mcstep_ne h_cf h_lkt
   | pendingBlock _ _ _ n_old _h_close h_close_entry_old h_floor208 h_sk_old h_col_old h_kslot92
@@ -31156,7 +31420,7 @@ lemma accum_block_pending (sc : ScannerState)
       -- Item 190: the park's second frame, relayed as its first is.
       h_kslotUp190
       -- Item 198: and the park's value-line-bottomed stack.
-      (h_closeFV198.imp (fun ⟨nv, ks, hw, hcov, fV⟩ => ⟨nv, ks, hw, hcov, fV⟩) id)
+      (h_closeFV198.imp (fun hall nv hm => let ⟨ks, hw, hcov, fV⟩ := hall nv hm; ⟨ks, hw, hcov, fV⟩) id)
 
       -- Item 208: and the park's own TOP, which the INLINE arm spends.
       h_top208
@@ -31213,7 +31477,8 @@ lemma accum_step_block (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+      (1 ≤ sc.flowLevel → KeyArm sc s' c sp_block sp_flow sp_scan sp_block' sp_flow') := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
   obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
@@ -31242,7 +31507,7 @@ lemma accum_step_block (sc : ScannerState)
         h_kbc h_scf (h_pending h0) h_corr h_noflow h_preprocess h_dispatch h_bare h_dn h_fv h_base
         h_mono h_sound h_cf h_lkt
     exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
-           fun h => absurd h (by omega)⟩
+           fun h => absurd h (by omega), fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: three arms — one free, one BUILT here, one NOT. ═══
     --
     -- The preamble is `accum_step_flow`'s, minus the `checkFlowAdjacency` peel
@@ -31398,13 +31663,13 @@ lemma accum_step_block (sc : ScannerState)
           -- does neither, because a property opens no entry, so item 9g's guard
           -- has already rejected `[&a ? b]`. That is why this arm does not want
           -- `accum_step_flow`'s shared five-arm gap resolution.
-          have h_frame : tl = .sep ∧ ∀ m : Nat,
+          have h_frame : tl = .sep ∧ trailingPropertyRun sc.tokens = [] ∧ ∀ m : Nat,
               (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨
                 ¬ (m ≤ minContentIndentOf sc) := by
             cases h_gap with
             | white h_ws h_sync _ _ h_gate_w _ =>
               have h_lead_at := h_lead_from h_ws h_gate_w
-              refine ⟨?_, fun m => (h_lead_at m).imp
+              refine ⟨?_, trailingPropertyRun_eq_nil_of_sync h_sync, fun m => (h_lead_at m).imp
                 (fun h => h.imp id (fun h2 => h2.1.trans h2.2.symm)) id⟩
               have h_ad_sync : frameTokenVal? s_ad.tokens = lastRealTokenVal? s_ad.tokens := by
                 rw [← h_ad_def, allowDirectives_update_tokens]
@@ -31425,7 +31690,7 @@ lemma accum_step_block (sc : ScannerState)
               cases hlast'
               rw [opensFlowEntry_false_of_isNodeProperty hprop] at hopen
               exact absurd hopen (by simp)
-          obtain ⟨htl_sep, h_lead⟩ := h_frame
+          obtain ⟨htl_sep, h_nil, h_lead⟩ := h_frame
           subst hc
           obtain ⟨sp_tok, h_q_lit, hcorr_tok⟩ :=
             scanKey_prod s_ad sp_prep hcorr_ad
@@ -31471,7 +31736,9 @@ lemma accum_step_block (sc : ScannerState)
             nofun, hcorr_tok,
             fun _ => ⟨.white (GStar.nil _) (sync_scanKey h_ad_inflow hk) nofun (by have := glit_col h_q_lit; omega) (fun _ => park_gate_of_peekBack (scanKey_peekBack hcorr_ad (hpeek_ad.trans (preprocess_some_peek h_preprocess)) hk) (by decide)) (fun _ ch hpk hnb => absurd (scanKey_follower_blank h_ad_inflow hfoll (hpeek_ad.trans (preprocess_some_peek h_preprocess)) hk ch hpk) (by intro h; simp [h] at hnb)) (fun _ => jsonKeyOfLast_scanKey_pred hpos h_ad_inflow h_real_sc h_preprocess h_ad_def hpred hk),
               (tailOf_scanKey h_ad_inflow hk).2,
-              (scanKey_inFlow_allowDirectives h_ad_inflow hk).trans h_ad_false⟩⟩
+              (scanKey_inFlow_allowDirectives h_ad_inflow hk).trans h_ad_false⟩,
+            fun _ => KeyArm.question sp_prep sp_tok rfl (htl.trans htl_sep) h_nil h_lead h_q_lit
+              (h_fl'.trans hd.symm) (h_ks'.trans hks.symm) (tailOf_scanKey h_ad_inflow hk).1⟩
       · split at h_dispatch
         · -- ═══ `:` — the flow-map/flow-pair value transition. NOT scanner-clean. ═══
           split at h_dispatch
@@ -31585,32 +31852,8 @@ lemma accum_step_block (sc : ScannerState)
               have h2 := (scanValueClearKey_fields s_ad).2.2.2.2.2.2.2.1
               rw [h2] at h1
               omega
-            have h_km_v : KmSound s_v km kc := by
-              refine KmSound.colon_transport h_km
-                (ScannerCorrectness.scanValue_inFlow_implicitValueLine h_ad_inflow hsv |>.trans
-                  (ad_implicitValueLine h_preprocess h_ad_def))
-                ((ScannerCorrectness.scanValue_preserves_docStartLine hsv).trans
-                  (ad_docStartLine h_preprocess h_ad_def))
-                ?_ ?_ h_size_v h_facts.2.2.2.1 ?_
-              · rw [h_facts.2.2.2.2.1, h_ad_sks_eq, h_psks]
-              · have h_off_v := h_facts.2.2.2.2.2.2.1
-                omega
-              · intro j hj h_guard
-                have h1 := h_ppref j hj
-                rw [← h_ad_tk_eq] at h1
-                rw [scanValue_prefix_off_targets h_ad_inflow hsv j (by omega) ?_]
-                · exact h1
-                · intro h_poss_ad
-                  rcases preprocess_pending_cases (by omega) h_preprocess with
-                    h_eq5 | ⟨h_p5, h_ti5⟩
-                  · have h_keq : s_ad.simpleKey = sc.simpleKey := h_ad_sk_eq.trans h_eq5
-                    rw [h_keq]
-                    rcases h_guard (by rw [← h_keq]; exact h_poss_ad) with h_g | h_g
-                    · exact ⟨by omega, by omega⟩
-                    · exact ⟨by omega, by omega⟩
-                  · have h_tif : s_ad.simpleKey.tokenIndex = sc.tokens.size := by
-                      rw [h_ad_sk_eq, h_ti5]
-                    exact ⟨by omega, by omega⟩
+            have h_km_v : KmSound s_v km kc :=
+              scanValue_km_transport (by omega) h_ad_inflow h_km h_preprocess h_ad_def hsv
             -- **Item 164: the anchor across the `:` itself** — item 162's
             -- fifth shape, and the one arm item 163 measured as blocked.  The
             -- resolution write lands at the pending reservation's second slot;
@@ -31678,9 +31921,19 @@ lemma accum_step_block (sc : ScannerState)
                     exact jsonKeyOfLast_of_tail_value h_real_sc h_sync_w (htl.trans h_tl_case)
                   | props _ _ _ h_tail_p => exact absurd h_tl_case (h_tail_p _)
                 rw [h_kj] at h_bundle ⊢
+                have h_gapw : trailingPropertyRun sc.tokens = [] ∧ ∀ m,
+                    (SSeparateLines m sp_flow sp_prep ∨ sp_prep = sp_flow) ∨ ¬ (m ≤ minContentIndentOf sc) := by
+                  cases h_gap with
+                  | white h_ws h_sync_w _ _ h_gate_w _ =>
+                    exact ⟨trailingPropertyRun_eq_nil_of_sync h_sync_w,
+                      fun m => (h_lead_from h_ws h_gate_w m).imp (fun h => h.imp id (fun h => h.1.trans h.2.symm)) id⟩
+                  | props _ _ _ h_tail_p _ _ _ _ _ => exact absurd h_tl_case (h_tail_p _)
+                have h_layout_v : ¬ KeyAfterValueLayout sc := fun h_l =>
+                  no_colon_dispatch_of_layout (by omega) h_l h_preprocess h_ad_sk_eq h_ad_tk_eq h_ad_off_eq h_ad_fl_eq hsv
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_cl, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK', fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonValue kj sp_prep sp_tok rfl (htl.trans h_tl_case) h_gapw.1 h_gapw.2 h_colon_lit h_layout_v (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
             | colon kj =>
               -- the `.colon` cells are scan-refuted, white and props alike
               cases h_gap with
@@ -31715,8 +31968,9 @@ lemma accum_step_block (sc : ScannerState)
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
-              | props ha ht sp_p h_tail_p h_lead_p h_run_p _ _ h_colon_p h_gate_p =>
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonSep sp_prep sp_tok rfl (htl.trans h_tl_case) (trailingPropertyRun_eq_nil_of_sync h_sync_w) (fun m => (h_lead_at m).imp (fun h => h.imp id (fun h => h.1.trans h.2.symm)) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
+              | props ha ht sp_p h_tail_p h_lead_p h_run_p h_anchor_p h_tag_p h_colon_p h_gate_p =>
                 have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
                 have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km (.colon false) sp_block sp_tok := by
                   -- Item 86: the gap's slots read at the stack's index, and
@@ -31730,10 +31984,16 @@ lemma accum_step_block (sc : ScannerState)
                         · exact absurd h_floorK h_nofloor
                       · exact absurd h_floorK h_nofloor
                     · exact absurd h_floorK h_nofloor
+                have h_held : trailingPropertyRun sc.tokens ≠ [] := by
+                  intro hnil
+                  rcases ((h_run_p 0).resolve_right (fun h => h (Nat.zero_le _))).some_half with h | h
+                  · have := h_anchor_p h; rw [hnil] at this; simp at this
+                  · have := h_tag_p h; rw [hnil] at this; simp at this
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonPropsSep ha ht sp_p sp_prep sp_tok rfl (htl.trans h_tl_case) h_held (by rw [htl]; exact h_lead_p) h_run_p (fun m => (h_lead_at m).imp (fun h => h.imp id And.left) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
             | question =>
               have h_kj : jsonKeyBefore s_v.tokens = false := by
                 rw [h_kj_read]
@@ -31758,8 +32018,15 @@ lemma accum_step_block (sc : ScannerState)
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
-              | props ha ht sp_p h_tail_p h_lead_p h_run_p _ _ h_colon_p h_gate_p =>
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonQuestion sp_prep sp_tok rfl (htl.trans h_tl_case) (trailingPropertyRun_eq_nil_of_sync h_sync_w)
+                    (fun m => (h_lead_at m).imp (fun h => h.elim id (fun h => by
+                      have hcf := (h_free_w h.2 ':' (peek_eq_of_corr_same h_corr
+                        (by rw [← h.1]; exact hcorr_prep) (preprocess_some_peek h_preprocess))
+                        (by decide)).1
+                      rw [h_tl_case] at hcf
+                      exact absurd hcf Bool.false_ne_true)) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
+              | props ha ht sp_p h_tail_p h_lead_p h_run_p h_anchor_p h_tag_p h_colon_p h_gate_p =>
                 have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
                 have h_stk : FlowStackB sp_start nn kc gt s0 (d + 1) ks km (.colon false) sp_block sp_tok := by
                   -- Item 86: the gap's slots read at the stack's index, and
@@ -31773,10 +32040,16 @@ lemma accum_step_block (sc : ScannerState)
                         · exact absurd h_floorK h_nofloor
                       · exact absurd h_floorK h_nofloor
                     · exact absurd h_floorK h_nofloor
+                have h_held : trailingPropertyRun sc.tokens ≠ [] := by
+                  intro hnil
+                  rcases ((h_run_p 0).resolve_right (fun h => h (Nat.zero_le _))).some_half with h | h
+                  · have := h_anchor_p h; rw [hnil] at this; simp at this
+                  · have := h_tag_p h; rw [hnil] at this; simp at this
                 exact ⟨sp_gram, sp_block, sp_tok, sp_tok, h_stream, h_stack,
                   ⟨nn, kc, km, gt, s0, h_stk, h_ksz', (fun _ => (L4YAML.Proofs.FlowIndentStable.scanValue_indents_of_inFlow h_ad_inflow hsv).trans (h_ind_ad.trans h_ind_park)), (fun _ => (L4YAML.Proofs.PendingKeysStable.scanValue_pendingKeys_of_inFlow h_ad_inflow hsv).trans (h_pk_ad.trans h_pk_park)), h_floorK',
                    fun _ => ⟨h_km_v, h_panch_v, fun _ hv => absurd hv (by simp), h_resv_v⟩⟩,
-                  nofun, hcorr_tok, h_bundle⟩
+                  nofun, hcorr_tok, h_bundle,
+                  fun _ => KeyArm.colonPropsQuestion ha ht sp_p sp_prep sp_tok rfl (htl.trans h_tl_case) h_held (by rw [htl]; exact h_lead_p) h_run_p (fun m => (h_lead_at m).imp (fun h => h.imp id And.left) id) h_colon_lit (h_fl_v.trans hd.symm) (h_ks_v.trans hks.symm) (h_tails.1.trans (congrArg _ h_kj))⟩
         · -- fallthrough: dispatch returns `.ok none`, not `.ok (some s')`.
           simp at h_dispatch
 
@@ -33734,7 +34007,7 @@ def ResumeKeyCtx (s_prep : ScannerState) (sp_start sp_prep : SurfPos) : Prop :=
         IndentStackCover.Covered lo (FrameLevel.map k :: ks) s_prep) ∨ True) ∧
       (∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
         ResumeFrames (SLYamlStream sp_start) ks sp_end) ∧
-      ((∃ (nv : Nat) (ksv : List FrameLevel), (∀ fr ∈ ksv, fr.width ≤ k) ∧
+      ((∀ nv ∈ RegisterWitness.markedCols s_prep, ∃ (ksv : List FrameLevel), (∀ fr ∈ ksv, fr.width ≤ k) ∧
         ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ksv) ∧
           IndentStackCover.Covered lo (FrameLevel.map k :: ksv) s_prep) ∨ True) ∧
         ∀ sp_end : SurfPos, SCompactMapTail k sp_land sp_end →
@@ -33806,7 +34079,7 @@ lemma resumectx_of_landing {sc s_prep : ScannerState} {c : Char}
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
         ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
-    (h_fV : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_fV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
         ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
           IndentStackCover.Covered lo ks sc) ∨ True) ∧
         ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
@@ -33856,16 +34129,26 @@ lemma resumectx_of_landing {sc s_prep : ScannerState} {c : Char}
             h_sk.1, h_sk.2⟩)
           -- The value face is optional all the way down: the park may carry no
           -- explicit frame, or carry one whose stack this width misses.
-          · match h_fV with
-            | Or.inl ⟨nv, ksv, h_cvV, fV⟩ =>
-              by_cases hmemV : FrameLevel.map k ∈ ksv
-              · obtain ⟨ksv', h_wv, contv⟩ := (fV sp_mid h_ssl).resumeAtMap hmemV
-                -- Item 151: the membership test and the payment are both taken a
-                -- SECOND time, for item 108's reason — the two stacks are
-                -- different, so a width can name a level in one and not the other.
-                exact Or.inl ⟨nv, ksv', h_wv.le, h_pay k ksv ksv' h_cvV hmemV h_wv h_scol, contv⟩
-              · exact Or.inr trivial
-            | Or.inr h_alt => exact Or.inr (PackAlt.step_preprocess h_preprocess h_alt)
+          · rcases h_fV with hall | h_alt
+            rotate_left
+            · exact Or.inr (PackAlt.step_preprocess h_preprocess h_alt)
+            -- Item 521: at EVERY mark of the landing state (each a pre-state mark across the
+            -- preprocess) — one decision for all of them (does each mark's frame list hold
+            -- `map k`?), then the resume per mark; a mark whose list does not is the named
+            -- decline the head-mark build already had.
+            have hback : ∀ nv ∈ RegisterWitness.markedCols s_prep, nv ∈ RegisterWitness.markedCols sc :=
+              fun _ hm => (RegisterWitness.preprocess_markedCols h_preprocess
+                (RegisterWitness.MarkedColsIn.self sc)).mem hm
+            rcases Classical.em (∀ nv (hm : nv ∈ RegisterWitness.markedCols s_prep),
+                FrameLevel.map k ∈ (hall nv (hback nv hm)).choose) with hallmem | _
+            · refine Or.inl fun nv hm => ?_
+              obtain ⟨h_cvV, fV⟩ := (hall nv (hback nv hm)).choose_spec
+              obtain ⟨ksv', h_wv, contv⟩ := (fV sp_mid h_ssl).resumeAtMap (hallmem nv hm)
+                  -- Item 151: the membership test and the payment are both taken a
+                  -- SECOND time, for item 108's reason — the two stacks are
+                  -- different, so a width can name a level in one and not the other.
+              exact ⟨ksv', h_wv.le, h_pay k _ ksv' h_cvV (hallmem nv hm) h_wv h_scol, contv⟩
+            · exact Or.inr trivial
           -- **Item 168: the sequence face, and its own test.**  The park names
           -- one open level `kk`; the landing resumes level `k`.  Where they are
           -- the same the face transfers unchanged — the landing's comments are
@@ -34319,13 +34602,13 @@ lemma entryKeyPack_of_dispatch
     -- branch pops, and popping it is what lets that branch hand the pack a
     -- real value-line twin instead of the `Or.inr trivial` item 99 left.
     -- Callers without an explicit frame pass `Or.inr trivial`.
-    (h_nodeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+    (h_nodeFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       -- Item 150: the NESTED branch's value-line cover.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
-    (h_dframesV : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_dframesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
       -- Item 150: the DEDENT branch's value-line cover — the face whose
       -- landing pays.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
@@ -34358,6 +34641,7 @@ lemma entryKeyPack_of_dispatch
           { s_prep with allowDirectives := false, documentEverStarted := true }
         else s_prep).inFlow = false)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 340: the park's alternative, carried into the pack the content step builds.
     (h_alt : PackAlt sc)
     (h_dispatch : scanNextToken_dispatchContent (if s_prep.allowDirectives then
@@ -34527,7 +34811,7 @@ lemma entryKeyPack_of_dispatch
                         -- carry on below it.  Only the strictly-deeper
                         -- landing pays (`n < w`): at `w = n` the levels
                         -- include `w` itself and the sibling belongs there.
-                        if hlt : n < w then
+                        have hlt : n < w := Nat.lt_of_succ_le hnw
                           match h_nodeF with
                           | Or.inl ⟨ks, h_le, h_cov, nodeF⟩ => Or.inl ⟨ks,
                               fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
@@ -34543,16 +34827,15 @@ lemma entryKeyPack_of_dispatch
                               fun sp_v h_entry sp_e h_tail =>
                                 nodeF sp_e (nestedBlockMap hnw h_land.1
                                   (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                          | Or.inr _ => Or.inr trivial
-                        else Or.inr trivial,
+                          | Or.inr _ => Or.inr trivial,
                         -- Item 108: the value-line-bottomed stack chains the
                         -- same way and for the same reason — the entry and
                         -- tail close the nested mapping, and what stands below
                         -- it is the `?` frame's own unpaid value line rather
                         -- than the finished stream.
-                        if hlt : n < w then
-                          match h_nodeFV with
-                          | Or.inl ⟨nv, ks, h_le, h_covV, nodeFV⟩ => Or.inl ⟨nv, ks,
+                        have hlt : n < w := Nat.lt_of_succ_le hnw;
+                          h_nodeFV.elim
+                          (fun hall => Or.inl fun nv hm => let ⟨ks, h_le, h_covV, nodeFV⟩ := hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks,
                               fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
                               -- **Item 150: the value lane's own hop.**  Same
                               -- move as the stream lane's above; what differs is
@@ -34564,9 +34847,8 @@ lemma entryKeyPack_of_dispatch
                                   (h_cov_step lo ks hc).cons w⟩) id,
                               fun sp_v h_entry sp_e h_tail =>
                                 nodeFV sp_e (nestedBlockMap hnw h_land.1
-                                  (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                          | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)
-                        else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
+                                  (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩)
+                          (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)),
                         -- **Item 169: the sequence face, on the branch item 168
                         -- could not reach.**  Same composition as the two lanes
                         -- above — the landed entry and its tail close the
@@ -34578,15 +34860,14 @@ lemma entryKeyPack_of_dispatch
                         -- value that is itself a mapping); item 168 reached
                         -- neither.  `n < w` for item 99's reason: at `w = n`
                         -- the caller's own level IS this one.
-                        if hlt : n < w then
+                        have hlt : n < w := Nat.lt_of_succ_le hnw
                           match h_nodeSF with
                           | Or.inl ⟨ke, ks, h_le, nodeSF⟩ => Or.inl ⟨ke, ks,
                               fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
                               fun sp_v h_entry sp_e h_tail =>
                                 nodeSF sp_e (nestedBlockMap hnw h_land.1
                                   (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                          | Or.inr _ => Or.inr trivial
-                        else Or.inr trivial⟩
+                          | Or.inr _ => Or.inr trivial⟩
         · -- Item 99: the DEDENT composed.  The landing under-ran the awaited
           -- node's index, so the entry it opens is a SIBLING at an enclosing
           -- mapping level: the pending's frames close the awaited entry
@@ -34664,15 +34945,9 @@ lemma entryKeyPack_of_dispatch
                 -- `ExplValueLine sp_start nv` names it — so this lane answers
                 -- with the one-element chain rather than with a list it has no
                 -- second member for.
-                (match h_dframesV with
-                 | Or.inl ⟨nv, ksV, h_covV, dframesV⟩ =>
-                     if hmemV : FrameLevel.map w ∈ ksV then
-                       match (dframesV sp_mid h_land.1).resumeAtMap hmemV with
                        -- Item 409: `[nv]` is not a domained chain (the frame's level is not a
                        -- marked column by any fact here) — the resumed landing DECLINES.
-                       | ⟨_, _, _⟩ => Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)
-                     else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)
-                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)),
+                (Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)),
                 Or.inl ⟨ks', h_w'.le,
                   -- ~~Item 148: the landing's own hop is the one that does not
                   -- come free.~~  **Item 149 pays it.**  The level the landing
@@ -34688,22 +34963,22 @@ lemma entryKeyPack_of_dispatch
                       h_ind' h_entry h_tail)⟩,
                 -- Item 108: and the popped value-line stack rides on, so a
                 -- SECOND dedent sibling at the same level composes the same way.
-                (match h_dframesV with
-                 | Or.inl ⟨nv, ksV, h_covV, dframesV⟩ =>
-                     if hmemV : FrameLevel.map w ∈ ksV then
-                       match (dframesV sp_mid h_land.1).resumeAtMap hmemV with
-                       | ⟨ksV', h_wV', contV⟩ => Or.inl ⟨nv, ksV', h_wV'.le,
-                           -- **Item 150: the value lane's landing pays too.**
-                           -- The same pop, the same floor, the same lemma — what
-                           -- the two lanes do NOT share is the list, so the
-                           -- membership test and the payment are both taken
-                           -- twice.
-                           h_payV ksV h_covV hmemV ksV' h_wV',
-                           fun sp_v h_entry sp_e h_tail =>
-                             contV sp_e (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_e
-                               h_ind' h_entry h_tail)⟩
-                     else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)
-                 | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)), Or.inr trivial⟩
+                (h_dframesV.elim
+                 -- Item 521: at EVERY mark — one decision for all of them (does each mark's
+                 -- frame list hold `map w`?), then the resume per mark; a mark whose list
+                 -- does not is the named decline the head-mark build already had.
+                 (fun hall => (Classical.em (∀ nv (hm : nv ∈ RegisterWitness.markedCols s'),
+                     FrameLevel.map w ∈ (hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm)).choose)).elim
+                   (fun hallmem => Or.inl fun nv hm =>
+                     let hsp := (hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm)).choose_spec
+                     match (hsp.2 sp_mid h_land.1).resumeAtMap (hallmem nv hm) with
+                     | ⟨ksV', h_wV', contV⟩ => ⟨ksV', h_wV'.le,
+                         h_payV _ hsp.1 (hallmem nv hm) ksV' h_wV',
+                         fun sp_v h_entry sp_e h_tail =>
+                           contV sp_e (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_e
+                             h_ind' h_entry h_tail)⟩)
+                   (fun _ => Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)))
+                 (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))), Or.inr trivial⟩
             · -- **Item 297: a width naming no frame keys a fresh document at the
               -- landing too**, with the frameless exit's terms (item 296): the
               -- park's own `h_node` closes the awaited entry empty, so the
@@ -34764,11 +35039,11 @@ lemma entryKeyPack_of_dispatch
                     Or.inl (rootMapRoute_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
                       h_land.2.1 h_stream_mid h_ind))
               exact Or.inl ⟨w, sp_prep, sp_gram2, h_route372, h_ol, h_tws2, h_kcol,
-                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
-                Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                  rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                    h_land.2.1 h_stream_mid h_ind⟩,
-                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt), Or.inr trivial⟩
+                (if hw : w = 0 then Or.inl ⟨[], RegisterWitness.dispatchContent_markedCols h_dispatch ((h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [h_land.2.1] at this; omega)).2.transport (by split <;> rfl) (by split <;> rfl)), fun _ h => absurd h List.not_mem_nil⟩ else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)),
+                Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                    h_land.2.1 h_stream_mid h_ind)⟩,
+                (if hw : w = 0 then Or.inr (PackAlt.step_dispatch h_dispatch (PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [h_land.2.1] at this; omega)).1)) else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)), Or.inr trivial⟩
           · -- **Item 296: a caller WITHOUT frames keys a fresh document at the
             -- landing.**  The pop spends the frames on one thing, the awaited
             -- entry's EMPTY close, and the park's own `h_node` has it:
@@ -34794,13 +35069,13 @@ lemma entryKeyPack_of_dispatch
             exact Or.inl ⟨w, sp_prep, sp_gram2,
               Or.inl (rootMapRoute_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
                 h_land.2.1 h_stream_mid h_ind), h_ol, h_tws2, h_kcol,
-              Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
+              (if hw : w = 0 then Or.inl ⟨[], RegisterWitness.dispatchContent_markedCols h_dispatch ((h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [h_land.2.1] at this; omega)).2.transport (by split <;> rfl) (by split <;> rfl)), fun _ h => absurd h List.not_mem_nil⟩ else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)),
               -- The fresh document's root level is the key's own, so the park
               -- made after its value resumes it (`ks = []`, nothing below).
-              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                  h_land.2.1 h_stream_mid h_ind⟩,
-              Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt), Or.inr trivial⟩
+              Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                  h_land.2.1 h_stream_mid h_ind)⟩,
+              (if hw : w = 0 then Or.inr (PackAlt.step_dispatch h_dispatch (PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [h_land.2.1] at this; omega)).1)) else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)), Or.inr trivial⟩
       | inr h_mid =>
         -- On the line: `[195]`, closing the enclosing entry.  ═══ Item 125:
         -- the frame is `h_compact`'s or the field's own FACE — a park with
@@ -34992,13 +35267,13 @@ lemma entryPropsKeyPack_of_dispatch
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_m : SurfPos, SSLComments sp_scan sp_m →
       ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
-    (h_nodeFV : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+    (h_nodeFV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       -- Item 150: the NESTED branch's value-line cover.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_m : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_m →
       KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc)
-    (h_dframesV : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_dframesV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
       -- Item 150: the DEDENT branch's value-line cover — the face whose
       -- landing pays.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
@@ -35058,6 +35333,7 @@ lemma entryPropsKeyPack_of_dispatch
     (hcorr_prep : ScannerSurfCorr s_prep sp_prep)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 340: the park's alternative, carried into the pack the content step builds.
     (h_alt : PackAlt sc)
     -- Item 315: the content dispatch, LAST so no earlier binder moves — the lemma's three
@@ -35165,7 +35441,7 @@ lemma entryPropsKeyPack_of_dispatch
                       -- sibling belongs to the level itself
                       -- (`?⏎  &p a: b⏎  c: d⏎: - w` reads `c` as `a`'s
                       -- sibling with the `?`'s value line still owed).
-                      if hlt : n < w then
+                      have hlt : n < w := Nat.lt_of_succ_le hnw
                         match h_nodeF with
                         | Or.inl ⟨ks, h_le, h_cov, nodeF⟩ => Or.inl ⟨ks,
                             fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
@@ -35177,11 +35453,10 @@ lemma entryPropsKeyPack_of_dispatch
                             fun sp_v h_entry sp_e h_tail =>
                               nodeF sp_e (nestedBlockMap hnw h_land.1
                                 (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                        | Or.inr _ => Or.inr trivial
-                      else Or.inr trivial,
-                      if hlt : n < w then
-                        match h_nodeFV with
-                        | Or.inl ⟨nv, ks, h_le, h_covV, nodeFV⟩ => Or.inl ⟨nv, ks,
+                        | Or.inr _ => Or.inr trivial,
+                      have hlt : n < w := Nat.lt_of_succ_le hnw;
+                        h_nodeFV.elim
+                        (fun hall => Or.inl fun nv hm => let ⟨ks, h_le, h_covV, nodeFV⟩ := hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks,
                             fun k' hk' => Nat.le_of_lt (Nat.lt_of_le_of_lt (h_le k' hk') hlt),
                             -- **Item 150: the value lane's own hop.**  Same
                             -- move as the stream lane's above; what differs is
@@ -35193,9 +35468,8 @@ lemma entryPropsKeyPack_of_dispatch
                                 (h_cov_step lo ks hc).cons w⟩) id,
                             fun sp_v h_entry sp_e h_tail =>
                               nodeFV sp_e (nestedBlockMap hnw h_land.1
-                                (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩
-                        | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)
-                      else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)⟩,
+                                (SBlockMapEntries_of_compactTail h_ind' h_entry h_tail))⟩)
+                        (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))⟩,
                       h_props, h_sk_line,
                       by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
       · -- Item 115: the DEDENT composes — item 99's move, at the run.  The
@@ -35247,14 +35521,8 @@ lemma entryPropsKeyPack_of_dispatch
                   h_ind' h_entry (SCompactMapTail.nil w sp_v))).close,
               h_kcol,
               -- Item 196: the one-element chain, as at the implicit twin.
-              (match h_dframesV with
-               | Or.inl ⟨nv, ksV, h_covV, dframesV⟩ =>
-                   if hmemV : FrameLevel.map w ∈ ksV then
-                     match (dframesV sp_mid h_land.1).resumeAtMap hmemV with
                      -- Item 409: `[nv]` is not a domained chain — the resumed landing DECLINES.
-                     | ⟨_, _, _⟩ => Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)
-                   else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)
-               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)),
+              (Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)),
               Or.inl ⟨ks', h_w'.le,
                 -- Item 149: the landing's hop, paid for the reason named at
                 -- `entryKeyPack_of_dispatch`'s own dedent branch.
@@ -35262,19 +35530,22 @@ lemma entryPropsKeyPack_of_dispatch
                 fun sp_v h_entry sp_e h_tail =>
                   cont' sp_e (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_e
                     h_ind' h_entry h_tail)⟩,
-              (match h_dframesV with
-               | Or.inl ⟨nv, ksV, h_covV, dframesV⟩ =>
-                   if hmemV : FrameLevel.map w ∈ ksV then
-                     match (dframesV sp_mid h_land.1).resumeAtMap hmemV with
-                     | ⟨ksV', h_wV', contV⟩ => Or.inl ⟨nv, ksV', h_wV'.le,
-                         -- Item 150: the value lane's landing pays, as at
-                         -- `entryKeyPack_of_dispatch`'s own dedent branch.
-                         h_payV ksV h_covV hmemV ksV' h_wV',
-                         fun sp_v h_entry sp_e h_tail =>
-                           contV sp_e (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_e
-                             h_ind' h_entry h_tail)⟩
-                   else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)
-               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))⟩,
+              (h_dframesV.elim
+               -- Item 521: at EVERY mark — one decision for all of them (does each mark's
+               -- frame list hold `map w`?), then the resume per mark; a mark whose list
+               -- does not is the named decline the head-mark build already had.
+               (fun hall => (Classical.em (∀ nv (hm : nv ∈ RegisterWitness.markedCols s'),
+                   FrameLevel.map w ∈ (hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm)).choose)).elim
+                 (fun hallmem => Or.inl fun nv hm =>
+                   let hsp := (hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm)).choose_spec
+                   match (hsp.2 sp_mid h_land.1).resumeAtMap (hallmem nv hm) with
+                   | ⟨ksV', h_wV', contV⟩ => ⟨ksV', h_wV'.le,
+                       h_payV _ hsp.1 (hallmem nv hm) ksV' h_wV',
+                       fun sp_v h_entry sp_e h_tail =>
+                         contV sp_e (SCompactMapTail.cons w sp_mid sp_prep sp_v sp_e
+                           h_ind' h_entry h_tail)⟩)
+                 (fun _ => Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)))
+               (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)))⟩,
               h_props, h_sk_line,
               by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
           · -- **Item 297: the run-headed key's width naming no frame keys a
@@ -35295,11 +35566,11 @@ lemma entryPropsKeyPack_of_dispatch
               h_node sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_land.1)
             exact Or.inl ⟨⟨w, rootMapRoute_or_refused (sc := sc) (s_prep := s_prep) (c := c)
                   (Or.inr trivial) h_land.2.1 h_stream_mid h_ind', h_kcol,
-                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
-                Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                  rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                    h_land.2.1 h_stream_mid h_ind'⟩,
-                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)⟩,
+                (if hw : w = 0 then Or.inl ⟨[], RegisterWitness.dispatchContent_markedCols h_dispatch ((h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind'; rw [h_land.2.1] at this; omega)).2.transport (by split <;> rfl) (by split <;> rfl)), fun _ h => absurd h List.not_mem_nil⟩ else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)),
+                Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                    h_land.2.1 h_stream_mid h_ind')⟩,
+                (if hw : w = 0 then Or.inr (PackAlt.step_dispatch h_dispatch (PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind'; rw [h_land.2.1] at this; omega)).1)) else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt))⟩,
               h_props, h_sk_line,
               by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
         · -- **Item 296: the run-headed key keys a fresh document too**, as at
@@ -35320,11 +35591,11 @@ lemma entryPropsKeyPack_of_dispatch
             h_node sp_mid (SBlockNode.emptyNode (n + 1) .blockIn sp_scan sp_mid h_land.1)
           exact Or.inl ⟨⟨w, rootMapRoute_or_refused (sc := sc) (s_prep := s_prep) (c := c)
                 (Or.inr trivial) h_land.2.1 h_stream_mid h_ind', h_kcol,
-              Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),
-              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,
-                rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
-                  h_land.2.1 h_stream_mid h_ind'⟩,
-              Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)⟩,
+              (if hw : w = 0 then Or.inl ⟨[], RegisterWitness.dispatchContent_markedCols h_dispatch ((h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind'; rw [h_land.2.1] at this; omega)).2.transport (by split <;> rfl) (by split <;> rfl)), fun _ h => absurd h List.not_mem_nil⟩ else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt)),
+              Or.inl ⟨[FrameLevel.map w], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _, Or.inr trivial,
+                ResumeFrames.one_of_route (rootMapRouteF_or_refused (sc := sc) (s_prep := s_prep) (c := c) (Or.inr trivial)
+                  h_land.2.1 h_stream_mid h_ind')⟩,
+              (if hw : w = 0 then Or.inr (PackAlt.step_dispatch h_dispatch (PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind'; rw [h_land.2.1] at this; omega)).1)) else Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt))⟩,
             h_props, h_sk_line,
             by rw [h_sk, allowDirectives_update_simpleKey]; exact h_shape.1⟩
     | inr h_mid =>
@@ -35541,7 +35812,7 @@ lemma content_dispatch_routed
     -- Item 340: the landing's own alternative, paid by the caller from its park (the flip's premise).
     (h_alt : PackAlt s_prep)
     -- Item 349: the column-0 landing fact, paid by the caller from `preprocess_col0_dead`.
-    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep) :
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep []) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -35600,7 +35871,7 @@ lemma content_dispatch_routed
             ∀ sp_v : SurfPos, SBlockMapEntry k sp_prep sp_v →
             ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
             ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ (ExplicitValueRefused s_prep ∨ SeqTopKey s_prep)) →
-          ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+          ((∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
             -- Item 150: the value-line pack field's cover, at the park this
             -- build reaches.
             ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧
@@ -35627,7 +35898,7 @@ lemma content_dispatch_routed
         refine Or.inl ⟨⟨k, h_route_k, h_kcol,
           -- Item 94: the run heads a landed key, and no `?` fits to its
           -- left on either branch, so no value line twins the route.
-          Or.inr (PackAlt.step_dispatch h_dispatch (if hk : k = 0 then PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)) else h_alt)), h_resF.imp_right (fun _ => trivial), h_resFV⟩, h_props, ?_,
+          (if hk : k = 0 then Or.inl ⟨[], RegisterWitness.dispatchContent_markedCols h_dispatch ((h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)).2.transport (by split <;> rfl) (by split <;> rfl)), fun _ h => absurd h List.not_mem_nil⟩ else Or.inr (PackAlt.step_dispatch h_dispatch h_alt)), h_resF.imp_right (fun _ => trivial), h_resFV⟩, h_props, ?_,
           by rw [h_sk, allowDirectives_update_simpleKey]; exact h_sk_poss⟩
         rw [h_sk, allowDirectives_update_simpleKey, h_sk_pos,
             h_line', allowDirectives_update_line]
@@ -35657,8 +35928,10 @@ lemma content_dispatch_routed
               ⟨lo, hb, h_cov_lift lo (FrameLevel.map k :: ks) hc⟩) id,
             resumeMapRouteF h_ind cont⟩)
           (match hresV with
-           | Or.inl ⟨nv, ksv, h_ltv, h_covv, contv⟩ =>
-               Or.inl ⟨nv, ksv, h_ltv,
+           | Or.inl hall => Or.inl fun nv hm =>
+               let ⟨ksv, h_ltv, h_covv, contv⟩ := hall nv ((RegisterWitness.dispatchContent_markedCols h_dispatch
+                 (by split <;> exact (RegisterWitness.MarkedColsIn.self s_prep).transport rfl rfl)).mem hm)
+               ⟨ksv, h_ltv,
                  h_covv.imp (fun ⟨lo, hb, hc⟩ =>
                    ⟨lo, hb, h_cov_lift lo (FrameLevel.map k :: ksv) hc⟩) id,
                  resumeMapRouteK h_ind contv⟩
@@ -35673,12 +35946,12 @@ lemma content_dispatch_routed
           obtain ⟨⟨k, sp_land, hcol0, h_sfx_land, h_ind⟩, h_sk_poss, h_sk_pos⟩ := hsfx
           exact h_buildP k sp_land hcol0 h_ind h_sk_poss h_sk_pos
             (suffixMapRoute hcol0 h_sfx_land h_ind)
-            (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+            (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
               -- Item 148: no park stands over a fresh document's root, so there is
               -- no carried stack to inherit — the chain is seeded at the `:`/`?`
               -- producers, which is where `Mono` rides.
               Or.inr trivial,
-              suffixMapRouteF hcol0 h_sfx_land h_ind⟩)
+              ResumeFrames.one_of_route (suffixMapRouteF hcol0 h_sfx_land h_ind)⟩)
             (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
         | inr _ =>
           cases h_nodocctx with
@@ -35690,10 +35963,10 @@ lemma content_dispatch_routed
             obtain ⟨⟨k, sp_land, hcol0, h_nodoc_land, h_ind⟩, h_sk_poss, h_sk_pos⟩ := hnd
             exact h_buildP k sp_land hcol0 h_ind h_sk_poss h_sk_pos
               (nodocMapRoute hcol0 h_nodoc_land h_ind)
-              (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+              (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                 -- Item 148: no park to inherit from, as at the suffix arm above.
                 Or.inr trivial,
-                nodocMapRouteF hcol0 h_nodoc_land h_ind⟩)
+                ResumeFrames.one_of_route (nodocMapRouteF hcol0 h_nodoc_land h_ind)⟩)
               (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
           | inr _ =>
             cases h_markerctx with
@@ -35705,10 +35978,10 @@ lemma content_dispatch_routed
               obtain ⟨⟨k, sp_land, _hcol0, h_mk_land, h_ind⟩, h_sk_poss, h_sk_pos⟩ := hmk
               exact h_buildP k sp_land _hcol0 h_ind h_sk_poss h_sk_pos
                 (markerMapRoute h_mk_land h_ind)
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  markerMapRouteF h_mk_land h_ind⟩)
+                  ResumeFrames.one_of_route (markerMapRouteF h_mk_land h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
             | inr _ =>
             cases h_keyctx with
@@ -35739,10 +36012,10 @@ lemma content_dispatch_routed
               -- `h_routeE`/`h_routeF` pair.
               exact h_buildP k sp_land hcol0 h_ind h_sk_poss h_sk_pos
                 (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind)
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind⟩)
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
     cases hprops with
     | inl h =>
@@ -35854,7 +36127,7 @@ lemma content_dispatch_routed
             ∀ sp_v : SurfPos, SBlockMapEntry k sp_prep sp_v →
             ∀ sp_e : SurfPos, SCompactMapTail k sp_v sp_e →
             ResumeFrames (SLYamlStream sp_start) ks sp_e) ∨ (ExplicitValueRefused s_prep ∨ SeqTopKey s_prep)) →
-          ((∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+          ((∀ nv ∈ RegisterWitness.markedCols s', ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
             -- Item 150: the value-line pack field's cover, at the park this
             -- build reaches.
             ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧
@@ -35903,7 +36176,7 @@ lemma content_dispatch_routed
                               { s_prep with allowDirectives := false, documentEverStarted := true }
                             else s_prep).indents = s_prep.indents from by split <;> rfl])
                         (by rw [h_pp, allowDirectives_update_simpleKey]) h_seq),
-                      h_ol, h_tws2, h_kcol_of h_pp, Or.inr (PackAlt.step_dispatch h_dispatch (if hk : k = 0 then PackAlt.ofRefused (h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)) else h_alt)),
+                      h_ol, h_tws2, h_kcol_of h_pp, (if hk : k = 0 then Or.inl ⟨[], RegisterWitness.dispatchContent_markedCols h_dispatch ((h_dead (by rw [← hcorr_prep.col_eq]; have := SIndent_col h_ind; rw [hcol0] at this; omega)).2.transport (by split <;> rfl) (by split <;> rfl)), fun _ h => absurd h List.not_mem_nil⟩ else Or.inr (PackAlt.step_dispatch h_dispatch h_alt)),
                       h_resF.imp_right (fun _ => trivial), h_resFV, h_resQ⟩
       -- Item 109: the RESUMING context first.  It is the honest reading where
       -- it exists, and it exists exactly when the park that closed here kept
@@ -35933,8 +36206,10 @@ lemma content_dispatch_routed
                   ⟨lo, hb, h_cov_lift lo (FrameLevel.map k :: ks) hc⟩) id,
                 resumeMapRouteF h_ind cont⟩)
               (match hresV with
-               | Or.inl ⟨nv, ksv, h_ltv, h_covv, contv⟩ =>
-                   Or.inl ⟨nv, ksv, h_ltv,
+               | Or.inl hall => Or.inl fun nv hm =>
+                   let ⟨ksv, h_ltv, h_covv, contv⟩ := hall nv ((RegisterWitness.dispatchContent_markedCols h_dispatch
+                 (by split <;> exact (RegisterWitness.MarkedColsIn.self s_prep).transport rfl rfl)).mem hm)
+                   ⟨ksv, h_ltv,
                      h_covv.imp (fun ⟨lo, hb, hc⟩ =>
                        ⟨lo, hb, h_cov_lift lo (FrameLevel.map k :: ksv) hc⟩) id,
                      resumeMapRouteK h_ind contv⟩
@@ -35958,10 +36233,10 @@ lemma content_dispatch_routed
           obtain ⟨⟨k, sp_land, hcol0, h_sfx_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hsfx
           exact h_build k sp_land hcol0 h_ind h_sk_pos
             (Or.inl (suffixMapRoute hcol0 h_sfx_land h_ind))
-            (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+            (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
               -- Item 148: no park to inherit from, as at the suffix arm above.
               Or.inr trivial,
-              suffixMapRouteF hcol0 h_sfx_land h_ind⟩)
+              ResumeFrames.one_of_route (suffixMapRouteF hcol0 h_sfx_land h_ind)⟩)
             (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
             -- Item 168: no sequence entry encloses this context's document.
             (Or.inr trivial)
@@ -35976,10 +36251,10 @@ lemma content_dispatch_routed
             obtain ⟨⟨k, sp_land, hcol0, h_nodoc_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hnd
             exact h_build k sp_land hcol0 h_ind h_sk_pos
               (Or.inl (nodocMapRoute hcol0 h_nodoc_land h_ind))
-              (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+              (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                 -- Item 148: no park to inherit from, as at the suffix arm above.
                 Or.inr trivial,
-                nodocMapRouteF hcol0 h_nodoc_land h_ind⟩)
+                ResumeFrames.one_of_route (nodocMapRouteF hcol0 h_nodoc_land h_ind)⟩)
               (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
               -- Item 168: no sequence entry encloses this context's document.
               (Or.inr trivial)
@@ -35991,10 +36266,10 @@ lemma content_dispatch_routed
               obtain ⟨⟨k, sp_land, _hcol0, h_mk_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hmk
               exact h_build k sp_land _hcol0 h_ind h_sk_pos
                 (Or.inl (markerMapRoute h_mk_land h_ind))
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  markerMapRouteF h_mk_land h_ind⟩)
+                  ResumeFrames.one_of_route (markerMapRouteF h_mk_land h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
                 -- Item 168: no sequence entry encloses this context's document.
                 (Or.inr trivial)
@@ -36009,10 +36284,10 @@ lemma content_dispatch_routed
               obtain ⟨⟨k, sp_land, hcol0, h_pr_land, h_ind⟩, _h_sk_poss, h_sk_pos⟩ := hpr
               exact h_build k sp_land hcol0 h_ind h_sk_pos
                 (Or.inl (propsMapRoute (PropsRideRoute.toNodeRoute h_pr_land) h_ind))
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  propsMapRouteF (PropsRideRoute.toNodeRoute h_pr_land) h_ind⟩)
+                  ResumeFrames.one_of_route (propsMapRouteF (PropsRideRoute.toNodeRoute h_pr_land) h_ind)⟩)
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
                 -- Item 168: no sequence entry encloses this context's document.
                 (Or.inr trivial)
@@ -36047,10 +36322,10 @@ lemma content_dispatch_routed
               -- Item 144: the same guard on the CONTENT cascade's root arm.
               exact h_build k sp_land hcol0 h_ind h_sk_pos
                 (Or.inl (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind))
-                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                (Or.inl ⟨[FrameLevel.map k], fun _ h => (List.eq_of_mem_singleton h) ▸ Nat.le_refl _,
                   -- Item 148: no park to inherit from, as at the suffix arm above.
                   Or.inr trivial,
-                  rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind⟩)
+                  ResumeFrames.one_of_route (rootMapRouteF_or_refused h_ref hcol0 h_stream_land h_ind)⟩)
                 -- Item 108: no explicit frame stands over the root, so the
                 -- value-line-bottomed stack has nothing to bottom at.
                 (Or.inr (PackAlt.step_dispatch h_dispatch h_alt))
@@ -36197,7 +36472,7 @@ lemma content_dispatch_after_close
     -- Item 293: the dispatch state's saved key is live, which
     -- `content_dispatch_routed` spends at its content parks.
     (h_possD : s_prep.simpleKey.possible = true)
-    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep)
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 365: the park's alternative, stepped to `s_prep` by the three content callers.
     (h_alt : PackAlt s_prep) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
@@ -36251,7 +36526,7 @@ lemma accum_content_on_noPending
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_block)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep)
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 157: the key context's close is TOTAL here (`noPending` extends the
     -- stream past the comments), but the landing still has to name the face it
     -- is total ON — so the check and the park's arm ride in with it.
@@ -36827,10 +37102,12 @@ lemma accum_content_on_pendingBlock_indented
     -- as `h_close_entry_old` rides — the content becomes the entry's node and
     -- the field's own tail is untouched — which is why the three parks below
     -- pay it with their own node term and nothing else.
-    (h_seqF_old : (∃ ke : Nat, ∀ sp_mid : SurfPos,
+    (h_seqF_old : (∃ (ke : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ ke) ∧
+      ∀ sp_mid : SurfPos,
       SBlockIndented n .blockIn sp_scan sp_mid →
       ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →
-      SeqEntryTail sp_start ke sp_end) ∨ True)
+      ∀ sp_fin : SurfPos, SCompactSeqTail ke sp_end sp_fin →
+      ResumeFrames (SLYamlStream sp_start) ks sp_fin) ∨ True)
     -- Item 179: the floor at the SHIFTED index, `pendingBlock`'s own field.
     (h_floor_old : IndentFloor sc (n + 1))
     (h_top_old : sc.currentIndent ≤ (n : Int))
@@ -36841,7 +37118,7 @@ lemma accum_content_on_pendingBlock_indented
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep)
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 365: `Sound` and the block level, for the 3 `h_alt` sites (paid by `accum_content_pending`).
     (h_sound : PendingKeySound.Sound sc) (h_fl0 : sc.flowLevel = 0)
     (h_not_doc : (if s_prep.allowDirectives then
@@ -36879,7 +37156,7 @@ lemma accum_content_on_pendingBlock_indented
     -- **Item 198 (LAST): the park's value-line stack** (`pendingBlock.h_closeFV`),
     -- relayed onto whatever this content step parks exactly as `h_closeF_old`
     -- is — the same fold, one bottom over.
-    (h_closeFV_old : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+    (h_closeFV_old : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       ((∃ lo : Nat, IndentStackCover.Floor lo n ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →
@@ -36934,7 +37211,7 @@ lemma accum_content_on_pendingBlock_indented
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                      h_sep_all (h_flow_all (n + 1))
                      h_ssl)))
-             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_dead := h_dead) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                (fun sp h_bn => h_close_old sp (SBlockIndented.node n .blockIn sp_scan sp h_bn))
                -- Item 106: the same field on the LANDED face — the key's
                -- mapping is nested in the `-` entry's content instead of
@@ -37004,8 +37281,8 @@ lemma accum_content_on_pendingBlock_indented
                -- the tail kept open, where the stream twin above closes it `nil`.
                -- The dedent face is the same push over the EMPTY entry.  No
                -- cover: the entry park carries none on this lane (item 149).
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks,
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm; ⟨FrameLevel.seq n :: ks,
                     fun k' hk' => by
                       rcases List.mem_cons.mp hk' with rfl | h'
                       · exact Nat.le_refl _
@@ -37014,15 +37291,15 @@ lemma accum_content_on_pendingBlock_indented
                     fun sp_m h_bn =>
                       KeyFrames.seqLevel n ks sp_m h_ltk (fun sp_end h_tail =>
                         closeFV sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                          sp_end h_tail)⟩
-                | Or.inr h => Or.inr h)
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks, Or.inr trivial,
+                          sp_end h_tail)⟩))
+                (fun h => Or.inr h))
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm; ⟨FrameLevel.seq n :: ks, Or.inr trivial,
                     fun sp_m h_ssl =>
                       KeyFrames.seqLevel n ks sp_m h_ltk (fun sp_end h_tail =>
                         closeFV sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl)
-                          sp_end h_tail)⟩
-                | Or.inr h => Or.inr h)
+                          sp_end h_tail)⟩))
+                (fun h => Or.inr h))
                -- Item 149: this park carries no cover, so its dedent hop has none to pay.
                (Or.inr trivial) hna hnt h_ska
                hcorr_prep hcorr_result h_corr h_not_doc h_flow_disp
@@ -37073,7 +37350,7 @@ lemma accum_content_on_pendingBlock_indented
              -- node — and the park keeps BOTH its own `[183]` at `n` and the
              -- one it stands inside.
              (match h_seqF_old with
-              | Or.inl ⟨ke, seqF⟩ => Or.inl ⟨ke,
+              | Or.inl ⟨ke, ks, hw, seqF⟩ => Or.inl ⟨ke, ks, hw,
                   fun sp_final h_ssl =>
                     seqF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
@@ -37097,16 +37374,16 @@ lemma accum_content_on_pendingBlock_indented
              -- entry closes on the node this arm just read, and what stands
              -- underneath is the enclosing `?`'s unpaid line instead of the
              -- finished stream.
-             (match h_closeFV_old with
-              | Or.inl ⟨nv, ks, h_ltk, hcov, closeFV⟩ => Or.inl ⟨nv, ks, h_ltk,
+             (h_closeFV_old.elim
+              (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, hcov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks, h_ltk,
                   hcov.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_final h_ssl =>
                     closeFV sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                           h_sep_all (h_flow_all (n + 1))
-                          h_ssl))⟩
-              | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
+                          h_ssl))⟩))
+              (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)))
               -- **Item 207: and the park's own indent check.**  The entry-level park
               -- is the same content dispatch one slot in, so the same five arguments
               -- `h_arm` is paid with answer the flag too.
@@ -37128,7 +37405,7 @@ lemma accum_content_on_pendingBlock_indented
              h_sep_all (h_run_all (n + 1)) h_nic_s h_real_s h_anchor_s h_tag_s
              (fun _ sp_m h_bn => h_close_old sp_m
                (SBlockIndented.node n .blockIn sp_scan sp_m h_bn))
-             (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c
+             (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_dead := h_dead) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c
                sp_prep sp_scan'
                (fun sp_m h_bn => h_close_old sp_m
                  (SBlockIndented.node n .blockIn sp_scan sp_m h_bn))
@@ -37184,8 +37461,8 @@ lemma accum_content_on_pendingBlock_indented
                -- shared with the implicit twin.~~  **Item 306: paid as at the
                -- implicit twin** — the entry's level pushed on `h_closeFV_old`'s
                -- stack, over the node and over the empty entry.
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks,
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm; ⟨FrameLevel.seq n :: ks,
                     fun k' hk' => by
                       rcases List.mem_cons.mp hk' with rfl | h'
                       · exact Nat.le_refl _
@@ -37194,15 +37471,15 @@ lemma accum_content_on_pendingBlock_indented
                     fun sp_m h_bn =>
                       KeyFrames.seqLevel n ks sp_m h_ltk (fun sp_end h_tail =>
                         closeFV sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                          sp_end h_tail)⟩
-                | Or.inr h => Or.inr h)
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks, Or.inr trivial,
+                          sp_end h_tail)⟩))
+                (fun h => Or.inr h))
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm; ⟨FrameLevel.seq n :: ks, Or.inr trivial,
                     fun sp_m h_ssl =>
                       KeyFrames.seqLevel n ks sp_m h_ltk (fun sp_end h_tail =>
                         closeFV sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl)
-                          sp_end h_tail)⟩
-                | Or.inr h => Or.inr h)
+                          sp_end h_tail)⟩))
+                (fun h => Or.inr h))
                -- Item 149: this park carries no cover, so its dedent hop has none to pay.
                (Or.inr trivial)
                h_ska (by revert h_flow_disp; split <;> (intro h; exact h))
@@ -37284,12 +37561,13 @@ lemma accum_content_on_pendingBlock_indented
              -- the props run's node wraps into the entry and the collection's tail
              -- rides — with the stack standing on the enclosing `?`'s unpaid line
              -- instead of the finished stream.
-             (match h_closeFV_old with
-              | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨n, nv, ks, rfl, h_ltk,
+             (h_closeFV_old.elim
+              -- Item 521: at EVERY mark of the new park's state (each a pre-state mark across the step).
+              (fun hall => Or.inl fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨n, ks, rfl, h_ltk,
                   fun sp_m h_bn sp_end h_tail =>
                     closeFV sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                      sp_end h_tail⟩
-              | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)),
+                      sp_end h_tail⟩)
+              (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))),
            hcorr_result⟩
   · -- Item 26: `  - |` — `[198]`'s block scalar at the ENTRY's index.  The
     -- node is complete where the scanner stopped ([170]'s `l-chomped-empty`
@@ -37353,7 +37631,7 @@ lemma accum_content_on_pendingBlock_indented
              -- node — and the park keeps BOTH its own `[183]` at `n` and the
              -- one it stands inside.
              (match h_seqF_old with
-              | Or.inl ⟨ke, seqF⟩ => Or.inl ⟨ke,
+              | Or.inl ⟨ke, ks, hw, seqF⟩ => Or.inl ⟨ke, ks, hw,
                   fun sp_final h_ssl =>
                     seqF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
@@ -37369,14 +37647,14 @@ lemma accum_content_on_pendingBlock_indented
                       sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 198: same relay, the re-read node folded in as above.
-             (match h_closeFV_old with
-              | Or.inl ⟨nv, ks, h_ltk, hcov, closeFV⟩ => Or.inl ⟨nv, ks, h_ltk,
+             (h_closeFV_old.elim
+              (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, hcov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks, h_ltk,
                   hcov.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_final h_ssl =>
                     closeFV sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
-                        (h_nodeAt sp_final h_ssl))⟩
-              | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
+                        (h_nodeAt sp_final h_ssl))⟩))
+              (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)))
               -- **Item 207: and the park's own indent check.**  The entry-level park
               -- is the same content dispatch one slot in, so the same five arguments
               -- `h_arm` is paid with answer the flag too.
@@ -37400,7 +37678,7 @@ lemma accum_content_on_pendingBlock_indented
                    (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                      h_sep_all h_node_f
                      h_ssl)))
-             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_dead := h_dead) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                (fun sp h_bn => h_close_old sp (SBlockIndented.node n .blockIn sp_scan sp h_bn))
                -- Item 106: the same field on the LANDED face — the key's
                -- mapping is nested in the `-` entry's content instead of
@@ -37470,8 +37748,8 @@ lemma accum_content_on_pendingBlock_indented
                -- the tail kept open, where the stream twin above closes it `nil`.
                -- The dedent face is the same push over the EMPTY entry.  No
                -- cover: the entry park carries none on this lane (item 149).
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks,
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm; ⟨FrameLevel.seq n :: ks,
                     fun k' hk' => by
                       rcases List.mem_cons.mp hk' with rfl | h'
                       · exact Nat.le_refl _
@@ -37480,15 +37758,15 @@ lemma accum_content_on_pendingBlock_indented
                     fun sp_m h_bn =>
                       KeyFrames.seqLevel n ks sp_m h_ltk (fun sp_end h_tail =>
                         closeFV sp_m (SBlockIndented.node n .blockIn sp_scan sp_m h_bn)
-                          sp_end h_tail)⟩
-                | Or.inr h => Or.inr h)
-               (match h_closeFV_old with
-                | Or.inl ⟨nv, ks, h_ltk, _, closeFV⟩ => Or.inl ⟨nv, FrameLevel.seq n :: ks, Or.inr trivial,
+                          sp_end h_tail)⟩))
+                (fun h => Or.inr h))
+               (h_closeFV_old.elim
+                (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, _, closeFV⟩ := hall nv hm; ⟨FrameLevel.seq n :: ks, Or.inr trivial,
                     fun sp_m h_ssl =>
                       KeyFrames.seqLevel n ks sp_m h_ltk (fun sp_end h_tail =>
                         closeFV sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl)
-                          sp_end h_tail)⟩
-                | Or.inr h => Or.inr h)
+                          sp_end h_tail)⟩))
+                (fun h => Or.inr h))
                -- Item 149: this park carries no cover, so its dedent hop has none to pay.
                (Or.inr trivial) hna hnt h_ska
                hcorr_prep hcorr_result h_corr h_not_doc h_flow_disp
@@ -37535,7 +37813,7 @@ lemma accum_content_on_pendingBlock_indented
              -- node — and the park keeps BOTH its own `[183]` at `n` and the
              -- one it stands inside.
              (match h_seqF_old with
-              | Or.inl ⟨ke, seqF⟩ => Or.inl ⟨ke,
+              | Or.inl ⟨ke, ks, hw, seqF⟩ => Or.inl ⟨ke, ks, hw,
                   fun sp_final h_ssl =>
                     seqF sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
@@ -37555,16 +37833,16 @@ lemma accum_content_on_pendingBlock_indented
                       sp_e h_tail sp_i sp_c h_iv h_lit sp_v h_sbi⟩
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              -- Item 198: same relay, the multi-line value's node.
-             (match h_closeFV_old with
-              | Or.inl ⟨nv, ks, h_ltk, hcov, closeFV⟩ => Or.inl ⟨nv, ks, h_ltk,
+             (h_closeFV_old.elim
+              (fun hall => Or.inl (fun nv hm => let ⟨ks, h_ltk, hcov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks, h_ltk,
                   hcov.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_final h_ssl =>
                     closeFV sp_final
                       (SBlockIndented.node n .blockIn sp_scan sp_final
                         (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                           h_sep_all h_node_f
-                          h_ssl))⟩
-              | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
+                          h_ssl))⟩))
+              (fun h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h)))
               -- **Item 207: and the park's own indent check.**  The entry-level park
               -- is the same content dispatch one slot in, so the same five arguments
               -- `h_arm` is paid with answer the flag too.
@@ -37644,16 +37922,66 @@ lemma accum_content_on_pendingBlock_indented
              closeF sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl) sp_m
                (SCompactSeqTail.nil n sp_m)⟩
          | Or.inr _ => Or.inr trivial)
-        (match h_closeFV_old with
-         | Or.inl ⟨nv, ks, _, _, closeFV⟩ =>
-             Or.inl ⟨nv, ks, Or.inr trivial, fun sp_m h_ssl =>
+        (h_closeFV_old.elim
+         (fun hall => Or.inl (fun nv hm => let ⟨ks, _, _, closeFV⟩ := hall nv hm;
+             ⟨ks, Or.inr trivial, fun sp_m h_ssl =>
              closeFV sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl) sp_m
-               (SCompactSeqTail.nil n sp_m)⟩
-         | Or.inr h_alt => Or.inr h_alt)
+               (SCompactSeqTail.nil n sp_m)⟩))
+         (fun h_alt => Or.inr h_alt))
         h_pay_seq (Or.inr trivial))
       sc
       -- Item 174: no held run stands behind a `-` park.
       (Or.inr trivial)
+
+/-- `ContentArm` off the dispatch alone (item 484): the dispatcher's own `c` split, each arm from its
+    `_prod` lemma; the flow-in plain reads `dispatchContent_evidence_flowIn_at` at every floor, the
+    post-position identified through `ScannerSurfCorr_unique`. -/
+lemma contentArm_of_dispatch (sc : ScannerState) (sp : SurfPos) {s' : ScannerState} (c : Char)
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
+    (h_not_doc : sc.col = 0 → atDocumentBoundary sc = false)
+    (hcol : 1 ≤ sc.flowLevel → sc.currentIndent < (sc.col : Int))
+    (hok : scanNextToken_dispatchContent sc c = .ok s') :
+    ∃ sp', ContentArm sc s' c sp sp' := by
+  by_cases hamp : c = '&'
+  · subst hamp
+    obtain ⟨sp', hp, _, hc'⟩ := dispatchContent_anchorProp_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .anchor sp' rfl hp (dispatchContent_anchor_next hok) hc'⟩
+  by_cases hstar : c = '*'
+  · subst hstar
+    obtain ⟨sp', hp, _, hc'⟩ := dispatchContent_aliasNode_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .alias sp' rfl hp hc'⟩
+  by_cases hbang : c = '!'
+  · subst hbang
+    obtain ⟨sp', hp, _, hc'⟩ := dispatchContent_tagProp_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .tag sp' rfl hp (dispatchContent_tag_next hok) hc'⟩
+  by_cases hbs : c = '|' ∨ c = '>'
+  · obtain ⟨sp', hb, hc', _⟩ := dispatchContent_blockScalar_prod sc sp hcorr hpeek hbs hok
+    exact ⟨sp', .blockScalar sp' hbs hb hc'⟩
+  by_cases hdq : c = '"'
+  · subst hdq
+    obtain ⟨sp', hq, hb, hc'⟩ := dispatchContent_doubleQuoted_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .doubleQuoted sp' rfl hq hb hc'⟩
+  by_cases hsq : c = '\''
+  · subst hsq
+    obtain ⟨sp', hq, hb, hc'⟩ := dispatchContent_singleQuoted_prod sc sp hcorr hpeek hok
+    exact ⟨sp', .singleQuoted sp' rfl hq hb hc'⟩
+  have hnc : c ≠ '&' ∧ c ≠ '*' ∧ c ≠ '!' ∧ c ≠ '|' ∧ c ≠ '>' ∧ c ≠ '"' ∧ c ≠ '\'' :=
+    ⟨hamp, hstar, hbang, fun h => hbs (Or.inl h), fun h => hbs (Or.inr h), hdq, hsq⟩
+  rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
+  · obtain ⟨sp_g, sp', hn, hws, hh, hc'⟩ :=
+      dispatchContent_plainScalar_prod sc sp hcorr hpeek hamp hstar hbang hnc.2.2.2.1 hnc.2.2.2.2.1 hdq hsq h_not_doc hok
+    exact ⟨sp', .plain sp_g sp' hnc h0 hn hws hh hc'⟩
+  · have hin : sc.inFlow = true := by
+      unfold ScannerState.inFlow; simp; omega
+    have hc := hcol hpos
+    obtain ⟨sp_g0, sp', _, _, hc', _, _⟩ :=
+      dispatchContent_evidence_flowIn_at 0 sc sp c hcorr hpeek hin h_not_doc hok hc (Int.le_max_left _ _)
+    refine ⟨sp', .plainIn sp' hnc hpos hc' fun n hn => ?_⟩
+    obtain ⟨sp_g, sp_n, h1, h2, hcn, h3, _⟩ :=
+      dispatchContent_evidence_flowIn_at n sc sp c hcorr hpeek hin h_not_doc hok hc hn
+    have heq := ScannerSurfCorr_unique hcn hc'
+    subst heq
+    exact ⟨sp_g, h1, h2, h3⟩
 
 /-- The mapping twin of `accum_content_on_pendingBlock_indented` (item 23):
     the value of an INDENTED `[189]` empty-key entry or `[186]` explicit key —
@@ -37724,13 +38052,13 @@ lemma accum_content_on_pendingMapValue_indented
       ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True)
     -- Item 108: the same two faces bottomed at the enclosing `?` frame's
     -- value line, threaded for the pack lemma's dedent branch.
-    (h_closeFV108 : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
+    (h_closeFV108 : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ n) ∧
       -- Item 150: the value-line faces carry the cover too.
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_mid →
       KeyFrames (ExplValueLine sp_start nv) ks sp_mid) ∨ PackAlt sc)
-    (h_framesV108 : (∃ (nv : Nat) (ks : List FrameLevel),
+    (h_framesV108 : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
       ((∃ lo : Nat, IndentStackCover.Floor lo (n + 1) ks ∧
         IndentStackCover.Covered lo ks sc) ∨ True) ∧
       ∀ sp_mid : SurfPos, SSLComments sp_scan sp_mid →
@@ -37758,7 +38086,7 @@ lemma accum_content_on_pendingMapValue_indented
     (hcorr_result : ScannerSurfCorr s' sp_scan')
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep)
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 365: `Sound` and the block level, for the 3 `h_alt` sites (paid by `accum_content_pending`).
     (h_sound : PendingKeySound.Sound sc) (h_fl0 : sc.flowLevel = 0)
     (h_not_doc : (if s_prep.allowDirectives then
@@ -37910,7 +38238,7 @@ lemma accum_content_on_pendingMapValue_indented
                h_close_old sp_final
                  (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram sp_final
                    h_sep_all (h_flow_all (n + 1)) h_ssl))
-             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_dead := h_dead) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                h_close_old h_kslot
                h_compact_vslot h_ivl_pack
                -- Item 99: the frames feed the pack's resume twin — level `n`
@@ -38009,13 +38337,13 @@ lemma accum_content_on_pendingMapValue_indented
                     h_ssl)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_closeFV108 with
-              | Or.inl ⟨nv, ks, _, h_cov, closeFV⟩ => Or.inl ⟨nv, ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, _, h_cov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                   h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                     ⟨lo, _, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_mid h_ssl =>
                   closeFV sp_mid (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gram
                     sp_mid h_sep_all (h_flow_all (n + 1))
-                    h_ssl)⟩
+                    h_ssl)⟩)
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -38052,7 +38380,7 @@ lemma accum_content_on_pendingMapValue_indented
            PendingNode.pendingProps (h_next := fun _ => h_next_s) (h_poss := by rw [h_sk_s, allowDirectives_update_simpleKey]; exact (preprocess_saved_key_fresh h_ska (noflow_of_noflow_disp h_flow_disp) h_preprocess).1) (h_slot := h_slot_s) sp_start sp_block sp_scan' ha ht sp_scan sp_prep (n + 1)
              h_sep_all (h_run_all (n + 1)) h_nic_s h_real_s h_anchor_s h_tag_s
              (fun _ => h_close_old)
-             (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c
+             (entryPropsKeyPack_of_dispatch (h_gate := h_gatePark) (h_dead := h_dead) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c
                sp_prep sp_scan' h_close_old h_kslot
                h_compact_vslot
                -- Item 115: the park's own frames — level `n` rides on top for
@@ -38117,10 +38445,10 @@ lemma accum_content_on_pendingMapValue_indented
                   closeF⟩
               | Or.inr _ => Or.inr trivial)
              (match h_closeFV108 with
-              | Or.inl ⟨nv, ks, _, h_cov, closeFV⟩ => Or.inl ⟨nv, ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, _, h_cov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                   h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                     ⟨lo, _, hb, h_cov_step lo ks hc⟩) id,
-                  closeFV⟩
+                  closeFV⟩)
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              (nodir_of_content_dispatch h_dispatch)
              -- Item 199: a sentinel-level props park stands under no entry, so it has
@@ -38194,11 +38522,11 @@ lemma accum_content_on_pendingMapValue_indented
                   closeF sp_mid (h_nodeAt sp_mid h_ssl)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_closeFV108 with
-              | Or.inl ⟨nv, ks, _, h_cov, closeFV⟩ => Or.inl ⟨nv, ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, _, h_cov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                   h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                     ⟨lo, _, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_mid h_ssl =>
-                  closeFV sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                  closeFV sp_mid (h_nodeAt sp_mid h_ssl)⟩)
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -38223,7 +38551,7 @@ lemma accum_content_on_pendingMapValue_indented
                h_close_old sp_final
                  (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf sp_final
                    h_sep_all h_node_f h_ssl))
-             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
+             (entryKeyPack_of_dispatch (h_gate := h_gatePark) (h_dead := h_dead) (h_alt := h_refused.elim (fun h => PackAlt.ofRefused h) (fun _ => trivial)) sc sp_start sp_scan n s_prep s' c sp_prep sp_scan'
                h_close_old h_kslot
                h_compact_vslot h_ivl_pack
                -- Item 99: the frames feed the pack's resume twin — level `n`
@@ -38306,12 +38634,12 @@ lemma accum_content_on_pendingMapValue_indented
                     sp_mid h_sep_all h_node_f h_ssl)⟩
               | Or.inr _ => Or.inr trivial)
              (match h_closeFV108 with
-              | Or.inl ⟨nv, ks, _, h_cov, closeFV⟩ => Or.inl ⟨nv, ks,
+              | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, _, h_cov, closeFV⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                   h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                     ⟨lo, _, hb, h_cov_step lo ks hc⟩) id,
                   fun sp_mid h_ssl =>
                   closeFV sp_mid (SBlockNode.flowInBlock (n + 1) .blockIn sp_scan sp_prep sp_gramf
-                    sp_mid h_sep_all h_node_f h_ssl)⟩
+                    sp_mid h_sep_all h_node_f h_ssl)⟩)
               | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
              (nodir_of_content_dispatch h_dispatch)
              (completedTail_of_dispatch h_dispatch hna hnt)
@@ -38404,8 +38732,8 @@ lemma accum_content_on_pendingMapValue_indented
         h_preprocess hcorr_prep
         (h_frames99.imp (fun ⟨ks, hc, r⟩ =>
           ⟨ks, hc.imp (fun ⟨lo, hb, hcv⟩ => ⟨lo, n, hb, hcv⟩) id, r⟩) id)
-        (h_framesV108.imp (fun ⟨nv, ks, hc, r⟩ =>
-          ⟨nv, ks, hc.imp (fun ⟨lo, hb, hcv⟩ => ⟨lo, n + 1, hb, hcv⟩) id, r⟩) id)
+        (h_framesV108.imp (fun hall nv hm => let ⟨ks, hc, r⟩ := hall nv hm;
+          ⟨ks, hc.imp (fun ⟨lo, hb, hcv⟩ => ⟨lo, n + 1, hb, hcv⟩) id, r⟩) id)
         h_pay_res (Or.inr trivial))
       sc
       -- Item 174: no held run stands behind a `:` park.
@@ -38420,7 +38748,7 @@ lemma accum_content_pending (sc : ScannerState)
     (h_pending : PendingNode sc false sp_start sp_block sp_scan)
     (h_corr : ScannerSurfCorr sc sp_scan)
     (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
-    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep)
+    (h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [])
     -- Item 365: the park state's soundness, for `refused_of_markedCols_nil` at the 4 `h_alt` sites.
     (h_sound : PendingKeySound.Sound sc)
     -- Item 47: the adjacent-value check's success, from the step's own chain.
@@ -38562,7 +38890,7 @@ lemma accum_content_pending (sc : ScannerState)
               IndentStackCover.Covered lo ks sc) ∨ True) ∧
             ∀ sp_m : SurfPos, SSLComments sp_g sp_m →
             ResumeFrames (SLYamlStream sp_start) ks sp_m) ∨ True)
-        (h_fV : (∃ (nv : Nat) (ks : List FrameLevel),
+        (h_fV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
             ((∃ lo n : Nat, IndentStackCover.Floor lo n ks ∧
               IndentStackCover.Covered lo ks sc) ∨ True) ∧
             ∀ sp_m : SurfPos,
@@ -38997,11 +39325,9 @@ lemma accum_content_pending (sc : ScannerState)
       -- The sequence entry stands under no explicit-key frame that is a STACK
       -- (item 108's note at the producers): `h_kslot` is a single value line,
       -- not a `ResumeFrames`, so the value face has nothing to carry.
-      (match h_closeFV110 with
-       | Or.inl ⟨nv, ks, _, _, closeFV⟩ =>
-           Or.inl ⟨nv, ks, Or.inr trivial,
-             fun sp_m h_ssl => closeFV sp_m h_ssl sp_m (SCompactSeqTail.nil n sp_m)⟩
-       | Or.inr h_alt => Or.inr h_alt)
+      (h_closeFV110.imp (fun hall nv hm => let ⟨ks, _, _, closeFV⟩ := hall nv hm;
+          ⟨ks, Or.inr trivial,
+             fun sp_m h_ssl => closeFV sp_m h_ssl sp_m (SCompactSeqTail.nil n sp_m)⟩) id)
       (Or.inr trivial) (Or.inr trivial)
       -- Item 139: the entry-level content park pays the same face, for the
       -- same reason and off the same producers.
@@ -39160,16 +39486,14 @@ lemma accum_content_pending (sc : ScannerState)
         | _, Or.inl ⟨ks, h_cov, closeFS⟩ => Or.inl ⟨ks, h_cov.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, _, hb, hc⟩) id, fun sp_m h_ssl' =>
             closeFS sp_m (h_nodeAt sp_m h_ssl')⟩
         | _, _ => Or.inr trivial
-      have h_fV : (∃ (nv : Nat) (ks : List FrameLevel),
+      have h_fV : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel),
           ((∃ lo m : Nat, IndentStackCover.Floor lo m ks ∧
             IndentStackCover.Covered lo ks sc) ∨ True) ∧
           ∀ sp_m : SurfPos,
           SSLComments sp_scan sp_m →
           KeyFrames (ExplValueLine sp_start nv) ks sp_m) ∨ PackAlt sc :=
-        match h_closeFVS_p with
-        | Or.inl ⟨nv, ks, h_cov, closeFV⟩ => Or.inl ⟨nv, ks, h_cov, fun sp_m h_ssl' =>
-            closeFV sp_m (h_nodeAt sp_m h_ssl')⟩
-        | Or.inr h => Or.inr h
+        h_closeFVS_p.imp (fun hall nv hm => let ⟨ks, h_cov, closeFV⟩ := hall nv hm;
+          ⟨ks, h_cov, fun sp_m h_ssl' => closeFV sp_m (h_nodeAt sp_m h_ssl')⟩) id
       -- **Item 153: and the payment.**  This arm is the break-crossed one and
       -- the park is off a line start by its own `h_col0` field (a `[96]` run is
       -- at least one character wide), so `landing_floor_of_arm` has both of its
@@ -39416,7 +39740,7 @@ lemma accum_content_pending (sc : ScannerState)
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) id),
                          -- Item 150: and the value-line twin's, the same step.
-                         (h_resFV_pk.imp (fun ⟨nv, ks, h_lt, h_cov, r⟩ => ⟨nv, ks, h_lt,
+                         (h_resFV_pk.imp (fun h nv hm => let ⟨ks, h_lt, h_cov, r⟩ := h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_lt,
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch))⟩,
                        h_run.blockKey_addAnchor
@@ -39460,13 +39784,13 @@ lemma accum_content_pending (sc : ScannerState)
                    (h_closeFS_p.imp (fun ⟨ks, h_cov, r⟩ => ⟨ks,
                      h_cov.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                      r⟩) id)
-                   (h_closeFVS_p.imp (fun ⟨nv, ks, h_cov, r⟩ => ⟨nv, ks,
+                   (h_closeFVS_p.imp (fun hall nv hm => let ⟨ks, h_cov, r⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                      h_cov.imp (fun ⟨lo, m, hb, hc⟩ => ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
                      r⟩) (PackAlt.step_content h_preprocess h_dispatch))
                  (nodir_of_content_dispatch h_dispatch)
                  -- Item 199: the ENTRY face's value-line twin steps with it — the field
                  -- carries no cover, so the step is the identity.
-                 (h_closeFEV_p.imp id (PackAlt.step_content h_preprocess h_dispatch)),
+                 (h_closeFEV_p.imp (fun h nv hm => h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm)) (PackAlt.step_content h_preprocess h_dispatch)),
                hcorr_result⟩
       · by_cases hbang : c = '!'
         · -- ═══ `!` on the run's line: the mirror ═══
@@ -39565,7 +39889,7 @@ lemma accum_content_pending (sc : ScannerState)
                              h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                                ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) id),
                            -- Item 150: and the value-line twin's, the same step.
-                         (h_resFV_pk.imp (fun ⟨nv, ks, h_lt, h_cov, r⟩ => ⟨nv, ks, h_lt,
+                         (h_resFV_pk.imp (fun h nv hm => let ⟨ks, h_lt, h_cov, r⟩ := h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_lt,
                            h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                              ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch))⟩,
                          h_run.blockKey_addTag
@@ -39607,13 +39931,13 @@ lemma accum_content_pending (sc : ScannerState)
                      (h_closeFS_p.imp (fun ⟨ks, h_cov, r⟩ => ⟨ks,
                        h_cov.imp (fun ⟨lo, hb, hc⟩ => ⟨lo, hb, h_cov_step lo ks hc⟩) id,
                        r⟩) id)
-                     (h_closeFVS_p.imp (fun ⟨nv, ks, h_cov, r⟩ => ⟨nv, ks,
+                     (h_closeFVS_p.imp (fun hall nv hm => let ⟨ks, h_cov, r⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                        h_cov.imp (fun ⟨lo, m, hb, hc⟩ => ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
                        r⟩) (PackAlt.step_content h_preprocess h_dispatch))
                    (nodir_of_content_dispatch h_dispatch)
                    -- Item 199: the ENTRY face's value-line twin steps with it — the field
                    -- carries no cover, so the step is the identity.
-                   (h_closeFEV_p.imp id (PackAlt.step_content h_preprocess h_dispatch)),
+                   (h_closeFEV_p.imp (fun h nv hm => h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm)) (PackAlt.step_content h_preprocess h_dispatch)),
                  hcorr_result⟩
         · by_cases hstar : c = '*'
           · -- ═══ `*` on the run's line: REFUTED (items 9e/9k) ═══
@@ -39782,7 +40106,7 @@ lemma accum_content_pending (sc : ScannerState)
                         h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                           ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) id),
                       -- Item 150: and the value-line twin's, the same step.
-                      (h_resFV_pk.imp (fun ⟨nv, ks, h_lt, h_cov, r⟩ => ⟨nv, ks, h_lt,
+                      (h_resFV_pk.imp (fun h nv hm => let ⟨ks, h_lt, h_cov, r⟩ := h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_lt,
                         h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                           ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch)), Or.inr trivial⟩
                   · by_cases hsq : c = '\''
@@ -39804,7 +40128,7 @@ lemma accum_content_pending (sc : ScannerState)
                           h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                             ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) id),
                         -- Item 150: and the value-line twin's, the same step.
-                        (h_resFV_pk.imp (fun ⟨nv, ks, h_lt, h_cov, r⟩ => ⟨nv, ks, h_lt,
+                        (h_resFV_pk.imp (fun h nv hm => let ⟨ks, h_lt, h_cov, r⟩ := h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_lt,
                           h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                             ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch)), Or.inr trivial⟩
                     · obtain ⟨h_sk_pres, h_cond⟩ :=
@@ -39826,7 +40150,7 @@ lemma accum_content_pending (sc : ScannerState)
                           h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                             ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) id),
                         -- Item 150: and the value-line twin's, the same step.
-                        (h_resFV_pk.imp (fun ⟨nv, ks, h_lt, h_cov, r⟩ => ⟨nv, ks, h_lt,
+                        (h_resFV_pk.imp (fun h nv hm => let ⟨ks, h_lt, h_cov, r⟩ := h nv (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_lt,
                           h_cov.imp (fun ⟨lo, hb, hc⟩ =>
                             ⟨lo, hb, h_cov_step lo (FrameLevel.map k :: ks) hc⟩) id, r⟩) (PackAlt.step_content h_preprocess h_dispatch)), Or.inr trivial⟩
             -- Item 24: the run's route index decides which readings of the
@@ -39906,10 +40230,10 @@ lemma accum_content_pending (sc : ScannerState)
                               fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
-                          | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
+                          | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_cov, closeFVS⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩)
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -39990,10 +40314,10 @@ lemma accum_content_pending (sc : ScannerState)
                               fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
-                          | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
+                          | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_cov, closeFVS⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩)
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -40040,13 +40364,15 @@ lemma accum_content_pending (sc : ScannerState)
               -- The park's `ne` is the enclosing collection's width and the
               -- landing names it; the field carries no cover, so `ne = k` is
               -- the whole step.
-              have h_closeFEV_k : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
+              have h_closeFEV_k : (∀ nv ∈ RegisterWitness.markedCols sc, ∃ (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ k) ∧
                   ∀ sp_m : SurfPos, SBlockNode (k + 1) .blockIn sp_node sp_m →
                   ∀ sp_end : SurfPos, SCompactSeqTail k sp_m sp_end →
                   KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc := by
-                rcases h_closeFEV_p with ⟨ne, nv, ks, hne, h_ltk, r⟩ | h_alt
-                · obtain rfl : ne = k := by omega
-                  exact Or.inl ⟨nv, ks, h_ltk, r⟩
+                rcases h_closeFEV_p with hall | h_alt
+                · exact Or.inl (fun nv hm => by
+                    obtain ⟨ne, ks, hne, h_ltk, r⟩ := hall nv hm
+                    obtain rfl : ne = k := by omega
+                    exact ⟨ks, h_ltk, r⟩)
                 · exact Or.inr h_alt
               -- One question, one deferral: is there a reading of this value at
               -- EVERY index?  Both negative answers — a block-scalar header and
@@ -40227,9 +40553,9 @@ lemma accum_content_pending (sc : ScannerState)
                            -- this step exactly as the stream face above does
                            -- (`?⏎  ?⏎    - &p a⏎  ? b⏎: w`). ═══
                            (match h_closeFEV_k with
-                            | Or.inl ⟨nv, ks, h_ltk, closeFEV⟩ => Or.inl ⟨nv, ks, h_ltk, Or.inr trivial,
+                            | Or.inl hall => Or.inl (fun nv' hm => let ⟨ks, h_ltk, closeFEV⟩ := hall nv' (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_ltk, Or.inr trivial,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFEV sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFEV sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                             -- **Item 207: and the park's own indent check.**  The entry-level park
                             -- is the same content dispatch one slot in, so the same five arguments
@@ -40274,10 +40600,10 @@ lemma accum_content_pending (sc : ScannerState)
                               fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
-                          | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
+                          | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_cov, closeFVS⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩)
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -40350,9 +40676,9 @@ lemma accum_content_pending (sc : ScannerState)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- Item 199: as above — the same fold, the same field.
                            (match h_closeFEV_k with
-                            | Or.inl ⟨nv, ks, h_ltk, closeFEV⟩ => Or.inl ⟨nv, ks, h_ltk, Or.inr trivial,
+                            | Or.inl hall => Or.inl (fun nv' hm => let ⟨ks, h_ltk, closeFEV⟩ := hall nv' (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_ltk, Or.inr trivial,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFEV sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFEV sp_mid (h_nodeAt sp_mid h_ssl) sp_end h_tail⟩)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                             -- **Item 207: and the park's own indent check.**  The entry-level park
                             -- is the same content dispatch one slot in, so the same five arguments
@@ -40402,10 +40728,10 @@ lemma accum_content_pending (sc : ScannerState)
                               fun sp_mid h_ssl => closeFS sp_mid (h_nodeAt sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
-                          | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
+                          | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_cov, closeFVS⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAt sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAt sp_mid h_ssl)⟩)
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -40476,9 +40802,9 @@ lemma accum_content_pending (sc : ScannerState)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                            -- Item 199: as above — the same fold, the same field.
                            (match h_closeFEV_k with
-                            | Or.inl ⟨nv, ks, h_ltk, closeFEV⟩ => Or.inl ⟨nv, ks, h_ltk, Or.inr trivial,
+                            | Or.inl hall => Or.inl (fun nv' hm => let ⟨ks, h_ltk, closeFEV⟩ := hall nv' (markedCols_mem_of_step_content h_preprocess h_dispatch hm); ⟨ks, h_ltk, Or.inr trivial,
                                 fun sp_mid h_ssl sp_end h_tail =>
-                                  closeFEV sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩
+                                  closeFEV sp_mid (h_nodeAtG sp_mid h_ssl) sp_end h_tail⟩)
                             | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                             -- **Item 207: and the park's own indent check.**  The entry-level park
                             -- is the same content dispatch one slot in, so the same five arguments
@@ -40522,10 +40848,10 @@ lemma accum_content_pending (sc : ScannerState)
                               fun sp_mid h_ssl => closeFS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
                           | Or.inr _ => Or.inr trivial)
                          (match h_closeFVS_p with
-                          | Or.inl ⟨nv, ks, h_cov, closeFVS⟩ => Or.inl ⟨nv, ks,
+                          | Or.inl hall => Or.inl (fun nv hm => let ⟨ks, h_cov, closeFVS⟩ := hall nv (marks_step_content h_preprocess h_dispatch nv hm); ⟨ks,
                               h_cov.imp (fun ⟨lo, m, hb, hc⟩ =>
                                 ⟨lo, m, hb, h_cov_step lo ks hc⟩) id,
-                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩
+                              fun sp_mid h_ssl => closeFVS sp_mid (h_nodeAtG sp_mid h_ssl)⟩)
                           | Or.inr h => Or.inr (PackAlt.step_content h_preprocess h_dispatch h))
                          (nodir_of_content_dispatch h_dispatch)
                          (completedTail_of_dispatch h_dispatch hamp hbang)
@@ -40551,7 +40877,7 @@ lemma accum_content_pending (sc : ScannerState)
       -- Item 190: the park's second frame, relayed as its first is.
       h_kslotUp190
       -- Item 198: and the park's value-line-bottomed stack, relayed with it.
-      (h_closeFV198.imp (fun ⟨nv, ks, hw, hcov, fV⟩ => ⟨nv, ks, hw, hcov, fV⟩) id)
+      (h_closeFV198.imp (fun hall nv hm => let ⟨ks, hw, hcov, fV⟩ := hall nv hm; ⟨ks, hw, hcov, fV⟩) id)
   | pendingMapValue _ _ _ n_old h_close_old h_floor_old h_top_old h_nic101 h_real101 h_ivl101 h_expl51 h_vslot51 h_sk58 h_col0_old h_ncol_old h_kslot93 h_closeF99 h_frames99 h_closeFV108 h_framesV108 h_nodir_old h_seqF168 _ h_offer_mv h_nextMV =>
     -- Item 179 retired the 0/nonzero split, as at the `pendingBlock` arm
     -- above: the mapping twin answers at every index and the root entry is
@@ -40617,8 +40943,6 @@ lemma content_km_transport {sc s_prep s_ad s' : ScannerState} {c : Char}
       rw [h_tk_skip4] at h_mono4
       omega
   refine h_km.transport
-    ((dispatchContent_implicitValueLine hok).trans (ad_implicitValueLine h_pre h_ad_def))
-    ((dispatchContent_docStartLine hok).trans (ad_docStartLine h_pre h_ad_def))
     ?_ h_pref (by omega)
     (Nat.le_trans h_mono
       (ScannerCorrectness.ScanHelpers.dispatchContent_tokens_mono s_ad c s' hok)) ?_
@@ -40671,7 +40995,7 @@ lemma content_value_layout {sc s_prep s_ad s' : ScannerState} {c : Char}
   rw [hk_ti, hp]
   exact h_slot
 
-lemma accum_step_content (sc : ScannerState)
+lemma accum_step_content_core (sc : ScannerState)
     (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
     (s_prep s' : ScannerState) (c : Char)
     (h_stream : SLYamlStream sp_start sp_gram)
@@ -40744,7 +41068,18 @@ lemma accum_step_content (sc : ScannerState)
       ScannerSurfCorr s' sp_scan' ∧
       (s'.flowLevel ≥ 1 →
         InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
-          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) := by
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+      -- Item 489: the landing agreement — at depth ≥ 1 the base keeps its start and a value
+      -- arm's landing is a flow-node end from the dispatch position, white up to the scan position.
+      (0 < sc.flowLevel → sp_block' = sp_block ∧ ((c = '&' ∨ c = '!') → sp_flow' = sp_flow) ∧
+        ∀ kj, tailOf s'.tokens = .value kj →
+          ∃ sp_prep, ∃ m : Nat, ScannerSurfCorr (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) sp_prep ∧
+            (m : Int) ≤ max 0 ((if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).currentIndent + 1) ∧
+            SFlowNode m .flowIn sp_prep sp_flow' ∧ GStar SSWhite sp_flow' sp_scan') := by
   -- B.4β: the flow stack is indexed by the scanner's `flowLevel`.
   obtain ⟨nn, kc, km, gt, s0, h_flow, h_ksz, h_ind0, h_pk0, h_floorK, h_kprom⟩ := h_flowK
   rcases Nat.eq_zero_or_pos sc.flowLevel with h0 | hpos
@@ -40761,7 +41096,7 @@ lemma accum_step_content (sc : ScannerState)
       exact h_flow.kinds_nil_of_depth_zero
     rw [h_lvl, h_ks]
     -- Item 349: the column-0 landing fact, from the loop's `Sound` through the preprocess.
-    have h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep := fun hcol => by
+    have h_dead : s_prep.col = 0 → ExplicitValueRefused s_prep ∧ RegisterWitness.MarkedColsIn s_prep [] := fun hcol => by
       have hnf_prep : s_prep.inFlow = false := by
         unfold ScannerState.inFlow
         rw [preprocess_preserves_flowLevel sc s_prep c h_preprocess, h0]; simp
@@ -40770,14 +41105,19 @@ lemma accum_step_content (sc : ScannerState)
           { s_prep with allowDirectives := false, documentEverStarted := true }
           else s_prep).peekAt? 1 = s_prep.peekAt? 1 := by split <;> rfl
       rw [hpk] at hind
-      exact L4YAML.Proofs.PendingKeySound.preprocess_col0_dead h_preprocess h_sound
+      have h_refused : ExplicitValueRefused s_prep := L4YAML.Proofs.PendingKeySound.preprocess_col0_dead h_preprocess h_sound
         (by unfold ScannerState.inFlow; rw [h0]; rfl) hcol hind
+      -- Item 508: the root CLOSING fact — the dead register outside flow leaves no marked slot
+      -- (`RegOk` read back), carried beside the refusal for the root births' empty-domain `Or.inl`.
+      exact ⟨h_refused, RegisterWitness.MarkedColsIn.of_explicitKeyLine_none
+        (L4YAML.Proofs.PendingKeySound.preprocess_sound h_preprocess h_sound h_mono)
+        (by rw [preprocess_preserves_flowLevel sc s_prep c h_preprocess]; exact h0) h_refused⟩
     obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5⟩ :=
       accum_content_pending (h_dead := h_dead) (h_sound := h_sound) sc sp_start sp_flow sp_scan h0 s_prep s' c
         (absorb_stacksB sp_start sp_gram sp_block sp_flow h_stream h_stack h_flow)
         (h_pending h0) h_corr h_preprocess h_adj h_bare h_dn h_fv h_base h_mono h_not_doc h_dispatch
     exact ⟨g', bl', fl', sn', q1, q2, ⟨0, 0, #[], none, _, q3.retail, rfl, fun h => absurd h (by omega), fun h => absurd h (by omega), Nat.zero_le _, fun h => absurd h (by omega)⟩, fun _ => q4, q5,
-           fun h => absurd h (by omega)⟩
+           fun h => absurd h (by omega), fun h => absurd h (by omega)⟩
   · -- ═══ DEPTH ≥ 1: the four value-completing arms CLOSE; `&`/`!` do not. ═══
     -- The route is `FlowOpenStack.receiveNode`, and four scanner gaps had to be
     -- closed from under it before its hypotheses were available at all:
@@ -41068,7 +41408,7 @@ lemma accum_step_content (sc : ScannerState)
                 h_dispatch))
                 (park_gate_of_peekBack hpb hflag)
                 (dispatchContent_anchor_next h_dispatch)
-            (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl), h_real', h_ad'⟩⟩
+            (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl), h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
       · by_cases hbang : c = '!'
         · -- ═══ `!`: the tag half, same hold (`[a, !t`) ═══
           subst hbang
@@ -41159,7 +41499,7 @@ lemma accum_step_content (sc : ScannerState)
                   (park_gate_of_peekBack hpb hflag)
                   (dispatchContent_tag_next h_dispatch)
             (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inr rfl),
-              h_real', h_ad'⟩⟩
+              h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
         · -- The four value-completing arms: a double- or single-quoted scalar, an
           -- alias, or a plain scalar.  Each is a whole `[161] ns-flow-node`, the
           -- frame is receptive, so the node folds straight in and the frame tail
@@ -41242,7 +41582,7 @@ lemma accum_step_content (sc : ScannerState)
             fun _ => ⟨.white (tl := .value kj) h_ws h_sync' (fun _ h => nomatch h)
                    (dispatchContent_flowIn_col_pos hcorr_ad hpeek h_ad_inflow h_not_doc
                      h_dispatch hcorr_res)
-                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩⟩
+                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩, fun _ => ⟨rfl, fun h => (h.elim hamp hbang).elim, fun _ _ => ⟨sp_prep, nn, hcorr_ad, (by unfold minContentIndentOf at h_floor_ad; omega), h_node', h_ws⟩⟩⟩
     | props ha ht sp_p h_tail h_lead_p h_run h_anchor h_tag h_colon_sc h_gate_p h_next =>
       have h_lead_at := h_lead_from (GStar.nil _) (fun _ => h_gate_p)
       -- B3: a second property glued to the run is refuted by `propertyFollowerOk`.
@@ -41399,7 +41739,7 @@ lemma accum_step_content (sc : ScannerState)
                 (park_gate_of_peekBack hpb hflag)
                 (dispatchContent_anchor_next h_dispatch)
             (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl),
-            h_real', h_ad'⟩⟩
+            h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
       · by_cases hbang : c = '!'
         · -- ═══ `!` after a run: the mirror ═══
           subst hbang
@@ -41523,7 +41863,7 @@ lemma accum_step_content (sc : ScannerState)
                   (park_gate_of_peekBack hpb hflag)
                   (dispatchContent_tag_next h_dispatch)
             (fun _ => by rw [hname]; exact (jsonKeyOfLast_push_real (by simp) (by simp)).trans rfl) (Or.inl rfl),
-              h_real', h_ad'⟩⟩
+              h_real', h_ad'⟩, fun _ => ⟨rfl, fun _ => rfl, fun kj h => absurd (h_tl' ▸ h) (h_tail kj)⟩⟩
         · by_cases hstar : c = '*'
           · -- ═══ `*` after a run: REFUTED (item 9e) ═══
             -- `[104] c-ns-alias-node` is an alternative to the properties-bearing
@@ -41625,7 +41965,139 @@ lemma accum_step_content (sc : ScannerState)
               fun _ => ⟨.white (tl := .value kj) h_ws h_sync' (fun _ h => nomatch h)
                    (dispatchContent_flowIn_col_pos hcorr_ad hpeek h_ad_inflow h_not_doc
                      h_dispatch hcorr_res)
-                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩⟩
+                   h_gate_c (fun _ _ _ _ => ⟨rfl, fun _ => rfl⟩) nofun, h_real', h_ad'⟩, fun _ => ⟨rfl, fun h => (h.elim hamp hbang).elim, fun _ _ => ⟨sp_prep, nn, hcorr_ad, (by unfold minContentIndentOf at h_floor_ad; omega), .content _ _ _ _ h_content', h_ws⟩⟩⟩
+
+
+/-- `accum_step_content_core` with the step's `ContentArm` alongside (item 484), the arm the last conjunct inside
+    the existential, as `FlowArm` sits in `accum_step_flow` (the `FlowStackK.withArm` pattern: the core's
+    body tuple is kept verbatim and re-packed once).  The arm is read at the state
+    the dispatch reads (after `allowDirectives` is cleared), at the preprocess's end position. -/
+lemma accum_step_content (sc : ScannerState)
+    (sp_start sp_gram sp_block sp_flow sp_scan : SurfPos)
+    (s_prep s' : ScannerState) (c : Char)
+    (h_stream : SLYamlStream sp_start sp_gram)
+    (h_stack : BlockStack sp_gram sp_block)
+    (h_flowK : FlowStackK sp_start sc sc.flowLevel sc.flowStack (tailOf sc.tokens) sp_block sp_flow)
+    (h_pending : sc.flowLevel = 0 → PendingNode sc false sp_start sp_flow sp_scan)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (h_interior : sc.flowLevel ≥ 1 →
+      InteriorGap sc (tailOf sc.tokens) sp_flow sp_scan ∧
+        LastTokenReal sc.tokens ∧ sc.allowDirectives = false)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_sound : PendingKeySound.Sound sc)
+    -- **Item 157: §9.2's DANGLING refusal, threaded from `scanNextToken`.**  It
+    -- runs BEFORE every dispatch, so its success reaches all four of them
+    -- unchanged; what the landing turns it into is the park's own face.
+    (h_dn : scanNextToken_checkDanglingNode sc s_prep = .ok ())
+    -- Item 275: §8.1's check, carried beside §9.2's.
+    (h_fv : scanNextToken_checkFlowValueIndent sc s_prep = .ok ())
+    -- Content dispatch is `scanNextToken`'s LAST arm: it runs only after both
+    -- indicator dispatches fell through.  Those two fall-throughs are what pin
+    -- `c` off `,`/`]`/`}` and off the value-indicator `:`, which is what item
+    -- 9d's adjacency inversion needs at a content character (§1c''b'').
+    (h_flow_none : scanNextToken_dispatchFlowIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    (h_blk_none : scanNextToken_dispatchBlockIndicators
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok none)
+    -- Item 47: the adjacent-value check sits between the block and content
+    -- dispatches, so a content step carries its success — which is what the
+    -- two content parks' `:`-residue arms refute.
+    (h_adj : scanNextToken_checkAdjacentValue
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok ())
+    -- **Item 139: and §9.2's landing refusal, beside it.**  It runs one check
+    -- earlier — before the `allowDirectives` update — so it reads `s_prep`
+    -- itself, and it is what the two content parks' FALLBACK route refutes.
+    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())
+    -- Item 146: the stack's BASE, carried by the accumulation from `mk'`
+    -- down.  §9.2's landing refusal spends it to read the dedent exemption
+    -- off the landing's column instead of splitting on it.
+    (h_base : IndentStackBase.SentinelBase sc)
+    -- **Item 149: and its SHAPE**, carried the same way and from the same
+    -- seed.  A dedent landing's pack reads the scanner stack it pops to,
+    -- and reading a bound on the TOP as a bound on every entry is what
+    -- monotonicity buys (`IndentStackCover.Covered.pop_to`).
+    (h_mono : IndentStackMono.Mono sc)
+    (h_dispatch : scanNextToken_dispatchContent
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) c = .ok s')
+    -- Item 67: the structural dispatch's FALL-THROUGH, which inside a flow is
+    -- the statement that the token cleared the enclosing block's indent — the
+    -- other half of what a multi-line reading at the stack's index needs.
+    (h_str_none : scanNextToken_dispatchStructural s_prep c = .ok none)
+    (h_not_doc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) = false) :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      FlowStackK sp_start s' s'.flowLevel s'.flowStack (tailOf s'.tokens) sp_block' sp_flow' ∧
+      (s'.flowLevel = 0 → PendingNode s' false sp_start sp_flow' sp_scan') ∧
+      ScannerSurfCorr s' sp_scan' ∧
+      (s'.flowLevel ≥ 1 →
+        InteriorGap s' (tailOf s'.tokens) sp_flow' sp_scan' ∧
+          LastTokenReal s'.tokens ∧ s'.allowDirectives = false) ∧
+        ∃ sp_prep sp_a, ScannerSurfCorr (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) sp_prep ∧
+          ContentArm (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep) s' c sp_prep sp_a ∧
+          -- Item 489: the landing agreement, at the wrapper's own `sp_prep`.
+          (0 < sc.flowLevel → sp_block' = sp_block ∧ ((c = '&' ∨ c = '!') → sp_flow' = sp_flow) ∧
+            ∀ kj, tailOf s'.tokens = .value kj →
+              ∃ m : Nat, (m : Int) ≤ max 0 ((if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).currentIndent + 1) ∧
+                SFlowNode m .flowIn sp_prep sp_flow' ∧ GStar SSWhite sp_flow' sp_scan') := by
+  obtain ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, q7⟩ := accum_step_content_core (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_prep s' c h_stream h_stack h_flowK h_pending h_corr h_interior h_preprocess h_dn h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_dispatch h_str_none h_not_doc
+  obtain ⟨sp_prep, hcorr_prep⟩ :=
+    scanNextToken_preprocess_corr sc sp_scan h_corr s_prep c h_preprocess
+  have hcorr_ad := corr_of_allowDirectives_update hcorr_prep
+  have hpeek : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = some c :=
+    (by split <;> rfl : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).peek? = s_prep.peek?).trans (preprocess_some_peek h_preprocess)
+  have hcol : 1 ≤ (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).flowLevel → (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).currentIndent < ((if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col : Int) := by
+    intro hfl
+    have hfl' : 1 ≤ s_prep.flowLevel := by
+      have : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).flowLevel = s_prep.flowLevel := by split <;> rfl
+      rw [this] at hfl; exact hfl
+    have h_prep_flow : s_prep.inFlow = true := by
+      unfold ScannerState.inFlow; simp; omega
+    have h := FlowIndentStable.structural_none_col_gt_of_inFlow h_prep_flow h_str_none
+    have hc : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).col = s_prep.col := by split <;> rfl
+    have hi : (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true }
+        else s_prep).indents = s_prep.indents := by split <;> rfl
+    rw [hc, currentIndent_of_indents_eq hi]; exact h
+  obtain ⟨sp_a, harm⟩ := contentArm_of_dispatch _ sp_prep c hcorr_ad hpeek h_not_doc hcol h_dispatch
+  refine ⟨g, b, f, sn, q1, q2, q3, q4, q5, q6, sp_prep, sp_a, hcorr_ad, harm,
+    fun hpos => ⟨(q7 hpos).1, (q7 hpos).2.1, fun kj hkj => ?_⟩⟩
+  obtain ⟨sp_prep', m, hcorr', hm, hnode, hws⟩ := (q7 hpos).2.2 kj hkj
+  rw [ScannerSurfCorr_unique hcorr_ad hcorr']
+  exact ⟨m, hm, hnode, hws⟩
 
 /-! ### §1f Composition: Per-Dispatch → Full accum_step
 
@@ -41753,7 +42225,7 @@ lemma scanNextToken_accum_step (sc : ScannerState)
                 · split at h_ok
                   · rename_i s_blk h_blk
                     have h := Except.ok.inj h_ok; injection h with h; subst h
-                    obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+                    obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, _⟩ :=
                       accum_step_block sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_blk c_pre
                         h_stream h_kbc h_scf h_stack h_flow h_pending h_corr h_interior h_pre
                         h_dn h_fv h_str_eq h_blk h_bare h_base h_mono h_sound h_cf h_lkt
@@ -41789,7 +42261,7 @@ lemma scanNextToken_accum_step (sc : ScannerState)
                             rw [this]
                             exact dispatchStructural_none_not_doc_boundary h_str_eq hcol
                           · exact dispatchStructural_none_not_doc_boundary h_str_eq
-                        obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6⟩ :=
+                        obtain ⟨g', bl', fl', sn', q1, q2, q3, q4, q5, q6, _⟩ :=
                           accum_step_content (h_sound := h_sound) sc sp_start sp_gram sp_block sp_flow sp_scan s_pre s_cnt c_pre
                             h_stream h_stack h_flow h_pending h_corr h_interior h_pre h_dn
                             h_fv h_flow_none h_blk_none h_adj h_bare h_base h_mono h_cnt
