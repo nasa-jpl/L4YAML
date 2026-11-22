@@ -18,8 +18,11 @@ Standard axioms only, no `native_decide`. -/
 
 namespace Tests.Guards.TagShapeAxioms
 
+-- 2026-11-22, Lean v4.36.0: `wordChar_alnum` loses `Classical.choice`.  Its `Char` comparisons resolved
+-- through `Char.instLawfulEqOrd` and `Char.instTransOrd` (both on the axiom) under v4.35.0 and resolve
+-- through `Char.instIsLinearOrder` now, which is free of it.  The proof text is unchanged.
 open L4YAML.Proofs.TagShape in
-/-- info: 'L4YAML.Proofs.TagShape.wordChar_alnum' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'L4YAML.Proofs.TagShape.wordChar_alnum' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms wordChar_alnum
 

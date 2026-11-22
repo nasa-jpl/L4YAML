@@ -1,6 +1,6 @@
 ---
 name: l4yaml-lean-proof-patterns
-description: Lean 4.35 + module-system mechanics that have repeatedly cost time in L4YAML proofs — String.Slice returns, BEq on derived enums, rfl vs native_decide pins, meta/public imports, guarded recursion, census-breaking module additions. Use when a proof or test file fails to elaborate for a reason that smells like tooling rather than mathematics.
+description: Lean 4.36 + module-system mechanics that have repeatedly cost time in L4YAML proofs — String.Slice returns, BEq on derived enums, rfl vs native_decide pins, meta/public imports, guarded recursion, census-breaking module additions. Use when a proof or test file fails to elaborate for a reason that smells like tooling rather than mathematics.
 ---
 
 # Lean proof patterns for this repo
