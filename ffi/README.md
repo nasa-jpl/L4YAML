@@ -47,7 +47,7 @@ l4yaml_free(result);
 
 ### Iterating Sequences
 
-**Important**: Free each item immediately after use, then free the parent sequence.
+**Important**: Free each item immediately after use, then free the parent sequence. A lookup can return a non-NULL handle that is not a sequence (a scalar or a mapping), so free the looked-up handle on every path, not only inside the sequence branch.
 
 ```c
 l4yaml_value_t seq = l4yaml_value_lookup(parent, "items");
@@ -62,8 +62,8 @@ if (seq && l4yaml_value_kind(seq) == L4YAML_SEQUENCE) {
         
         l4yaml_free(item);  // Free immediately after use
     }
-    l4yaml_free(seq);  // Free parent after loop
 }
+l4yaml_free(seq);  // Free after use, whatever its kind (NULL is a no-op)
 ```
 
 ### Nested Lookups
@@ -72,14 +72,15 @@ Each lookup returns a new handle that must be freed:
 
 ```c
 l4yaml_value_t config = l4yaml_value_lookup(root, "config");
-l4yaml_value_t timeout = l4yaml_value_lookup(config, "timeout");
+// Lookups require a non-NULL handle: guard the inner lookup against a missing "config"
+l4yaml_value_t timeout = config ? l4yaml_value_lookup(config, "timeout") : NULL;
 
 if (timeout && l4yaml_value_kind(timeout) == L4YAML_SCALAR) {
     const char* value = l4yaml_value_string(timeout);
     // Use value...
 }
 
-// Free in reverse order of acquisition
+// Free in reverse order of acquisition (l4yaml_free(NULL) is a no-op)
 l4yaml_free(timeout);
 l4yaml_free(config);
 l4yaml_free(root);
@@ -176,7 +177,8 @@ if (seq && l4yaml_value_kind(seq.get()) == L4YAML_SEQUENCE) {
 
 ```cpp
 l4yaml::ValueHandle config(l4yaml_value_lookup(root.get(), "config"));
-l4yaml::ValueHandle timeout(l4yaml_value_lookup(config.get(), "timeout"));
+// Lookups require a non-NULL handle: guard the inner lookup against a missing "config"
+l4yaml::ValueHandle timeout(config ? l4yaml_value_lookup(config.get(), "timeout") : nullptr);
 
 if (timeout && l4yaml_value_kind(timeout.get()) == L4YAML_SCALAR) {
     const char* value = l4yaml_value_string(timeout.get());
