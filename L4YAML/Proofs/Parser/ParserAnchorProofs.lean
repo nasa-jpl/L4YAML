@@ -237,10 +237,6 @@ lemma parseStream_output_aliases_resolve
       · simp at h_expect
     · simp at h_expect
 
--- C2c: Anchor values in parser output are well-formed.
--- parseStream_output_anchors_wellformed is now in ParserWfaProofs.lean
--- (with updated signature: FlowAwarePSV + FlowBracketsMatched)
-
 end L4YAML.Proofs.ParserAnchorProofs
 
 end Blanket
