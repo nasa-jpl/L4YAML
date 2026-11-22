@@ -300,7 +300,7 @@ include(GNUInstallDirs)
 install(TARGETS l4yaml
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         COMPONENT L4YAML_Runtime)
-install(FILES l4yaml.h
+install(FILES l4yaml.h l4yaml_raii.hpp
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         COMPONENT L4YAML_Devel)
 
