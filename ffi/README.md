@@ -12,6 +12,8 @@ L4YAML exposes opaque handle types that must be explicitly freed:
 
 **Critical**: All handles returned by L4YAML functions must be freed with `l4yaml_free()` to prevent memory leaks.
 
+**Lifecycle**: Call `l4yaml_initialize()` exactly once before any parsing, and `l4yaml_finalize()` after all handles have been freed.
+
 ## C Usage
 
 ### Basic Pattern
@@ -19,8 +21,11 @@ L4YAML exposes opaque handle types that must be explicitly freed:
 ```c
 #include <l4yaml.h>
 
-// Parse YAML
-l4yaml_result_t result = l4yaml_parse_single(yaml_text, strlen(yaml_text));
+// Initialize the Lean runtime exactly once per process, before any parsing
+l4yaml_initialize();
+
+// Parse YAML (the third argument is a limit preset, one of L4YAML_LIMITS_*)
+l4yaml_result_t result = l4yaml_parse_single(yaml_text, strlen(yaml_text), L4YAML_LIMITS_DEFAULT);
 if (!result || !l4yaml_result_is_ok(result)) {
     if (result) l4yaml_free(result);
     return ERROR;
@@ -42,7 +47,7 @@ l4yaml_free(result);
 
 ### Iterating Sequences
 
-**Important**: Free each item immediately after use, then free the parent sequence.
+**Important**: Free each item immediately after use, then free the parent sequence. A lookup can return a non-NULL handle that is not a sequence (a scalar or a mapping), so free the looked-up handle on every path, not only inside the sequence branch.
 
 ```c
 l4yaml_value_t seq = l4yaml_value_lookup(parent, "items");
@@ -57,8 +62,8 @@ if (seq && l4yaml_value_kind(seq) == L4YAML_SEQUENCE) {
         
         l4yaml_free(item);  // Free immediately after use
     }
-    l4yaml_free(seq);  // Free parent after loop
 }
+l4yaml_free(seq);  // Free after use, whatever its kind (NULL is a no-op)
 ```
 
 ### Nested Lookups
@@ -67,14 +72,15 @@ Each lookup returns a new handle that must be freed:
 
 ```c
 l4yaml_value_t config = l4yaml_value_lookup(root, "config");
-l4yaml_value_t timeout = l4yaml_value_lookup(config, "timeout");
+// Lookups require a non-NULL handle: guard the inner lookup against a missing "config"
+l4yaml_value_t timeout = config ? l4yaml_value_lookup(config, "timeout") : NULL;
 
 if (timeout && l4yaml_value_kind(timeout) == L4YAML_SCALAR) {
     const char* value = l4yaml_value_string(timeout);
     // Use value...
 }
 
-// Free in reverse order of acquisition
+// Free in reverse order of acquisition (l4yaml_free(NULL) is a no-op)
 l4yaml_free(timeout);
 l4yaml_free(config);
 l4yaml_free(root);
@@ -85,7 +91,7 @@ l4yaml_free(root);
 Always check for null handles and free on error paths:
 
 ```c
-l4yaml_result_t result = l4yaml_parse_single(text, len);
+l4yaml_result_t result = l4yaml_parse_single(text, len, L4YAML_LIMITS_DEFAULT);
 if (!result) {
     return ERROR;  // Allocation failed, nothing to free
 }
@@ -116,8 +122,9 @@ The `l4yaml_raii.hpp` header provides RAII wrappers that automatically manage me
 ```cpp
 #include <l4yaml_raii.hpp>
 
+// l4yaml_initialize() must already have been called once (see C Usage)
 // Parse YAML - automatic cleanup on scope exit
-l4yaml::ResultHandle result(l4yaml_parse_single(yaml_text, strlen(yaml_text)));
+l4yaml::ResultHandle result(l4yaml_parse_single(yaml_text, strlen(yaml_text), L4YAML_LIMITS_DEFAULT));
 if (!result || !l4yaml_result_is_ok(result.get())) {
     return ERROR;  // Automatic cleanup, no manual free needed
 }
@@ -170,7 +177,8 @@ if (seq && l4yaml_value_kind(seq.get()) == L4YAML_SEQUENCE) {
 
 ```cpp
 l4yaml::ValueHandle config(l4yaml_value_lookup(root.get(), "config"));
-l4yaml::ValueHandle timeout(l4yaml_value_lookup(config.get(), "timeout"));
+// Lookups require a non-NULL handle: guard the inner lookup against a missing "config"
+l4yaml::ValueHandle timeout(config ? l4yaml_value_lookup(config.get(), "timeout") : nullptr);
 
 if (timeout && l4yaml_value_kind(timeout.get()) == L4YAML_SCALAR) {
     const char* value = l4yaml_value_string(timeout.get());
