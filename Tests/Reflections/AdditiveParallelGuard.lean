@@ -31,6 +31,12 @@ exactly what the existing consumer (`seqBodyProps_assemble`) already eats — an
     (`scal sep sep scal`) is NOT a `ContentWin`, because the separator at `1` is followed by another
     separator, not a content-start head — exactly the field whose failure would break ADVANCE re-seating.
 -/
+
+module
+
+
+@[expose] public section Blanket
+
 set_option autoImplicit false
 
 namespace Tests.Reflections.AdditiveParallelGuard
@@ -191,3 +197,5 @@ theorem not_contentwin_bad : ¬ ContentWin f0 hdBad 0 4 := by
   rcases hcs with h | h <;> exact absurd h (by decide)
 
 end Tests.Reflections.AdditiveParallelGuard
+
+end Blanket

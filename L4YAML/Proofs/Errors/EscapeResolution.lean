@@ -2,8 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
+
+module
+
+public import L4YAML.Spec.Grammar
+
+public meta import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+
+public meta import L4YAML.Spec.CharPredicates
+@[expose] public section Blanket
 
 /-!
 # Escape Sequence Resolution Proofs (Layer 2b)
@@ -16,7 +24,10 @@ valid Unicode characters.
 1. **Type-level validity**: Every `Char` in Lean 4 satisfies Lean's
    built-in UInt32.isValidChar predicate by construction, so any
    function returning `Char` produces valid Unicode. We state this
-   explicitly as `char_isValidChar` for documentation.
+   explicitly as `char_isValidChar` for documentation. **Read it for
+   exactly what it says**: the character a decoder returns is a valid
+   one. It says nothing about that character being the *requested* one,
+   and `'\0'` satisfies it — see §4.
 
 2. **Named escape table correctness**: The 16 named escapes in
    `Grammar.resolveNamedEscape` are exhaustively verified:
@@ -32,11 +43,38 @@ valid Unicode characters.
 
 4. **Unicode escape safety**: Hex escapes (`\xHH`, `\uHHHH`,
    `\UHHHHHHHH`) are handled by `parseHexEscape` in
-   `Scanner/Scalar.lean`. Either the decoded code point is
-   < 0x110000, in which case `Char.ofNat` produces a valid Unicode
-   char by construction, or the scanner returns
-   `.unicodeOutOfRange` (a `ScanError` constructor). There is no
-   FFFD fallback — the scanner rejects out-of-range escapes.
+   `Scanner/Scalar.lean`. Either the decoded code point satisfies
+   `Nat.isValidChar`, in which case the scanner returns *that* code
+   point, or the scanner returns `.unicodeOutOfRange` (a `ScanError`
+   constructor). There is no substitution on either branch: no U+FFFD
+   fallback, and — since 2026-08-11 — no U+0000 fallback either.
+
+   **This claim was false until 2026-08-11, and the shape of the error
+   is worth keeping.** It read: "Either the decoded code point is
+   < 0x110000, in which case `Char.ofNat` produces a valid Unicode char
+   by construction, or the scanner returns `.unicodeOutOfRange`." Both
+   halves are individually true, and the disjunction is still not a
+   safety property, because `Char.ofNat` is *total*: on a value failing
+   `Nat.isValidChar` it substitutes `'\0'` rather than failing. The
+   guard `< 0x110000` is strictly weaker than `isValidChar` — they
+   disagree exactly on the surrogates U+D800–U+DFFF — so `\uD800`
+   decoded to NUL, silently, on input the scanner *accepted*. The
+   citation "produces a valid Unicode char by construction" was doing
+   the work of a faithfulness claim while asserting only inhabitation.
+
+   The repair is that the scanner's guard is now `Nat.isValidChar`
+   itself, i.e. `Char.ofNat`'s own precondition, so the substituting
+   branch is unreachable. What makes that *checkable* rather than
+   merely commented is `CharClass.toNat_ofNat_of_isValidChar`
+   (`Proofs/Foundation/CharClass.lean`): under the guard, the decoded
+   character's code point **is** the requested value. The indexed twin
+   carries it as a conjunct of `parseHexEscapeIx_decoded`. Pins:
+   `Tests/Reflections/SurrogateEscapeRejected.lean`.
+
+   The general lesson is filed under
+   "Proof-breaking code patterns" in DOCS.md: a lemma about a
+   function's *codomain* is not a lemma about its *value*, and a total
+   coercion with a silent default turns the difference into a bug.
 
 ## Strategy
 
@@ -63,14 +101,27 @@ Every Lean 4 `Char` is a valid Unicode code point.
 
 This is definitional: `Char` is `⟨val : UInt32, valid : val.isValidChar⟩`.
 The theorem makes this guarantee explicit and citable.
+
+**What it does not say.** It quantifies over the codomain, so it holds of
+every `Char` a decoder could possibly return, including the `'\0'` that
+`Char.ofNat` substitutes for an invalid code point. Citing it about a
+*decode* is therefore vacuous. The faithfulness companion — the decoded
+character is the requested code point — is
+`CharClass.toNat_ofNat_of_isValidChar`, and it needs the `isValidChar`
+hypothesis this lemma does not have. See §4 of the module docstring for
+the bug that distinction cost us.
 -/
 lemma char_isValidChar (c : Char) : c.val.isValidChar :=
   c.valid
 
 /--
 The replacement character U+FFFD is a valid Unicode code point.
-Used as the fallback when `\xHH`/`\uHHHH`/`\UHHHHHHHH` specifies
-an invalid code point.
+
+Kept as a statement about U+FFFD itself. It is **not** a fallback: no
+branch of `parseHexEscape` or `parseHexEscapeIx` substitutes a
+replacement character, and the docstring that said so (through
+2026-08-11) contradicted §4 of this module in the same file. An invalid
+code point is rejected with `.unicodeOutOfRange`, never replaced.
 -/
 lemma replacement_char_valid : (Char.ofNat 0xFFFD).val.isValidChar := by
   native_decide
@@ -299,3 +350,5 @@ lemma isNamedEscapeChar_iff_isSome (c : Char) :
     | some _ => exact nofun
 
 end L4YAML.Proofs.EscapeResolution
+
+end Blanket

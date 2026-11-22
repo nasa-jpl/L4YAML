@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 295 — an INCOMPLETE guard-projection still factors
 
@@ -136,3 +141,5 @@ theorem boundary_not_reachable :
 #guard isContentStartB Tok.cls == false
 
 end Tests.Reflections.IncompleteProjectionStillFactors
+
+end Blanket

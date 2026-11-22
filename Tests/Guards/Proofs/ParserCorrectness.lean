@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Parser.ParserCorrectness
+module
+
+public import L4YAML.Proofs.Parser.ParserCorrectness
+
+
+
+public meta import L4YAML.Parser.TokenParser
+public meta import L4YAML.Scanner.Scanner
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ParserCorrectness
 
@@ -10,7 +18,9 @@ open L4YAML.Proofs.ParserSoundness
 
 -- Helper to check if a parse result has grammar witnesses
 private def checkHasWitness (input : String) : Bool :=
-  match Scanner.scan input, input with
+  -- `scanFiltered`, as `parseYaml` does: raw `scan` output carries `.placeholder` tokens, at
+  -- which the stream loop made no progress — accepted silently before (γ2α), refused since.
+  match Scanner.scanFiltered input, input with
   | .ok tokens, _ =>
     match parseStream tokens with
     | .ok _docs =>
@@ -43,3 +53,5 @@ private def checkHasWitness (input : String) : Bool :=
 #guard checkHasWitness "- item1\n- item2\n- item3"
 
 end L4YAML.Proofs.ParserCorrectness
+
+end Blanket

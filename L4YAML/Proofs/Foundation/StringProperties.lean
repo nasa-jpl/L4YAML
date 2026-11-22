@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Algebra.StringList
+
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Algebra.StringList
+
+@[expose] public section Blanket
 
 /-!
 # Pure String and List Properties (Layer 1b + 1d)
@@ -229,3 +234,5 @@ lemma trim_preserves_validPlainFirst (p : Char → Bool) (cs : List Char)
   exact h
 
 end L4YAML.Proofs.StringProperties
+
+end Blanket

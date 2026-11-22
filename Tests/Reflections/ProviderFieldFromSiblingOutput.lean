@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 432 — source a multi-field provider's later field from an earlier field's output
 
@@ -71,3 +76,5 @@ theorem provider_smart (head : Nat) (t : List Nat)
 #guard decide (bal [1, 2] 1 ≥ 0)      -- open-headed  ⇒ floor satisfied
 
 end Tests.Reflections.ProviderFieldFromSiblingOutput
+
+end Blanket

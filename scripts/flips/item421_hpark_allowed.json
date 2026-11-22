@@ -1,0 +1,38 @@
+{
+ "item": 421,
+ "tag": "HPARK-ALLOWED",
+ "rev": "8f5b8035",
+ "target": "L4YAML",
+ "log": "scratch/hpark_allowed.log",
+ "msgWidth": 110,
+ "rounds": 1,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "closeThenBlock.h_park",
+     "line": 27622,
+     "old": ["    (h_park : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ 0 < sp_scan.col)"],
+     "new": ["    (h_park : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ (0 < sp_scan.col ∧ sc.simpleKeyAllowed = true))"],
+     "count": 1
+    },
+    {
+     "name": "pendingContent.h_park",
+     "line": 29269,
+     "old": ["      0 < sp_scan.col)"],
+     "new": ["      (0 < sp_scan.col ∧ sc.simpleKeyAllowed = true))"],
+     "count": 1
+    },
+    {
+     "name": "pendingBlockContent.h_park",
+     "line": 29457,
+     "old": ["      0 < sp_scan.col)"],
+     "new": ["      (0 < sp_scan.col ∧ sc.simpleKeyAllowed = true))"],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

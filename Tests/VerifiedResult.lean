@@ -1,4 +1,10 @@
-import Lean.Elab.Term
+module
+
+public import Lean.Elab.Term
+
+
+public meta import Lean.Elab.Term.TermElabM
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -168,3 +174,5 @@ def printSuiteResult (r : VerifiedSuiteResult) : IO Unit := do
     IO.println s!"    {r.failed} FAILED"
 
 end Tests
+
+end Blanket

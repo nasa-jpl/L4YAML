@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 456 — strengthening a predicate whose INTERMEDIATE existential SEVERED a fact set is a
 # verbatim MIRROR-TRANSPORT from the sibling arm that did NOT sever: the proof content pre-exists in
@@ -131,3 +136,5 @@ theorem strengthen_severed_mirrors_sibling :
   ⟨fun _ hb hi => wrapped_of_body hb hi, fun _ hb hi => producer_strengthened hb hi⟩
 
 end Tests.Reflections.StrengthenSeveredPredicateMirrorsSibling
+
+end Blanket

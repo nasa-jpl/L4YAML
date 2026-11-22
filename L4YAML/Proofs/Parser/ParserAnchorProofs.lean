@@ -2,22 +2,45 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Proofs.Production.ScannerPlainScalarValid
-import L4YAML.Proofs.Parser.ParserGrammableBase
-import L4YAML.Proofs.Parser.ParserNodeProofs
-import L4YAML.Algebra.Value
-import L4YAML.Proofs.Parser.ParserWfaProofs
+
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Proofs.Production.ScannerPlainScalarValid
+public import L4YAML.Proofs.Parser.ParserGrammableBase
+public import L4YAML.Proofs.Parser.ParserNodeProofs
+public import L4YAML.Algebra.Value
+public import L4YAML.Proofs.Parser.ParserWfaProofs
+
+@[expose] public section Blanket
 
 /-!
 # Anchor/alias resolution lifted to documents and streams
 
 Public wrappers and doc/stream-level lifts of the `ParserNodeProofs`
-scaffolding: capstones 3.5 `parseNode_aliases_resolve`, 3.6
+scaffolding: capstones 3.5 `parseNode_aliases_declared`, 3.6
 `parseDocument_aliases_resolve`, and 3.7
-`parseStream_output_aliases_resolve` (every `*alias` in parser output
-resolves to a previously defined `&anchor`).
+`parseStream_output_aliases_resolve`.
+
+## The obligation has two readings and this file carries both
+
+§7.1 forbids an alias whose anchor has not previously **occurred**; §3.2.2.2
+says what an alias resolves **to**.  Per node only the first is available: an
+anchor occurs at the `&` property, which is the node's start event, while its
+entry in the resolution table stores a *value* and so cannot exist until the
+node it decorates is complete.  `&x [*x]` is exactly that gap — a legal
+document whose inner alias names an anchor that has occurred and is not yet
+resolvable — so capstone 3.5 is indexed on the DECLARATION set
+(`AllAliasesDeclared`).
+
+At a document boundary the two readings coincide, because every anchor the
+document declared has been finalized by the time its node returns.  Capstones
+3.6 and 3.7 are therefore stated on the resolution table, unchanged.
+`AllAliasesResolve.of_declared` is the step between the readings and
+`AG.declsBound` is what discharges its premise; `DeclarationsBound` is the
+document-entry condition, which the stream's initial state and
+`parseStreamLoop`'s per-document reset both supply.
 -/
 
 /-
@@ -35,89 +58,26 @@ open L4YAML.TokenParser
 open L4YAML.Proofs.ScannerPlainScalarValid
 open L4YAML.Proofs.Composition
 
-/-- C2b: Every document's aliases resolve through its anchor map.
+/-- The document-entry condition the resolution reading needs: every name that
+    has OCCURRED is already BOUND.
 
-    ### Proof Architecture
+    False inside a node, which is the whole of row 20, and true wherever a
+    document starts — the stream's initial state has both registers empty and
+    `parseStreamLoop` clears both after each document (§3.2.2.2: anchor scope is
+    per document). -/
+def DeclarationsBound (ps : ParseState) : Prop :=
+  ∀ nm, nm ∈ ps.declaredAnchors → AnchorBound ps.anchors nm
 
-    With the parser-level §7.1 validation check in `parseNode`, every
-    `YamlValue.alias name` in the output tree was created only after
-    confirming `ps.anchors.any (fun (n, _) => n == name) = true`.
+/-- A state that has declared nothing satisfies it vacuously. -/
+lemma DeclarationsBound.of_empty {ps : ParseState}
+    (h : ps.declaredAnchors = #[]) : DeclarationsBound ps := by
+  intro nm hm; rw [h] at hm; simp at hm
 
-    The proof chains three properties:
-
-    1. **Bridge**: `Array.any ... = true` implies
-       `(Array.findSome? ...).isSome` (matching `AllAliasesResolve.alias`).
-
-    2. **Monotonicity**: `AllAliasesResolve val anchors` is preserved
-       when `anchors` grows (since `findSome?` on a larger array still finds
-       entries present in any prefix).
-
-    3. **Parser invariant**: By structural induction on fuel, `parseNode`
-       produces values satisfying `AllAliasesResolve` against the output
-       state's `anchors` (which includes all anchors accumulated during parsing).
-
-    The `parseStream_doc_from_parseDocument` decomposition lifts this to
-    `parseStream`. -/
-
--- Bridge: `Array.any (fun (n, _) => n == name) = true` →
---         `(Array.findSome? (fun (n, _) => if n == name then some () else none)).isSome`
--- General bridge: if `any f` and `f x → (g x).isSome`, then `findSome? g .isSome`
-lemma Array.any_true_findSome_isSome
-    {α β : Type} (xs : Array α) (f : α → Bool) (g : α → Option β)
-    (h_fg : ∀ x, f x = true → (g x).isSome = true)
-    (h : xs.any f = true) :
-    (xs.findSome? g).isSome = true := by
-  rw [Array.findSome?_isSome_iff]
-  rw [Array.any_eq_true] at h
-  obtain ⟨i, hi, hp⟩ := h
-  exact ⟨xs[i], Array.getElem_mem hi, h_fg _ hp⟩
-
--- Specialized bridge for the alias resolution check
-lemma any_name_implies_findSome_isSome
-    (anchors : Array (String × YamlValue)) (name : String)
-    (h : anchors.any (fun (n, _) => n == name) = true) :
-    (anchors.findSome? (fun (n, _) => if n == name then some () else none)).isSome = true :=
-  Array.any_true_findSome_isSome anchors _ _ (fun ⟨n, _⟩ hp => by simp [hp]) h
-
--- Monotonicity: AllAliasesResolve is preserved under anchor growth (push).
-lemma AllAliasesResolve.push (val : YamlValue)
-    (anchors : Array (String × YamlValue)) (entry : String × YamlValue)
-    (h : AllAliasesResolve val anchors) :
-    AllAliasesResolve val (anchors.push entry) := by
-  induction h with
-  | scalar s _ => exact .scalar s _
-  | alias name anchors h_find =>
-    apply AllAliasesResolve.alias
-    rw [Array.findSome?_isSome_iff] at h_find ⊢
-    obtain ⟨x, hx, hfx⟩ := h_find
-    exact ⟨x, Array.mem_push.mpr (.inl hx), hfx⟩
-  | sequence style items tag anchor anchors h_items ih_items =>
-    exact .sequence style items tag anchor _ (fun i => ih_items i)
-  | mapping style pairs tag anchor anchors hk hv ihk ihv =>
-    exact .mapping style pairs tag anchor _ (fun i => ihk i) (fun i => ihv i)
-
--- Monotonicity generalized: prefix ⊆ suffix via repeated push
-lemma AllAliasesResolve.mono (val : YamlValue)
-    (anchors1 anchors2 : Array (String × YamlValue))
-    (h_prefix : ∀ i : Fin anchors1.size, ∃ j : Fin anchors2.size,
-        anchors2[j] = anchors1[i])
-    (h : AllAliasesResolve val anchors1) :
-    AllAliasesResolve val anchors2 := by
-  induction h with
-  | scalar s _ => exact .scalar s _
-  | alias name anchors h_find =>
-    apply AllAliasesResolve.alias
-    rw [Array.findSome?_isSome_iff] at h_find ⊢
-    obtain ⟨x, hx, hfx⟩ := h_find
-    rw [Array.mem_iff_getElem] at hx
-    obtain ⟨i, hi, rfl⟩ := hx
-    obtain ⟨j, hj⟩ := h_prefix ⟨i, hi⟩
-    exact ⟨anchors2[j], Array.getElem_mem j.isLt, hj ▸ hfx⟩
-  | sequence style items tag anchor anchors h_items ih_items =>
-    exact .sequence style items tag anchor _ (fun i => ih_items i h_prefix)
-  | mapping style pairs tag anchor anchors hk hv ihk ihv =>
-    exact .mapping style pairs tag anchor _
-      (fun i => ihk i h_prefix) (fun i => ihv i h_prefix)
+/-- …and the condition reads only the two registers, so it travels with them. -/
+lemma DeclarationsBound.of_registers {ps ps' : ParseState}
+    (h_a : ps'.anchors = ps.anchors) (h_d : ps'.declaredAnchors = ps.declaredAnchors)
+    (h : DeclarationsBound ps) : DeclarationsBound ps' := by
+  intro nm hm; rw [h_d] at hm; rw [h_a]; exact h nm hm
 
 -- Anchors only grow within parseNode: ps'.anchors is a suffix extension of ps.anchors.
 -- (This is the key monotonicity property of the parser.)
@@ -128,16 +88,40 @@ lemma parseNode_anchors_grow (ps : ParseState) (fuel : Nat)
         ps'.anchors[j] = ps.anchors[i] :=
   L4YAML.Proofs.ParserNodeProofs.parseNode_anchors_grow ps fuel val ps' h_ok
 
--- Core lemma: parseNode produces AllAliasesResolve-satisfying output.
-lemma parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
+/-- **Capstone 3.5, the §7.1 reading**: every alias node in `parseNode`'s
+    output names an anchor that has previously occurred.
+
+    Unconditional, and the strongest statement that is true of a single node:
+    the resolution reading fails here for `&x [*x]`, whose inner alias is
+    admitted while the collection's own value is still being built. -/
+lemma parseNode_aliases_declared (ps : ParseState) (fuel : Nat)
     (val : YamlValue) (ps' : ParseState)
     (h_ok : parseNode ps fuel = .ok (val, ps')) :
-    AllAliasesResolve val ps'.anchors :=
-  L4YAML.Proofs.ParserNodeProofs.parseNode_aliases_resolve' ps fuel val ps' h_ok
+    AllAliasesDeclared val ps'.declaredAnchors :=
+  L4YAML.Proofs.ParserNodeProofs.parseNode_aliases_declared' ps fuel val ps' h_ok
 
--- Lift to parseDocument level
+/-- The step from 3.5 to the resolution reading, for one `parseNode` call: a
+    call that starts where the registers agree ends with every name it admitted
+    as an alias bound in its own table. -/
+lemma parseNode_aliases_resolve (ps : ParseState) (fuel : Nat)
+    (val : YamlValue) (ps' : ParseState)
+    (h_decl : DeclarationsBound ps)
+    (h_ok : parseNode ps fuel = .ok (val, ps')) :
+    AllAliasesResolve val ps'.anchors := by
+  have h_ag := L4YAML.Proofs.ParserNodeProofs.parseNode_ag_all fuel ps fuel val ps'
+    Nat.le.refl h_ok
+  refine AllAliasesResolve.of_declared (fun nm hnm => ?_)
+    (parseNode_aliases_declared ps fuel val ps' h_ok)
+  rcases h_ag.declsBound nm hnm with h_old | h_bound
+  · exact AnchorBound.mono h_ag.anchorsGrow (h_decl nm h_old)
+  · exact h_bound
+
+/-- **Capstone 3.6**: every alias in a document's output resolves through that
+    document's anchor table.  The resolution reading, at the boundary where it
+    is true. -/
 lemma parseDocument_aliases_resolve (ps : ParseState)
     (doc : YamlDocument) (ps' : ParseState)
+    (h_decl : DeclarationsBound ps)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     AllAliasesResolve doc.value doc.anchors := by
   unfold parseDocument at h_ok
@@ -169,13 +153,21 @@ lemma parseDocument_aliases_resolve (ps : ParseState)
         simp only [Except.ok.injEq] at h_ok
         obtain ⟨rfl, _⟩ := Prod.mk.inj h_ok
         obtain ⟨val_n, ps_n⟩ := v_node
-        exact parseNode_aliases_resolve _ _ _ _ h_node
+        -- The directive prefix writes neither register, so the document's
+        -- entry state inherits the stream's agreement between them.
+        refine parseNode_aliases_resolve _ _ _ _ (fun nm hnm => ?_) h_node
+        rw [L4YAML.Proofs.ParserWfaProofs.prepareDocumentState_decls_eq
+          ps v_prep.1 v_prep.2 (by rw [← Prod.eta v_prep]; exact h_prep)] at hnm
+        rw [L4YAML.Proofs.ParserWfaProofs.prepareDocumentState_anchors_eq
+          ps v_prep.1 v_prep.2 (by rw [← Prod.eta v_prep]; exact h_prep)]
+        exact h_decl nm hnm
 
 -- Loop-level lemma: parseStreamLoop preserves AllAliasesResolve for accumulated docs
 lemma parseStreamLoop_aliases_resolve
     (ps : ParseState) (docs : Array YamlDocument)
     (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)
+    (h_decl : DeclarationsBound ps)
     (h_acc : ∀ doc ∈ docs.toList, AllAliasesResolve doc.value doc.anchors)
     (h_ok : parseStreamLoop ps docs streamState fuel = .ok result) :
     ∀ doc ∈ result.toList, AllAliasesResolve doc.value doc.anchors := by
@@ -189,7 +181,9 @@ lemma parseStreamLoop_aliases_resolve
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · -- documentEnd (bare `...` suffix) → skip it, recurse with same accumulator
-      exact ih _ _ _ h_acc h_ok
+      refine ih _ _ _ ?_ h_acc h_ok
+      exact h_decl.of_registers (by split <;> (try split) <;> rfl)
+        (by split <;> (try split) <;> rfl)
     · -- some tok → validation + parseDocument + recurse
       split at h_ok
       · simp at h_ok
@@ -207,10 +201,13 @@ lemma parseStreamLoop_aliases_resolve
             simp only [List.mem_append, List.mem_singleton] at hd
             rcases hd with hd_old | rfl
             · exact h_acc d hd_old
-            · exact parseDocument_aliases_resolve _ _ _ h_pd
+            · exact parseDocument_aliases_resolve _ _ _ h_decl h_pd
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
-          · exact ih _ _ _ h_acc' h_ok
+          · simp at h_ok  -- no progress → error, contradiction
+          · -- §3.2.2.2: anchor scope is per document, so the reset restores
+            -- the agreement between the registers for the next one.
+            refine ih _ _ _ ?_ h_acc' h_ok
+            exact DeclarationsBound.of_empty (by simp)
 
 lemma parseStream_output_aliases_resolve
     (tokens : Array (Positioned YamlToken))
@@ -228,7 +225,18 @@ lemma parseStream_output_aliases_resolve
   · contradiction
   · rename_i ps_start h_expect
     -- Now trace through parseStreamLoop
-    exact parseStreamLoop_aliases_resolve ps_start #[] .initial tokens.size docs
-      (by intro d hd; simp at hd) h_parse doc hdoc
+    refine parseStreamLoop_aliases_resolve ps_start #[] .initial tokens.size docs
+      ?_ (by intro d hd; simp at hd) h_parse doc hdoc
+    -- A stream's initial state has declared nothing, so the two readings agree
+    -- at the first document too.
+    refine DeclarationsBound.of_empty ?_
+    unfold ParseState.expect at h_expect
+    split at h_expect
+    · split at h_expect
+      · simp only [Except.ok.injEq] at h_expect; subst h_expect; rfl
+      · simp at h_expect
+    · simp at h_expect
 
 end L4YAML.Proofs.ParserAnchorProofs
+
+end Blanket

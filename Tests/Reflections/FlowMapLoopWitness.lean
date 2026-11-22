@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 605 -- parseStream flow-mapping loop witness (R605)
@@ -100,3 +104,5 @@ theorem r605_outer_shape
 #print axioms parseStream_flowMapStart_loop_witness
 
 end FlowMapLoopWitness
+
+end Blanket

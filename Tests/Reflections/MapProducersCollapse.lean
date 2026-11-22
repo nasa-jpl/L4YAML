@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 520 — the carrier → six grammar producers collapse (brick (3) core)
 
 R515 (`mapGrammarFacts_of_mapRoot`, demo `MapRootProjection`) turns the map root carrier
@@ -124,3 +129,5 @@ end MapProducersCollapse
 /-- info: 'MapProducersCollapse.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms MapProducersCollapse.demo
+
+end Blanket

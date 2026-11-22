@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+
+@[expose] public section Blanket
 
 /-!
 # Reflection -- R447: Root carrier via the R505 provider route (`seqRoot_carrier_r447`)
@@ -152,3 +156,5 @@ regression guard on that closure. -/
 #print axioms seqRoot_carrier_r447_type_ok
 
 end R447RootCarrier
+
+end Blanket

@@ -1,4 +1,10 @@
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+module
+
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+
+
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerLoopInvariant
 
@@ -43,3 +49,5 @@ open L4YAML.Scanner
 #guard (ScannerState.mk' "ab").advance.offset ≤ (ScannerState.mk' "ab").advance.inputEnd
 
 end L4YAML.Proofs.ScannerLoopInvariant
+
+end Blanket

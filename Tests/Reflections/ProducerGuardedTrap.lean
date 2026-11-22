@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # The producer-guarded-quantifier trap — runnable demonstration
 
@@ -296,3 +301,5 @@ theorem recBody_nonempty_window : RecBody (win 0 2) :=
   .cons .scal [.scal] rfl (.single .scal rfl)
 
 end ProducerGuardedTrap
+
+end Blanket

@@ -1,5 +1,9 @@
-import L4YAML.Spec.Types
-import L4YAML.Token.Token
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Token.Token
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -123,109 +127,129 @@ def parseOctal (s : String) : Option Int :=
           none
   go 0 s.toList
 
+/-! ### Character-level number lexers
+
+The Core Schema number recognizers below work on `List Char`; the `String`
+entry points are `s.toList` wrappers.  Working on lists keeps them structurally
+recursive, so facts such as "a string containing a flow indicator is never a
+number" (`Proofs.Schema.FlowIndicator`) are plain list inductions rather than
+proofs about `String.splitOn`/`toNat?`.  `toNatL?`/`toIntL?` mirror
+`String.toNat?`/`String.toInt?` exactly (digits with `_` separators, optional
+leading `-`, no `+`). -/
+
+/-- `String.isNat` on a list: a non-empty digit run, `_` allowed between digits. -/
+def isNatL : List Char → Bool := go false
+where
+  go (lastWasDigit : Bool) : List Char → Bool
+    | [] => lastWasDigit
+    | c :: cs =>
+      if c = '_' then (if lastWasDigit then go false cs else false)
+      else if c.isDigit then go true cs
+      else false
+
+/-- `String.toNat?` on a list. -/
+def toNatL? (l : List Char) : Option Nat :=
+  if isNatL l then
+    some (l.foldl (fun n c => if c = '_' then n else n * 10 + (c.toNat - '0'.toNat)) 0)
+  else none
+
+/-- `String.toInt?` on a list: optional leading `-`, then `toNatL?`. -/
+def toIntL? : List Char → Option Int
+  | '-' :: rest => (toNatL? rest).map Int.negOfNat
+  | l => (toNatL? l).map Int.ofNat
+
+/-- `String.splitOn` for a one-character separator, on a list:
+    `splitOnChar '.' "a..b"` is `["a", "", "b"]`, and `"".splitOn` is `[""]`. -/
+def splitOnChar (sep : Char) : List Char → List (List Char)
+  | [] => [[]]
+  | c :: cs =>
+    if c = sep then [] :: splitOnChar sep cs
+    else match splitOnChar sep cs with
+      | p :: ps => (c :: p) :: ps
+      | [] => [[c]]
+
+/-- Strip an optional leading sign: `(isNegative, rest)`. -/
+def splitSign : List Char → Bool × List Char
+  | '-' :: r => (true, r)
+  | '+' :: r => (false, r)
+  | l => (false, l)
+
+/-- `isInt` on a list: optional sign, then hex (`0x`), octal (`0o`) or decimal. -/
+def isIntL (l : List Char) : Option Int :=
+  let (isNeg, rest) := splitSign l
+  let signed (n : Int) : Int := if isNeg then -n else n
+  match rest with
+  | '0' :: 'x' :: hex | '0' :: 'X' :: hex => (parseHex.go 0 hex).map signed
+  | '0' :: 'o' :: oct | '0' :: 'O' :: oct => (parseOctal.go 0 oct).map signed
+  | _ => (toIntL? rest).map signed
+
 /-- Check if string represents integer in Core Schema (§10.3.2).
     Handles decimal, hexadecimal (`0x`), and octal (`0o`) formats,
     with optional sign prefix (`+` or `-`). -/
-def isInt (s : String) : Option Int :=
-  -- Handle sign
-  let (isNeg, rest) := if s.startsWith "-" then
-    (true, s.drop 1)
-  else if s.startsWith "+" then
-    (false, s.drop 1)
-  else
-    (false, s)
-
-  -- Check for hex prefix (0x or 0X)
-  if rest.startsWith "0x" || rest.startsWith "0X" then
-    let hexPart := (rest.drop 2).toString
-    match parseHex hexPart with
-    | some n => some (if isNeg then -n else n)
-    | none => none
-  -- Check for octal prefix (0o or 0O)
-  else if rest.startsWith "0o" || rest.startsWith "0O" then
-    let octPart := (rest.drop 2).toString
-    match parseOctal octPart with
-    | some n => some (if isNeg then -n else n)
-    | none => none
-  -- Otherwise, try decimal
-  else
-    match rest.toString.toInt? with
-    | some n => some (if isNeg then -n else n)
-    | none => none
+def isInt (s : String) : Option Int := isIntL s.toList
 
 /-! ### Float Parsing Helpers -/
 
-/-- Parse the mantissa (base) part of a float -/
-def parseMantissa? (s : String) : Option Float :=
-  if s.isEmpty then none
-  else if s == "0." || s == "0.0" then some 0.0
-  else if s.startsWith "." then
+/-- Parse the mantissa (base) part of a float, on a list. -/
+def parseMantissaL? (l : List Char) : Option Float :=
+  if l.isEmpty then none
+  else if l == ['0', '.'] || l == ['0', '.', '0'] then some 0.0
+  else match l with
+  | '.' :: frac =>
     -- Handle .5 format
-    let fracStr := (s.drop 1).toString
-    match fracStr.toNat? with
-    | some n => some (Float.ofNat n / Float.ofNat (10 ^ fracStr.length))
-    | none => none
-  else if s.contains '.' then
-    -- Decimal: int.frac
-    let parts := s.splitOn "."
-    match parts with
-    | [intPart, fracPart] =>
-        match (intPart.toInt?, fracPart.toNat?) with
-        | (some i, some f) =>
-            let base := Float.ofInt i
-            let frac := Float.ofNat f / Float.ofNat (10 ^ fracPart.length)
-            some (if i >= 0 then base + frac else base - frac)
-        | _ => none
-    | _ => none
+    (toNatL? frac).map fun n => Float.ofNat n / Float.ofNat (10 ^ frac.length)
+  | _ =>
+    if l.contains '.' then
+      -- Decimal: int.frac
+      match splitOnChar '.' l with
+      | [intPart, fracPart] =>
+        match toIntL? intPart, toNatL? fracPart with
+        | some i, some f =>
+          let base := Float.ofInt i
+          let frac := Float.ofNat f / Float.ofNat (10 ^ fracPart.length)
+          some (if i >= 0 then base + frac else base - frac)
+        | _, _ => none
+      | _ => none
+    else
+      -- Integer
+      (toIntL? l).map Float.ofInt
+
+/-- Parse the mantissa (base) part of a float -/
+def parseMantissa? (s : String) : Option Float := parseMantissaL? s.toList
+
+/-- Parse the exponent part after `e` or `E`, on a list. -/
+def parseExponentL? (l : List Char) : Option Int :=
+  if l.isEmpty then none
   else
-    -- Integer
-    match s.toInt? with
-    | some n => some (Float.ofInt n)
-    | none => none
+    let (isNeg, rest) := splitSign l
+    (toNatL? rest).map fun (n : Nat) => if isNeg then -(Int.ofNat n) else Int.ofNat n
 
 /-- Parse the exponent part after `e` or `E` -/
-def parseExponent? (s : String) : Option Int :=
-  if s.isEmpty then none
+def parseExponent? (s : String) : Option Int := parseExponentL? s.toList
+
+/-- Parse a float from a list of characters.
+    Handles standard decimal, scientific notation (`1.5e3`), and integer forms. -/
+def parseFloatL? (l : List Char) : Option Float :=
+  if l.isEmpty then none
   else
-    -- Handle optional sign
-    let (isNeg, rest) := if s.startsWith "-" then (true, s.drop 1)
-                         else if s.startsWith "+" then (false, s.drop 1)
-                         else (false, s)
-    match rest.toNat? with
-    | some n => some (if isNeg then -(n : Int) else (n : Int))
-    | none => none
+    let (isNeg, rest) := splitSign l
+    if rest.contains 'e' || rest.contains 'E' then
+      -- Scientific notation: mantissa[eE][+-]?exponent
+      let parts := if rest.contains 'e' then splitOnChar 'e' rest else splitOnChar 'E' rest
+      match parts with
+      | [mantissaStr, expStr] =>
+        match parseMantissaL? mantissaStr, parseExponentL? expStr with
+        | some mantissa, some exp =>
+          let signedMantissa := if isNeg then -mantissa else mantissa
+          some (signedMantissa * (Float.pow 10.0 (Float.ofInt exp)))
+        | _, _ => none
+      | _ => none
+    else
+      (parseMantissaL? rest).map fun value => if isNeg then -value else value
 
 /-- Parse a float from a string.
     Handles standard decimal, scientific notation (`1.5e3`), and integer forms. -/
-def parseFloat? (s : String) : Option Float :=
-  if s.isEmpty then none
-  else
-    -- Handle sign
-    let (isNeg, rest) := if s.startsWith "-" then (true, s.drop 1)
-                         else if s.startsWith "+" then (false, s.drop 1)
-                         else (false, s)
-
-    -- Check for scientific notation: split on 'e' or 'E'
-    let hasE := rest.contains 'e' || rest.contains 'E'
-
-    if hasE then
-      -- Scientific notation: mantissa[eE][+-]?exponent
-      let parts := if rest.contains 'e' then rest.toString.splitOn "e"
-                   else rest.toString.splitOn "E"
-      match parts with
-      | [mantissaStr, expStr] =>
-          match (parseMantissa? mantissaStr, parseExponent? expStr) with
-          | (some mantissa, some exp) =>
-              let signedMantissa := if isNeg then -mantissa else mantissa
-              let result := signedMantissa * (Float.pow 10.0 (Float.ofInt exp))
-              some result
-          | _ => none
-      | _ => none
-    else
-      -- No scientific notation — standard decimal/integer
-      match parseMantissa? rest.toString with
-      | some value => some (if isNeg then -value else value)
-      | none => none
+def parseFloat? (s : String) : Option Float := parseFloatL? s.toList
 
 /-- Check if string represents float in Core Schema (§10.3.2).
     Includes special values: `.inf`, `-.inf`, `.nan` -/
@@ -281,6 +305,29 @@ the recursive cases — the same pattern used throughout the verified project
 for `YamlValue`'s `Array`-based children).
 -/
 
+/-- Normalize a stored tag to the full-URI form `resolveScalar` matches on.
+    The composed parser keeps the two default core handles in shorthand form
+    (`!!int`, `!!str`, …) and verbatim tags as `!<uri>` (see
+    `Parser.State.resolveTag`).  `resolveScalar` only recognizes the expanded
+    `tag:yaml.org,2002:…` URIs, so `!!int 42` would otherwise fall through to a
+    string.  Expand both forms here; local tags (`!foo`) and already-resolved
+    URIs pass through unchanged (and `resolveScalar` maps unknown tags to str). -/
+def normalizeTag (t : String) : String :=
+  if t.startsWith "tag:" then t
+  else if t.startsWith "!<" && t.endsWith ">" then
+    String.ofList (t.toList.drop 2 |>.dropLast)
+  else if t.startsWith "!!" then
+    "tag:yaml.org,2002:" ++ String.ofList (t.toList.drop 2)
+  else t
+
+/-- Core-schema type of a scalar, respecting presentation style (§10.3.2):
+    an explicit tag always takes precedence; otherwise only a *plain* scalar is
+    implicitly resolved, and a quoted, literal or folded scalar is a string. -/
+def scalarType (s : Scalar) : YamlType :=
+  match s.tag with
+  | some t => resolveScalar s.content (some (normalizeTag t))
+  | none => if s.style == .plain then resolveImplicit s.content else .str s.content
+
 /-- Resolve complete `YamlValue` to `YamlType` using Core Schema.
 
     - Scalars: dispatched to `resolveScalar` (tag-aware implicit/explicit resolution)
@@ -289,7 +336,7 @@ for `YamlValue`'s `Array`-based children).
     - Aliases: resolved as null (aliases should be expanded before schema resolution) -/
 def resolve (v : YamlValue) : YamlType :=
   match v with
-  | .scalar s => resolveScalar s.content s.tag
+  | .scalar s => scalarType s
   | .sequence _ items _ _ => .seq (resolveList items.toList).toArray
   | .mapping _ pairs _ _ => .map (resolvePairs pairs.toList).toArray
   | .alias _ => .null  -- aliases should be resolved via compose before schema resolution
@@ -445,3 +492,5 @@ instance : Coe SchemaError YamlError where
   coe := YamlError.schemaError
 
 end L4YAML
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 354 — a VESTIGIAL projection re-opens for a structure-walking consumer
 
@@ -88,3 +93,5 @@ theorem projection_does_not_imply_full :
   simp [allTrue, negStack] at this
 
 end Tests.Reflections.VestigialProjectionReopens
+
+end Blanket

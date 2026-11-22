@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Production.IndexedScannerPlainScalarValid
+
+module
+
+public import L4YAML.Proofs.Production.IndexedScannerPlainScalarValid
+
+@[expose] public section Blanket
 
 /-! # `IndexedScannerCorrectness.Basic` — §1–§6
 
@@ -486,11 +491,25 @@ lemma scanLoopIx_success_emits_streamEnd {input : String} :
       cases scRes with
       | none =>
         by_cases hFL : s.flowLevel > 0
-        · rw [if_pos hFL] at h; cases h
-        · rw [if_neg hFL] at h
+        · rw [ite_eq_left hFL] at h; cases h
+        · rw [ite_eq_right hFL] at h
           by_cases hDS : s.directivesPresent = true
-          · rw [if_pos hDS] at h; cases h
-          · rw [if_neg hDS] at h
+          · rw [ite_eq_left hDS] at h; cases h
+          · rw [ite_eq_right hDS] at h
+            -- §9.2 dangling-node check (item 133): peel its `.ok` arm.
+            have hDN : ∃ u, scanLoopIx_checkDanglingNode s = .ok u := by
+              cases hx : scanLoopIx_checkDanglingNode s with
+              | error e => rw [hx] at h; cases h
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨uDN, hDN⟩ := hDN
+            rw [hDN] at h
+            -- §8.1 flow-value floor (item 172): peeled the same way.
+            have hFV : ∃ u, scanLoopIx_checkFlowValueIndent s = .ok u := by
+              cases hx : scanLoopIx_checkFlowValueIndent s with
+              | error e => rw [hx] at h; cases h
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨uFV, hFV⟩ := hFV
+            rw [hFV] at h
             cases h
             exact ⟨unwindIndentsIx s (-1), rfl⟩
       | some s'' => exact ih s'' ts h
@@ -520,11 +539,25 @@ lemma scanLoopIx_increases_tokens {input : String}
       cases scRes with
       | none =>
         by_cases hFL : s.flowLevel > 0
-        · rw [if_pos hFL] at h; cases h
-        · rw [if_neg hFL] at h
+        · rw [ite_eq_left hFL] at h; cases h
+        · rw [ite_eq_right hFL] at h
           by_cases hDS : s.directivesPresent = true
-          · rw [if_pos hDS] at h; cases h
-          · rw [if_neg hDS] at h
+          · rw [ite_eq_left hDS] at h; cases h
+          · rw [ite_eq_right hDS] at h
+            -- §9.2 dangling-node check (item 133): peel its `.ok` arm.
+            have hDN : ∃ u, scanLoopIx_checkDanglingNode s = .ok u := by
+              cases hx : scanLoopIx_checkDanglingNode s with
+              | error e => rw [hx] at h; cases h
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨uDN, hDN⟩ := hDN
+            rw [hDN] at h
+            -- §8.1 flow-value floor (item 172): peeled the same way.
+            have hFV : ∃ u, scanLoopIx_checkFlowValueIndent s = .ok u := by
+              cases hx : scanLoopIx_checkFlowValueIndent s with
+              | error e => rw [hx] at h; cases h
+              | ok u => exact ⟨u, rfl⟩
+            obtain ⟨uFV, hFV⟩ := hFV
+            rw [hFV] at h
             cases h
             -- ts = ((unwindIndentsIx s (-1)).emit streamEnd).tokens
             show s.tokens.size + 1 ≤ _
@@ -562,7 +595,7 @@ lemma scanIx_produces_at_least_two {input : String}
   change _ ≤ tokens.size
   split at h_inc
   · -- some BOM arm: advance preserves tokens
-    simp only [advance_tokens, emit_tokens_size] at h_inc
+    simp only [consumeBOM_tokens, emit_tokens_size] at h_inc
     exact h_inc
   · -- _ arm: tokens.size = ((mk').emit streamStart).tokens.size
     simp only [emit_tokens_size] at h_inc
@@ -651,3 +684,5 @@ discharged as a theorem in §8.11). The downstream consumer in
 the §8.12 theorem. -/
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness
+
+end Blanket

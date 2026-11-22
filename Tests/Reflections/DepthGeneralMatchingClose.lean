@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 482 — the located encloser is at depth ≥ 1, so the close locator must be DEPTH-GENERAL;
 # the matching-close scan is purely RELATIVE, so the depth-0 lemma re-bases mechanically.
@@ -99,3 +104,5 @@ theorem nested_opener_has_matching_close : matchesClose Bnest 1 3 :=
     rcases this with rfl | rfl <;> decide⟩
 
 end DepthGeneralMatchingClose
+
+end Blanket

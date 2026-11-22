@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 515 — the map root projection: carrier ⊕ gate bridge ⇒ the grammar facts
 
 R513 landed the map separator carrier `MapInteriorSeparators` (a GUARDED universal
@@ -125,3 +130,5 @@ end MapRootProjection
 /-- info: 'MapRootProjection.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms MapRootProjection.demo
+
+end Blanket

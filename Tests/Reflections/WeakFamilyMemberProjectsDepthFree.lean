@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 479 — the WEAK member of a child-window structure family PROJECTS its strong sibling
 # through the family's existing `strong→weak` projector, residuals VACUOUS against the window's own
@@ -102,3 +107,5 @@ example : Content (fun i => if i = 3 then (0 : Int) else 1) (fun i => i = 5) 0 2
     (by decide)
 
 end WeakFamilyMemberProjectsDepthFree
+
+end Blanket

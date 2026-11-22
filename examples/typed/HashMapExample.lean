@@ -1,5 +1,9 @@
-import LeanYaml
-import Std.Data.HashMap
+module
+
+public import LeanYaml
+public import Std.Data.HashMap
+
+@[expose] public section Blanket
 
 /-!
 # HashMap Example
@@ -130,3 +134,5 @@ def main : IO Unit := do
   example4
   example5
   IO.println "✅ All HashMap examples complete!"
+
+end Blanket

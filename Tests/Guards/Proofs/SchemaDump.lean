@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Schema.SchemaDump
+module
+
+public import L4YAML.Proofs.Schema.SchemaDump
+
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.SchemaDump
 
@@ -9,11 +13,13 @@ open L4YAML.Dump
 open L4YAML.Emit
 open L4YAML.TokenParser
 
-#guard toYaml true == YamlValue.scalar { content := "true", style := .plain }
-#guard toYaml false == YamlValue.scalar { content := "false", style := .plain }
-#guard toYaml (42 : Nat) == YamlValue.scalar { content := "42", style := .plain }
-#guard toYaml () == YamlValue.scalar { content := "null", style := .plain }
+#guard toYaml true == YamlValue.scalar { content := "true", style := .plain, tag := some "!!bool" }
+#guard toYaml false == YamlValue.scalar { content := "false", style := .plain, tag := some "!!bool" }
+#guard toYaml (42 : Nat) == YamlValue.scalar { content := "42", style := .plain, tag := some "!!int" }
+#guard toYaml () == YamlValue.scalar { content := "null", style := .plain, tag := some "!!null" }
 #guard toYaml "hello" == YamlValue.scalar { content := "hello", style := .plain }
+#guard toYaml "true" == YamlValue.scalar { content := "true", style := .doubleQuoted }
+#guard toYaml "42" == YamlValue.scalar { content := "42", style := .doubleQuoted }
 -- Empty string: content round-trips but typed round-trip fails because
 -- schema resolution maps "" → null (YAML semantics). Expected behavior.
 #guard contentRoundTrips (α := String) ""
@@ -58,3 +64,5 @@ end SchemaDumpExtendedGuards
 #guard contentRoundTrips (some false : Option Bool)
 
 end L4YAML.Proofs.SchemaDump
+
+end Blanket

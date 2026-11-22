@@ -1,0 +1,181 @@
+{
+ "item": 412,
+ "tag": "ENTRY-CHAIN",
+ "rev": "b70b870c",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/412-entry-chain.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "        ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →"
+   ],
+   "new": [
+    "        (∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "          SLYamlStream sp_start sp_e) ∨ NotQuestionPark sc)"
+   ],
+   "new": [
+    "          SLYamlStream sp_start sp_e) ∧",
+    "        ((∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "          ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →",
+    "          ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "          ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "           (Or.inl ⟨sp_ind, h_lit, h_route51F⟩)"
+   ],
+   "new": [
+    "           (Or.inl ⟨sp_ind, h_lit, h_route51F, sorry⟩)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "  have h_expl105 : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan' ∧",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →"
+   ],
+   "new": [
+    "  have h_expl105 : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan' ∧",
+    "      (∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "        SLYamlStream sp_start sp_e) ∨ NotQuestionPark s' :="
+   ],
+   "new": [
+    "        SLYamlStream sp_start sp_e) ∧",
+    "      ((∃ ns : List Nat, RegisterWitness.MarkedColsIn s' ns ∧ ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt s')) ∨ NotQuestionPark s' :="
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "          (SCompactMap.mk (n + 1 + m) sp_ind sp_v sp_e h_entry h_tail))⟩"
+   ],
+   "new": [
+    "          (SCompactMap.mk (n + 1 + m) sp_ind sp_v sp_e h_entry h_tail)), sorry⟩"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P7",
+   "old": [
+    "    (h_expl : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan ∧",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →"
+   ],
+   "new": [
+    "    (h_expl : (∃ sp_q : SurfPos, GLit '?' sp_q sp_scan ∧",
+    "      (∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P8",
+   "old": [
+    "      ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e →",
+    "        SLYamlStream sp_start sp_e) ∨ NotQuestionPark sc)"
+   ],
+   "new": [
+    "      ∀ sp_e : SurfPos, SCompactMapTail n sp_v sp_e →",
+    "        SLYamlStream sp_start sp_e) ∧",
+    "      ((∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "        ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →",
+    "        ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "        ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P9",
+   "old": [
+    "        h_face.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), h_face.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        -- Item 409: `[n]` is the `?` park's own column — marked in fact, but no face here says",
+    "        -- so (the own-mark scanner lemma is unpaid), so under the domain this birth DECLINES.",
+    "        | Or.inl _ => Or.inr trivial",
+    "        -- …and `[]` would claim the park holds NO mark (`MarkedColsIn` is a cover): DECLINES."
+   ],
+   "new": [
+    "        h_face.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), h_face.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route, chainUp⟩ => (match chainUp with",
+    "            | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl ⟨nsU, hdomU,",
+    "                fun nv hnv sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "                  if hn : nv = n then by",
+    "                    subst hn",
+    "                    exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp sp_i sp_c sp_v",
+    "                      h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi))",
+    "                  else up nv hnv sp (SBlockMapEntry.explicitEmpty n sp_q sp_scan sp h_qlit",
+    "                    (SBlockIndented_blockIn_to_blockOut h_bi)) sp_i sp_c h_iv h_lit sp_v h_sbi⟩",
+    "            | Or.inr h => Or.inr h)",
+    "        -- Item 412: the explicit `:` park's compact value under an outer `?` has no entry head",
+    "        -- here (`? ? a⏎  : - b⏎: c`): DECLINES."
+   ],
+   "count": 1
+  },
+  {
+   "name": "P10",
+   "old": [
+    "        hvs.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), hvs.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        -- Item 409: `[n]` is the `?` park's own column — marked in fact, but no face here says",
+    "        -- so (the own-mark scanner lemma is unpaid), so under the domain this birth DECLINES.",
+    "        | Or.inl _ => Or.inr trivial",
+    "        -- …and `[]` would claim the park holds NO mark (`MarkedColsIn` is a cover): DECLINES."
+   ],
+   "new": [
+    "        hvs.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), hvs.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route, chainUp⟩ => (match chainUp with",
+    "            | Or.inl ⟨nsU, hdomU, up⟩ => Or.inl ⟨nsU, hdomU,",
+    "                fun nv hnv sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "                  if hn : nv = n then by",
+    "                    subst hn",
+    "                    exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp sp_i sp_c sp_v",
+    "                      h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi))",
+    "                  else up nv hnv sp (SBlockMapEntry.explicitEmpty n sp_q sp_scan sp h_qlit",
+    "                    (SBlockIndented_blockIn_to_blockOut h_bi)) sp_i sp_c h_iv h_lit sp_v h_sbi⟩",
+    "            | Or.inr h => Or.inr h)",
+    "        -- Item 412: the explicit `:` park's compact value under an outer `?` has no entry head",
+    "        -- here (`? ? a⏎  : - b⏎: c`): DECLINES."
+   ],
+   "count": 1
+  }
+ ]
+}

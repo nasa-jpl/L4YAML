@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 323 — a VACUOUSLY-PROVEN POSITIVE cannot EXCLUDE the case its premise forbids; thread a DISCRIMINATOR that contradicts the conclusion
 
@@ -84,3 +89,5 @@ theorem exclude_with_discriminator {lastIsSep : Prop} {bnd : Tok}
   exact close_not_contentStart h_end (h_carrier h_sep)
 
 end Tests.Reflections.VacuousPositiveCannotExclude
+
+end Blanket

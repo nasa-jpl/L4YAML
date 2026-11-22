@@ -1,4 +1,16 @@
-import L4YAML.Proofs.Scanner.ScannerFlowCollection
+module
+
+public import L4YAML.Proofs.Scanner.ScannerFlowCollection
+
+
+
+
+
+public meta import L4YAML.Output.Emitter
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Token.Token
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerFlowCollection
 
@@ -105,3 +117,5 @@ private def mapWithEscapes : YamlValue := .mapping .flow #[(mkScalar "key\n1", m
 #guard scanTokenTypes (emit mapWithEscapes) == some [.streamStart, .flowMappingStart, .key, .scalar "key\n1" .doubleQuoted, .value, .scalar "val\t1" .doubleQuoted, .flowMappingEnd, .streamEnd]
 
 end L4YAML.Proofs.ScannerFlowCollection
+
+end Blanket

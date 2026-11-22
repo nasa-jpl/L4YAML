@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 321 — push-overwrite vs frame-preserve: an accumulator-guard's two recursion edges have OPPOSITE parent-dependence
 
@@ -79,3 +84,5 @@ def isEnclosed (s : Acc) : Bool := s.bind (·.head?) == some true
 #guard isEnclosed (push true (some [false])) != isEnclosed (frame (some [false]))
 
 end Tests.Reflections.PushBlindFramePreserveDependent
+
+end Blanket

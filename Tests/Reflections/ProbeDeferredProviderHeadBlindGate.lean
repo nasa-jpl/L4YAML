@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 303 — probing a deferred `provider` universal before producing it catches a FALSE universal: a HEAD-BLIND gate admits spurious windows where the body-structure route is undischargeable
 
@@ -108,3 +113,5 @@ theorem provider_is_false : ¬ (∀ l, Gate l → Body l) := fun provider =>
 theorem good_window_discharges : Gate [1, 0, 2] ∧ Body [1, 0, 2] := ⟨gate_good, body_good⟩
 
 end Tests.Reflections.ProbeDeferredProviderHeadBlindGate
+
+end Blanket

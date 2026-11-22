@@ -1,4 +1,8 @@
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -286,3 +290,5 @@ This is definitional (`rfl`) — `parentIndent` is bound to `s.currentIndent`.
 -/
 
 end L4YAML.Proofs.ScannerContracts
+
+end Blanket

@@ -1,6 +1,10 @@
-import L4YAML.Parser.Composition
-import L4YAML.Scanner.Scanner
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Parser.Composition
+public import L4YAML.Scanner.Scanner
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -185,11 +189,12 @@ def collectTests : IO VerifiedSuiteResult := do
   -- `b: x: y` on a single line: per YAML 1.2.2 §8.2.1 [200],
   -- block collections require `s-b-comment` (line break) before
   -- content.  A nested block mapping cannot start on the same line
-  -- as the enclosing key.  The scanner correctly tokenises both `: `
-  -- boundaries, but the parser rejects the same-line nested mapping.
+  -- as the enclosing key.  The scanner refuses the second `:` itself
+  -- (`nestedMappingOnLine` — the `[194]` same-line check), and the
+  -- pipeline agrees.
   -- Reference confirmation: test ZCZ6 (`a: b: c: d`) expects error.
 
-  check ref "b: x: y scans" (scanOk "b: x: y")
+  check ref "b: x: y scan-refused" (!scanOk "b: x: y")
   check ref "b: x: y pipeline" (!pipelineOk "b: x: y")
   check ref "b: x: y rejected" (
     match parseYaml "b: x: y" with
@@ -263,3 +268,5 @@ def collectTests : IO VerifiedSuiteResult := do
   }
 
 end Tests.ScannerTests
+
+end Blanket

@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Surface.Document
-import L4YAML.Proofs.Production.DocumentProduction
+
+module
+
+public import L4YAML.Surface.Document
+public import L4YAML.Proofs.Production.DocumentProduction
+
+@[expose] public section Blanket
 
 /-!
 # Surface Syntax — Top-Level Definitions & Strictness Theorem
@@ -80,3 +85,5 @@ lemma scan_strict
   L4YAML.Proofs.DocumentProduction.scan_strict_proof input tokens h
 
 end L4YAML.Surface
+
+end Blanket

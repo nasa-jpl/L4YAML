@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 509 — the value position is DETERMINED by the key-block length, not located
 
 R508 ([[CrossFrameStructuralDescent]]) landed the LIST-level map→seq edge `recmappair_block_descent`:
@@ -101,3 +106,5 @@ theorem demo :
   ⟨by decide, key_block_general, value_half_general⟩
 
 end PositionalMapPairDescent
+
+end Blanket

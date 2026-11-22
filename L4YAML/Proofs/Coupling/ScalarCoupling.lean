@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Coupling.ScannerCoupling
+
+module
+
+public import L4YAML.Proofs.Coupling.ScannerCoupling
+
+@[expose] public section Blanket
 
 /-!
 # Scalar Collection Coupling
@@ -78,6 +83,18 @@ lemma advance_corr (sc : ScannerState) (sp : SurfPos)
                advance_non_newline_corr sc c rest hcorr hmore hnl hcr⟩
   · have : sc.advance = sc := by unfold ScannerState.advance; simp [hmore]
     rw [this]; exact ⟨sp, hcorr⟩
+
+/-- The BOM's own step, at the surface (§5.2, item 35).  `consumeBOM` is
+    `advance` with the column put back to 0, and `ScannerSurfCorr`'s only
+    column conjunct is `sp.col = sc.col` — so the surface position that
+    corresponds is `advance`'s, read at column 0.  Nothing else in the
+    correspondence mentions the column. -/
+lemma consumeBOM_corr (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) :
+    ∃ sp', ScannerSurfCorr sc.consumeBOM sp' ∧ sp'.col = 0 := by
+  obtain ⟨sp', h'⟩ := advance_corr sc sp hcorr
+  exact ⟨⟨sp'.chars, 0⟩,
+    ⟨h'.chars_from, rfl, h'.end_eq, h'.input_prefix, h'.indent_cols_nonneg⟩, rfl⟩
 
 /-- `consumeNewline` preserves correspondence unconditionally. -/
 lemma consumeNewline_unconditional_corr (sc : ScannerState) (sp : SurfPos)
@@ -199,7 +216,9 @@ lemma foldQuotedNewlinesLoop_corr (sc : ScannerState) (sp : SurfPos)
       · rename_i hlb
         obtain ⟨sp_cn, hcorr_cn⟩ :=
           consumeNewline_corr (skipWhitespace sc) sp_sk c hcorr_sk hpeek hlb
-        exact ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
+        split
+        · exact ⟨sp, hcorr⟩  -- item 62: the tab-blank line ends the run
+        · exact ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
       · exact ⟨sp, hcorr⟩  -- return saved = original s
     · exact ⟨sp, hcorr⟩
 
@@ -281,12 +300,18 @@ lemma collectDoubleQuotedLoop_corr (sc : ScannerState) (sp : SurfPos)
       · -- next peek = some c
         rename_i c2 hpeek2
         split at hok
-        · -- isLineBreakBool c2: escaped newline
-          obtain ⟨sp_cn, hcorr_cn⟩ :=
-            consumeNewline_unconditional_corr sc.advance sp_adv hcorr_adv
-          obtain ⟨sp_ws, _, hcorr_ws⟩ :=
-            skipWhitespace_corr (consumeNewline sc.advance) sp_cn hcorr_cn
-          exact ih _ _ sp_ws content hcorr_ws hok
+        · -- isLineBreakBool c2: escaped newline — the landing is a fold
+          -- (item 87); throws contradict, both folded arms recurse from it.
+          simp only [bind, Except.bind] at hok
+          split at hok
+          · exact absurd hok (by simp)  -- fold error
+          · rename_i fold_result hfold
+            obtain ⟨sp_fold, hcorr_fold⟩ :=
+              foldQuotedNewlines_corr sc.advance sp_adv hcorr_adv hfold
+            repeat' split at hok
+            all_goals first
+              | contradiction
+              | exact ih _ _ sp_fold _ hcorr_fold hok
         · -- not line break: processEscape
           simp only [bind, Except.bind] at hok
           split at hok
@@ -341,10 +366,10 @@ lemma scanDoubleQuoted_corr (sc : ScannerState) (sp : SurfPos)
       · simp at hok  -- validation error
       · -- validation ok: state unchanged
         have h := Except.ok.inj hok; subst h
-        exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+        exact ⟨sp_close, corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
     · -- !inFlow = false: no validate (pure ()); `hok` is a direct `.ok` equality now
       have h := Except.ok.inj hok; subst h
-      exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+      exact ⟨sp_close, corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §5 Single-Quoted Scalar -/
 
@@ -414,10 +439,10 @@ lemma scanSingleQuoted_corr (sc : ScannerState) (sp : SurfPos)
       split at hok  -- match on validateTrailingContent result
       · simp at hok  -- validation error
       · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+        exact ⟨sp_close, corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
     · -- !inFlow = false: no validate (pure ()); `hok` is a direct `.ok` equality now
       have h := Except.ok.inj hok; subst h
-      exact ⟨sp_close, corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_close)⟩
+      exact ⟨sp_close, corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_close)⟩
 
 /-! ## §6 Plain Scalar -/
 
@@ -437,7 +462,10 @@ lemma skipBlankLinesLoop_corr (sc : ScannerState) (sp : SurfPos)
       · rename_i hlb
         obtain ⟨sp_cn, hcorr_cn⟩ :=
           consumeNewline_corr (skipWhitespace sc) sp_sk c hcorr_sk hpeek hlb
-        exact ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
+        -- item 100: the gate's arm returns the saved state
+        split
+        · exact ⟨sp, hcorr⟩
+        · exact ih (consumeNewline (skipWhitespace sc)) sp_cn (cnt + 1) hcorr_cn
       · exact ⟨sp, hcorr⟩  -- return saved
     · exact ⟨sp, hcorr⟩
 
@@ -512,6 +540,9 @@ lemma collectPlainScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
               split at hok
               · have h := Except.ok.inj hok; subst h; exact ⟨sp, hcorr⟩  -- '#' → state = s
               · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at hok
+                · cases hok
                 generalize h_loop : collectPlainScalarLoop _ _ "" fuel' inFlow contentIndent inputEnd = cont_result at hok
                 cases cont_result with
                 | ok inner_result =>
@@ -568,7 +599,7 @@ lemma scanPlainScalar_corr (sc : ScannerState) (sp : SurfPos)
     simp only [Except.ok.injEq] at hok; subst hok
     obtain ⟨sp_loop, hcorr_loop⟩ := collectPlainScalarLoop_corr sc sp "" "" _ _ _ _ hcorr hloop
     exact ⟨sp_loop,
-      corr_of_simpleKeyAllowed_update false (corr_of_emitAt _ _ hcorr_loop)⟩
+      corr_of_simpleKeyAllowed_needIndentCheck_update false false (corr_of_emitAt _ _ hcorr_loop)⟩
 
 /-! ## §7 Block Scalar -/
 
@@ -644,8 +675,10 @@ lemma collectBlockScalarLoop_corr (sc : ScannerState) (sp : SurfPos)
                 obtain ⟨sp_cn, hcorr_cn⟩ :=
                   consumeNewline_corr _ sp_line c2 hcorr_line hpeek2 hlb2
                 exact ih _ sp_cn _ hcorr_cn
-              · -- non-nb-char stop: loop returns directly
-                exact ⟨sp_line, hcorr_line⟩
+              · -- non-nb-char stop: empty run → original `s`; else `s_after_line`
+                split
+                · exact ⟨sp, hcorr⟩
+                · exact ⟨sp_line, hcorr_line⟩
             · exact ⟨sp_line, hcorr_line⟩  -- none after content
 
 /-- `parseBlockHeaderLoop` preserves correspondence (3rd component). -/
@@ -736,8 +769,14 @@ lemma scanBlockScalarBody_corr (sc_orig sc_after_nl : ScannerState)
         (collectBlockScalarLoop sc_after_nl "" fuel contentIndent sc_orig.inputEnd).snd sp' :=
       collectBlockScalarLoop_corr sc_after_nl sp "" fuel contentIndent sc_orig.inputEnd hcorr
     obtain ⟨sp_loop, hcorr_loop⟩ := hcorr_res
-    have h := Except.ok.inj hok; subst h
-    exact ⟨sp_loop, ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
+    -- the match on explicitOffset splits first, then the blockScalarTabStop
+    -- gate's `if`; the error arms are impossible (Except.error = Except.ok)
+    repeat (any_goals (split at hok))
+    all_goals (try contradiction)
+    all_goals
+      have h := Except.ok.inj hok
+      subst h
+      exact ⟨sp_loop, ⟨hcorr_loop.chars_from, hcorr_loop.col_eq, hcorr_loop.end_eq, hcorr_loop.input_prefix, hcorr_loop.indent_cols_nonneg⟩⟩
 
 /-- `scanBlockScalar` preserves correspondence on `.ok` paths. -/
 lemma scanBlockScalar_corr (sc : ScannerState) (sp : SurfPos)
@@ -763,4 +802,264 @@ lemma scanBlockScalar_corr (sc : ScannerState) (sp : SurfPos)
     obtain ⟨sp_nl, hcorr_nl⟩ := scanBlockScalarConsumeNewline_corr _ sp_cmt hcorr_cmt hcn
     exact scanBlockScalarBody_corr sc s_after_nl sp_nl _ _ _ _ hcorr_nl hok
 
+/-! ## §7 Where a plain-scalar fold lands (DOCS item 71)
+
+`[134] s-ns-plain-next-line(n,c)` requires at least one `ns-plain-char` after
+the fold.  The scanner enforces that with its content-length check, but the
+production proof can only *use* the check once it knows the fold does not land
+on a break or on `s-white`: an all-white line between two breaks is an
+`l-empty` line, consumed by the fold itself, and both fold helpers end with
+`skipWhitespace`.  These four lemmas say exactly that. -/
+
+/-- `foldQuotedNewlinesLoop` stops either at a tab under the floor — which its
+    caller turns into `tabInIndentation` — or at a line whose first non-`s-white`
+    character is not a break: every all-white line in between is an `l-empty`. -/
+lemma foldQuotedNewlinesLoop_stop (s : ScannerState) (cnt fuel : Nat)
+    (hfuel : s.inputEnd - s.offset ≤ fuel) :
+    blankLineTabUnderFloor (foldQuotedNewlinesLoop s cnt fuel).1 = true ∨
+    ∀ ch, (skipWhitespace (foldQuotedNewlinesLoop s cnt fuel).1).peek? = some ch →
+      isLineBreakBool ch = false := by
+  induction fuel generalizing s cnt with
+  | zero =>
+    have hnone : s.peek? = none := by
+      simp only [ScannerState.peek?]; simp only [ite_eq_right_iff]; omega
+    right
+    simp only [foldQuotedNewlinesLoop]
+    rw [skipWhitespace_noop s (by simp [hnone])]
+    intro ch h; rw [hnone] at h; cases h
+  | succ fuel' ih =>
+    rw [foldQuotedNewlinesLoop]
+    split
+    · rename_i c hpk
+      split
+      · rename_i hlb
+        split
+        · rename_i htab; exact Or.inl htab
+        · have hmono := skipWhitespace_offset_mono s
+          have hmore := peek_some_hasMore _ c hpk
+          have hcn := consumeNewline_offset_advance _ c hpk hlb
+          exact ih (consumeNewline (skipWhitespace s)) (cnt + 1) (by omega)
+      · rename_i hlb
+        right
+        intro ch h
+        rw [hpk] at h; injection h with h; subst h
+        simpa using hlb
+    · rename_i hpk
+      right; intro ch h; rw [hpk] at h; cases h
+
+/-- Item 100: the plain walk's twin of `foldQuotedNewlinesLoop_stop`.
+    `skipBlankLinesLoop` stops either at a tab under the floor — which the
+    caller's own under-indent test then reads as the end of the scalar — or at a
+    line whose first non-`s-white` character is not a break: every all-white line
+    in between is an `l-empty`. -/
+lemma skipBlankLinesLoop_stop (s : ScannerState) (cnt fuel ie : Nat)
+    (hfuel : s.inputEnd - s.offset ≤ fuel) :
+    blankLineTabUnderFloor (skipBlankLinesLoop s cnt fuel ie).2 = true ∨
+    ∀ ch, (skipWhitespace (skipBlankLinesLoop s cnt fuel ie).2).peek? = some ch →
+      isLineBreakBool ch = false := by
+  induction fuel generalizing s cnt with
+  | zero =>
+    have hnone : s.peek? = none := by
+      simp only [ScannerState.peek?]; simp only [ite_eq_right_iff]; omega
+    right
+    simp only [skipBlankLinesLoop]
+    rw [skipWhitespace_noop s (by simp [hnone])]
+    intro ch h; rw [hnone] at h; cases h
+  | succ fuel' ih =>
+    rw [skipBlankLinesLoop]
+    simp only []
+    split
+    · rename_i c hpk
+      split
+      · rename_i hlb
+        split
+        · rename_i htab; exact Or.inl htab
+        · have hmono := skipWhitespace_offset_mono s
+          have hmore := peek_some_hasMore _ c hpk
+          have hcn := consumeNewline_offset_advance _ c hpk hlb
+          exact ih (consumeNewline (skipWhitespace s)) (cnt + 1) (by omega)
+      · rename_i hlb
+        right
+        intro ch h
+        rw [hpk] at h; injection h with h; subst h
+        simpa using hlb
+    · rename_i hpk
+      right; intro ch h; rw [hpk] at h; cases h
+
+lemma foldQuotedNewlinesLoop_inputEnd (s : ScannerState) (cnt fuel : Nat) :
+    (foldQuotedNewlinesLoop s cnt fuel).1.inputEnd = s.inputEnd := by
+  induction fuel generalizing s cnt with
+  | zero => rfl
+  | succ fuel' ih =>
+    rw [foldQuotedNewlinesLoop]
+    split
+    · split
+      · split
+        · rfl
+        · rw [ih, consumeNewline_inputEnd, (skipWhitespace_offset_mono s).2]
+      · rfl
+    · rfl
+
+lemma skipBlankLinesLoop_inputEnd (s : ScannerState) (cnt fuel ie : Nat) :
+    (skipBlankLinesLoop s cnt fuel ie).2.inputEnd = s.inputEnd := by
+  induction fuel generalizing s cnt with
+  | zero => rfl
+  | succ fuel' ih =>
+    rw [skipBlankLinesLoop]
+    split
+    · split
+      · -- item 100: the gate's arm keeps the state
+        split
+        · rfl
+        · rw [ih, consumeNewline_inputEnd, (skipWhitespace_offset_mono s).2]
+      · rfl
+    · rfl
+
+/-- A flow fold lands on a character that is neither `s-white` nor a break. -/
+lemma foldQuotedNewlines_landing {s s' : ScannerState} {folded : String}
+    (h : foldQuotedNewlines s = .ok (folded, s')) :
+    ∀ ch, s'.peek? = some ch → isWhiteSpaceBool ch = false ∧ isLineBreakBool ch = false := by
+  unfold foldQuotedNewlines at h
+  dsimp only at h
+  split at h
+  · split at h
+    · simp only [pure, Except.pure] at h
+      split at h <;> contradiction
+    · rename_i hnotab
+      have hs' : s' = skipWhitespace (skipSpaces
+          (foldQuotedNewlinesLoop (consumeNewline s) 0
+            (s.inputEnd - (consumeNewline s).offset + 1)).1) := by
+        split at h <;>
+          (simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h; exact h.2.symm)
+      subst hs'
+      intro ch hpk
+      refine ⟨skipWhitespace_peek_not_ws _ ch hpk, ?_⟩
+      rw [skipWhitespace_skipSpaces] at hpk
+      rcases foldQuotedNewlinesLoop_stop (consumeNewline s) 0
+          (s.inputEnd - (consumeNewline s).offset + 1)
+          (by rw [consumeNewline_inputEnd]; omega) with htab | hstop
+      · simp only [blankLineTabUnderFloor, Bool.and_eq_true, beq_iff_eq,
+          decide_eq_true_eq] at htab
+        exact absurd htab.1 hnotab
+      · exact hstop ch hpk
+  · rename_i hcol
+    have hs' : s' = skipWhitespace (skipSpaces
+        (foldQuotedNewlinesLoop (consumeNewline s) 0
+          (s.inputEnd - (consumeNewline s).offset + 1)).1) := by
+      split at h <;>
+        (simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h; exact h.2.symm)
+    subst hs'
+    intro ch hpk
+    refine ⟨skipWhitespace_peek_not_ws _ ch hpk, ?_⟩
+    rw [skipWhitespace_skipSpaces] at hpk
+    rcases foldQuotedNewlinesLoop_stop (consumeNewline s) 0
+        (s.inputEnd - (consumeNewline s).offset + 1)
+        (by rw [consumeNewline_inputEnd]; omega) with htab | hstop
+    · simp only [blankLineTabUnderFloor, Bool.and_eq_true, beq_iff_eq,
+        decide_eq_true_eq] at htab
+      exact absurd htab.2 hcol
+    · exact hstop ch hpk
+
+lemma foldQuotedNewlines_inputEnd {s s' : ScannerState} {folded : String}
+    (h : foldQuotedNewlines s = .ok (folded, s')) : s'.inputEnd = s.inputEnd := by
+  unfold foldQuotedNewlines at h
+  dsimp only at h
+  have hs' : ∀ (_ : True), s' = skipWhitespace (skipSpaces
+      (foldQuotedNewlinesLoop (consumeNewline s) 0
+        (s.inputEnd - (consumeNewline s).offset + 1)).1) → s'.inputEnd = s.inputEnd := by
+    intro _ he
+    rw [he, (skipWhitespace_offset_mono _).2, skipSpaces_inputEnd,
+        foldQuotedNewlinesLoop_inputEnd, consumeNewline_inputEnd]
+  split at h
+  · split at h
+    · simp only [pure, Except.pure] at h
+      split at h <;> contradiction
+    · exact hs' trivial (by
+        split at h <;>
+          (simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h; exact h.2.symm))
+  · exact hs' trivial (by
+      split at h <;>
+        (simp only [pure, Except.pure, Except.ok.injEq, Prod.mk.injEq] at h; exact h.2.symm))
+
+/-- A block fold lands on a character that is neither `s-white` nor a break.
+    `hie` is the caller's fuel bound: `skipBlankLinesLoop` is given
+    `ie - offset + 1`, which covers the input when `ie` does.
+
+    Item 100: `hgate` says the blank run was not stopped by the fold's own §6.1
+    gate.  It is the caller's to supply because it is an ARITHMETIC fact about
+    the floor — a gate-stopped line is under-indented, so the handler returned
+    `none` there — and the indent transport that shows it lives one layer up
+    (`handleBlockLineBreak_gate_false`). -/
+lemma handleBlockLineBreak_landing {s s' : ScannerState} {content content' : String}
+    {ci ie : Nat} (hie : s.inputEnd ≤ ie + 1)
+    (hgate : blankLineTabUnderFloor
+      (skipBlankLinesLoop (consumeNewline s) 0
+        (ie - (consumeNewline s).offset + 1) ie).2 = false)
+    (h : collectPlainScalar_handleBlockLineBreak s content ci ie = some (content', s')) :
+    ∀ ch, s'.peek? = some ch → isWhiteSpaceBool ch = false ∧ isLineBreakBool ch = false := by
+  unfold collectPlainScalar_handleBlockLineBreak at h
+  dsimp only at h
+  split at h
+  · cases h
+  · split at h
+    · cases h
+    · have hs' : s' = skipWhitespace (skipSpaces
+          (skipBlankLinesLoop (consumeNewline s) 0
+            (ie - (consumeNewline s).offset + 1) ie).2) := by
+        split at h <;>
+          (simp only [Option.some.injEq, Prod.mk.injEq] at h; exact h.2.symm)
+      subst hs'
+      intro ch hpk
+      refine ⟨skipWhitespace_peek_not_ws _ ch hpk, ?_⟩
+      rw [skipWhitespace_skipSpaces] at hpk
+      rcases skipBlankLinesLoop_stop (consumeNewline s) 0
+          (ie - (consumeNewline s).offset + 1) ie
+          (by rw [consumeNewline_inputEnd]; omega) with htab | hstop
+      · exact absurd htab (by rw [hgate]; simp)
+      · exact hstop ch hpk
+
+lemma handleBlockLineBreak_inputEnd {s s' : ScannerState} {content content' : String}
+    {ci ie : Nat}
+    (h : collectPlainScalar_handleBlockLineBreak s content ci ie = some (content', s')) :
+    s'.inputEnd = s.inputEnd := by
+  unfold collectPlainScalar_handleBlockLineBreak at h
+  dsimp only at h
+  split at h
+  · cases h
+  · split at h
+    · cases h
+    · have hs' : s' = skipWhitespace (skipSpaces
+          (skipBlankLinesLoop (consumeNewline s) 0
+            (ie - (consumeNewline s).offset + 1) ie).2) := by
+        split at h <;>
+          (simp only [Option.some.injEq, Prod.mk.injEq] at h; exact h.2.symm)
+      rw [hs', (skipWhitespace_offset_mono _).2, skipSpaces_inputEnd,
+          skipBlankLinesLoop_inputEnd, consumeNewline_inputEnd]
+
+/-- All `some` branches of `collectPlainScalar_terminates?` return `content`
+    unchanged: a terminating character contributes nothing to the scalar. -/
+lemma terminates_content_eq (c : Char) (s : ScannerState)
+    (content spaces : String) (inFlow : Bool) (r : PlainScalarResult)
+    (h : collectPlainScalar_terminates? c s content spaces inFlow = some r) :
+    r.content = content := by
+  unfold collectPlainScalar_terminates? at h
+  split at h
+  · simp only [Option.some.injEq] at h; subst h; rfl
+  · split at h
+    · dsimp only [] at h
+      split at h
+      · split at h
+        · simp only [Option.some.injEq] at h; subst h; rfl
+        · simp at h
+      · split at h
+        · simp only [Option.some.injEq] at h; subst h; rfl
+        · simp at h
+    · split at h
+      · simp only [Option.some.injEq] at h; subst h; rfl
+      · split at h
+        · simp only [Option.some.injEq] at h; subst h; rfl
+        · simp at h
+
 end L4YAML.Proofs.ScalarCoupling
+
+end Blanket

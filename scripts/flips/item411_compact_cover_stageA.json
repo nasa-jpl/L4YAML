@@ -1,0 +1,78 @@
+{
+ "item": 411,
+ "tag": "COMPACT-COVER-SA",
+ "rev": "4eb037a7",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/411-compact-cover-stageA.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "        h_face.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), h_face.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        -- Item 409: `[n]` is the `?` park's own column — marked in fact, but no face here says",
+    "        -- so (the own-mark scanner lemma is unpaid), so under the domain this birth DECLINES.",
+    "        | Or.inl _ => Or.inr trivial",
+    "        -- …and `[]` would claim the park holds NO mark (`MarkedColsIn` is a cover): DECLINES.",
+    "        | Or.inr _ => Or.inr trivial⟩"
+   ],
+   "new": [
+    "        h_face.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), h_face.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨RegisterWitness.markedCols sc,",
+    "            RegisterWitness.MarkedColsIn.self sc,",
+    "            fun nv _hnv sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "              if hn : nv = n then by",
+    "                subst hn",
+    "                exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp sp_i sp_c sp_v",
+    "                  h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi))",
+    "              else sorry⟩",
+    "        | Or.inr _ => Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,",
+    "            fun _nv _hnv _sp _h_bi _sp_i _sp_c _h_iv _h_lit _sp_v _h_sbi => sorry⟩⟩"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "        hvs.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), hvs.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        -- Item 409: `[n]` is the `?` park's own column — marked in fact, but no face here says",
+    "        -- so (the own-mark scanner lemma is unpaid), so under the domain this birth DECLINES.",
+    "        | Or.inl _ => Or.inr trivial",
+    "        -- …and `[]` would claim the park holds NO mark (`MarkedColsIn` is a cover): DECLINES.",
+    "        | Or.inr _ => Or.inr trivial⟩"
+   ],
+   "new": [
+    "        hvs.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), hvs.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨RegisterWitness.markedCols sc,",
+    "            RegisterWitness.MarkedColsIn.self sc,",
+    "            fun nv _hnv sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "              if hn : nv = n then by",
+    "                subst hn",
+    "                exact ResumeFrames.one (route sp_v (SBlockMapEntry.explicit _ sp_q sp_scan sp sp_i sp_c sp_v",
+    "                  h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi))",
+    "              else sorry⟩",
+    "        | Or.inr _ => Or.inl ⟨RegisterWitness.markedCols sc, RegisterWitness.MarkedColsIn.self sc,",
+    "            fun _nv _hnv _sp _h_bi _sp_i _sp_c _h_iv _h_lit _sp_v _h_sbi => sorry⟩⟩"
+   ],
+   "count": 1
+  }
+ ]
+}

@@ -49,3 +49,10 @@ class TestDumpConfigured:
         cfg = "defaultStyle: block"
         out = l4yaml.dump_configured(v, config_yaml=cfg)
         assert "key" in out
+
+    def test_bad_config_raises_config_error(self) -> None:
+        # No silent fallback to the default DumpConfig.
+        v = l4yaml.load("key: value")
+        with pytest.raises(l4yaml.ConfigError) as exc_info:
+            l4yaml.dump_configured(v, config_yaml="indent: banana")
+        assert "unknown config error" not in str(exc_info.value)

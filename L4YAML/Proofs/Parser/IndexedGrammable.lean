@@ -2,22 +2,25 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Parser.TokenParserIx
-import L4YAML.Proofs.Composition
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Parser.ParserGrammableBase
-import L4YAML.Proofs.Parser.IndexedNodeProofs
-import L4YAML.Proofs.Parser.IndexedWellBehaved
-import L4YAML.Proofs.Parser.IndexedWfa
-import L4YAML.Proofs.Parser.IndexedComposition
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
 
-/-! # `IndexedGrammable` — Phase 3 Step 6d.3 indexed grammability (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 Step 6f cutover commit.
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Parser.TokenParserIx
+public import L4YAML.Proofs.Composition
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Parser.ParserGrammableBase
+public import L4YAML.Proofs.Parser.ParserScannableBase
+public import L4YAML.Proofs.Parser.IndexedNodeProofs
+public import L4YAML.Proofs.Parser.IndexedWellBehaved
+public import L4YAML.Proofs.Parser.IndexedWfa
+public import L4YAML.Proofs.Parser.IndexedComposition
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+
+@[expose] public section Blanket
+
+/-! # `IndexedGrammable` — Phase 3 Step 6d.3 indexed grammability
 
 ## Role
 
@@ -52,7 +55,7 @@ This file combines the component proofs to produce the final
 
 ## §6  Final Theorem (C3)
 
-Combines C1 (compose_scannable_to_grammable from base) and the indexed
+Combines C1 (compose_grammable / compose_scannable from base) and the indexed
 C2 substrate to discharge `h_grammable` on the indexed `parseStreamIx`
 pipeline.
 -/
@@ -78,9 +81,16 @@ variable {input : String}
 
 /-! ## §C2b  AllAliasesResolve lifting — Indexed
 
-Lifts `parseNode_aliases_resolve'` (parseNode-level, from
+Lifts `parseNode_aliases_declared'` (parseNode-level, from
 `IndexedNodeProofs`) up through `parseDocument` and `parseStreamLoop`
 to obtain `parseStreamIx_output_aliases_resolve`.
+
+The per-node statement is §7.1's — every alias names an anchor that has
+*occurred* — because that is the reading that holds of a single node; the
+resolution reading is recovered here, at the document boundary, where every
+anchor the document declared has been finalized.  `DeclarationsBound` is that
+boundary condition and `AllAliasesResolve.of_declared` the step.  See
+`ParserAnchorProofs` for the argument in full.
 
 Legacy structure: see `ParserAnchorProofs.lean` §`parseDocument_aliases_resolve`,
 `parseStreamLoop_aliases_resolve`, `parseStream_output_aliases_resolve`.
@@ -89,9 +99,45 @@ The indexed version is a 1:1 transfer with `parseStream` →
 `Indexed.TokenStream input`, and `parseStreamLoop` references repointed
 at the indexed variant. -/
 
+/-- The document-entry condition: every name that has OCCURRED is already
+    BOUND.  False inside a node (row 20), true wherever a document starts. -/
+def DeclarationsBound (ps : ParseStateIx input) : Prop :=
+  ∀ nm, nm ∈ ps.declaredAnchors → AnchorBound ps.anchors nm
+
+lemma DeclarationsBound.of_empty {ps : ParseStateIx input}
+    (h : ps.declaredAnchors = #[]) : DeclarationsBound ps := by
+  intro nm hm; rw [h] at hm; simp at hm
+
+lemma DeclarationsBound.of_registers {ps ps' : ParseStateIx input}
+    (h_a : ps'.anchors = ps.anchors) (h_d : ps'.declaredAnchors = ps.declaredAnchors)
+    (h : DeclarationsBound ps) : DeclarationsBound ps' := by
+  intro nm hm; rw [h_d] at hm; rw [h_a]; exact h nm hm
+
+/-- **Capstone 3.5 (indexed), the §7.1 reading**: every alias node in
+    `parseNode`'s output names an anchor that has previously occurred. -/
+lemma parseNode_aliases_declared_ix
+    (ps : ParseStateIx input) (fuel : Nat) (val : YamlValue) (ps' : ParseStateIx input)
+    (h_ok : parseNode ps fuel = .ok (val, ps')) :
+    AllAliasesDeclared val ps'.declaredAnchors :=
+  parseNode_aliases_declared' ps fuel val ps' h_ok
+
+/-- The step to the resolution reading for one `parseNode` call. -/
+lemma parseNode_aliases_resolve_ix
+    (ps : ParseStateIx input) (fuel : Nat) (val : YamlValue) (ps' : ParseStateIx input)
+    (h_decl : DeclarationsBound ps)
+    (h_ok : parseNode ps fuel = .ok (val, ps')) :
+    AllAliasesResolve val ps'.anchors := by
+  have h_ag := parseNode_ag_all fuel ps fuel val ps' Nat.le.refl h_ok
+  refine AllAliasesResolve.of_declared (fun nm hnm => ?_)
+    (parseNode_aliases_declared_ix ps fuel val ps' h_ok)
+  rcases h_ag.declsBound nm hnm with h_old | h_bound
+  · exact AnchorBound.mono h_ag.anchorsGrow (h_decl nm h_old)
+  · exact h_bound
+
 -- parseDocument-level lift.
 lemma parseDocument_aliases_resolve_ix
     (ps : ParseStateIx input) (doc : YamlDocument) (ps' : ParseStateIx input)
+    (h_decl : DeclarationsBound ps)
     (h_ok : parseDocument ps = .ok (doc, ps')) :
     AllAliasesResolve doc.value doc.anchors := by
   unfold parseDocument at h_ok
@@ -121,13 +167,20 @@ lemma parseDocument_aliases_resolve_ix
         simp only [Except.ok.injEq] at h_ok
         obtain ⟨rfl, _⟩ := Prod.mk.inj h_ok
         obtain ⟨val_n, ps_n⟩ := v_node
-        exact parseNode_aliases_resolve' _ _ _ _ h_node
+        -- The directive prefix writes neither register.
+        refine parseNode_aliases_resolve_ix _ _ _ _ (fun nm hnm => ?_) h_node
+        rw [prepareDocumentState_decls_eq_ix ps v_prep.1 v_prep.2
+          (by rw [← Prod.eta v_prep]; exact h_prep)] at hnm
+        rw [prepareDocumentState_anchors_eq_ix ps v_prep.1 v_prep.2
+          (by rw [← Prod.eta v_prep]; exact h_prep)]
+        exact h_decl nm hnm
 
 -- parseStreamLoop-level lift (induction on fuel).
 lemma parseStreamLoop_aliases_resolve_ix
     (ps : ParseStateIx input) (docs : Array YamlDocument)
     (streamState : StreamState) (fuel : Nat)
     (result : Array YamlDocument)
+    (h_decl : DeclarationsBound ps)
     (h_acc : ∀ doc ∈ docs.toList, AllAliasesResolve doc.value doc.anchors)
     (h_ok : parseStreamLoop ps docs streamState fuel = .ok result) :
     ∀ doc ∈ result.toList, AllAliasesResolve doc.value doc.anchors := by
@@ -140,6 +193,10 @@ lemma parseStreamLoop_aliases_resolve_ix
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- documentEnd (bare `...` suffix, C1) → skip it, recurse with same accumulator
+      refine ih _ _ _ ?_ h_acc h_ok
+      exact h_decl.of_registers (by split <;> (try split) <;> rfl)
+        (by split <;> (try split) <;> rfl)
     · -- some tok → validation + parseDocument + recurse
       split at h_ok
       · simp at h_ok
@@ -157,10 +214,13 @@ lemma parseStreamLoop_aliases_resolve_ix
             simp only [List.mem_append, List.mem_singleton] at hd
             rcases hd with hd_old | rfl
             · exact h_acc d hd_old
-            · exact parseDocument_aliases_resolve_ix _ _ _ h_pd
+            · exact parseDocument_aliases_resolve_ix _ _ _ h_decl h_pd
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
-          · exact ih _ _ _ h_acc' h_ok
+          · simp at h_ok  -- no progress → error, contradiction
+          · -- §3.2.2.2: anchor scope is per document, and the reset restores
+            -- the agreement between the registers for the next one.
+            refine ih _ _ _ ?_ h_acc' h_ok
+            exact DeclarationsBound.of_empty (by simp)
 
 -- parseStreamIx-level lift (the C2b indexed final).
 lemma parseStreamIx_output_aliases_resolve
@@ -174,8 +234,16 @@ lemma parseStreamIx_output_aliases_resolve
   split at h_parse
   · contradiction
   · rename_i ps_start h_expect
-    exact parseStreamLoop_aliases_resolve_ix ps_start #[] .initial tokens.size docs
-      (by intro d hd; simp at hd) h_parse doc hdoc
+    refine parseStreamLoop_aliases_resolve_ix ps_start #[] .initial tokens.size docs
+      ?_ (by intro d hd; simp at hd) h_parse doc hdoc
+    -- A stream's initial state has declared nothing.
+    refine DeclarationsBound.of_empty ?_
+    unfold ParseStateIx.expect at h_expect
+    split at h_expect
+    · split at h_expect
+      · simp only [Except.ok.injEq] at h_expect; subst h_expect; rfl
+      · simp at h_expect
+    · simp at h_expect
 
 /-! ## §6  Final Theorem (C3 indexed) -/
 
@@ -186,32 +254,44 @@ lemma parseStreamIx_output_aliases_resolve
     This theorem eliminates the `h_grammable` hypothesis from
     `parseStreamIx_respects_grammar` in `IndexedCorrectness.lean`.
 
-    **Architecture**: Chains the C2 substrate:
-      - `parseStream_output_scannable_ix` (IndexedWellBehaved)
-      - `parseStreamIx_output_aliases_resolve` (this file)
-      - `parseStreamIx_output_anchors_wellformed` (IndexedWfa)
-    into `compose_grammable` (ParserGrammableBase).
+    **Architecture**: Chains `parseStream_output_scannable_ix`
+    (IndexedWellBehaved) into `compose_grammable` (ParserGrammableBase).
 
-    **Precondition on anchors**: `WellFormedAnchors` requires that anchor
-    values are `Grammable` at every flow context. This excludes the
-    pathological case where block-context plain scalars with flow
-    indicators are aliased into flow context. See ParserGrammableBase §4
-    for details. -/
+    **Precondition on the input**: `AliasFree`.  An alias with no preceding
+    definition survives composition — §3.2.2.2 resolves against the most
+    recent preceding event and a collection's anchor binds only after its
+    items, so a node that has itself as a descendant via an alias (§3.2.1.3)
+    keeps its `.alias`, which `Grammable` has no constructor for.  The
+    hypothesis-free form is `parseStreamIx_output_scannable_composed`. -/
 lemma parseStreamIx_output_grammable
     (tokens : Indexed.TokenStream input)
     (raw_docs : Array YamlDocument)
     (h_fpsv : FlowAwarePSVIx tokens)
     (h_matched : FlowBracketsMatchedIx tokens)
-    (h_parse : parseStreamIx tokens = .ok raw_docs) :
+    (h_parse : parseStreamIx tokens = .ok raw_docs)
+    (h_af : ∀ doc ∈ raw_docs.toList, AliasFree doc.value) :
     ∀ doc ∈ raw_docs.toList, Grammable doc.compose.value false := by
   intro doc hdoc
   have h_scannable :=
     parseStream_output_scannable_ix tokens raw_docs h_fpsv h_matched h_parse doc hdoc
-  have h_resolve :=
-    parseStreamIx_output_aliases_resolve tokens raw_docs h_parse doc hdoc
-  have h_anchors :=
-    parseStreamIx_output_anchors_wellformed tokens raw_docs h_fpsv h_matched h_parse doc hdoc
-  exact compose_grammable doc h_scannable h_resolve h_anchors
+  exact compose_grammable doc h_scannable (h_af doc hdoc)
+
+/-- **Unconditional scannability of the composed value (indexed).**
+
+    The `Scannable` twin of `parseStreamIx_output_grammable`, carrying no
+    hypothesis on the input: `Scannable` admits the alias node that survives
+    composition, so this is the form the unconditional capstone needs. -/
+lemma parseStreamIx_output_scannable_composed
+    (tokens : Indexed.TokenStream input)
+    (raw_docs : Array YamlDocument)
+    (h_fpsv : FlowAwarePSVIx tokens)
+    (h_matched : FlowBracketsMatchedIx tokens)
+    (h_parse : parseStreamIx tokens = .ok raw_docs) :
+    ∀ doc ∈ raw_docs.toList, Scannable doc.compose.value false := by
+  intro doc hdoc
+  have h_scannable :=
+    parseStream_output_scannable_ix tokens raw_docs h_fpsv h_matched h_parse doc hdoc
+  exact compose_scannable doc h_scannable
 
 /-- **Unconditional correctness (indexed, parseStreamIx-level)**: every
     document produced by `parseStreamIx` from scanner-quality tokens has
@@ -232,8 +312,8 @@ lemma parseStreamIx_produces_valid_nodes
       stripAnnotations (toYamlValue node) = stripAnnotations doc.compose.value := by
   intro doc hdoc
   have h_g :=
-    parseStreamIx_output_grammable tokens docs h_fpsv h_matched h_parse doc hdoc
-  exact ParserSoundness.yamlValue_has_witness doc.compose.value false h_g
+    parseStreamIx_output_scannable_composed tokens docs h_fpsv h_matched h_parse doc hdoc
+  exact ParserSoundness.scannableValue_has_witness doc.compose.value false h_g
 
 /-- **Unconditional correctness (indexed, parseStreamIx-level, no
     hypotheses)**: given that `tokens` came from `scanFilteredIx`,
@@ -300,3 +380,5 @@ lemma parseYamlIx_implies_valid_token_stream
   · contradiction
 
 end L4YAML.Proofs.Indexed.Grammable
+
+end Blanket

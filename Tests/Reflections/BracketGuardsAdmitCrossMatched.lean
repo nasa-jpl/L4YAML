@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 433 / 519 — endpoint+balance bracket guards admit cross-matched false windows
 
@@ -133,3 +138,5 @@ theorem map_false_window_fails_floor : ¬ Floor toks2 6 20 := by
   exact absurd hd (by decide)              -- but bal toks2 6 11 = -1
 
 end Tests.Reflections.BracketGuardsAdmitCrossMatched
+
+end Blanket

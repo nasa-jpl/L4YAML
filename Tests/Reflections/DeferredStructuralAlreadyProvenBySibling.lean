@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 386 — a root seed's DEFERRED-STRUCTURAL hypothesis is often ALREADY proven by a sibling
 whole-structure lemma serving a DIFFERENT consumer; the only gap is a per-item-predicate coercion.
@@ -92,3 +97,5 @@ theorem would_be_a_new_brick (ns : List Nat) (h : ∀ n ∈ ns, WeakItem n) : Ba
 #guard ! ([2, 3] : List Nat).all (· % 2 == 0)
 
 end Tests.Reflections.DeferredStructuralAlreadyProvenBySibling
+
+end Blanket

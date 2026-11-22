@@ -1,4 +1,8 @@
-import Std.Data.HashMap
+module
+
+public import Std.Data.HashMap
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -48,15 +52,15 @@ def fetchUrl (url : String) : IO String := do
 /-! ## String Helpers -/
 
 /-- Check if a character is an ASCII digit. -/
-private def isDigit (c : Char) : Bool :=
+def isDigit (c : Char) : Bool :=
   '0' ≤ c && c ≤ '9'
 
 /-- Check if `s` contains substring `sub`. -/
-private def stringContains (s : String) (sub : String) : Bool :=
+def stringContains (s : String) (sub : String) : Bool :=
   (s.splitOn sub).length > 1
 
 /-- Find position of the first occurrence of `c` in `s`. -/
-private def stringFindChar (s : String) (c : Char) : Option Nat :=
+def stringFindChar (s : String) (c : Char) : Option Nat :=
   let rec go (pos : Nat) (remaining : List Char) : Option Nat :=
     match remaining with
     | [] => none
@@ -64,17 +68,17 @@ private def stringFindChar (s : String) (c : Char) : Option Nat :=
   go 0 s.toList
 
 /-- Take the first `n` characters of `s`. -/
-private def stringTake (s : String) (n : Nat) : String :=
+def stringTake (s : String) (n : Nat) : String :=
   String.ofList (s.toList.take n)
 
 /-- Drop the first `n` characters of `s`. -/
-private def stringDrop (s : String) (n : Nat) : String :=
+def stringDrop (s : String) (n : Nat) : String :=
   String.ofList (s.toList.drop n)
 
 /-! ## HTML / Annotation Stripping -/
 
 /-- Strip all `<mark ...>` opening and `</mark>` closing tags from a string. -/
-private def stripMarkTags (s : String) : String :=
+def stripMarkTags (s : String) : String :=
   -- Remove opening <mark ...> tags
   let rec stripOpen (input : String) (fuel : Nat) : String :=
     match fuel with
@@ -103,14 +107,14 @@ private def stripMarkTags (s : String) : String :=
     the HTML), while `↓` merely annotates an already-present newline (the line
     break byte is already in the `<pre>` content), so it is removed rather than
     doubled. -/
-private def replaceAnnotationSymbols (s : String) : String :=
+def replaceAnnotationSymbols (s : String) : String :=
   let s := s.replace "·" " "     -- visible space → actual space
   let s := s.replace "→" "\t"    -- visible tab → actual tab
   let s := s.replace "↓" ""      -- visible newline → remove (newline already present)
   s
 
 /-- Decode HTML entities. -/
-private def decodeHtmlEntities (s : String) : String :=
+def decodeHtmlEntities (s : String) : String :=
   let s := s.replace "&gt;" ">"
   let s := s.replace "&lt;" "<"
   let s := s.replace "&amp;" "&"
@@ -119,13 +123,13 @@ private def decodeHtmlEntities (s : String) : String :=
   s
 
 /-- Full cleanup pipeline: strip marks → replace symbols → decode entities. -/
-private def cleanupContent (s : String) : String :=
+def cleanupContent (s : String) : String :=
   decodeHtmlEntities (replaceAnnotationSymbols (stripMarkTags s))
 
 /-! ## Section / Example Parsing -/
 
 /-- Parse section number from header text like "2.2 Structures". -/
-private def parseSectionNumber (text : String) : Option String :=
+def parseSectionNumber (text : String) : Option String :=
   let text := text.trimAscii.copy
   let chars := text.toList
   let rec findSectionEnd (cs : List Char) (acc : List Char) : Option String :=
@@ -145,7 +149,7 @@ private def parseSectionNumber (text : String) : Option String :=
   findSectionEnd chars []
 
 /-- Extract example number from text like "Example 2.7". -/
-private def parseExampleNumber (text : String) : Option String :=
+def parseExampleNumber (text : String) : Option String :=
   let text := text.trimAscii.copy.toLower
   if text.startsWith "example" then
     let rest := (text.drop 7).trimAscii.copy
@@ -268,3 +272,5 @@ def main : IO Unit := do
   catch e =>
     IO.eprintln s!"Error: {e}"
     throw e
+
+end Blanket

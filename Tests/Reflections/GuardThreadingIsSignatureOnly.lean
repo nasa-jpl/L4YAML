@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 474 — repairing the producer-guarded-quantifier trap is a SIGNATURE-ONLY edit
 # while the deferred hypothesis is VERIFIED-BUT-UNCONSUMED: the dropped guard is ALREADY bound
@@ -128,3 +133,5 @@ example : ∃ d : Deliv 3, dispatch provG_satisfiable 3 (by unfold Domain; omega
 example : ¬ Deliv 1 := fun d => absurd d.ge2 (by omega)
 
 end GuardThreadingIsSignatureOnly
+
+end Blanket

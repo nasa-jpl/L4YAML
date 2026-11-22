@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Descend-IH projection probe (de-risk for `(i'-b-B2c-dispatch-ih-widen)`, step (3))
@@ -91,3 +95,5 @@ theorem ih4_of_ih5_iff_provider (ih5 : IH5 tokens p hi Q)
     ih5 lo' hi' h_lt h_w h_d (provider lo' hi' h_w h_d h_q h_c) h_q h_c
 
 end L4YAML.Proofs.EmitterScannability.DescendIHProjectionProbe
+
+end Blanket

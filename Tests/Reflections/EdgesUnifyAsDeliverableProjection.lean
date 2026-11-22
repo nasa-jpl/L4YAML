@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 502 — the carrier-free edges UNIFY as one projection of the recursion's deliverable
 
 Completing the carrier-free `FlowBodyContent` thread (root R501 + descend R500 + advance reused), the two
@@ -83,3 +88,5 @@ theorem content_demo : Content [true, true] := contentOfDeliv trivial deliv_demo
 theorem deliv_needs_nonempty : ¬ Deliv [] := fun h => h.1 rfl
 
 end EdgesUnifyAsDeliverableProjection
+
+end Blanket

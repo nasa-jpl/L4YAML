@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.StreamStart
+
+module
+
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.StreamStart
+
+@[expose] public section Blanket
 
 /-! # `IndexedScannerCorrectness.OrderedDefs` — §8.1–§8.2
 
@@ -280,3 +285,5 @@ lemma ScanInvIx_of_offset_ge {input : String} (s s' : ScannerStateIx input)
   intro ⟨i, hi⟩
   exact Nat.le_trans (h_bnd ⟨i, hi⟩) h_off
 end L4YAML.Proofs.Indexed.ScannerCorrectness
+
+end Blanket

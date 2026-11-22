@@ -29,12 +29,17 @@ pub enum Error {
 /// Convenience alias.
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Classify a raw error message string into `Parse` or `Limit`.
+/// Classify a raw error message string into `Config`, `Parse` or `Limit`.
 ///
-/// The Lean parser prefixes limit errors with "limit:" or "security:" —
-/// we match on those heuristically. Everything else is a parse error.
+/// `l4yaml_parse_configured` reports a limits config that does not parse
+/// as "config error: …".  The Lean parser prefixes limit errors with
+/// "limit:" or "security:" — we match on those heuristically.  Everything
+/// else is a parse error.
 pub(crate) fn classify_error(msg: String) -> Error {
     let lower = msg.to_ascii_lowercase();
+    if lower.starts_with("config error:") {
+        return Error::Config(msg);
+    }
     if lower.starts_with("limit:")
         || lower.starts_with("security:")
         || lower.contains("limit exceeded")

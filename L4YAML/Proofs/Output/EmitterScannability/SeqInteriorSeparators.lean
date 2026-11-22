@@ -1,8 +1,16 @@
 /-
 Copyright (c) 2026 L4YAML contributors. All rights reserved.
-Released under Apache 2.0 license as described in the file LICENSE.
--/
-import L4YAML.Proofs.Output.EmitterScannability.DeepNavigator
+Released under Apache 2.0 license as described in the file LICENSE. -/
+
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.DeepNavigator
+
+
+
+public meta import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+public meta import L4YAML.Proofs.Parser.ParserGrammableBase
+@[expose] public section Blanket
 
 /-!
 # `SeqInteriorSeparators` — the seq-typed separator carrier (sub-brick `(i'-b-descend-defn)`)
@@ -28,7 +36,20 @@ asserts the two separator facts on each. The decisive design choice: every gate 
 carrier ONLY through the domain inequalities `lo ≤ a` and `b ≤ hi`. Hence narrowing `[lo,hi)` to any
 sub-interval is a pure subset restriction: the body is reused verbatim and only the domain shrinks
 (`SeqInteriorSeparators_narrow`). `descend` and `advance` are two instances of exactly that.
--/
+
+## Status note — the `sorry` frontier and the map axiom profile
+
+The round-by-round docstrings below were written while the output-side `FlowSubrangesOk` residual
+was still open (the four `sorry` sites they called "the frontier") and while
+`scanFiltered_emitMap_nonempty_structure` still discharged its `ParseEntryFlowMapOk` conjunct with
+an inline `sorry`, so that every map context provider inherited `sorryAx`.  Neither holds any more:
+the frontier is closed and the library carries no `sorry` (README; CI's kernel-accurate assertion),
+the map structure lemma's residual was relocated to `parseStream_emitMapping` and discharged there,
+and the map context pair `mapWholeStreamWellTyped`/`mapFoldTotal_of_context` audits exactly like its
+seq twin — `[propext, Classical.choice, Quot.sound]`, pinned by `#guard_msgs` in
+`Tests/Guards/Proofs/FlowContextProviderAxioms.lean`.  The per-lemma "frontier sorry count unchanged
+at 4" lines were retired in favour of this note; a remark that dates a lemma's axiom profile to a
+round (`R5xx`) records that round's reading. -/
 
 namespace L4YAML.Proofs.EmitterScannability
 
@@ -146,8 +167,8 @@ carrier is STRICTLY STRONGER and re-projects to each marker-bearing consumer hyp
 `a := lo, b := hi` (the next brick, `mapGrammarFacts_of_mapRoot`).
 
 Verified-but-unconsumed: its consumer — a future `mapHRec_of_root_and_emit` map fold + a
-`flowSubrangesOk_of_seqRoot_and_mapRoot` reconciliation — does not exist yet; references no sorry site;
-frontier sorry count unchanged at 4; axioms `[propext]` only (the structural edges shed even
+`flowSubrangesOk_of_seqRoot_and_mapRoot` reconciliation — does not exist yet; axioms `[propext]`
+only (the structural edges shed even
 `Classical.choice`/`Quot.sound`). -/
 
 /-- **Map-typed interior gate** — the `some false` dual of `SeqTypedInterior` (`:66`): a depth-`0`-
@@ -243,8 +264,8 @@ there. The probe lives under `Tests/` (not inline) so the carrier's inhabitation
 regression test, kept separate from the library definition.
 
 Verified-but-unconsumed: the descent-provider chain that CONSTRUCTS this carrier, the rebase that
-makes the robustness pay off, and the `b = hi` bridge back to `MapGrammarFacts`, are later bricks;
-references no sorry site; frontier sorry count unchanged at 4. -/
+makes the robustness pay off, and the `b = hi` bridge back to `MapGrammarFacts`, are later bricks.
+-/
 
 /-- **The six map-grammar facts, made BOUNDARY-ROBUST** — the `'` variant of `MapGrammarFacts`
     (`:166`). Each conjunct whose strict form requires the asserted position to lie STRICTLY inside
@@ -341,8 +362,8 @@ INHABITATION-DEBT discipline ([[ref-inhabitation-debt-validate-target-defs]]): p
 existentially picking the value's own close `j=7`), `{[1]:2}` (conjunct 5 fires at a complex key), and
 `{a:[1], [2]:3}` (BOTH fire; the existential picks the right `j`, where the generic-guard form is
 refuted) — all grounded against real `scanFiltered (emit ·)`. Verified-but-unconsumed: the rebase,
-assembler, producer, and consumer-field reconciliation against this corrected target are later bricks;
-references no sorry site; frontier sorry count unchanged at 4. -/
+assembler, producer, and consumer-field reconciliation against this corrected target are later
+bricks. -/
 
 /-- **The six map-grammar facts with conjuncts 5/6 MATCHING-CLOSE-pinned** — the `''` variant of
     `MapGrammarFacts'` (`:256`). Conjuncts 1–4 are the robust `MapGrammarFacts'` conjuncts verbatim.
@@ -427,7 +448,7 @@ lemma MapInteriorSeparators''_narrow {tokens : Array (Positioned YamlToken)} {lo
     `j+1 = 8 < 13` — the exact arm R547/R548 found buggy) through this producer, recovering the same
     `MapGrammarFacts''` the R548 birth-probe proved directly.  The witness is built INDEPENDENTLY (not
     projected), so the round-trip is a genuine non-vacuous reachability check of the producer's domain
-    (rule 3).  Verified-but-unconsumed: references no sorry site; frontier sorry count unchanged at 4. -/
+    (rule 3).  Verified-but-unconsumed. -/
 lemma mapGrammarFacts''_of_mapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h : MapBodyProps tokens lo hi) :
     MapGrammarFacts'' tokens lo hi := by
@@ -545,8 +566,8 @@ lemma take_succ_drop_eq_drop_append_getElem {α} [Inhabited α] (L : List α) (l
     instantiating `interior := (tokens.toList.take hi).drop lo` and `cl := tokens.toList[hi]!`, so the
     interface now matches the producer's output verbatim — the (i-a) "package at the root span with its
     window identity" obligation, minus the geometry + six primitives the root seed still owes.
-    Verified-but-unconsumed: the root seed does not call it yet; references no sorry site, frontier sorry
-    count unchanged.  Probed end-to-end on the `{a:[1],b:2}` fixture in
+    Verified-but-unconsumed: the root seed does not call it yet.  Probed end-to-end on the
+    `{a:[1],b:2}` fixture in
     `Tests/Reflections/MapCarrierRobustInhabitation.lean` (R560). -/
 lemma mapGrammarFacts''_of_recmapbody_at_window (tokens : Array (Positioned YamlToken))
     (lo hi : Nat)
@@ -739,8 +760,7 @@ lemma mapGrammarFacts_rebase' (tokens : Array (Positioned YamlToken)) (loS a b h
     (`k=4`, `k+2=6`, `j=7`, gate window `[2,13)`, all facts `decide`-grounded against real emission) and
     recovers `7 < 13` — confirming every hypothesis (`h_open`, `h_dyck`, the gate) is satisfiable on real
     data where the bracket genuinely FIRES, so this is not the dead-hypothesis trap R550 caught one level
-    up.  Verified-but-unconsumed (its consumer `mapGrammarFacts_rebase''` does not exist yet); references
-    no sorry site; frontier sorry count unchanged at 4. -/
+    up.  Verified-but-unconsumed (its consumer `mapGrammarFacts_rebase''` does not exist yet). -/
 lemma mapBracketClose_lt_of_gate (tokens : Array (Positioned YamlToken)) (a b k j : Nat)
     (h_ak : a ≤ k) (h_k2_b : k + 2 ≤ b)
     (h_gate_bal : flowBracketBalance tokens a b = 0)
@@ -791,8 +811,7 @@ lemma mapBracketClose_lt_of_gate (tokens : Array (Positioned YamlToken)) (a b k 
     `flowBracketBalance 2 4 = 0`, size bound `5 < 15`) through this kernel and RECOVERS `flowBracketBalance
     2 6 = 1` — the exact `h_open` the R551 close-kernel probe asserted by `decide`, now PRODUCED from the
     deltas, closing the producer→consumer loop on real emission.  Verified-but-unconsumed (its consumer
-    `mapGrammarFacts_rebase''` does not exist yet); references no sorry site; frontier sorry count
-    unchanged at 4. -/
+    `mapGrammarFacts_rebase''` does not exist yet). -/
 lemma mapBracketOpen_balance_one (tokens : Array (Positioned YamlToken)) (a k : Nat)
     (h_ak : a ≤ k) (h_k1_size : k + 1 < tokens.size)
     (h_balk : flowBracketBalance tokens a k = 0)
@@ -866,8 +885,8 @@ lemma mapBracketOpen_balance_one (tokens : Array (Positioned YamlToken)) (a k : 
     mixed pair).  The probes are the identity rebase (`loS = a`, `hiS = b`) — the only map-typed
     window these single-level fixtures admit — but the conjunct-5/6 close-relocation still routes
     fully through both kernels; a strictly-narrowing rebase would need a nested-map fixture (a deeper
-    future probe).  Verified-but-unconsumed (the `''` provider/assembler it feeds does not exist yet);
-    references no sorry site; frontier sorry count unchanged at 4. -/
+    future probe).  Verified-but-unconsumed (the `''` provider/assembler it feeds does not exist
+    yet). -/
 lemma mapGrammarFacts_rebase'' (tokens : Array (Positioned YamlToken)) (loS a b hiS : Nat)
     (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
     (h_hiS_size : hiS ≤ tokens.size)
@@ -994,8 +1013,8 @@ lemma mapGrammarFacts_rebase'' (tokens : Array (Positioned YamlToken)) (loS a b 
     alarm): `Tests/Reflections/MapCarrierRobustInhabitation.lean`'s
     `mapInteriorSeparators'_of_enclosing_provider_unit` feeds the assembler a concrete (identity)
     provider on the unit span and recovers the inhabited carrier, so the assembler is non-vacuous.
-    Verified-but-unconsumed until the map `provider` lands: composes only `mapGrammarFacts_rebase'`,
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed until the map `provider` lands: composes only `mapGrammarFacts_rebase'`.
+    -/
 lemma mapInteriorSeparators'_of_enclosing_provider
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (provider : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b →
@@ -1045,7 +1064,7 @@ lemma mapInteriorSeparators'_of_enclosing_provider
     probes (`mapGrammarFacts_rebase''_bracketVal`, `13 ≤ 15` off real emission).  The explicit `lo+1 ≤
     tokens.size` precondition — absent from the single-prime probe — is the honest record of the one new
     obligation, NOT hidden behind a vacuous generalization.  Verified-but-unconsumed (its `''`
-    provider/dispatcher do not exist yet); references no sorry site; frontier sorry count unchanged at 4. -/
+    provider/dispatcher do not exist yet). -/
 lemma mapInteriorSeparators''_of_enclosing_provider
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (provider : ∀ a b, lo ≤ a → a ≤ b → b ≤ hi → MapTypedInterior tokens a b →
@@ -1085,8 +1104,7 @@ lemma mapInteriorSeparators''_of_enclosing_provider
     calling THIS assembler with the identity enclosing window (`loS = a`, `hiS = b`, robust facts via
     `mapGrammarFacts'_degenerate`/`_empty`) and recovers the inhabited carrier through the real
     ASSEMBLE→provider-of-located path.  Verified-but-unconsumed (its consumers — a future
-    `mapRoot_mapInteriorSeparators'` root seed and the descent provider — do not exist yet); references
-    no sorry site; frontier sorry count unchanged at 4. -/
+    `mapRoot_mapInteriorSeparators'` root seed and the descent provider — do not exist yet). -/
 lemma mapEnclosingFacts'_provider_of_located
     (tokens : Array (Positioned YamlToken)) (a b loS hiS : Nat)
     (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS)
@@ -1128,8 +1146,7 @@ lemma mapEnclosingFacts'_provider_of_located
     ASSEMBLE→provider-of-located path — confirming the lifted facts AND the size bound are JOINTLY
     satisfiable, not a trap.  The explicit precondition is the honest record of the one new obligation
     (absent from the `'` twin's all-`tokens` probe), not a vacuous generalization.  Verified-but-unconsumed
-    (its consumers — the `''` dispatcher and root seed — do not exist yet); references no sorry site;
-    frontier sorry count unchanged at 4. -/
+    (its consumers — the `''` dispatcher and root seed — do not exist yet). -/
 lemma mapEnclosingFacts''_provider_of_located
     (tokens : Array (Positioned YamlToken)) (a b loS hiS : Nat)
     (h_loS_a : loS ≤ a) (h_b_hiS : b ≤ hiS) (h_hiS_size : hiS ≤ tokens.size)
@@ -1179,8 +1196,7 @@ lemma mapEnclosingFacts''_provider_of_located
     branch via `desc`), and recovers the inhabited carrier through the real dispatch path.
 
     Verified-but-unconsumed: its consumer `mapRoot_mapInteriorSeparators'` (the root seed) and the
-    `desc` producer (the map descent locator) do not exist yet; references no sorry site; frontier
-    sorry count unchanged at 4. -/
+    `desc` producer (the map descent locator) do not exist yet. -/
 lemma mapInteriorSeparators'_of_safebody_and_descent
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_facts : MapGrammarFacts' tokens lo hi)
@@ -1245,8 +1261,7 @@ lemma mapInteriorSeparators'_of_safebody_and_descent
     `lo+1 ≤ tokens.size` precondition (absent from the single-prime dispatcher probe, which held for ALL
     `tokens`) is the honest record of the one new dispatcher obligation, not a vacuous generalization.
     Verified-but-unconsumed: its consumer `mapRoot_mapInteriorSeparators''` (the root seed) and the
-    `desc` producer (the map descent locator) do not exist yet; references no sorry site; frontier
-    sorry count unchanged at 4. -/
+    `desc` producer (the map descent locator) do not exist yet. -/
 lemma mapInteriorSeparators''_of_safebody_and_descent
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_hi_size : hi ≤ tokens.size)
@@ -1304,7 +1319,7 @@ lemma mapInteriorSeparators''_of_safebody_and_descent
     the `Nat.sub_le` size discharge exercised.
 
     Verified-but-unconsumed: its two producers (the live-route root `MapGrammarFacts''` and the map
-    descent provider) do not exist yet; references no sorry site; frontier sorry count unchanged at 4. -/
+    descent provider) do not exist yet. -/
 lemma mapRoot_mapInteriorSeparators''
     (tokens : Array (Positioned YamlToken))
     (h_facts : MapGrammarFacts'' tokens 2 (tokens.size - 2))
@@ -1336,8 +1351,7 @@ lemma mapRoot_mapInteriorSeparators''
     conjuncts 1–4 genuinely FIRE — so the connector is probed on a real inhabitant of its domain
     (`Or.inr`, not the empty-domain trap), and the produced robust fact is read back through the
     strict-interior arm (the escape disjunct refuted), confirming non-vacuity.  Pure ∧/∨ plumbing;
-    axiom-clean.  Verified-but-unconsumed until the windowed-map separator lemmas feed it; frontier
-    sorry count unchanged at 4. -/
+    axiom-clean.  Verified-but-unconsumed until the windowed-map separator lemmas feed it. -/
 lemma mapGrammarFacts'_of_mapGrammarFacts (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h : MapGrammarFacts tokens a b) : MapGrammarFacts' tokens a b := by
   obtain ⟨e1, e2, e3, e4, e5, e6⟩ := h
@@ -1381,8 +1395,8 @@ lemma mapGrammarFacts'_of_mapGrammarFacts (tokens : Array (Positioned YamlToken)
     feeds the R545 connector's robust output back through this bridge, supplying the five refuters proved
     INDEPENDENTLY off the concrete fixture (rule 3 — the lifted hypotheses have a real producer at the
     genuine close, not a trap), and recovers the strict witness `mapGrammarFacts_complete_window`.
-    Verified-but-unconsumed until the windowed-map separator leaf produces the refuters off emission;
-    frontier sorry count unchanged at 4; pure ∧/∨ plumbing, axiom-clean. -/
+    Verified-but-unconsumed until the windowed-map separator leaf produces the refuters off
+    emission; pure ∧/∨ plumbing, axiom-clean. -/
 lemma mapGrammarFacts_of_mapGrammarFacts' (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_rob : MapGrammarFacts' tokens a b)
     (hk1 : ∀ k, a ≤ k → k < b → flowBracketBalance tokens a k = 0 → tokens[k]!.val = .key →
@@ -1438,8 +1452,8 @@ genuine "real work" the R513 brick named for `mapGrammarFacts_of_mapRoot`.  The 
 machinery — it is a pure two-symbol text-swap (`.flowSequenceStart → .flowMappingStart`,
 `some true → some false`) resting on the single `btStep` fact that a `{` pushes `false` where a `[`
 pushes `true` (`WellBracketed.lean:1540-1541`).  Verified-but-unconsumed (R514): the consumer
-`mapGrammarFacts_of_mapRoot` does not exist yet; references no sorry site, frontier sorry count
-unchanged at 4; axioms `[propext, Quot.sound]`, byte-identical to the seq pair. -/
+`mapGrammarFacts_of_mapRoot` does not exist yet; axioms `[propext, Quot.sound]`, byte-identical to
+the seq pair. -/
 
 /-- MAP mirror of `enclosingMark_true_of_opener` (`:1310`): a `.flowMappingStart` opener at `q` pushes
     `false` onto the typed bracket stack (`btStep`, `WellBracketed.lean:1541`), so the stack top after
@@ -1500,8 +1514,8 @@ uses) and a `flowBracketBalance_interior_dyck` re-base (`WellBracketed.lean:2118
 `tokens[lo-1]!.val = .flowMappingStart` with `lo = q+1`).
 
 Verified-but-unconsumed (R515): its consumer — a future `flowSubrangesOk_of_seqRoot_and_mapRoot`
-reconciliation (the map twin of R512) — does not exist yet; references no sorry site; frontier sorry count
-unchanged at 4; axioms `[propext, Quot.sound]`, inherited verbatim through the R514 gate bridge. -/
+reconciliation (the map twin of R512) — does not exist yet; axioms `[propext, Quot.sound]`,
+inherited verbatim through the R514 gate bridge. -/
 
 /-- **The map root projection**: from the root carrier `MapInteriorSeparators tokens lo' hi'` and the
     window opener at `q` (`.flowMappingStart`), the six `MapGrammarFacts tokens (q+1) hi` at the map body
@@ -1548,8 +1562,8 @@ seq asymmetry: feeding these six into `flowSubrangesOk_of_window_producers` coll
 map slots onto the root carrier, leaving only `h_map_rec` (the `RecMapBody` recursion, brick (2)) raw.
 
 Verified-but-unconsumed (R225): the consumer — a future `flowSubrangesOk_of_seqRoot_and_mapRoot`
-reconciliation (R512's map twin) — does not exist yet; references no sorry site; frontier sorry count
-unchanged at 4.  Axioms inherit through R515's `mapGrammarFacts_of_mapRoot` (`[propext, Quot.sound]`):
+reconciliation (R512's map twin) — does not exist yet.  Axioms inherit through R515's
+`mapGrammarFacts_of_mapRoot` (`[propext, Quot.sound]`):
 the carrier is taken as a hypothesis, so no `sorryAx` enters here ([[ref-mirror-inherits-dependency-axioms]]
 R518 — taint tracks the dependency, and an ASSUMED carrier is clean). -/
 
@@ -1692,8 +1706,8 @@ absurd ([[ref-converse-forward-invariant-asymmetry]] read as opener-bit exclusiv
 opener's pushed bit `b` is forced `= false` by the gate's `some false` head, pinning `tokens[p]` to a `{`.
 
 Verified-but-unconsumed (R538): its consumer — `mapDescent_provider_of_located` / `mapDescent_provider_of_gate`
-/ `mapRoot_mapInteriorSeparators` — does not exist yet; references no sorry site; frontier sorry count
-unchanged at 4.  Axioms are byte-identical to the seq twins (verified): brick (1)
+/ `mapRoot_mapInteriorSeparators` — does not exist yet.  Axioms are byte-identical to the seq twins
+(verified): brick (1)
 `flowBracketBalance_pos_of_mapTypedInterior` `[propext, Quot.sound]`; bricks (2)/(3) `mapEnclosingOpener_of_gate`
 / `mapOpenerType_of_located_and_gate` `[propext, Classical.choice, Quot.sound]` (the backward locator and
 the frame-inverse thread `Classical.choice`) — [[ref-mirror-inherits-dependency-axioms]]. -/
@@ -1862,8 +1876,8 @@ lemma mapOpenerType_of_located_and_gate
     for `b ≤ j` — the [[ref-two-floor-relay-close-bound]] relay, type-agnostic.
 
     Verified-but-unconsumed (R539): its consumer — `mapDescent_provider_of_located` /
-    `mapEnclosingFacts_provider_of_located` — does not exist yet; references no sorry site; frontier sorry
-    count holds at 4.  Axioms byte-identical to the seq twin (the dual threads the same dependencies via
+    `mapEnclosingFacts_provider_of_located` — does not exist yet.  Axioms byte-identical to the seq
+    twin (the dual threads the same dependencies via
     `flowBracketBalance_matching_close_map`, [[ref-mirror-inherits-dependency-axioms]]). -/
 lemma mapClose_of_located_and_enclosing
     (tokens : Array (Positioned YamlToken)) (a b lo p hi : Nat)
@@ -2452,7 +2466,7 @@ lemma seqChild_safeBodyUnit (tokens : Array (Positioned YamlToken)) (p hi j : Na
                           that this lift must forward).            [R494: 1 keyed name + 1 forwarded `h_ne`]
 
     Verified-but-unconsumed until `seqDescent_provider_of_located_seq` (next) consumes it: composes only
-    landed lemmas (the R415 oracle twin), references no sorry site, frontier sorry count unchanged at 4. -/
+    landed lemmas (the R415 oracle twin). -/
 lemma seqChild_safeBodyUnit_seq (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
     (h_window : FlowBodyWindow tokens p hi)
     (h_deep : FlowBodyContentDeepSeq tokens p hi)
@@ -2499,8 +2513,8 @@ lemma seqChild_safeBodyUnit_seq (tokens : Array (Positioned YamlToken)) (p hi j 
     oracle for the second projection costs only proof-term size, nothing semantic ([[ref-complete-projection-family-for-new-member]]).
 
     Verified-but-unconsumed until `flowBodyContent_descend_seq` (the `_seq` `FlowBodyContent` descend edge)
-    consumes it alongside R494: composes only landed lemmas (the R415 oracle twin + `RecSeqBody.toSafeBody`),
-    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    consumes it alongside R494: composes only landed lemmas (the R415 oracle twin +
+    `RecSeqBody.toSafeBody`); axiom-clean. -/
 lemma seqChild_safeBody_seq (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
     (h_window : FlowBodyWindow tokens p hi)
     (h_deep : FlowBodyContentDeepSeq tokens p hi)
@@ -2542,7 +2556,7 @@ lemma seqChild_safeBody_seq (tokens : Array (Positioned YamlToken)) (p hi j : Na
     `flowBodyContent_advance` at advance) INSTEAD of the ambient carrier — breaking the carrier↔producer
     circularity ([[ref-recursive-producer-mirrors-flat-over-shared-induction]] consume-side dual).
     Verified-but-unconsumed until the carrier-free producer is rewired (R225): composes only landed
-    lemmas, references no sorry site, frontier sorry count unchanged. -/
+    lemmas. -/
 lemma flowBodyContent_descend (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
     (h_window : FlowBodyWindow tokens p hi)
     (h_deep : FlowBodyContentDeep tokens p hi)
@@ -2622,8 +2636,8 @@ lemma flowBodyContent_descend (tokens : Array (Positioned YamlToken)) (p hi j : 
     stays a valid verified-but-unconsumed sibling, but is NOT on this edge's critical path.
 
     Consumes only landed lemmas (R494 + the windowed-`SafeBodyUnit` enclosing-facts bundle + the R393
-    assembler + `flowBodyContentDeepSeq_descend`); references no sorry site, frontier sorry count unchanged
-    at 4; axiom-clean.  Threaded alongside the `_seq` root seed and advance edge, this is the descend half
+    assembler + `flowBodyContentDeepSeq_descend`); axiom-clean.  Threaded alongside the `_seq` root
+    seed and advance edge, this is the descend half
     of the carrier-free `FlowBodyContent` `G`-conjunct the JOINT `windowWidth_strongRecOn` co-construction
     consumes ([[ref-recursive-producer-mirrors-flat-over-shared-induction]] consume-side dual). -/
 lemma flowBodyContent_descend_seq (tokens : Array (Positioned YamlToken)) (p hi j : Nat)
@@ -2826,7 +2840,7 @@ lemma seqDescent_provider_of_located
     discriminator) + (produce the deliverable vacuously on the degenerate branch the weaker guard admits)`.
 
     Verified-but-unconsumed until `seqLocalCarrier_of_widthEnc_seq` (next) consumes it: composes only
-    landed lemmas (the R494 child lift twin), references no sorry site, frontier sorry count unchanged at 4. -/
+    landed lemmas (the R494 child lift twin). -/
 lemma seqDescent_provider_of_located_seq
     (tokens : Array (Positioned YamlToken)) (a b p hi : Nat)
     (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
@@ -3331,8 +3345,7 @@ lemma seqInteriorSeparators_of_safebody_and_descent
     isolating B2 (the backward enclosing-opener locator + `seqDescent_provider_of_located`, consuming
     the width IH) as the single remaining seq residual.  `desc`'s satisfiability is already
     `#guard`-backed (`SeqDescentProviderProbe` / `SeqDispatchPartitionProbe`).  Verified-but-unconsumed
-    until B2 lands: composes only landed lemmas, references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    until B2 lands: composes only landed lemmas. -/
 lemma seqRoot_seqInteriorSeparators
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -3440,11 +3453,10 @@ lemma seqEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     analog of `seqWindowRecSeqBody_seq_general`, R415) will thread in its per-window guard `G`, exactly
     where the seq recursion threads `SeqEnclosed`.  Additive parallel primitive
     ([[ref-additive-parallel-type-over-shared-edit]]); no edit to any shared type.  Unlike the map
-    context pair `mapWholeStreamWellTyped`/`mapFoldTotal_of_context` (`:6935`/`:7021`), this reads NO
+    context pair `mapWholeStreamWellTyped`/`mapFoldTotal_of_context`, this reads NO
     structure lemma, so it is axiom-CLEAN (`[propext, Quot.sound]` — no `sorryAx`, and not even the
     `Classical.choice` the seq `WellTyped`-plumbing edges carry).
-    Verified-but-unconsumed until the map recursion lands; references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    Verified-but-unconsumed until the map recursion lands. -/
 def MapEnclosed (tokens : Array (Positioned YamlToken)) (lo : Nat) : Prop :=
   (btFold (some []) (tokens.toList.take lo)).bind (·.head?) = some false
 
@@ -3454,8 +3466,8 @@ def MapEnclosed (tokens : Array (Positioned YamlToken)) (lo : Nat) : Prop :=
     PUSH: `take (lo+1) = take lo ++ [tokens[lo]]`, the opener `{` pushes `false` onto whatever stack the
     parent fold reached, so the new top is `false` — the parent's top is NEVER read, only its
     DEFINEDNESS (`MapEnclosed lo ⟹ the fold is `some s`); the push overwrites the head.  So this edge
-    would hold from the weaker "parent fold defined", but `MapEnclosed lo` is what the producer threads.
-    References no sorry site, frontier sorry count unchanged at 4. -/
+    would hold from the weaker "parent fold defined", but `MapEnclosed lo` is what the producer
+    threads. -/
 lemma mapEnclosed_descend (tokens : Array (Positioned YamlToken)) (lo : Nat)
     (h_enc : MapEnclosed tokens lo)
     (h_lo_sz : lo < tokens.size)
@@ -3482,7 +3494,7 @@ lemma mapEnclosed_descend (tokens : Array (Positioned YamlToken)) (lo : Nat)
     `false`), since the frame preserves rather than overwrites.  The `WellTyped` segment is supplied as a
     hypothesis ([[ref-parametric-assembler-extraction]]); the producer discharges it at the depth-`0`
     separator.  This is the DOMINANT edge of the map recursion's ADVANCE (every `.flowEntry`-separated
-    pair stays inside the SAME `{ … }`).  References no sorry site, frontier sorry count unchanged at 4. -/
+    pair stays inside the SAME `{ … }`). -/
 lemma mapEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     (h_enc : MapEnclosed tokens lo)
     (h_lo_n : lo ≤ n)
@@ -3522,15 +3534,15 @@ lemma mapEnclosed_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     `MapGrammarFacts`), `MapInteriorSeparators_narrow`, the `FlowBodyWindow` projections, and `MapEnclosed`
     — NEVER `scanFiltered_emitMap_nonempty_structure` — so it audits `[propext]` ALONE (cleaner even than
     the R517 `MapEnclosed` edges' `[propext, Quot.sound]`: a pure restriction over a `def` carrier carries
-    no `Quot.sound`), no `sorryAx`, even though it is a map-axis provider.  The map producer family inherits
-    `sorryAx` only once the carrier is itself PRODUCED from the structure lemma; this consumer of an
-    *assumed* carrier stays clean, exactly
-    as R517 predicts: taint tracks the dependency, not the axis.
+    no `Quot.sound`), no `sorryAx`, even though it is a map-axis provider.  The map producer family
+    inherited `sorryAx` (while the structure lemma still held its inline `sorry`) only once the carrier
+    was itself PRODUCED from it; this consumer of an *assumed* carrier stays clean, exactly as R517
+    predicts: taint tracks the dependency, not the axis.
 
     Verified-but-unconsumed (R225) until its consumers land — the map recursion's per-window step
     (`mapWindowRecMapBody_map_general`, the R415 analog) and the `flowSubrangesOk_of_seqRoot_and_mapRoot`
     reconciliation (R512's map twin, which projects these six facts into the consumer's six grammar-fact
-    slots).  References no sorry site, frontier sorry count unchanged at 4. -/
+    slots). -/
 lemma mapWindow_grammarFacts_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -3588,12 +3600,11 @@ lemma mapWindow_grammarFacts (tokens : Array (Positioned YamlToken)) (lo hi : Na
     **Axiom profile.**  `mapWindow_grammarFacts_general` and `headKey` are clean
     ([[ref-mirror-inherits-dependency-axioms]] R517–R518: a consumer of an *assumed* carrier stays
     `[propext]`-only); `mapBodyProps_assemble`'s typed-locator machinery contributes the heavier
-    `Classical.choice`/`Quot.sound` but NEVER the tainted `scanFiltered_emitMap_nonempty_structure`, so
-    no `sorryAx` — the produced `MapBodyProps` is structure-lemma-free.
+    `Classical.choice`/`Quot.sound` but NEVER `scanFiltered_emitMap_nonempty_structure` (then still
+    `sorry`-bearing), so no `sorryAx` — the produced `MapBodyProps` is structure-lemma-free.
 
     Verified-but-unconsumed until the map pair-boundary locate + driver
-    (`mapWindowRecMapBody_map_general`, the R415 analog) land: references no sorry site, frontier sorry
-    count unchanged at 4. -/
+    (`mapWindowRecMapBody_map_general`, the R415 analog) land. -/
 lemma mapWindow_mapBodyProps_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -3673,8 +3684,8 @@ lemma mapWindow_mapBodyProps (tokens : Array (Positioned YamlToken)) (lo hi : Na
     the bridge's reachability is probed by routing the inhabited unit carrier through it
     (`mapWindow_mapGrammarFacts''_general_unit`), discharging the rule-3 carrier hypothesis with a real
     inhabitant and leaving only the standard `FlowBodyWindow`/`MapEnclosed` guards (the landed
-    guard-preservation infra, not this brick's debt) as legible hypotheses.  Verified-but-unconsumed:
-    references no sorry site; frontier sorry count unchanged at 4. -/
+    guard-preservation infra, not this brick's debt) as legible hypotheses.
+    Verified-but-unconsumed. -/
 lemma mapWindow_mapGrammarFacts''_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -3914,7 +3925,7 @@ lemma seqPathAllSeq_advance (tokens : Array (Positioned YamlToken)) (lo n : Nat)
     the one-line fusion ([[ref-compose-arm-seam-before-skeleton]]).
 
     Verified-but-unconsumed until the carrier co-construction threads it (R225): composes only the two
-    landed path edges, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    landed path edges; axiom-clean. -/
 lemma seqPathAllSeq_into_child (tokens : Array (Positioned YamlToken)) (k n : Nat)
     (h_path : SeqPathAllSeq tokens k)
     (h_k_sz : k < tokens.size)
@@ -3943,7 +3954,7 @@ lemma seqPathAllSeq_into_child (tokens : Array (Positioned YamlToken)) (k n : Na
     head-opener type from the same `cases e` `.seq` decomposition, so the seam never re-extracts the head
     from the slice.  Mirrors R359's LEAF seam: compose the landed-brick arm's seam BEFORE the skeleton,
     de-risking the DESCEND case's slice+domain composition in isolation.  Verified-but-unconsumed until
-    the wrapper threads it; references no sorry site, frontier sorry count unchanged at 4. -/
+    the wrapper threads it. -/
 lemma nestedSeq_recseqentry_locate_descend_step
     (tokens : Array (Positioned YamlToken))
     (body rest interior : List (Positioned YamlToken))
@@ -3990,8 +4001,7 @@ lemma nestedSeq_recseqentry_locate_descend_step
     `pbalance = 0` (passes the gate) yet `btFold (some []) · = none` (not `WellTyped`).  So the typed fact
     cannot be CREATED from the entry's type-blind structure ([[ref-type-blind-invariant-transports-via-converse-frame]]);
     it is the seam's deferred obligation, to be sourced later by frame-transport from a global `WellTyped`.
-    Verified-but-unconsumed until the wrapper threads it; references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    Verified-but-unconsumed until the wrapper threads it. -/
 lemma nestedSeq_recseqentry_locate_advance_step
     (tokens : Array (Positioned YamlToken))
     (body rest e : List (Positioned YamlToken))
@@ -4047,8 +4057,8 @@ lemma nestedSeq_recseqentry_locate_advance_step
     inline, exactly as `seqWindowRecSeqBody` already does at its own `m+1` cut (`WellTyped_subrange` from
     `h_win.wellTyped` + `h_bal_m1`).  Mirrors the leaf/descend/advance seams' discipline
     ([[ref-compose-arm-seam-before-skeleton]]): compose the last standalone arm-callable BEFORE the
-    skeleton tangles it with dispatch + measure.  Verified-but-unconsumed until the wrapper threads it;
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    skeleton tangles it with dispatch + measure.  Verified-but-unconsumed until the wrapper threads
+    it. -/
 lemma nestedSeq_recseqentry_locate_advance_welltyped
     (tokens : Array (Positioned YamlToken))
     (body rest e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
@@ -4096,8 +4106,7 @@ lemma nestedSeq_recseqentry_locate_advance_welltyped
     standalone brick keyed on the locator's slice frame (`h_slice`/`h_bound`/`h_prefix`) rather than the
     `recseqbody_advance` dispatch's `h_eq` — the only non-mechanical piece between the landed arm seams
     (LEAF R359, DESCEND R361, ADVANCE consume R362 + WellTyped supplier R363) and the closed recursion;
-    with it the skeleton is pure plumbing.  Verified-but-unconsumed until the wrapper threads it;
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    with it the skeleton is pure plumbing.  Verified-but-unconsumed until the wrapper threads it. -/
 lemma nestedSeq_recseqentry_locate_advance_balance
     (tokens : Array (Positioned YamlToken))
     (body rest e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
@@ -4152,8 +4161,7 @@ lemma nestedSeq_recseqentry_locate_advance_balance
     the opener/close/slice it already carries for the other arms).
 
     Verified-but-unconsumed until the skeleton wires `h_step` (dispatch on `move_trichotomy`, this is
-    the `a = off+1` disjunct producing `Q` via `Or.inl`); references no sorry site, frontier sorry
-    count unchanged at 4. -/
+    the `a = off+1` disjunct producing `Q` via `Or.inl`). -/
 lemma nestedSeq_recseqentry_locate_leaf_typed
     (tokens : Array (Positioned YamlToken)) (off H b : Nat)
     (body : List (Positioned YamlToken))
@@ -4282,8 +4290,7 @@ structure SeqLocateGuard (tokens : Array (Positioned YamlToken)) (a b : Nat)
     types) and confirms the LEAF arm still threads after the R368 `opener` and R375 `path` extensions
     (additive own-type fields ⇒ it must — the LEAF ignores the new fixed-target discriminators; `opener`
     feeds the DESCEND `win_hi`, `path` feeds the map-DESCEND refutation, neither read here).
-    Verified-but-unconsumed until the skeleton wires `h_step`; references no sorry site, frontier sorry
-    count unchanged at 4. -/
+    Verified-but-unconsumed until the skeleton wires `h_step`. -/
 lemma nestedSeq_recseqentry_locate_step_leaf
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body : List (Positioned YamlToken))
@@ -4311,7 +4318,7 @@ lemma nestedSeq_recseqentry_locate_step_leaf
     the `seqEmpty` head arm is EXCLUDED — its close sits at `off + 1`, and `b = off + 1` would contradict
     this `off + 1 < b` (the `b = off + 1` step is BRICK D's matching-uniqueness, fed by THIS fact).  Landed
     standalone so the boundary fact is debugged OUTSIDE the dispatch's case tree; verified-but-unconsumed
-    until BRICK D wires `h_step`.  References no sorry site, frontier sorry count unchanged at 4. -/
+    until BRICK D wires `h_step`. -/
 lemma nestedSeq_recseqentry_locate_leaf_off1_b
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body : List (Positioned YamlToken))
@@ -4331,8 +4338,7 @@ lemma nestedSeq_recseqentry_locate_leaf_off1_b
     CLOSE (`.flowMappingEnd`, δ = −1), AND the scalar HEAD (δ = 0) — exactly the three CONS-shape
     boundaries BRICK D's `h_step` must exclude.  This is the demo's `boundary_excluded` (R377,
     `Tests/Reflections/DeltaGenericBoundaryFamily.lean`, already fully delta-generic) realised at the
-    `tokens`/`flowBracketBalance` layer.  Verified-but-unconsumed until `h_step` wires it; references no
-    sorry site, frontier sorry count unchanged at 4. -/
+    `tokens`/`flowBracketBalance` layer.  Verified-but-unconsumed until `h_step` wires it. -/
 lemma nestedSeq_recseqentry_locate_cons_boundary_delta
     (tokens : Array (Positioned YamlToken)) (a b off H m : Nat)
     (body : List (Positioned YamlToken))
@@ -4368,7 +4374,7 @@ lemma nestedSeq_recseqentry_locate_cons_boundary_delta
     `SeqNestedEntryLocateProbe`) showed at `a = off + e.length` the position `a - 1 = off + e.length - 1`
     is the head entry's CLOSE (delta `-1` for a seq `]`, `0` for a scalar), NOT the separator (which sits
     at `a`, delta `0`) — so the geometry differs but `g.opener` IS the discriminator (delta at `a-1` is
-    `≤ 0 ≠ 1` in every case).  References no sorry site, frontier sorry count unchanged at 4. -/
+    `≤ 0 ≠ 1` in every case). -/
 lemma nestedSeq_recseqentry_locate_cons_boundary
     (tokens : Array (Positioned YamlToken)) (a b off H m : Nat)
     (body : List (Positioned YamlToken))
@@ -4403,7 +4409,7 @@ lemma nestedSeq_recseqentry_locate_cons_boundary
 
     CONSUMED below by the retrofitted `nestedSeq_recseqentry_locate_step_descend` (it replaces that arm's
     inline `h_drop`/`h_takem`/`h_int_bal`/`h_int_floor` block with one `obtain`), and queued for the
-    map-refutation brick (BRICK B).  References no sorry site, frontier sorry count unchanged at 4. -/
+    map-refutation brick (BRICK B). -/
 lemma recseqentry_head_interior_floor_tokens
     (tokens : Array (Positioned YamlToken))
     (body rest interior : List (Positioned YamlToken))
@@ -4450,8 +4456,7 @@ lemma recseqentry_head_interior_floor_tokens
     `domain` (`SeqPathAllSeq`) is needed, because `SeqEnclosed` reads exactly the frame the map pushes.
     The proof never assumes the prefix fold is defined: if `btFold (take lo) = none` the enclosure is
     already `none ≠ some true`; if `some s`, the map push makes the head `false`.  Verified-but-
-    unconsumed until BRICK D wires `h_step`; references no sorry site, frontier sorry count unchanged
-    at 4. -/
+    unconsumed until BRICK D wires `h_step`. -/
 lemma seqEnclosed_map_push_breaks (tokens : Array (Positioned YamlToken)) (lo : Nat)
     (h_lo_sz : lo < tokens.size)
     (h_open : tokens[lo]!.val = .flowMappingStart) :
@@ -4495,8 +4500,7 @@ lemma seqEnclosed_map_push_breaks (tokens : Array (Positioned YamlToken)) (lo : 
     The map's interior floor over `[off+1, a-1]` is exactly BRICK A's `recseqentry_head_interior_floor_tokens`
     (head-BLIND — the SAME extraction the seq-DESCEND `win_hi` consumes), restricted to `a - 1 ≤
     off+1+interior.length`, fed to `seqPathAllSeq_map_frame_persists tokens off (a-1)`.  Verified-but-
-    unconsumed until BRICK D wires `h_step`; references no sorry site, frontier sorry count unchanged at
-    4. -/
+    unconsumed until BRICK D wires `h_step`. -/
 lemma seqPathAllSeq_map_descend_excluded
     (tokens : Array (Positioned YamlToken)) (a off H : Nat)
     (body rest interior : List (Positioned YamlToken))
@@ -4549,8 +4553,8 @@ lemma seqPathAllSeq_map_descend_excluded
     composes to `balance (off+1) (a-1) = -1`, contradicting the interior Dyck floor at `a-1`.  So
     `b < c`.  Only the interior balance + Dyck floor + the gate floor + the opener are used (no head
     opener/close delta needed) — the minimal hypothesis set, exactly the descend window's re-established
-    facts plus the new opener field.  Verified-but-unconsumed until the descend re-bundle threads it;
-    references no sorry site, frontier sorry count unchanged. -/
+    facts plus the new opener field.  Verified-but-unconsumed until the descend re-bundle threads
+    it. -/
 lemma seqTarget_close_lt_interiorEnd
     (tokens : Array (Positioned YamlToken)) (a b off c : Nat)
     (h_off_a : off + 2 ≤ a)
@@ -4615,7 +4619,7 @@ lemma seqTarget_close_lt_interiorEnd
     the LEAF/seam arms (the skeleton supplies it from the same `cases e` `.seq` decomposition).  The
     map-head sub-case is REFUTED upstream by the dispatch (`seqPathAllSeq_map_frame_persists`, R360) before
     this arm fires, so only the seq-head shape reaches here.  Verified-but-unconsumed until the skeleton
-    wires `h_step`; references no sorry site, frontier sorry count unchanged at 4. -/
+    wires `h_step`. -/
 lemma nestedSeq_recseqentry_locate_step_descend
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body rest interior : List (Positioned YamlToken))
@@ -4702,7 +4706,7 @@ lemma nestedSeq_recseqentry_locate_step_descend
     With this all three arm re-bundles (LEAF R367, DESCEND R369, ADVANCE R371) exist ⇒ the skeleton can
     wire `h_step` (dispatch `recseqbody_head_or_cons` + `move_trichotomy` → the three arm steps),
     instantiate `seqLocateRecDriver`, and the locator `nestedSeq_recseqentry_locate` lands.  Verified-but-
-    unconsumed until the skeleton wires it; references no sorry site, frontier sorry count unchanged at 4. -/
+    unconsumed until the skeleton wires it. -/
 lemma nestedSeq_recseqentry_locate_step_advance
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body rest e : List (Positioned YamlToken))
@@ -4786,7 +4790,7 @@ lemma nestedSeq_recseqentry_locate_step_advance
     `getElem?_take` (the `off < H` guard from `h_bound` + the nonempty body) to `tokens.toList[off]? =
     some x`, then `getElem?_eq_getElem` + the `tokens[off]!`/`tokens.toList[off]` array-list bridge
     (`getElem!_pos` + `Array.getElem_toList`) close it.  Pure positional plumbing — no guard fields, no
-    grammar; references no sorry site, frontier sorry count unchanged at 4. -/
+    grammar. -/
 lemma nestedSeq_recseqentry_locate_head_pos
     (tokens : Array (Positioned YamlToken))
     (body xs : List (Positioned YamlToken)) (x : Positioned YamlToken)
@@ -4802,7 +4806,7 @@ lemma nestedSeq_recseqentry_locate_head_pos
   have h_eq : (tokens.toList.take H).drop off = x :: xs := by rw [← h_slice]; exact h_cons
   have h_getq : tokens.toList[off]? = some x := by
     have hc : ((tokens.toList.take H).drop off)[0]? = some x := by rw [h_eq]; rfl
-    rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, if_pos (by omega : off < H)] at hc
+    rw [List.getElem?_drop, List.getElem?_take, Nat.add_zero, ite_eq_left (by omega : off < H)] at hc
     exact hc
   have h_elem : tokens.toList[off]'h_off_len = x := by
     have := List.getElem?_eq_getElem h_off_len
@@ -4820,7 +4824,7 @@ lemma nestedSeq_recseqentry_locate_head_pos
     index `e.length` located in `e ++ fe :: rest` by `getElem?_append_right (Nat.le_refl e.length)` +
     `Nat.sub_self` (the separator is the FIRST element past the entry block) and the `off + e.length < H`
     guard from the cons length `body.length = e.length + 1 + rest.length` + `h_bound`.  Pure positional
-    plumbing; references no sorry site, frontier sorry count unchanged at 4. -/
+    plumbing. -/
 lemma nestedSeq_recseqentry_locate_sep_pos
     (tokens : Array (Positioned YamlToken))
     (body rest e : List (Positioned YamlToken)) (fe : Positioned YamlToken)
@@ -4839,7 +4843,7 @@ lemma nestedSeq_recseqentry_locate_sep_pos
   have h_getq : tokens.toList[off + e.length]? = some fe := by
     have hc : ((tokens.toList.take H).drop off)[e.length]? = some fe := by
       rw [h_eq, List.getElem?_append_right (Nat.le_refl e.length), Nat.sub_self]; rfl
-    rw [List.getElem?_drop, List.getElem?_take, if_pos (by omega : off + e.length < H)] at hc
+    rw [List.getElem?_drop, List.getElem?_take, ite_eq_left (by omega : off + e.length < H)] at hc
     exact hc
   have h_elem : tokens.toList[off + e.length]'h_m_len = fe := by
     have := List.getElem?_eq_getElem h_m_len
@@ -4875,8 +4879,7 @@ lemma nestedSeq_recseqentry_locate_sep_pos
     The dispatch's three-way EXHAUSTIVENESS is the orthogonal, already-landed
     `SeqNestedEntryLocateProbe.move_trichotomy` (R350, pure `omega`); this driver supplies the MEASURE.
     Together they are the skeleton's complete plumbing.  Verified-but-unconsumed until the skeleton fills
-    `h_step` from `move_trichotomy` + the arm seams; references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    `h_step` from `move_trichotomy` + the arm seams. -/
 lemma seqLocateRecDriver {Q : Prop}
     (G : Nat → Nat → List (Positioned YamlToken) → Prop)
     (h_step : ∀ off H body, G off H body →
@@ -4955,8 +4958,7 @@ lemma seqEnclosed_of_seqTypedInterior (tokens : Array (Positioned YamlToken)) (a
 
     So the `desc` discharge owes NO `SeqEnclosed p`: the post-opener enclosure is sourced from the gate
     and the located-opener type alone.  Verified-but-unconsumed until the `desc` driver (B2b — the
-    carrier↔producer width recursion R317 flagged) lands: composes only landed lemmas, references no
-    sorry site, frontier sorry count unchanged at 4. -/
+    carrier↔producer width recursion R317 flagged) lands: composes only landed lemmas. -/
 lemma seqEnclosed_succ_of_located_opener
     (tokens : Array (Positioned YamlToken)) (a p : Nat)
     (h_pa : p < a) (h_a_sz : a ≤ tokens.size)
@@ -5020,7 +5022,7 @@ lemma seqEnclosed_succ_of_located_opener
     circular self-call.
 
     Verified-but-unconsumed until R447's joint induction discharges `h_widthEnc`: composes only landed
-    lemmas, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    lemmas; axiom-clean. -/
 lemma seqLocalCarrier_of_widthEnc
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
     (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
@@ -5078,8 +5080,7 @@ lemma seqLocalCarrier_of_widthEnc
     with the single descent-name swap ([[ref-transporting-lemma-twin-zero-body-edits]]).
 
     Verified-but-unconsumed until R447's joint induction (the `_seq` side) discharges `h_widthEnc`:
-    composes only landed lemmas (the R495 descent twin), references no sorry site, frontier sorry count
-    unchanged at 4; axiom-clean. -/
+    composes only landed lemmas (the R495 descent twin); axiom-clean. -/
 lemma seqLocalCarrier_of_widthEnc_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat) (h_hi : hi ≤ tokens.size)
     (h_safe : SafeBodyUnit ContentStartTok ((tokens.toList.take hi).drop lo))
@@ -5145,7 +5146,7 @@ lemma seqLocalCarrier_of_widthEnc_seq
     co-construction — NOT the locate — is the last seq residual; this bridge names its exact interface.
 
     Verified-but-unconsumed until the co-construction discharges `h_widthEnc`: composes only landed
-    lemmas, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    lemmas; axiom-clean. -/
 lemma seqRoot_carrier_of_widthEnc
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -5200,7 +5201,7 @@ lemma seqRoot_carrier_of_widthEnc
 
     Verified-but-unconsumed until the carrier↔recursion co-construction (`windowWidth_strongRecOn` over
     body width) supplies `h_widthEnc` for the `_seq` side: composes only landed lemmas (R496's
-    re-keyed parent), references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    re-keyed parent); axiom-clean. -/
 lemma seqRoot_carrier_of_widthEnc_seq
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -5261,8 +5262,8 @@ lemma seqRoot_carrier_of_widthEnc_seq
     `h_safe`, is the SEPARATE `seqLocalCarrier_of_widthEnc` step).
 
     Verified-but-unconsumed until the joint induction supplies `enclosingLocate` + `recIH` and feeds
-    the result to `seqLocalCarrier_of_widthEnc`: composes only landed lemmas + `omega`, references no
-    sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    the result to `seqLocalCarrier_of_widthEnc`: composes only landed lemmas + `omega`; axiom-clean.
+    -/
 lemma seqWidthEnc_of_enclosingLocate_and_recIH
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (enclosingLocate : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
@@ -5331,8 +5332,8 @@ lemma seqWidthEnc_of_enclosingLocate_and_recIH
     Verified-but-unconsumed until `seqWidthEnc_of_recIH_seq` (the R486-twin) feeds it: that twin
     reconstructs the typed opener via `seqOpenerType_of_located_and_gate` (unchanged from R486) and supplies
     THIS lemma's `enclosingLocate` residual from `seqEnclosingLocate_of_seqOpener_nested_seq` (R491).
-    Composes nothing but transports its two hypotheses (pure plumbing), references no sorry site, frontier
-    sorry count unchanged at 4; axioms identical to R475 (the body is byte-identical). -/
+    Composes nothing but transports its two hypotheses (pure plumbing); axioms identical to R475
+    (the body is byte-identical). -/
 lemma seqWidthEnc_of_enclosingLocate_and_recIH_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (enclosingLocate : ∀ a b p, lo ≤ a → a ≤ b → b ≤ hi →
@@ -5395,8 +5396,7 @@ lemma seqWidthEnc_of_enclosingLocate_and_recIH_seq
 
     Verified-but-unconsumed until the `enclosingLocate` builder wires it together with the close locator
     (`seqClose_of_located_and_enclosing`) and the three content-structure constructions; composes only
-    `flowBracketBalance_compose` + `omega`, references no sorry site, frontier sorry count unchanged at
-    4; axiom-clean. -/
+    `flowBracketBalance_compose` + `omega`; axiom-clean. -/
 lemma seqLocatedOpener_within_body
     (tokens : Array (Positioned YamlToken)) (lo hi a p : Nat)
     (h_lo_a : lo ≤ a) (h_a_hi : a ≤ hi)
@@ -5453,8 +5453,8 @@ lemma seqLocatedOpener_within_body
     `seqClose_of_located_and_enclosing`'s `h_p_depth : balance lo p = 0`.)
 
     Verified-but-unconsumed until the `enclosingLocate` builder wires it with the close locator and the
-    three content-structure constructions; composes only `flowBracketBalance_compose` + `omega`,
-    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    three content-structure constructions; composes only `flowBracketBalance_compose` + `omega`;
+    axiom-clean. -/
 lemma seqLocatedClose_within_body
     (tokens : Array (Positioned YamlToken)) (lo hi p hiE : Nat)
     (h_lo_p : lo ≤ p) (h_p_hi : p < hi)
@@ -5512,8 +5512,8 @@ lemma seqLocatedClose_within_body
 
     Everything else mirrors `seqClose_of_located_and_enclosing` verbatim: same hypotheses, same `a ≤ j`
     / `balance a j = 0` / `b ≤ j` derivations from the locator and gate floors.  Verified-but-unconsumed
-    until the `enclosingLocate` builder calls it: composes only landed lemmas + `omega`, references no
-    sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    until the `enclosingLocate` builder calls it: composes only landed lemmas + `omega`;
+    axiom-clean. -/
 lemma seqClose_of_located_and_enclosing_within
     (tokens : Array (Positioned YamlToken)) (a b lo p hi : Nat)
     (h_lo_p : lo ≤ p) (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
@@ -5601,8 +5601,8 @@ lemma seqClose_of_located_and_enclosing_within
     edit of R478 (still consumed by R481 `seqEnclosingLocate_of_seqOpener_at_depth`, which passes
     `h_p_depth`); the next brick rewires R481 to call THIS twin and drops `h_p_depth` there (its step-(4)
     `hiS < hi` re-derives from `balance lo p ≥ 0` instead of `= 0`).  Verified-but-unconsumed: composes
-    only landed lemmas (R483 nested close + R477 + `flowBracketBalance_compose`/`_single`) + `omega`,
-    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    only landed lemmas (R483 nested close + R477 + `flowBracketBalance_compose`/`_single`) +
+    `omega`; axiom-clean. -/
 lemma seqClose_of_located_and_enclosing_within_nested
     (tokens : Array (Positioned YamlToken)) (a b lo p hi : Nat)
     (h_lo_p : lo ≤ p) (h_pa : p < a) (h_ab : a ≤ b) (h_b_hi : b ≤ hi)
@@ -5701,7 +5701,7 @@ lemma seqClose_of_located_and_enclosing_within_nested
 
     Verified-but-unconsumed until `seqWidthEnc_of_enclosingLocate_and_recIH` is wired with the depth +
     seq-opener discriminators: composes only landed lemmas (R476/R478 + the child-bracket trio) +
-    `flowBracketBalance_compose` + `omega`, references no sorry site, frontier sorry count unchanged at 4;
+    `flowBracketBalance_compose` + `omega`;
     axiom-clean. -/
 lemma seqEnclosingLocate_of_seqOpener_at_depth
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
@@ -5802,8 +5802,8 @@ lemma seqEnclosingLocate_of_seqOpener_at_depth
     discharges `h_p_depth` for free — there is no depth-`0` fact to supply.
 
     Verified-but-unconsumed until that wiring (R225 discipline): composes only landed lemmas (R476 +
-    R484's `_nested` close + the child-bracket trio) + `flowBracketBalance_compose` + `omega`, references
-    no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    R484's `_nested` close + the child-bracket trio) + `flowBracketBalance_compose` + `omega`;
+    axiom-clean. -/
 lemma seqEnclosingLocate_of_seqOpener_nested
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -5912,8 +5912,8 @@ lemma seqEnclosingLocate_of_seqOpener_nested
 
     Verified-but-unconsumed until `seqWidthEnc_of_recIH_seq` (the R486-twin) wires it into the
     family-NEUTRAL R475 `seqWidthEnc_of_enclosingLocate_and_recIH` to close the seq root carrier: composes
-    only landed lemmas (R485's skeleton + R489 + R490 + the neutral site 0) + `omega`, references no sorry
-    site, frontier sorry count unchanged at 4; axiom-clean. -/
+    only landed lemmas (R485's skeleton + R489 + R490 + the neutral site 0) + `omega`; axiom-clean.
+    -/
 lemma seqEnclosingLocate_of_seqOpener_nested_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -6014,8 +6014,7 @@ lemma seqEnclosingLocate_of_seqOpener_nested_seq
     width-recursion IH).
 
     Verified-but-unconsumed until the `desc`/`seqWindowRecSeqBody` driver consumes it: composes only
-    landed lemmas (R475 + R485 + `seqOpenerType_of_located_and_gate`), references no sorry site, frontier
-    sorry count unchanged at 4; axiom-clean. -/
+    landed lemmas (R475 + R485 + `seqOpenerType_of_located_and_gate`); axiom-clean. -/
 lemma seqWidthEnc_of_recIH
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -6084,8 +6083,8 @@ lemma seqWidthEnc_of_recIH
     the result reads off the (α) boundary's whole seq spec as one signature).
 
     Verified-but-unconsumed until the seq carrier consumer (`seqLocalCarrier_of_widthEnc`'s twin) feeds
-    it: composes only landed lemmas (R492 + R491 + the guard-neutral `seqOpenerType_of_located_and_gate`),
-    references no sorry site, frontier sorry count unchanged at 4; axioms identical to R486 (the two swapped
+    it: composes only landed lemmas (R492 + R491 + the guard-neutral
+    `seqOpenerType_of_located_and_gate`); axioms identical to R486 (the two swapped
     children share R485/R484's footprint). -/
 lemma seqWidthEnc_of_recIH_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
@@ -6150,8 +6149,7 @@ lemma seqWidthEnc_of_recIH_seq
 
     Verified-but-unconsumed until the joint `windowWidth_strongRecOn` co-construction supplies `h_safe`
     (from the recursion half) + `recIH` (from the width IH) and pairs the result with the window's
-    `RecSeqBody`: composes only landed lemmas (R486 + R446), references no sorry site, frontier sorry
-    count unchanged at 4; axiom-clean. -/
+    `RecSeqBody`: composes only landed lemmas (R486 + R446); axiom-clean. -/
 lemma seqLocalCarrier_of_recIH
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -6201,8 +6199,8 @@ lemma seqLocalCarrier_of_recIH
     seq residual is the joint `windowWidth_strongRecOn` that supplies `h_safe` (recursion half) + `recIH`
     (width IH).
 
-    Verified-but-unconsumed until that joint induction feeds it: composes only landed lemmas (R496 + R493),
-    references no sorry site, frontier sorry count unchanged at 4; axioms identical to its strong R487 parent
+    Verified-but-unconsumed until that joint induction feeds it: composes only landed lemmas (R496 +
+    R493); axioms identical to its strong R487 parent
     (the two swapped children share R446/R485's footprint). -/
 lemma seqLocalCarrier_of_recIH_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
@@ -6257,8 +6255,7 @@ lemma seqLocalCarrier_of_recIH_seq
        seq IH), so every window it sees is genuinely seq-typed and this residual always holds.
 
     Verified-but-unconsumed until the B3 fixpoint instantiates `windowWidth_strongRecOn` and threads
-    `h_enclosed` (R225 discipline): composes only landed lemmas, references no sorry site, frontier
-    sorry count unchanged at 4; axiom-clean. -/
+    `h_enclosed` (R225 discipline): composes only landed lemmas; axiom-clean. -/
 lemma seqWindow_flowBodyContent_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -6309,8 +6306,8 @@ lemma seqWindow_flowBodyContent (tokens : Array (Positioned YamlToken)) (lo hi :
     the carrier's window-absolute body restricts to any seq-typed sub-window for free).  Only `headContentStart`
     is read off the re-scoped guard (re-scope-invariant).
 
-    Verified-but-unconsumed until `seqWindowRecSeqBody_seq` threads it (R225): composes only landed lemmas,
-    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    Verified-but-unconsumed until `seqWindowRecSeqBody_seq` threads it (R225): composes only landed
+    lemmas; axiom-clean. -/
 lemma seqWindow_flowBodyContent_seq_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 lo hi : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
@@ -6391,8 +6388,7 @@ lemma seqWindow_flowBodyContent_seq (tokens : Array (Positioned YamlToken)) (lo 
     [[ref-universal-producer-root-seed-first]] base of a recursion whose edges are landed.
 
     Verified-but-unconsumed until the carrier-free `windowWidth_strongRecOn` threads `FlowBodyContent` as
-    a `G`-conjunct (R225): composes only landed lemmas, references no sorry site, frontier sorry count
-    unchanged at 4; axiom-clean. -/
+    a `G`-conjunct (R225): composes only landed lemmas; axiom-clean. -/
 lemma seqRoot_flowBodyContent
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -6448,8 +6444,8 @@ lemma seqRoot_flowBodyContent
     `RecSeqBody` — discharging `recIH`, breaking the carrier↔producer circularity.
 
     Verified-but-unconsumed until the carrier-free `windowWidth_strongRecOn` threads `FlowBodyContent` as a
-    `G`-conjunct (R225): composes only landed lemmas, references no sorry site, frontier sorry count
-    unchanged at 4; axiom-clean (identical footprint to its strong twin). -/
+    `G`-conjunct (R225): composes only landed lemmas; axiom-clean (identical footprint to its strong
+    twin). -/
 lemma seqRoot_flowBodyContent_seq
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -6512,8 +6508,7 @@ lemma seqRoot_flowBodyContent_seq
 
     Verified-but-unconsumed until the JOINT carrier-free recursion projects the IH's `RecSeqBody` through
     it (R225): composes only landed lemmas (`RecSeqBody.toSafeBodyUnit` +
-    `seqEnclosingFacts_of_windowed_safebodyunit` + `flowBodyContent_of_deepSeq`), references no sorry site,
-    frontier sorry count unchanged at 4; axiom-clean. -/
+    `seqEnclosingFacts_of_windowed_safebodyunit` + `flowBodyContent_of_deepSeq`); axiom-clean. -/
 lemma flowBodyContent_of_recseqbody_seq
     (tokens : Array (Positioned YamlToken)) (a b : Nat) (h_b : b ≤ tokens.size)
     (h_deep : FlowBodyContentDeepSeq tokens a b)
@@ -6559,7 +6554,7 @@ lemma flowBodyContent_of_recseqbody_seq
 
     Verified-but-unconsumed until the content-threading dispatch reuses the emitted child content (R225):
     composes only landed lemmas (`recseqentry_seqbracket_oracle_seq` + `flowBodyContentDeepSeq_descend` +
-    R502 `flowBodyContent_of_recseqbody_seq`), references no sorry site, frontier sorry count unchanged at 4;
+    R502 `flowBodyContent_of_recseqbody_seq`);
     axiom-clean. -/
 lemma recseqentry_seqbracket_oracle_seq_content (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_window : FlowBodyWindow tokens lo hi)
@@ -6636,7 +6631,7 @@ lemma recseqentry_seqbracket_oracle_seq_content (tokens : Array (Positioned Yaml
 
     Verified-but-unconsumed until that content-threading dispatch consumes the surfaced child content (R225):
     composes only landed lemmas (`matchingClose_full_seq` + R503's content-emitting oracle +
-    `recseqentry_classify`), references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    `recseqentry_classify`); axiom-clean. -/
 lemma recseqentry_seqbracket_located_content (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
     (h_open : tokens[lo]!.val = .flowSequenceStart)
@@ -6698,8 +6693,7 @@ lemma recseqentry_seqbracket_located_content (tokens : Array (Positioned YamlTok
     makes the boundary `isFlowContentStart tokens[hi]` contradictory, closing `m + 1 < hi`.
 
     Verified-but-unconsumed until `seqRoot_seqInteriorSeparators`'s `desc` lands and
-    `flowSubrangesOk_of_window_producers` is wired (R225): references no sorry site, frontier sorry
-    count unchanged at 4; axiom-clean. -/
+    `flowSubrangesOk_of_window_producers` is wired (R225); axiom-clean. -/
 lemma seqWindowRecSeqBody_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 : Nat)
     (h_carrier : SeqInteriorSeparators tokens lo0 hi0)
@@ -6810,8 +6804,7 @@ lemma seqWindowRecSeqBody (tokens : Array (Positioned YamlToken))
     descend/advance) or read off a navigated body.  This brick does NOT close that — it NAMES it as the one
     hypothesis a carrier-free driver must still discharge, and proves the rest of the recursion needs
     nothing else.  Verified: the recursion body is the landed
-    `seqWindowRecSeqBody_seq_general`'s verbatim, references no sorry site, frontier sorry count unchanged
-    at 4; axiom-clean. -/
+    `seqWindowRecSeqBody_seq_general`'s verbatim; axiom-clean. -/
 lemma seqWindowRecSeqBody_seq_of_provider (tokens : Array (Positioned YamlToken))
     (lo0 hi0 : Nat)
     (h_provider : ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepSeq tokens lo hi →
@@ -6910,8 +6903,8 @@ lemma seqWindowRecSeqBody_seq_of_provider (tokens : Array (Positioned YamlToken)
     produces window bodies" to "navigator locates window entries + this 3-lemma read."
 
     Verified-but-unconsumed until the spine-walk `Nat.strongRecOn` wrapper produces the located entry and
-    feeds it here, yielding `h_provider` for R505 (R225): composes only landed lemmas, references no sorry
-    site, frontier sorry count unchanged at 4; axiom-clean. -/
+    feeds it here, yielding `h_provider` for R505 (R225): composes only landed lemmas; axiom-clean.
+    -/
 lemma flowBodyContent_of_located_seq_entry (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_hi_sz : hi < tokens.size)
     (h_deep : FlowBodyContentDeepSeq tokens lo hi)
@@ -6965,8 +6958,7 @@ lemma flowBodyContent_of_located_seq_entry (tokens : Array (Positioned YamlToken
     `seqEnclosed_advance` edges — is verbatim.
 
     Verified-but-unconsumed until `seqRoot_seqInteriorSeparators`'s `desc` lands and
-    `flowSubrangesOk_of_window_producers` is wired (R225): references no sorry site, frontier sorry count
-    unchanged at 4; axiom-clean. -/
+    `flowSubrangesOk_of_window_producers` is wired (R225); axiom-clean. -/
 lemma seqWindowRecSeqBody_seq_general (tokens : Array (Positioned YamlToken))
     (lo0 hi0 : Nat)
     (h_carrier : SeqInteriorSeparators tokens lo0 hi0)
@@ -7069,8 +7061,8 @@ lemma seqWindowRecSeqBody_seq_general (tokens : Array (Positioned YamlToken))
     Note `h_content` is CONSUMED, not reproduced: the next window's content is re-sourced from the
     carrier/navigator, so the descend need not output `FlowBodyContent (m+1) hi`.
 
-    Verified-but-unconsumed until the driver is re-typed and wired: composes only landed lemmas,
-    references no sorry site, frontier sorry count unchanged at 4; axioms
+    Verified-but-unconsumed until the driver is re-typed and wired: composes only landed lemmas;
+    axioms
     `[propext, Classical.choice, Quot.sound]` (seq-family profile, Classical inherited from the
     advance edges' WellTyped plumbing), no `sorryAx`. -/
 lemma recseqbody_seq_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
@@ -7152,9 +7144,9 @@ lemma recseqbody_seq_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi
 
     Verified-but-unconsumed until the map width-recursion driver is wired: composes only landed advance
     edges (`flowBodyWindow_advance`, `flowBodyContentDeepMap_advance`, `mapEnclosed_advance`) over the
-    depth-`0` re-basing, references no sorry site, frontier sorry count unchanged at 4.  `sorryAx`-free
+    depth-`0` re-basing.  `sorryAx`-free
     — it reads only `MapBodyProps.after_fe` and pure bracket-balance/`WellTyped` plumbing, never the
-    tainted structure lemma ([[ref-mirror-inherits-dependency-axioms]]). -/
+    structure lemma, then still `sorry`-bearing ([[ref-mirror-inherits-dependency-axioms]]). -/
 lemma recmapbody_map_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
     (h_win : FlowBodyWindow tokens lo hi)
     (h_deep : FlowBodyContentDeepMap tokens lo hi)
@@ -7242,8 +7234,8 @@ lemma recmapbody_map_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi
     collection-keyed halves, stitched by the discriminator.
 
     Verified-but-unconsumed until the driver is re-typed (marker carries `h_bal_m`) and the carrier feeds
-    the content packs: composes only `recseqbody_seq_descend_tail` + `recmapbody_map_descend_tail`,
-    references no sorry site, frontier sorry count unchanged at 4; axioms
+    the content packs: composes only `recseqbody_seq_descend_tail` + `recmapbody_map_descend_tail`;
+    axioms
     `[propext, Classical.choice, Quot.sound]` (inherited from the two single edges' WellTyped plumbing),
     no `sorryAx`.  Demo `Tests/Reflections/JointDescendTailDispatch.lean`. -/
 lemma recbody_joint_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi m : Nat)
@@ -7308,7 +7300,7 @@ lemma recbody_joint_descend_tail (tokens : Array (Positioned YamlToken)) (lo hi 
 
     Verified-but-unconsumed until the joint driver threads the two carriers (+ M2) per-window and pairs
     this with R530: composes only `seqWindow_flowBodyContent_seq_general` +
-    `mapWindow_mapBodyProps_general`, references no sorry site, frontier sorry count unchanged at 4;
+    `mapWindow_mapBodyProps_general`;
     axioms `[propext, Classical.choice, Quot.sound]` (inherited from the map provider's typed-locator
     plumbing — the seq half is axiom-clean), no `sorryAx`.  Demo
     `Tests/Reflections/JointContentPackFromCarrier.lean`. -/
@@ -7375,8 +7367,8 @@ lemma recbody_joint_content_pack (tokens : Array (Positioned YamlToken))
     halves and threads the carriers + M2 + the marker balance.
 
     Verified-but-unconsumed until the driver's `locate` markers carry `h_bal_m` and `G` is folded:
-    composes only `recbody_joint_content_pack` + `recbody_joint_descend_tail`, references no sorry site,
-    frontier sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]` (inherited from
+    composes only `recbody_joint_content_pack` + `recbody_joint_descend_tail`; axioms `[propext,
+    Classical.choice, Quot.sound]` (inherited from
     R530/R531's typed-locator plumbing), no `sorryAx`.  Demo
     `Tests/Reflections/JointDescendTailCarrier.lean`. -/
 lemma recbody_joint_descend_tail_carrier (tokens : Array (Positioned YamlToken))
@@ -7454,7 +7446,7 @@ def RecBodyJointGuard (tokens : Array (Positioned YamlToken)) (lo0 hi0 lo hi : N
 
     Verified-but-unconsumed until the driver's `locate` markers carry `h_bal_m`, the carriers are threaded
     per-window, and `h_after_fe` is narrowed from a global M2: composes only
-    `recbody_joint_descend_tail_carrier`, references no sorry site, frontier sorry count unchanged at 4;
+    `recbody_joint_descend_tail_carrier`;
     axioms `[propext, Classical.choice, Quot.sound]` (inherited from R532), no `sorryAx`.  Demo
     `Tests/Reflections/JointGuardDescendTail.lean`. -/
 lemma recbody_joint_guard_descend_tail (tokens : Array (Positioned YamlToken))
@@ -7502,8 +7494,8 @@ lemma recbody_joint_guard_descend_tail (tokens : Array (Positioned YamlToken))
 
     Verified-but-unconsumed until the two strengthened `locate`s are supplied (R527-fed seq dispatch +
     the map pair locator, each emitting the balance) and M2 is narrowed from the global field: composes
-    `windowWidth_strongRecOn` + both window assemblers + `recbody_joint_guard_descend_tail`, references no
-    sorry site, frontier sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]`
+    `windowWidth_strongRecOn` + both window assemblers + `recbody_joint_guard_descend_tail`; axioms
+    `[propext, Classical.choice, Quot.sound]`
     (inherited from R532/R533 and the assemblers). -/
 lemma recbody_joint_navigator_driver_carrier (tokens : Array (Positioned YamlToken))
     (lo0 hi0 : Nat)
@@ -7587,8 +7579,8 @@ lemma recbody_joint_navigator_driver_carrier (tokens : Array (Positioned YamlTok
     the dispatch's `{`-bracket branch (the nested-map entry), the symmetric brick.
 
     Verified-but-unconsumed until `locate_seq`/`locate_map` are assembled (each = its dispatch at
-    `Q := SeqEnclosed` fed this adapter, plus the per-window `FlowBodyContent` source): references no
-    sorry site, frontier sorry count unchanged at 4.  `sorryAx`-free — pure guard folding over
+    `Q := SeqEnclosed` fed this adapter, plus the per-window `FlowBodyContent` source).
+    `sorryAx`-free — pure guard folding over
     `RecBodyJointGuard` plus the oracle, no structure lemma and no choice, so it audits to the minimal
     `[propext, Quot.sound]`.  Demo `Tests/Reflections/JointOracleSeqIh.lean`. -/
 lemma recbody_joint_oracle_seq_ih (tokens : Array (Positioned YamlToken))
@@ -7637,8 +7629,8 @@ lemma recbody_joint_oracle_seq_ih (tokens : Array (Positioned YamlToken))
     assemble `locate_seq`/`locate_map` is a per-window `FlowBodyContent` source (the non-deep content the
     guard does not carry).
 
-    Verified-but-unconsumed until the `locate`s are assembled: references no sorry site, frontier sorry
-    count unchanged at 4.  `sorryAx`-free — pure guard folding plus the oracle, no structure lemma and no
+    Verified-but-unconsumed until the `locate`s are assembled.  `sorryAx`-free — pure guard folding
+    plus the oracle, no structure lemma and no
     choice, so it audits to the minimal `[propext, Quot.sound]` exactly as the seq twin.  Demo
     `Tests/Reflections/JointOracleSeqIh.lean` (the `mapIhOfOracle` companion). -/
 lemma recbody_joint_oracle_map_ih (tokens : Array (Positioned YamlToken))
@@ -7686,8 +7678,8 @@ lemma recbody_joint_oracle_map_ih (tokens : Array (Positioned YamlToken))
     carries is untouched here — it flows to `locate_map`, the symmetric brick still to assemble.
 
     Verified-but-unconsumed until the driver is instantiated at the root `[2, size-2)` with this `locate_seq`,
-    the symmetric `locate_map`, and the per-window M2 narrowing: composes only landed lemmas, references
-    no sorry site, frontier sorry count unchanged at 4.  Inherits the dispatch's
+    the symmetric `locate_map`, and the per-window M2 narrowing: composes only landed lemmas.
+    Inherits the dispatch's
     `[propext, Classical.choice, Quot.sound]` (the seq dispatch threads the choice-tainted classify; the
     oracle adapter is clean — [[ref-mirror-inherits-dependency-axioms]]). -/
 lemma recbody_locate_seq_carrier (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
@@ -7769,8 +7761,8 @@ lemma recbody_locate_seq_carrier (tokens : Array (Positioned YamlToken)) (lo0 hi
 
     Verified-but-unconsumed until `recmappair_window_dispatch_map` is supplied (then the driver is
     instantiated at the root `[2, size-2)` with `recbody_locate_seq_carrier` + this + the per-window M2):
-    composes only `recbody_joint_oracle_seq_ih` + the guard unpack, references no sorry site, frontier
-    sorry count unchanged at 4; axioms `[propext, Quot.sound]` (no `Classical.choice` — pure guard folding
+    composes only `recbody_joint_oracle_seq_ih` + the guard unpack; axioms `[propext, Quot.sound]`
+    (no `Classical.choice` — pure guard folding
     plus the choice-free oracle adapter, exactly as the seq twin's content-free core). -/
 lemma recbody_locate_map_carrier (tokens : Array (Positioned YamlToken)) (lo0 hi0 : Nat)
     (dispatch_map : ∀ lo hi, FlowBodyWindow tokens lo hi → FlowBodyContentDeepMap tokens lo hi →
@@ -7848,8 +7840,7 @@ lemma seqWindowRecSeqBody_seq (tokens : Array (Positioned YamlToken))
     `seqPathAllSeq_map_push_breaks` (R337 NEGATION).
 
     Verified-but-unconsumed until the consumer routes the partition (R225): composes only landed lemmas
-    (`seqWindowRecSeqBody` + `seqEnclosed_of_seqPathAllSeq`), references no sorry site, frontier sorry
-    count unchanged at 4; axiom-clean. -/
+    (`seqWindowRecSeqBody` + `seqEnclosed_of_seqPathAllSeq`); axiom-clean. -/
 lemma rec_seq_body_nested_project (tokens : Array (Positioned YamlToken))
     (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
     (lo hi : Nat)
@@ -7890,7 +7881,7 @@ lemma rec_seq_body_nested_project (tokens : Array (Positioned YamlToken))
     content-start fields via the all-depth emission characterization, `SeqEnclosed` via
     `enclosingMark_true_of_opener`).  `windowFacts` is bundled to read the producer's contract off the
     `h_seq_rec` signature in one line.  Verified-but-unconsumed until the carrier and the provider land:
-    composes only `seqWindowRecSeqBody`, references no sorry site, frontier sorry count unchanged at 4. -/
+    composes only `seqWindowRecSeqBody`. -/
 lemma seqRec_of_carrier_and_windowFacts (tokens : Array (Positioned YamlToken))
     (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
     (windowFacts : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
@@ -7938,8 +7929,8 @@ lemma seqRec_of_carrier_and_windowFacts (tokens : Array (Positioned YamlToken))
     The two named hypotheses — `h_win_dyck` (window floor) and `h_fold_pre` (prefix fold defined) — are
     exactly the global-restriction primitives the eventual provider supplies once (whole-stream
     well-bracketedness gives both at every window); they are NOT the deep content, which stays the lone
-    standalone residual.  Verified-but-unconsumed until the window-facts provider assembles all three:
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    standalone residual.  Verified-but-unconsumed until the window-facts provider assembles all
+    three. -/
 lemma flowBodyWindow_and_seqEnclosed_of_facts
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo : 2 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size - 2) (h_hi_sz : hi < tokens.size)
@@ -7984,8 +7975,7 @@ lemma flowBodyWindow_and_seqEnclosed_of_facts
     to the SINGLE root seed `FlowBodyContentDeep tokens 2 (size-2)` (the genuine deep emission
     characterization, still owed — its `headContentStart` is the in-scope depth-`0` `h_content0`, but its
     all-depth opener/separator fields need an emitter induction).  Composes only the projection of
-    `FlowBodyContentDeep` + `flowBracketDelta_flowSequenceStart`; references no sorry site, frontier sorry
-    count unchanged at 4; axiom-clean. -/
+    `FlowBodyContentDeep` + `flowBracketDelta_flowSequenceStart`; axiom-clean. -/
 lemma flowBodyContentDeep_window_of_root
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo : 2 ≤ lo) (h_lo_hi : lo < hi) (h_hi : hi ≤ tokens.size - 2)
@@ -8055,8 +8045,8 @@ lemma flowBodyContentDeep_window_of_root
     Machine-checked: `native_decide` on the concrete 6-token scan of `"[[]]"` (the input shown literally
     as the emitter form), then `openerContentStart` at `k = 2` contradicts `tokens[3] = .flowSequenceEnd`.
     A guard rail: it permanently refutes the "prove the root seed" path so it is not re-attempted.  Off
-    the critical path (a refutation, consumed by nothing — `native_decide`'s `Lean.ofReduceBool` does not
-    reach `universal_roundtrip`); frontier sorry count unchanged at 4. -/
+    the critical path (a refutation, consumed by nothing — `native_decide`'s per-call-site axiom does
+    not reach `universal_roundtrip`). -/
 lemma flowBodyContentDeep_root_seed_false
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -8132,8 +8122,8 @@ lemma flowBodyContentDeep_root_seed_false
     (`tokens[6] = .flowSequenceStart` at `flowBracketBalance 2 6 = 1`, `tokens[7]` content-start) is the
     positive witness that the opener field reaches a non-seq-structural, non-depth-`0` opener.  A guard rail:
     it fences the "produce `openerContentStart` from `RecSeqBody`" path so it is not re-attempted.  Off the
-    critical path (a witness consumed by nothing — `native_decide`'s `Lean.ofReduceBool` does not reach
-    `universal_roundtrip`); frontier sorry count unchanged at 4. -/
+    critical path (a witness consumed by nothing — `native_decide`'s per-call-site axiom does not
+    reach `universal_roundtrip`). -/
 lemma flowBodyContentDeepSeq_opener_reaches_map_interior
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -8197,8 +8187,7 @@ def GlobalFlowSeqOpenerAdj (tokens : Array (Positioned YamlToken)) : Prop :=
     ONE `omega` bound step — the payoff of keeping the field all-depth: the restriction edge is pure
     subset narrowing ([[ref-window-absolute-gate-subset-restriction]]), no re-basing
     ([[ref-non-restriction-residual-root-seed]]).  Landing this isolates the residual to EXACTLY the
-    global producer: the value-induction that establishes `GlobalFlowSeqOpenerAdj`.  References no sorry
-    site; frontier sorry count unchanged at 4. -/
+    global producer: the value-induction that establishes `GlobalFlowSeqOpenerAdj`. -/
 lemma flowSeqOpenerAdj_window_of_global
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h : GlobalFlowSeqOpenerAdj tokens) (h_hi : hi ≤ tokens.size) :
@@ -8221,7 +8210,7 @@ lemma flowSeqOpenerAdj_window_of_global
     (`flowBodyContentDeepSeq_opener_reaches_map_interior` shows the same `k = 6` opener is unwitnessed by
     the seq deliverable).  Confirms the provider is not vacuously true and the
     `flowSeqOpenerAdj_window_of_global` projection has a real inhabitant to consume.  Off the critical
-    path; frontier sorry count unchanged at 4. -/
+    path. -/
 lemma globalFlowSeqOpenerAdj_fires_cross_axis
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -8277,8 +8266,7 @@ lemma globalFlowSeqOpenerAdj_fires_cross_axis
     The five-way case split on `k` (over `getElem!`, so no proof-carrying indices): `k=0` contradicts
     `.streamStart ≠ .flowSequenceStart`; `k=1` is the head fact (`1+1` reduces to `2`); `2 ≤ k` with
     `k+1 < size-2` is the body field; `k+1 = size-2` contradicts the `≠ .flowSequenceEnd` premise via the
-    close; `k=size-2` contradicts `.flowSequenceEnd ≠ .flowSequenceStart`.  References no sorry site;
-    frontier sorry count unchanged at 4. -/
+    close; `k=size-2` contradicts `.flowSequenceEnd ≠ .flowSequenceStart`. -/
 lemma globalFlowSeqOpenerAdj_of_structure
     (tokens : Array (Positioned YamlToken))
     (h_sz : 5 ≤ tokens.size)
@@ -8320,8 +8308,7 @@ lemma globalFlowSeqOpenerAdj_of_structure
     end-keys its `k+1 = size-2` boundary on the seq close `.flowSequenceEnd`, but the map close is
     `.flowMappingEnd` — that boundary's `hopen` premise is instead vacuously false, sourced from the map
     body structure), so it gets a sibling next.  Verified-but-unconsumed until the (d)–(e)
-    `FlowSubrangesOk` rewire feeds it through `flowSeqOpenerAdj_window_of_global`; references no sorry
-    site, frontier sorry count unchanged at 4. -/
+    `FlowSubrangesOk` rewire feeds it through `flowSeqOpenerAdj_window_of_global`. -/
 lemma seqGlobalFlowSeqOpenerAdj_of_emit
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -8354,7 +8341,7 @@ lemma seqGlobalFlowSeqOpenerAdj_of_emit
     but the map's `tokens[1] = .flowMappingStart` makes `hopen` contradictory there, so `k=1` is
     VACUOUS for the map ([[ref-near-leaf-mirror-sheds-machinery]]: the storage asymmetry flips sign
     across the boundary — the map sheds the head-content hypothesis the seq needed but pays the
-    balance/Dyck pair the seq did not).  References no sorry site; frontier sorry count unchanged at 4. -/
+    balance/Dyck pair the seq did not). -/
 lemma globalFlowSeqOpenerAdj_of_map_structure
     (tokens : Array (Positioned YamlToken))
     (h_sz : 5 ≤ tokens.size)
@@ -8410,8 +8397,7 @@ lemma globalFlowSeqOpenerAdj_of_map_structure
     (`globalFlowSeqOpenerAdj_of_map_structure`, not the seq producer) — `mkG`'s contract is genuinely
     axis-specific ([[ref-carry-up-splits-at-import-edge]] consume-half tell), so the structure lemma's
     conclusion is a subset of the MAP producer's contract (balance-0/Dyck), not the seq producer's.
-    Verified-but-unconsumed until the (d)–(e) `FlowSubrangesOk` rewire; frontier sorry count unchanged
-    at 4. -/
+    Verified-but-unconsumed until the (d)–(e) `FlowSubrangesOk` rewire. -/
 lemma mapGlobalFlowSeqOpenerAdj_of_emit
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -8437,8 +8423,7 @@ lemma mapGlobalFlowSeqOpenerAdj_of_emit
     sequence opener at depth-blind `k ∈ [lo, hi)` is followed by a content-start unless by `]`).  The
     `hi ≤ size` premise is weaker than the `FlowSubrangesOk.seq` guard's `hi < size`, so it discharges by
     `Nat.le_of_lt` at the call site.  Verified-but-unconsumed until the gate-strengthening bridge feeds
-    this into the per-window `Rec…Body` producers; references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    this into the per-window `Rec…Body` producers. -/
 lemma seqWindowOpenerAdj_of_emit
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -8461,8 +8446,8 @@ lemma seqWindowOpenerAdj_of_emit
     [[ref-coerce-to-weaker-reuse-wrapper]] payoff of keeping the global predicate AXIS-UNIFORM: ONE
     `GlobalFlowSeqOpenerAdj` shape, ONE restriction lemma `flowSeqOpenerAdj_window_of_global`, fed from
     EITHER emit source — the conjunctive consumer's two orthogonal conjuncts consume the same per-window
-    deliverable, differing only in which emit wrapper produced the global fact.  Verified-but-unconsumed;
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    deliverable, differing only in which emit wrapper produced the global fact.
+    Verified-but-unconsumed. -/
 lemma mapWindowOpenerAdj_of_emit
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -8507,8 +8492,8 @@ def GlobalFlowSeqSepAdj (tokens : Array (Positioned YamlToken)) : Prop :=
     `FlowBodyContentDeepSeq.feContentStart` over any `[lo, hi)` with `hi ≤ size`) follows by ONE `omega`
     bound step — the payoff of the all-depth, balance-FREE formulation: the restriction edge is pure subset
     narrowing, no re-basing ([[ref-window-absolute-gate-subset-restriction]]).  Landing this isolates the
-    residual to EXACTLY the global producer (the value-induction that establishes `GlobalFlowSeqSepAdj`).
-    References no sorry site; frontier sorry count unchanged at 4. -/
+    residual to EXACTLY the global producer (the value-induction that establishes
+    `GlobalFlowSeqSepAdj`). -/
 lemma flowSeqSepAdj_window_of_global
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h : GlobalFlowSeqSepAdj tokens) (h_hi : hi ≤ tokens.size) :
@@ -8527,8 +8512,7 @@ lemma flowSeqSepAdj_window_of_global
     "b"` is `≠ .key` and a content-start (the scalar disjunct).  Confirms `GlobalFlowSeqSepAdj` is not
     vacuously true and the `flowSeqSepAdj_window_of_global` projection has a real inhabitant to consume — the
     positive mirror of the gate's purpose (the `≠ .key` premise that excludes the map-internal `,` is
-    SATISFIED here, where the separator genuinely precedes seq content).  Off the critical path; frontier
-    sorry count unchanged at 4. -/
+    SATISFIED here, where the separator genuinely precedes seq content).  Off the critical path. -/
 lemma globalFlowSeqSepAdj_fires
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -8594,7 +8578,7 @@ lemma globalFlowSeqSepAdj_fires
     `.flowSequenceStart ≠ .flowEntry` (VACUOUS — unlike the opener producer where `k=1` was the real head
     case, the seq head is the OPENER, never a separator); `2 ≤ k` with `k+1 < size-2` is the body field;
     `k+1 = size-2` is the new no-trailing-separator boundary; `k=size-2` contradicts
-    `.flowSequenceEnd ≠ .flowEntry`.  References no sorry site; frontier sorry count unchanged at 4. -/
+    `.flowSequenceEnd ≠ .flowEntry`. -/
 lemma globalFlowSeqSepAdj_of_structure
     (tokens : Array (Positioned YamlToken))
     (h_sz : 5 ≤ tokens.size)
@@ -8650,8 +8634,7 @@ lemma globalFlowSeqSepAdj_of_structure
     because its content-start conclusion lands on a token the window cannot follow.
 
     Verified-but-unconsumed: it is the (b)-brick of the R418 produce-side joint, which consumes it once the
-    carrier + boundary-balance are wired in alongside the (a) body-separator structure-EXPOSE.  References
-    no sorry site; frontier sorry count unchanged at 4. -/
+    carrier + boundary-balance are wired in alongside the (a) body-separator structure-EXPOSE. -/
 lemma noTrailingSep_preClose_of_carrier
     (tokens : Array (Positioned YamlToken))
     (h_sz : 5 ≤ tokens.size)
@@ -8680,7 +8663,7 @@ lemma noTrailingSep_preClose_of_carrier
     The recurrence is the inline analogue of `globalFlowSeqOpenerAdj_of_map_structure`'s `hstep`
     (`flowBracketBalance_compose` + `flowBracketBalance_single`).  Self-contained from the structure
     conclusion (no carrier, no `EmitScansInFlowRecEntry`); axis-blind (keyed only on the outer balance,
-    not the close token).  References no sorry site; frontier sorry count unchanged at 4. -/
+    not the close token). -/
 lemma preClose_balance_zero_of_flowEntry
     (tokens : Array (Positioned YamlToken))
     (h_sz : 5 ≤ tokens.size)
@@ -8716,8 +8699,7 @@ lemma preClose_balance_zero_of_flowEntry
     boundary cells stay VACUOUS.  The pre-close cell (`k+1 = size-2`) is the SAME genuinely-new input
     `globalFlowSeqSepAdj_of_structure` needed — `tokens[size-3] ≠ .flowEntry`, the no-trailing-separator
     boundary ([[ref-boundary-residual-end-dual]]) — taken here as the named hypothesis the emit-wrapper
-    discharges from the map's key-pattern conjunct + `preClose_balance_zero_of_flowEntry`.  References no
-    sorry site; frontier sorry count unchanged at 4. -/
+    discharges from the map's key-pattern conjunct + `preClose_balance_zero_of_flowEntry`. -/
 lemma globalFlowSeqSepAdj_of_map_structure
     (tokens : Array (Positioned YamlToken))
     (h_sz : 5 ≤ tokens.size)
@@ -8760,8 +8742,7 @@ lemma globalFlowSeqSepAdj_of_map_structure
     branch-local balance `0` via `preClose_balance_zero_of_flowEntry`, feed both to the structure's
     body-successor conjunct at `k = size-3` — which concludes `tokens[size-2]` is flow-content-start, but
     `tokens[size-2] = .flowSequenceEnd` (the close) is NOT, contradiction.  Verified-but-unconsumed until
-    the (d)–(e) `FlowSubrangesOk` rewire feeds it through `flowSeqSepAdj_window_of_global`; references no
-    sorry site, frontier sorry count unchanged at 4. -/
+    the (d)–(e) `FlowSubrangesOk` rewire feeds it through `flowSeqSepAdj_window_of_global`. -/
 lemma seqGlobalFlowSeqSepAdj_of_emit
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -8787,8 +8768,7 @@ lemma seqGlobalFlowSeqSepAdj_of_emit
     branch-local balance into that key-pattern conjunct at `k = size-3`, concluding `tokens[size-2] =
     .key` — contradicting the map close `tokens[size-2] = .flowMappingEnd`.  The shared kernel is the
     same `preClose_balance_zero_of_flowEntry` (axis-blind); only the final token-clash differs (close vs
-    content-start on the seq, close vs `.key` on the map).  Verified-but-unconsumed; references no sorry
-    site, frontier sorry count unchanged at 4. -/
+    content-start on the seq, close vs `.key` on the map).  Verified-but-unconsumed. -/
 lemma mapGlobalFlowSeqSepAdj_of_emit
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -8823,8 +8803,7 @@ lemma mapGlobalFlowSeqSepAdj_of_emit
     wrapper ([[ref-window-absolute-gate-subset-restriction]]: one global shape, one restriction lemma, fed
     from either emit source) — the only deltas are the gate token (`.flowEntry` vs `.flowSequenceStart`) and
     the successor-exclusion (`≠ .key` vs `≠ .flowSequenceEnd`).  Verified-but-unconsumed until the
-    gate-strengthening bridge feeds this into the per-window `Rec…Body` producers; references no sorry
-    site, frontier sorry count unchanged at 4. -/
+    gate-strengthening bridge feeds this into the per-window `Rec…Body` producers. -/
 lemma seqWindowSepAdj_of_emit
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -8850,7 +8829,7 @@ lemma seqWindowSepAdj_of_emit
     deliverable, differing only in which emit wrapper produced the global fact.  Completes the separator
     half of the per-window opener/separator pair; with `seq/mapWindowOpenerAdj_of_emit` (R411) the assembler
     `flowBodyContentDeepSeq_of_window_producers` now has all THREE `FlowBodyContentDeepSeq` fields available
-    from emission.  Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+    from emission.  Verified-but-unconsumed. -/
 lemma mapWindowSepAdj_of_emit
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -8880,8 +8859,8 @@ lemma mapWindowSepAdj_of_emit
     lower bound `lo` excludes exactly the `lo-1` index the head needs, so reading the edge off the global
     erases the degenerate `lo = 2` boundary special-case that R391's window-bounded
     `flowBodyContentDeep_window_of_root` required ([[ref-edge-adjacent-read-from-global-not-restricted]]).
-    Verified-but-unconsumed until the (R1) root carrier + window dispatch supplies `h_open`/`h_head_ne`;
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed until the (R1) root carrier + window dispatch supplies
+    `h_open`/`h_head_ne`. -/
 lemma flowBodyContentDeepSeq_of_window_producers
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -8910,8 +8889,7 @@ lemma flowBodyContentDeepSeq_of_window_producers
     the interior fields from `mapWindowOpenerAdj_of_emit` (R411) / `mapWindowSepAdj_of_emit` (R429) — with
     only the emit facts swapped to the map family.  The [[ref-coerce-to-weaker-reuse-wrapper]] payoff of
     keeping `GlobalFlowSeqOpenerAdj`/`GlobalFlowSeqSepAdj` axis-uniform: ONE carrier, ONE assembler shape,
-    fed from either emit source.  Verified-but-unconsumed; references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    fed from either emit source.  Verified-but-unconsumed. -/
 lemma flowBodyContentDeepSeq_of_window_producers_map
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -8965,8 +8943,7 @@ lemma flowBodyWindow_head_ne_close (tokens : Array (Positioned YamlToken)) (lo h
     .flowSequenceStart` (the one fact a bracket-shape window cannot self-supply — it names which bracket
     TYPE encloses it).  This is exactly the shape the `windowFacts` provider of
     `seqRec_of_carrier_and_windowFacts` consumes for its `FlowBodyContentDeepSeq` field.
-    Verified-but-unconsumed until `windowFacts` is assembled; references no sorry site, frontier sorry
-    count unchanged at 4. -/
+    Verified-but-unconsumed until `windowFacts` is assembled. -/
 lemma flowBodyContentDeepSeq_of_emit_and_window
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -8983,7 +8960,7 @@ lemma flowBodyContentDeepSeq_of_emit_and_window
     `(i'-b-B2c-(d)-flowBodyContentDeepSeq-of-emit-and-window-map)`, R431, the orthogonal-axis mirror
     (a top-level MAP nests flow SEQUENCES whose interior windows carry `FlowBodyContentDeepSeq`).  Same
     `FlowBodyWindow`-fed shape, `h_head_ne` again free from the Dyck floor, sourced from the map emit
-    family.  Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+    family.  Verified-but-unconsumed. -/
 lemma flowBodyContentDeepSeq_of_emit_and_window_map
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -9045,7 +9022,7 @@ lemma isFlowContentStart_em (t : YamlToken) :
     three inputs hold and the brick produces its `FlowBodyContentDeepSeq` (the `feKey`-contrapositive
     direction and the lone `h_opener` field both exercised on real emission, the value's `[1]` opener at
     index 5 → content-start `"1"` at 6).  Verified-but-unconsumed until `recmappair_window_dispatch_map`
-    threads it; references no sorry site, frontier sorry count unchanged at 4.  `Classical.choice`-free via
+    threads it.  `Classical.choice`-free via
     `isFlowContentStart_em`. -/
 lemma flowBodyContentDeepSeq_subblock_of_mapGuard
     (tokens : Array (Positioned YamlToken)) (lo hi lo' hi' : Nat)
@@ -9098,8 +9075,7 @@ lemma flowBodyContentDeepSeq_subblock_of_mapGuard
 
     Names no deliverable type, so it serves the key block and value block identically.  Verified-but-unconsumed
     until `recmappair_window_dispatch_map` threads it; composes `flowBodyContent_of_deepSeq` + `omega` + the
-    constructive `isFlowContentStart` refutation, references no sorry site, frontier sorry count unchanged at
-    4. -/
+    constructive `isFlowContentStart` refutation. -/
 lemma flowBodyContent_subblock_of_deepSeq_floor
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_deep : FlowBodyContentDeepSeq tokens lo hi)
@@ -9144,8 +9120,7 @@ lemma flowBodyContent_subblock_of_deepSeq_floor
     directly.  Reads only `tokens[lo]` in bounds (`h_lo_sz`); the `toList <-> !` index bridge mirrors
     `mapBracketOpen_balance_one`'s `step` (`Array.getElem_toList` + `getElem!_pos`).
     Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; composes
-    `flowBracketBalance_compose` + `flowBracketBalance_single` + `omega`, references no sorry site,
-    frontier sorry count unchanged at 4. -/
+    `flowBracketBalance_compose` + `flowBracketBalance_single` + `omega`. -/
 lemma flowSubblock_interior_floor_of_opener
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_sz : lo < tokens.size)
@@ -9192,8 +9167,7 @@ lemma flowSubblock_interior_floor_of_opener
     `balance (lo+1) j = 0` here gives that downstream step its anchor.  CONSUMES R565's
     `flowSubblock_interior_floor_of_opener` (turning a verified-but-unconsumed brick into a consumed one)
     + `flowBracketBalance_matching_close_seq`.  Verified-but-unconsumed until
-    `recmappair_window_dispatch_map` threads it; references no sorry site, frontier sorry count unchanged
-    at 4. -/
+    `recmappair_window_dispatch_map` threads it. -/
 lemma flowSubblock_matchingClose_floor_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
@@ -9222,7 +9196,7 @@ lemma flowSubblock_matchingClose_floor_seq
     The rebase is AXIS-AGNOSTIC -- `flowSubblock_interior_floor_of_opener` reads only
     `flowBracketDelta tokens[lo] = 1`, which both `[` and `{` satisfy -- so the SAME R565 brick is reused,
     confirming its axis-neutrality (only the locator and the close token swap seq -> map).
-    Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed. -/
 lemma flowSubblock_matchingClose_floor_map
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
@@ -9253,8 +9227,8 @@ lemma flowSubblock_matchingClose_floor_map
     So this is the pure opener-token swap of the seq sibling -- the deep guard family stays
     `FlowBodyContentDeepSeq` (the value is consumed as a SEQ-entry by the map dispatch's seq IH; only the
     child's bracket KIND swaps, not the content axis).  Verified-but-unconsumed until
-    `flowBodyContent_child_bracket_seq_map` and downstream `recmappair_window_dispatch_map` thread it;
-    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    `flowBodyContent_child_bracket_seq_map` and downstream `recmappair_window_dispatch_map` thread
+    it; axiom-clean. -/
 lemma flowBodyContentDeepSeq_child_bracket_map (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
     (h_deep : FlowBodyContentDeepSeq tokens lo hi)
     (h_lo_k : lo ≤ k) (h_k_open : tokens[k]!.val = .flowMappingStart)
@@ -9280,8 +9254,8 @@ lemma flowBodyContentDeepSeq_child_bracket_map (tokens : Array (Positioned YamlT
     (2) the `feContent` head refutation `tokens[k] = .flowEntry` is killed by `h_k_open : tokens[k] =
     .flowMappingStart` (`.flowMappingStart /= .flowEntry`, by `simp`) exactly as `{` ... `[` did for the
     seq sibling.  The `bodySucc` arm is axis-free (pure floor `omega`).  Verified-but-unconsumed until
-    `flowBodyContent_subblock_located_map` and downstream `recmappair_window_dispatch_map` thread it;
-    references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    `flowBodyContent_subblock_located_map` and downstream `recmappair_window_dispatch_map` thread
+    it; axiom-clean. -/
 lemma flowBodyContent_child_bracket_seq_map (tokens : Array (Positioned YamlToken)) (lo k j hi : Nat)
     (h_deep : FlowBodyContentDeepSeq tokens lo hi)
     (h_lo_k : lo ≤ k) (h_j_hi : j + 1 ≤ hi)
@@ -9321,8 +9295,7 @@ lemma flowBodyContent_child_bracket_seq_map (tokens : Array (Positioned YamlToke
     carved sub-block window `[lo, e)` (single-node tightness `j + 1 = e`, the deferred fact).  CONSUMES
     R566's `flowSubblock_matchingClose_floor_seq` (giving that verified-but-unconsumed brick its first
     SOURCE consumer, discharging its inhabitation-debt ALARM) + `flowBodyContent_child_bracket_seq`.
-    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; references no sorry site,
-    frontier sorry count unchanged at 4; axiom-clean. -/
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; axiom-clean. -/
 lemma flowBodyContent_subblock_located_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
@@ -9347,7 +9320,7 @@ lemma flowBodyContent_subblock_located_seq
     `flowBodyContent_child_bracket_seq_map`.  The content guard family stays `FlowBodyContentDeepSeq` --
     the value is consumed as a SEQ-entry, only the child's bracket KIND swaps `[` -> `{`.  CONSUMES R566's
     `flowSubblock_matchingClose_floor_map`.  Verified-but-unconsumed until `recmappair_window_dispatch_map`
-    threads it; references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    threads it; axiom-clean. -/
 lemma flowBodyContent_subblock_located_map
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
@@ -9399,8 +9372,7 @@ lemma flowBodyContent_subblock_located_map
     `flowSubblock_matchingClose_floor_seq` (its first content consumer beyond R567), R564
     `flowBodyContent_subblock_of_deepSeq_floor`, and `firstEntryBoundary_bracket_resolve` (its first
     consumer -- discharging that long-verified-but-unconsumed resolve's inhabitation-debt ALARM).
-    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it; references no sorry site,
-    frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed until `recmappair_window_dispatch_map` threads it. -/
 lemma flowSubblock_content_and_noInterior_seq
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
@@ -9442,7 +9414,7 @@ lemma flowSubblock_content_and_noInterior_seq
     which both `]` and `}` satisfy) and the AXIS-FREE R564 content bridge (its `FlowBodyContentDeepSeq` is
     the same -- the value is consumed as a SEQ-entry).  Only the head-open token, the locator, and the
     `h_succ` close token swap `[`->`{`.  CONSUMES R566's `_map` locator + R564 + the resolve.
-    Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed. -/
 lemma flowSubblock_content_and_noInterior_map
     (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_lo_hi : lo < hi) (h_hi_sz : hi ≤ tokens.size)
@@ -9500,7 +9472,7 @@ lemma flowSubblock_content_and_noInterior_map
     AND free, because its two outputs are vacuous over an empty interior.  Reuses R564 verbatim and names
     no deliverable type, so it serves a scalar KEY block and a scalar VALUE block identically.
     Verified-but-unconsumed until `recmappair_window_dispatch_map` dispatches the scalar sub-block shape
-    onto it; composes only R564 + `omega`, references no sorry site, frontier sorry count unchanged at 4;
+    onto it; composes only R564 + `omega`;
     axiom-clean -- it never touches the choice-tainted resolve/locator the bracket arms pull
     ([[ref-mirror-inherits-dependency-axioms]]). -/
 lemma flowSubblock_content_and_noInterior_scalar
@@ -9542,8 +9514,8 @@ lemma flowSubblock_content_and_noInterior_scalar
     antecedent is refuted).  It is sound and dischargeable: a carved scalar key/value node occupies exactly
     one token, so `hi = lo + 1` follows from the skeleton minimality the consumer already holds -- the same
     deferral the bracket arms make for `h_least` / `h_succ`.  Verified-but-unconsumed until
-    `recmappair_window_dispatch_map` calls it per sub-block; references no sorry site, frontier sorry count
-    unchanged at 4.  Axioms `[propext, Classical.choice, Quot.sound]` -- the dispatch term references the
+    `recmappair_window_dispatch_map` calls it per sub-block.  Axioms `[propext, Classical.choice,
+    Quot.sound]` -- the dispatch term references the
     two bracket arms (which pull `Classical.choice` via the resolve/locator), so it inherits their axioms
     regardless of the branch taken ([[ref-mirror-inherits-dependency-axioms]]); the scalar branch alone
     would audit cleaner, but a router carries every arm's dependencies. -/
@@ -9591,8 +9563,7 @@ lemma flowSubblock_content_and_noInterior_dispatch
     `h_win_dyck` / `h_fold_pre` — the Dyck floor `h_win_dyck` does DOUBLE DUTY (it is `FlowBodyWindow.dyck`
     AND, through R431, the source of `FlowBodyContentDeepSeq`'s head non-emptiness).  The three primitives
     are the whole-stream-well-bracketedness restrictions a separate brick supplies once.
-    Verified-but-unconsumed until those primitives are sourced; references no sorry site, frontier sorry
-    count unchanged at 4. -/
+    Verified-but-unconsumed until those primitives are sourced. -/
 lemma seqWindowFacts_of_emit_and_primitives
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -9617,7 +9588,7 @@ lemma seqWindowFacts_of_emit_and_primitives
     runs over windows nested in a top-level MAP).  Same composition — R390 for the bracket + enclosure
     fields (axis-agnostic), R431's `flowBodyContentDeepSeq_of_emit_and_window_map` for the deep field, fed
     the produced `FlowBodyWindow` — with only the emit facts swapped to the map family.
-    Verified-but-unconsumed; references no sorry site, frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed. -/
 lemma seqWindowFacts_of_emit_and_primitives_map
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -9655,8 +9626,8 @@ lemma seqWindowFacts_of_emit_and_primitives_map
     PASSES it to `windowFacts` — contravariant, free on the producer side; the matching consumer-side floor
     of `flowSubrangesOk_of_window_producers`'s `h_seq_rec`, via `seqLocator_of_window_recseqbody`, is the
     next brick).  The floored `windowFacts` matches `seqWindowFacts_of_emit_and_primitives`, whose
-    `h_win_dyck` IS this floor.  Verified-but-unconsumed until the consumer floor + root carrier (R1) land;
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    `h_win_dyck` IS this floor.  Verified-but-unconsumed until the consumer floor + root carrier
+    (R1) land. -/
 lemma seqRec_of_carrier_and_windowFacts_seq (tokens : Array (Positioned YamlToken))
     (h_root_carrier : SeqInteriorSeparators tokens 2 (tokens.size - 2))
     (windowFacts : ∀ lo hi, 2 ≤ lo → lo < hi → hi ≤ tokens.size - 2 → hi < tokens.size →
@@ -9694,8 +9665,8 @@ lemma seqRec_of_carrier_and_windowFacts_seq (tokens : Array (Positioned YamlToke
     and every interior prefix is balanced), and `WellTyped_prefix_some` turns whole-stream
     well-typedness into fold-totality at EVERY prefix.  So the probe also NAMES the future discharge
     route for `h_fold_total`: a whole-stream `WellTyped tokens.toList` fact (none exists yet — `h_wt_outer`
-    covers only the interior `(take (size-2)).drop 2`) fed through `WellTyped_prefix_some`.  Contains the
-    `ofReduceBool` axiom (`native_decide`), off the `universal_roundtrip` path. -/
+    covers only the interior `(take (size-2)).drop 2`) fed through `WellTyped_prefix_some`.  Contains a
+    `native_decide` per-call-site axiom, off the `universal_roundtrip` path. -/
 lemma seqFoldTotal_satisfiable_on_real_output
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -9731,8 +9702,7 @@ lemma seqFoldTotal_satisfiable_on_real_output
     flooring the two shapes are textually identical and this is pure currying.  The per-window
     `h_fold_pre` is supplied from the threaded whole-stream fold-totality `h_fold_total` at `m := lo - 1`
     (its satisfiability is `seqFoldTotal_satisfiable_on_real_output` above).
-    Verified-but-unconsumed until `h_fold_total` is sourced; references no sorry site, frontier sorry
-    count unchanged at 4. -/
+    Verified-but-unconsumed until `h_fold_total` is sourced. -/
 lemma seqWindowFacts_provider_of_context
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -9764,8 +9734,7 @@ lemma seqWindowFacts_provider_of_context
     whole-stream fold-totality `h_fold_total` (TRUE — `seqFoldTotal_satisfiable_on_real_output`; future
     route: a `WellTyped tokens.toList` fact via `WellTyped_prefix_some`); **(3)** `h_wt_outer` (available
     at the consume site as the interior `WellTyped`); **(4)** the emit context (`h_scan`/`h_ne`/
-    `h_all_block`).  Verified-but-unconsumed until the root carrier + fold-totality land; references no
-    sorry site, frontier sorry count unchanged at 4. -/
+    `h_all_block`).  Verified-but-unconsumed until the root carrier + fold-totality land. -/
 lemma seqHRec_of_root_and_context
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -9800,8 +9769,7 @@ lemma seqHRec_of_root_and_context
     tokens + `size ≥ 5` + the interior `WellTyped`), and folds piecewise the SAME way `seqRoot_seqPathAllSeq`
     (R386) computes the depth-2 prefix: `btStep` is the identity on `streamStart`/`streamEnd` (non-bracket),
     pushes `true` on `[`, and the interior returns the stack to `[true]` by `WellTyped_frame` of `h_wt_interior`,
-    then `]` pops back to `[]`.  No `native_decide`; axiom-clean.  References no sorry site, frontier sorry
-    count unchanged at 4. -/
+    then `]` pops back to `[]`.  No `native_decide`; axiom-clean. -/
 lemma seqWholeStreamWellTyped
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -9886,8 +9854,7 @@ lemma seqWholeStreamWellTyped
     is the generic tail the satisfiability probe `seqFoldTotal_satisfiable_on_real_output` already had:
     `WellTyped_prefix_some` turns whole-stream `WellTyped tokens.toList` (now produced GENERALLY by
     `seqWholeStreamWellTyped`, axiom-clean) into fold-totality at EVERY prefix, since every prefix of a
-    `WellTyped` list folds to `some` (never underflows).  Axiom-clean (no `native_decide`); references no
-    sorry site, frontier sorry count unchanged at 4. -/
+    `WellTyped` list folds to `some` (never underflows).  Axiom-clean (no `native_decide`). -/
 lemma seqFoldTotal_of_context
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -9906,8 +9873,7 @@ lemma seqFoldTotal_of_context
     discharged), so the seq producer now needs only THREE: **(1)** the hard root carrier
     `SeqInteriorSeparators tokens 2 (size-2)` (the `desc` descent provider), **(3)** `h_wt_outer`
     (available at the consume site as the interior `WellTyped`), **(4)** the emit context
-    (`h_scan`/`h_ne`/`h_all_block`).  Verified-but-unconsumed until the root carrier lands; references
-    no sorry site, frontier sorry count unchanged at 4. -/
+    (`h_scan`/`h_ne`/`h_all_block`).  Verified-but-unconsumed until the root carrier lands. -/
 lemma seqHRec_of_root_and_emit
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -9931,7 +9897,8 @@ lemma seqHRec_of_root_and_emit
     contract level): it composes `flowSubrangesOk_of_window_producers` (the locator-pair assembler) with
     `seqHRec_of_root_and_emit` in its `h_seq_rec` slot — a DIRECT substitution, since R440 made the two
     universals textually identical.  So the whole seq side of the `FlowSubrangesOk tokens` residual
-    (`NonemptyStructure.lean:11208`) is now discharged from **the single hypothesis `h_root_carrier`**
+    (then an inline `sorry`, since discharged in `parseStream_emitSequence`) is now discharged from
+    **the single hypothesis `h_root_carrier`**
     (`SeqInteriorSeparators tokens 2 (size-2)`) plus the emit context + boundary facts already in scope
     at the sorry site.  The map side is left as its seven raw per-window producers (`h_map_rec` + the six
     grammar facts) — it is NOT yet reduced to a root carrier, so this brick records the seq/map ASYMMETRY:
@@ -9950,8 +9917,8 @@ lemma seqHRec_of_root_and_emit
     the one statement in which `h_root_carrier` is the ONLY seq-side hypothesis left.
 
     Verified-but-unconsumed until the root carrier + the map producers land: pure composition of landed
-    lemmas (`flowSubrangesOk_of_window_producers` ∘ `seqHRec_of_root_and_emit`), references no sorry site,
-    frontier sorry count unchanged at 4; axioms `[propext, Classical.choice, Quot.sound]`, no `sorryAx`. -/
+    lemmas (`flowSubrangesOk_of_window_producers` ∘ `seqHRec_of_root_and_emit`); axioms `[propext,
+    Classical.choice, Quot.sound]`, no `sorryAx`. -/
 lemma flowSubrangesOk_of_seqRoot_and_map_producers
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -10057,27 +10024,27 @@ verbatim (fold-totality at every prefix follows from whole-stream `WellTyped`), 
 `streamStart :: .flowMappingStart :: interior ++ [.flowMappingEnd, streamEnd]`, the interior frames
 back to `[false]` by `WellTyped_frame`, and `.flowMappingEnd` pops the matching `false`.
 
-AXIOM NOTE — the seq/map asymmetry reaches the axiom layer.  Unlike `seqWholeStreamWellTyped`
-(`[propext, Classical.choice, Quot.sound]`, clean), both map lemmas carry `sorryAx` —
-`[propext, sorryAx, Classical.choice, Quot.sound]` — inherited via
-`scanFiltered_emitMap_nonempty_structure`, whose `ParseEntryFlowMapOk` conjunct still discharges the
-frontier residual `FlowSubrangesOk tokens := sorry` (`NonemptyStructure.lean:11208`, sorry #4) INLINE.
-The seq structure lemma sheds this only because R442 RELOCATED its twin sorry out to
-`parseStream_emitSequence`; the map structure lemma never got that relocation, so the WHOLE map
-context-provider family (`mapWindowOpenerAdj_of_emit`, …, and now these) carries `sorryAx`.  This adds
-NO NEW sorry — it routes through the existing #4 — and the `sorryAx` vanishes the moment the root
-carriers close #4.  Frontier sorry count unchanged at 4. -/
+AXIOM NOTE — the seq/map asymmetry once reached the axiom layer.  When this cluster landed (R516),
+`seqWholeStreamWellTyped` audited clean (`[propext, Classical.choice, Quot.sound]`) while both map
+lemmas carried `sorryAx`, inherited via `scanFiltered_emitMap_nonempty_structure`, whose
+`ParseEntryFlowMapOk` conjunct then discharged the frontier residual `FlowSubrangesOk tokens` with an
+inline `sorry`; the seq structure lemma had shed its twin at R442 by relocating it to
+`parseStream_emitSequence`.  The map relocation has since landed too — the `FlowSubrangesOk`
+residual is discharged in `parseStream_emitMapping` from the deep map root seed — so the structure
+lemma and the whole map context-provider family (`mapWindowOpenerAdj_of_emit`, …, the two lemmas
+below) are `sorry`-free and audit `[propext, Classical.choice, Quot.sound]`; see the module status
+note, and `Tests/Reflections/MirrorInheritsDependencyAxioms.lean` for the inheritance mechanism. -/
 
 /-- **Whole-stream well-typedness from the MAP emit context** — the `some false`/`{`/`}` dual of
-    `seqWholeStreamWellTyped` (`:6665`).  Reads the emitted+filtered stream off
+    `seqWholeStreamWellTyped`.  Reads the emitted+filtered stream off
     `scanFiltered_emitMap_nonempty_structure` as `streamStart :: .flowMappingStart :: interior ++
     [.flowMappingEnd, streamEnd]` (four boundary tokens + `size ≥ 7` + the interior `WellTyped`), and
     folds piecewise: `btStep` is the identity on `streamStart`/`streamEnd`, pushes `false` on `{`, the
     interior returns the stack to `[false]` by `WellTyped_frame` of `h_wt_interior`, then `}` pops the
-    matching `false` back to `[]`.  No `native_decide`.  Carries `sorryAx` (`[propext, sorryAx,
-    Classical.choice, Quot.sound]`) inherited from `scanFiltered_emitMap_nonempty_structure`'s inline
-    sorry #4 — see the cluster AXIOM NOTE above; adds no NEW sorry.  Verified-but-unconsumed until the
-    map fold lands; frontier sorry count unchanged at 4. -/
+    matching `false` back to `[]`.  No `native_decide`.  Axioms `[propext, Classical.choice,
+    Quot.sound]`, the same as the seq twin now that `scanFiltered_emitMap_nonempty_structure` is
+    `sorry`-free (see the cluster AXIOM NOTE above).  Verified-but-unconsumed until the map fold
+    lands. -/
 lemma mapWholeStreamWellTyped
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -10158,12 +10125,12 @@ lemma mapWholeStreamWellTyped
   rw [btFold_cons_some, hse, btFold_cons_some, hss]; rfl
 
 /-- **The whole-stream fold-totality `h_fold_total`, discharged from the MAP emit context** — the dual
-    of `seqFoldTotal_of_context` (`:6751`).  Fold-totality is collection-AGNOSTIC: `WellTyped_prefix_some`
+    of `seqFoldTotal_of_context`.  Fold-totality is collection-AGNOSTIC: `WellTyped_prefix_some`
     turns whole-stream `WellTyped tokens.toList` (now produced by `mapWholeStreamWellTyped`) into
     fold-totality at EVERY prefix, since every prefix of a `WellTyped` list folds to `some` (never
     underflows).  The proof body is byte-identical to the seq twin — only the whole-stream producer it
-    calls differs.  Carries `sorryAx` via `mapWholeStreamWellTyped` (the map structure lemma's inline
-    sorry #4 — see the cluster AXIOM NOTE above); adds no NEW sorry, frontier count unchanged at 4. -/
+    calls differs.  Axioms `[propext, Classical.choice, Quot.sound]`, inherited through
+    `mapWholeStreamWellTyped` (see the cluster AXIOM NOTE above). -/
 lemma mapFoldTotal_of_context
     (pairs : Array (YamlValue × YamlValue)) (tokens : Array (Positioned YamlToken))
     (h_scan : Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens)
@@ -10200,8 +10167,8 @@ lemma mapFoldTotal_of_context
     8th guard to `h_seq_rec`/`windowFacts` (it EXCLUDES every cross-matched false window and makes
     `FlowBodyWindow.dyck` a trivial pass-through).  This is the [[ref-end-free-gate-underdetermines-close]] /
     [[ref-probe-provider-head-blind-gate]] family: an endpoint + total-balance gate underdetermines the
-    matched pair; the interior floor is the discriminator.  This lemma contains the `ofReduceBool` axiom
-    (`native_decide`), off the `universal_roundtrip` path. -/
+    matched pair; the interior floor is the discriminator.  This lemma contains a `native_decide`
+    per-call-site axiom, off the `universal_roundtrip` path. -/
 lemma seqWindowFacts_false_window
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -10258,7 +10225,7 @@ lemma seqWindowFacts_false_window
     mis-nested pairing.  It is the `FlowSubrangesOk`-contract-level analogue of the producer-layer
     `seqWindowFacts_false_window` (which rejects the same window via `FlowBodyWindow.dyck`); the
     [[ref-end-free-gate-underdetermines-close]] / [[ref-probe-provider-head-blind-gate]] discriminator now
-    lives at the parser contract's own `.seq` guard.  Contains the `ofReduceBool` axiom (`native_decide`),
+    lives at the parser contract's own `.seq` guard.  Contains a `native_decide` per-call-site axiom,
     off the `universal_roundtrip` path. -/
 lemma flowSubrangesOk_seq_floor_rejects_crossMatched_window
     (tokens : Array (Positioned YamlToken))
@@ -10331,9 +10298,8 @@ lemma flowSubrangesOk_seq_floor_rejects_crossMatched_window
     Dyck-INDEPENDENT (their `isFlowContentStart tokens[k+1]` conjunct is an emitter-global property of every
     `.key`/`.value`, and `k+1 < hi` is forced by the `.flowMappingEnd` closer) so they survive cross-matching;
     only the four BOUNDARY-referencing facts (the scalar/bracket successors, which name `hi` via `k+2 = hi` /
-    `j+1 = hi` or pin an interior separator) genuinely need Dyck.  Contains the `ofReduceBool` axiom
-    (`native_decide`), off the `universal_roundtrip` path; references no sorry site, frontier sorry count
-    unchanged at 4. -/
+    `j+1 = hi` or pin an interior separator) genuinely need Dyck.  Contains a `native_decide`
+    per-call-site axiom, off the `universal_roundtrip` path. -/
 lemma mapGrammarFacts_false_window
     (tokens : Array (Positioned YamlToken))
     (h : Scanner.scanFiltered
@@ -10410,8 +10376,8 @@ lemma mapGrammarFacts_false_window
     dependency in the library.  The risky tangle landed in ONE pass because the arm seams were each sized
     to exactly their per-arm need: LEAF/DESCEND/ADVANCE consume `g`'s fields verbatim, the only
     reconciliation being the `e.length = interior.length + 2` length identity (one `simp`+`omega`).
-    Verified-but-unconsumed until the full `h_step` assembles the HEAD branch + the scalar/map shapes;
-    references no sorry site, frontier sorry count unchanged at 4. -/
+    Verified-but-unconsumed until the full `h_step` assembles the HEAD branch + the scalar/map
+    shapes. -/
 lemma nestedSeq_recseqentry_locate_seq_cons_step
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body rest interior : List (Positioned YamlToken))
@@ -10715,8 +10681,8 @@ lemma nestedSeq_recseqentry_locate_seq_head_step
       gate's enclosure mark `g.typed.2.1 : SeqEnclosed tokens a` re-based by `h_leaf : a = off + 1`.
     * DESCEND (`off + 1 < a`): `seqPathAllSeq_map_descend_excluded` (R374, BRICK B-i) — the map's `false`
       frame persists from `off` to `a - 1`, refuting `g.path : SeqPathAllSeq tokens (a - 1)`.
-    The arith-contra upper half is shared verbatim with the seq head.  `rest := []`; references no sorry
-    site, frontier sorry count unchanged at 4.  With both long-entry heads landed only map CONS remains
+    The arith-contra upper half is shared verbatim with the seq head.  `rest := []`.  With both
+    long-entry heads landed only map CONS remains
     before `h_step` assembles ([[ref-saturation-cleaves-terminal-branch]]). -/
 lemma nestedSeq_recseqentry_locate_map_head_step
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
@@ -10780,7 +10746,7 @@ lemma nestedSeq_recseqentry_locate_map_head_step
     / `…sep_pos` seams as the seq CONS carve, the only swap being the BRICK-B refutations for LEAF/DESCEND
     (the seq head PRODUCED/DESCENDED there, the map head REFUTES).  With this cell the eight-cell
     `h_step` dispatch is COMPLETE — assembly (`recseqbody_head_or_cons` + `cases h_e`) + the root seed
-    remain.  Verified-but-unconsumed; frontier sorry count unchanged at 4. -/
+    remain.  Verified-but-unconsumed. -/
 lemma nestedSeq_recseqentry_locate_map_cons_step
     (tokens : Array (Positioned YamlToken)) (a b off H : Nat)
     (body rest interior : List (Positioned YamlToken))
@@ -10867,8 +10833,8 @@ lemma nestedSeq_recseqentry_locate_map_cons_step
     (`G := SeqLocateGuard tokens a b`, `Q :=` the seq-entry existential).  The ROOT SEED `h_root` (the
     descent's debt: the strict `win_ab`, the window-absolute `path`, and `opener`/`typed`/`close`/`window`
     at the top span — [[ref-root-seed-discriminator-not-from-gate]]) remains before
-    `nestedSeq_recseqentry_locate := seqLocateRecDriver … hstep … h_root` lands.  Verified-but-unconsumed;
-    frontier sorry count unchanged at 4. -/
+    `nestedSeq_recseqentry_locate := seqLocateRecDriver … hstep … h_root` lands.
+    Verified-but-unconsumed. -/
 lemma nestedSeq_recseqentry_locate_hstep
     (tokens : Array (Positioned YamlToken)) (a b : Nat) :
     ∀ off H body, SeqLocateGuard tokens a b off H body →
@@ -10926,10 +10892,10 @@ lemma nestedSeq_recseqentry_locate_hstep
     re-export after the coercion). -/
 lemma emitScansInFlowBlock_of_flowRecEntry (v : YamlValue)
     (h : EmitScansInFlowRecEntry v) : EmitScansInFlowBlock v := by
-  intro s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks h_dp
+  intro s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks h_dp h_last
   obtain ⟨n, s', block, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14,
           h15, h16, h17, h18, h19, h20, h21, _h22, h23, h24, h25⟩ :=
-    h s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks h_dp
+    h s rest h_corr h_inflow h_flow h_indent h_col h_ekl h_atol h_endline h_sks h_dp h_last
   exact ⟨n, s', block, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14,
     h15, h16, h17, h18, h19, h20, h21, h23, lastNonOpener_of_entryUnit block h21, h24,
     lastNonSep_of_entryUnit_contentHead block h21 h23, h25⟩
@@ -11028,7 +10994,7 @@ lemma seqRoot_seqPathAllSeq
     window-absolute `path : SeqPathAllSeq tokens (a-1)` (R375).  The root-structural `domain`/`window`
     derivations landed in R386 (`seqRoot_seqPathAllSeq` / `seqRoot_flowBodyWindow`), so
     `nestedSeq_recseqentry_locate` supplies them here from `h_scan` and is now hypothesis-free over
-    emission.  References no sorry site, frontier sorry count unchanged at 4. -/
+    emission. -/
 lemma nestedSeq_recseqentry_locate_root_seed
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -11076,8 +11042,7 @@ lemma nestedSeq_recseqentry_locate_root_seed
     bridges the gap).  So the locator takes only `h_scan` + the seven target discriminators and is ready to
     CONSUME — verified-but-unconsumed until the map mirror (`RecMapBody` axis) and
     `flowSubrangesOk_of_window_producers` feed the two `FlowSubrangesOk` sorries
-    (`NonemptyStructure.lean:7502`/`:7743`).  References no sorry site, frontier sorry count unchanged at
-    4. -/
+    (`NonemptyStructure.lean:7502`/`:7743`). -/
 lemma nestedSeq_recseqentry_locate
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -11134,7 +11099,7 @@ lemma nestedSeq_recseqentry_locate
     `h_seq_rec`'s bracket guards + global well-typedness ⟹ this locator's `SeqTypedInterior` +
     `SeqPathAllSeq` gate — is the next residual).  Located by comparing GATE STRENGTH against each
     candidate consumer's window-guard, in BOTH directions.  Map mirror (`RecMapBody` axis) owed for
-    `:7743` regardless.  References no sorry site, frontier sorry count unchanged at 4. -/
+    `:7743` regardless. -/
 lemma nestedSeq_recseqbody_of_locator
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -11198,8 +11163,8 @@ lemma nestedSeq_recseqbody_of_locator
     seqs the navigator cannot ([[ref-stored-vs-projected-severs-recursion-edge]]: the recursion threads
     descent structurally through its own IH, never the global spine).  Its open residual is a path-FREE (or
     joint seq+map) per-window `FlowBodyContent` source for `bodySucc`; this all-seq-path provider is the
-    discharged ARM of the eventual dispatch.  Composes only landed lemmas (navigator + R506), references no
-    sorry site, frontier sorry count unchanged; axiom-clean. -/
+    discharged ARM of the eventual dispatch.  Composes only landed lemmas (navigator + R506);
+    axiom-clean. -/
 lemma nestedSeq_flowBodyContent_of_locator
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -11238,8 +11203,7 @@ lemma nestedSeq_flowBodyContent_of_locator
     `SafeBodyUnit` one — is the direct deliverable for `h_seq_rec` (modulo a gate-strengthening bridge).
     The seq sorry (`NonemptyStructure.lean:7502`) cannot close on the seq locator ALONE: `FlowSubrangesOk
     tokens` also quantifies a `map` half (a top-level seq can nest a mapping, `[{a: b}]`), so the map
-    mirror (`RecMapBody` axis) is owed regardless.  References no sorry site, frontier sorry count
-    unchanged at 4. -/
+    mirror (`RecMapBody` axis) is owed regardless. -/
 lemma nestedSeq_safeBodyUnit_of_locator
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (a b : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -11289,7 +11253,7 @@ lemma nestedSeq_safeBodyUnit_of_locator
     This wrapper NAMES the exact `h_safe` interface the joint induction consumes and isolates the
     `SeqPathAllSeq`-threading as the nested arm's lone non-emission hypothesis
     ([[ref-consumer-joint-before-producer]] / [[ref-parametric-assembler-extraction]]).  Composes only
-    landed lemmas, references no sorry site, frontier sorry count unchanged at 4; axiom-clean. -/
+    landed lemmas; axiom-clean. -/
 lemma seqWindow_safeBodyUnit
     (items : Array YamlValue) (tokens : Array (Positioned YamlToken)) (lo hi : Nat)
     (h_scan : Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens)
@@ -11406,3 +11370,5 @@ lemma seqRoot_carrier_r447
   exact seqWidthEnc_of_recIH_seq tokens 2 (tokens.size - 2) h_root_win h_root_deep recIH
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

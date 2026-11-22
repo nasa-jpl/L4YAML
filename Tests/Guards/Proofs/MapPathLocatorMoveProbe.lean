@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Map-path locator single-step probe — `(i'-b-B2c-map-mirror — STEP D)`
@@ -187,3 +191,5 @@ def M3 : Array (Positioned YamlToken) :=
 #guard decide (M3[6]!.val == .flowMappingStart)
 
 end L4YAML.Proofs.EmitterScannability.MapPathLocatorMoveProbe
+
+end Blanket

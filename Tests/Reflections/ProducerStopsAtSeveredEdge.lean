@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 338 — a PRODUCER stops at a severed edge as a leaf; a NAVIGATOR dies there
 
@@ -165,3 +170,5 @@ theorem discriminator_is_whole_path :
 #guard pathAllSeq boxPathWin == false
 
 end Tests.Reflections.ProducerStopsAtSeveredEdge
+
+end Blanket

@@ -1,4 +1,8 @@
-import LeanYaml
+module
+
+public import LeanYaml
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -150,3 +154,5 @@ def main : IO Unit := do
   exampleCoreSchema
 
 end TypedExamples
+
+end Blanket

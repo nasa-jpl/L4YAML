@@ -2,9 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Surface.Combinators
-import L4YAML.Spec.Types
-import L4YAML.Spec.CharPredicates
+
+module
+
+public import L4YAML.Surface.Combinators
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.CharPredicates
+
+@[expose] public section Blanket
 
 /-!
 # Basic Surface Syntax Productions — Chapters 5–6
@@ -126,14 +131,21 @@ def SIndentLe (n : Nat) (s s' : SurfPos) : Prop :=
 /-! ## §4 Line Prefixes [67]–[73] -/
 
 /-- [66] s-separate-in-line: one or more whitespace chars, or start of line.
-    Start of line is represented by the zero-width match.
-    Note: The YAML spec restricts start-of-line to col=0, but the scanner
-    treats BOM as transparent for separation (§5.2), allowing comments at
-    col>0 after BOM. We weaken the column constraint to avoid a proof gap
-    at ~20 sorry sites while remaining sound (the scanner validates separation). -/
+    Start of line is the zero-width match at column 0 and nowhere else, as the
+    spec has it.  The scanner's BOM transparency (§5.2) needs no extra arm:
+    `ScannerState.consumeBOM` advances past the BOM and puts the column back to
+    0, and it runs only at stream start, so every position after a BOM that a
+    separator is spent at already has `col = 0`. -/
 inductive SSeparateInLine : SurfPos → SurfPos → Prop where
   | whites (s s' : SurfPos) : GPlus SSWhite s s' → SSeparateInLine s s'
-  | startOfLine (s : SurfPos) : SSeparateInLine s s
+  | startOfLine (chars : List Char) : SSeparateInLine ⟨chars, 0⟩ ⟨chars, 0⟩
+
+/-- `startOfLine` at a position known to sit at column 0. -/
+lemma SSeparateInLine.startOfLine_of_col0 {s : SurfPos} (h : s.col = 0) :
+    SSeparateInLine s s := by
+  obtain ⟨chars, col⟩ := s
+  simp only at h; subst h
+  exact .startOfLine chars
 
 /-- [71] s-flow-line-prefix(n): indent + optional inline separation. -/
 inductive SFlowLinePrefix : Nat → SurfPos → SurfPos → Prop where
@@ -216,15 +228,44 @@ starts with '%' at the beginning of a line, followed by non-break content,
 and ends with comments. The detailed directive validation is handled by
 the scanner/parser — the surface syntax just needs to recognize the shape. -/
 
-/-- [82] l-directive: directive line starting with '%'.
-    Simplified encoding: '%' + non-break characters + s-l-comments.
-    Uses `SCommentChar` (any non-break; see `isCommentTextChar`) rather
-    than SNsChar (non-space) because directive content includes spaces
-    (e.g., `%YAML 1.2`, `%TAG !e! prefix`), and rather than strict
-    nb-char [27] because the trailing content is stripped unvalidated. -/
+/-- [82] l-directive, stated as the scanner reads it (`scanDirective`, item 367).
+    `'%'` then the directive NAME (a maximal run of ns-chars, `collectDirectiveNameLoop`),
+    then one of three bodies:
+    * `yaml` — name `YAML`: whites, `[86] ns-yaml-version` = digits `.` digits (both runs
+      non-empty), then `[79] s-l-comments` (a `#` needs a white before it: the scanner's
+      `directiveTrailingContent` check);
+    * `tag` — name `TAG`: whites, `[89] c-tag-handle` chars (word chars and `!`, a maximal run —
+      the scanner's handle loop stops only at a non-handle character), whites, the prefix
+      (`[39] ns-uri-char`s), then `s-l-comments`;
+    * `reserved` — any other name (`[83]`; the empty name included, as the scanner accepts
+      `%` alone), stated as the maximal ns-char run that is neither `YAML` nor `TAG`: the rest
+      of the line unvalidated (`skipToEndOfLine`), then `s-l-comments`.
+    Before item 367 the production was `'%'` + any non-break run + `s-l-comments`, wider than
+    the scanner on every `%YAML`/`%TAG` line. -/
 inductive SLDirective : SurfPos → SurfPos → Prop where
-  | mk (rest : List Char) (col : Nat) (s₁ s' : SurfPos) :
-      GStar SCommentChar ⟨rest, col + 1⟩ s₁ →
+  | yaml (rest : List Char) (col : Nat) (s₁ s₂ s₃ s₄ s' : SurfPos) :
+      GNot (GChar isNsChar) ⟨rest, col + 5⟩ →
+      GStar SSWhite ⟨rest, col + 5⟩ s₁ →
+      GPlus (GChar isNsDecDigit) s₁ s₂ →
+      GLit '.' s₂ s₃ →
+      GPlus (GChar isNsDecDigit) s₃ s₄ →
+      SSLComments s₄ s' →
+      SLDirective ⟨'%' :: 'Y' :: 'A' :: 'M' :: 'L' :: rest, col⟩ s'
+  | tag (rest : List Char) (col : Nat) (s₁ s₂ s₃ s₄ s' : SurfPos) :
+      GNot (GChar isNsChar) ⟨rest, col + 4⟩ →
+      GStar SSWhite ⟨rest, col + 4⟩ s₁ →
+      GStar (GChar (fun c => isWordCharProp c ∨ c = '!')) s₁ s₂ →
+      GNot (GChar (fun c => isWordCharProp c ∨ c = '!')) s₂ →
+      GStar SSWhite s₂ s₃ →
+      GStar (GChar isUriCharProp) s₃ s₄ →
+      SSLComments s₄ s' →
+      SLDirective ⟨'%' :: 'T' :: 'A' :: 'G' :: rest, col⟩ s'
+  | reserved (rest : List Char) (col : Nat) (s₀ s₁ s' : SurfPos) :
+      GStar (GChar isNsChar) ⟨rest, col + 1⟩ s₀ →
+      GNot (GChar isNsChar) s₀ →
+      rest ≠ 'Y' :: 'A' :: 'M' :: 'L' :: s₀.chars →
+      rest ≠ 'T' :: 'A' :: 'G' :: s₀.chars →
+      GStar SCommentChar s₀ s₁ →
       SSLComments s₁ s' →
       SLDirective ⟨'%' :: rest, col⟩ s'
 
@@ -235,7 +276,10 @@ shorthand (`!!type`, `!handle!suffix`), and non-specific (`!`) forms.
 Anchors have `&name` syntax. We encode the common patterns. -/
 
 /-- [97] c-ns-tag-property: tag starting with '!'.
-    Simplified: '!' followed by zero or more non-blank characters. -/
+    [99] c-ns-shorthand-tag is `c-tag-handle ns-tag-char+`, so the `primary`
+    suffix is non-empty and the bare `!` is only `nonSpecific` ([100]).
+    Every arm ends with the MAXIMAL `[40] ns-tag-char` run (`GNot` lookahead):
+    `!t` is the primary tag `!t`, never `!` followed by `t`. -/
 inductive SCNsTagProperty : SurfPos → SurfPos → Prop where
   | verbatim (rest : List Char) (col : Nat) (s₁ s₂ s' : SurfPos) :
       GLit '<' ⟨rest, col + 1⟩ s₁ →
@@ -244,22 +288,30 @@ inductive SCNsTagProperty : SurfPos → SurfPos → Prop where
       SCNsTagProperty ⟨'!' :: rest, col⟩ s'
   | secondary (srest : List Char) (col : Nat) (s' : SurfPos) :
       GStar (GChar isTagCharProp) ⟨srest, col + 2⟩ s' →
+      GNot (GChar isTagCharProp) s' →
       SCNsTagProperty ⟨'!' :: '!' :: srest, col⟩ s'
   | named (rest : List Char) (col : Nat) (s₁ s₂ s' : SurfPos) :
       GPlus (GChar isWordCharProp) ⟨rest, col + 1⟩ s₁ →
       GLit '!' s₁ s₂ →
       GStar (GChar isTagCharProp) s₂ s' →
+      GNot (GChar isTagCharProp) s' →
       SCNsTagProperty ⟨'!' :: rest, col⟩ s'
   | nonSpecific (rest : List Char) (col : Nat) :
+      GNot (GChar isTagCharProp) ⟨rest, col + 1⟩ →
       SCNsTagProperty ⟨'!' :: rest, col⟩ ⟨rest, col + 1⟩
   | primary (rest : List Char) (col : Nat) (s' : SurfPos) :
-      GStar (GChar isTagCharProp) ⟨rest, col + 1⟩ s' →
+      GPlus (GChar isTagCharProp) ⟨rest, col + 1⟩ s' →
+      GNot (GChar isTagCharProp) s' →
       SCNsTagProperty ⟨'!' :: rest, col⟩ s'
 
-/-- [101] c-ns-anchor-property: anchor starting with '&'. -/
+/-- [101] c-ns-anchor-property: '&' followed by the MAXIMAL run of
+    `ns-anchor-char` ([102] `ns-anchor-name` is `ns-anchor-char+`; the name
+    cannot stop in front of another anchor char, so `&xa` is the anchor `xa`
+    and never the anchor `x` followed by `a`). -/
 inductive SCNsAnchorProperty : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) (col : Nat) (s' : SurfPos) :
       GPlus (GChar isNsAnchorChar) ⟨rest, col + 1⟩ s' →
+      GNot (GChar isNsAnchorChar) s' →
       SCNsAnchorProperty ⟨'&' :: rest, col⟩ s'
 
 /-- [96] c-ns-properties(n,c): tag + optional (sep + anchor), or
@@ -296,3 +348,5 @@ def seqSpaces (n : Nat) (c : YamlContext) : Nat :=
 abbrev SENode : SurfPos → SurfPos → Prop := GEps
 
 end L4YAML.Surface
+
+end Blanket

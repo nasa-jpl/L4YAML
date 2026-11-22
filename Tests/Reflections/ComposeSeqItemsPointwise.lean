@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 595 -- compose sequence items element-wise (outer-parse half)
@@ -97,7 +101,7 @@ theorem seq_items_pointwise_concrete
     (_h_parse : parseYamlRaw (emit seqAB) = .ok docs)
     (h_size : docs.size = 1)
     (items' items'' : Array YamlValue)
-    (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
+    (h_af : ∀ v ∈ items'.toList, v.anchorAliasFree = true)
     (h_val : docs[0]!.value = .sequence .flow items' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .sequence .flow items'' none none) :
     items'' = items'.map (fun v => (v.resolveAliases docs[0]!.anchors).stripAnchors) := by
@@ -117,7 +121,7 @@ theorem scalar_item_concrete_elem0
     (_h_parse : parseYamlRaw (emit seqAB) = .ok docs)
     (h_size : docs.size = 1)
     (items' items'' : Array YamlValue)
-    (h_af : ∀ v ∈ items'.toList, v.anchorFree = true)
+    (h_af : ∀ v ∈ items'.toList, v.anchorAliasFree = true)
     (h_val : docs[0]!.value = .sequence .flow items' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .sequence .flow items'' none none)
     (h_items_size : 0 < items'.size)
@@ -147,3 +151,5 @@ theorem scalar_item_concrete_elem0
 #print axioms compose_seq_scalar_item
 
 end ComposeSeqItemsPointwise
+
+end Blanket

@@ -2,12 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Indexed.TokenStream
 
-/-! # `IndexedPresenter` — Phase 3 Step 5c `present : TokenStream input → String` (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 cutover commit (Step 6).
+public import L4YAML.Indexed.TokenStream
+
+@[expose] public section Blanket
+
+/-! # `IndexedPresenter` — Phase 3 Step 5c `present : TokenStream input → String`
 
 ## Role in the four-stage pipeline
 
@@ -108,10 +110,7 @@ def renderToken {input : String} (tok : Indexed.IxToken input) : String :=
     `scanIx (present ts) = .ok ts`). The corpus is restricted to
     inputs whose token streams cover every byte of `input` with no
     inter-token whitespace gaps — see
-    `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean`.
-
-    **Phase 3 Step 5c — staging**: this file is not imported by
-    `L4YAML.lean` until the cutover commit (Step 6). -/
+    `L4YAML/Proofs/Scanner/IndexedRoundtrip.lean`. -/
 def present {input : String} (ts : Indexed.TokenStream input) : String :=
   ts.tokens.foldl (init := "") fun acc tok => acc ++ renderToken tok
 
@@ -119,3 +118,5 @@ def present {input : String} (ts : Indexed.TokenStream input) : String :=
     present (Indexed.TokenStream.empty input) = "" := rfl
 
 end L4YAML.Scanner.Indexed
+
+end Blanket

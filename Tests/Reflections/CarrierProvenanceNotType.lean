@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 346 — a "narrow the root carrier" cycle-break works only if the carrier has an emission-INDEPENDENT producer; narrowability is provenance-blind and certifies nothing
 
@@ -108,3 +113,5 @@ theorem narrow_same {lo hi : Nat} (h : Carrier lo hi) : Carrier lo hi :=
   narrow (Nat.le_refl lo) (Nat.le_refl hi) h
 
 end Tests.Reflections.CarrierProvenanceNotType
+
+end Blanket

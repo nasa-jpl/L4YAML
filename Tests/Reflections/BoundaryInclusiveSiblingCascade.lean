@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 471 — the BOUNDARY-INCLUSIVE SIBLING CASCADE: when a BUNDLED multi-structure deliverable
 # needs the opener-inclusive convention, EACH structure owes its own sibling — but the COST DECREASES,
@@ -131,3 +136,5 @@ example : tok [1, 0, -1] 1 = 0 := rfl
 example : isContentStart (tok [1, 0, -1] 1) := by unfold isContentStart tok; decide
 
 end BoundaryInclusiveSiblingCascade
+
+end Blanket

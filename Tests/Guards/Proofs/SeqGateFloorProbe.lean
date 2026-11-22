@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Seq-gate floor probe (de-risk for `(i'-b-locator-glue-close)`, R313)
@@ -117,3 +121,5 @@ def N : Array (Positioned YamlToken) :=
 #guard N[6]!.val == .flowSequenceEnd            -- ... and it is a `]`
 
 end L4YAML.Proofs.EmitterScannability.SeqGateFloorProbe
+
+end Blanket

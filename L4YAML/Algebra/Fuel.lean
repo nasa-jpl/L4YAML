@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
+
+module
+
+public import L4YAML.Init
+
+@[expose] public section Blanket
 
 /-! # Parse-side Fuel Algebra  (Algebra Item 11)
 
@@ -186,3 +191,5 @@ lemma iterateOpt_add (step : α → Option α) (n m : Fuel) (x : α) :
     | some y => simp [ih]
 
 end L4YAML.Algebra.Fuel
+
+end Blanket

@@ -31,6 +31,11 @@ and instantiates it at both polarities — `Succ := (· = .key)` / `closeTok := 
 `Succ := isContent` / `closeTok := .seqEnd` for sequences — plus a concrete two-pair map body.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace DescendTailDualUseSeparatorSuccessor
 
 set_option autoImplicit false
@@ -168,3 +173,5 @@ end DescendTailDualUseSeparatorSuccessor
 /-- info: 'DescendTailDualUseSeparatorSuccessor.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms DescendTailDualUseSeparatorSuccessor.demo
+
+end Blanket

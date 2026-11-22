@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 364 — demoting a recursion's DISPATCH from METRIC-keyed to STRUCTURE-keyed does not delete a
 downstream arm's metric fact; the fact migrates from "dispatch byproduct" to "structural derivation", and
@@ -126,3 +131,5 @@ example : bal (incomplete ++ [sep]) ≠ 0 := by decide
 example : ¬ EntryOk incomplete := fun h => absurd h.balanced (by decide)
 
 end Tests.Reflections.DemotedDispatchMetricFromStructure
+
+end Blanket

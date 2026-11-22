@@ -49,13 +49,19 @@ impl YamlValue {
     }
 
     /// Scalar string content. Returns `""` for non-scalar nodes.
-    pub fn as_str(&self) -> Result<&str> {
+    ///
+    /// The result is an owned copy: the C shim hands out a pointer into a
+    /// thread-local slot that the next string-returning `l4yaml_*` call frees.
+    pub fn as_str(&self) -> Result<String> {
         let ptr = unsafe { l4yaml_value_string(self.handle) };
         if ptr.is_null() {
-            return Ok("");
+            return Ok(String::new());
         }
+        // SAFETY: `ptr` is a NUL-terminated string owned by the shim's
+        // thread-local slot, valid only until the next shim string call; we
+        // copy it out before any such call can happen.
         let cstr = unsafe { CStr::from_ptr(ptr) };
-        Ok(cstr.to_str()?)
+        Ok(cstr.to_str()?.to_owned())
     }
 
     /// Number of items (sequence) or pairs (mapping). 0 for scalars.
@@ -103,23 +109,36 @@ impl YamlValue {
     }
 
     /// YAML tag (e.g. `"!!int"`), or `None` if no explicit tag.
-    pub fn tag(&self) -> Option<&str> {
+    ///
+    /// The result is an owned copy; see [`YamlValue::as_str`].
+    pub fn tag(&self) -> Option<String> {
         let ptr = unsafe { l4yaml_value_tag(self.handle) };
-        if ptr.is_null() {
-            return None;
-        }
-        let cstr = unsafe { CStr::from_ptr(ptr) };
-        cstr.to_str().ok()
+        // SAFETY: as in `as_str` — the slot behind `ptr` lives only until the
+        // next shim string call, so it is copied immediately.
+        unsafe { Self::copy_optional_string(ptr) }
     }
 
     /// Anchor name (e.g. `"anchor1"`), or `None` if no anchor.
-    pub fn anchor(&self) -> Option<&str> {
+    ///
+    /// The result is an owned copy; see [`YamlValue::as_str`].
+    pub fn anchor(&self) -> Option<String> {
         let ptr = unsafe { l4yaml_value_anchor(self.handle) };
+        // SAFETY: as in `as_str` — the slot behind `ptr` lives only until the
+        // next shim string call, so it is copied immediately.
+        unsafe { Self::copy_optional_string(ptr) }
+    }
+
+    /// Copy a nullable C string returned by the shim into an owned `String`.
+    ///
+    /// # Safety
+    /// `ptr` must be null or a NUL-terminated string that is still live, i.e.
+    /// no other shim string-returning call has happened since it was obtained.
+    unsafe fn copy_optional_string(ptr: *const std::os::raw::c_char) -> Option<String> {
         if ptr.is_null() {
             return None;
         }
         let cstr = unsafe { CStr::from_ptr(ptr) };
-        cstr.to_str().ok()
+        cstr.to_str().ok().map(str::to_owned)
     }
 
     /// Collect all mapping keys as strings.
@@ -128,7 +147,7 @@ impl YamlValue {
         let mut out = Vec::with_capacity(n);
         for i in 0..n {
             let k = self.map_key(i)?;
-            out.push(k.as_str()?.to_string());
+            out.push(k.as_str()?);
         }
         Ok(out)
     }
@@ -140,7 +159,7 @@ impl YamlValue {
         for i in 0..n {
             let k = self.map_key(i)?;
             let v = self.map_val(i)?;
-            out.push((k.as_str()?.to_string(), v));
+            out.push((k.as_str()?, v));
         }
         Ok(out)
     }

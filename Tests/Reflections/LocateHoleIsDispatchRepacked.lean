@@ -40,6 +40,11 @@ What this file does:
 * toy instances RUN `locateOfBricks` end-to-end to a closed `LocateHole` value.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace LocateHoleIsDispatchRepacked
 
 set_option autoImplicit false
@@ -125,3 +130,5 @@ end LocateHoleIsDispatchRepacked
 /-- info: 'LocateHoleIsDispatchRepacked.locateOfBricks' does not depend on any axioms -/
 #guard_msgs in
 #print axioms LocateHoleIsDispatchRepacked.locateOfBricks
+
+end Blanket

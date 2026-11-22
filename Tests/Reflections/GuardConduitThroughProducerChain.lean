@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 440 — a consumer-boundary guard is only HALF a fix: it must be CONDUITED back
 # through the producer-hypothesis chain to the LEAF producer slot, where a pre-built floored
@@ -160,3 +165,5 @@ example :
   ⟨unflooredRec_unsatisfiable, docked⟩
 
 end Tests.Reflections.GuardConduitThroughProducerChain
+
+end Blanket

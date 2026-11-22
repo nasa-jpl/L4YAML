@@ -1,7 +1,11 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
-import L4YAML.Proofs.Scanner.ScannerContracts
-import L4YAML.Proofs.Scanner.ScannerWhitespace
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+public import L4YAML.Proofs.Scanner.ScannerContracts
+public import L4YAML.Proofs.Scanner.ScannerWhitespace
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -176,3 +180,5 @@ lemma emitAt_then_blockFlags_preserves_wellFormed (s : ScannerState)
 
 
 end L4YAML.Proofs.ScannerScalar
+
+end Blanket

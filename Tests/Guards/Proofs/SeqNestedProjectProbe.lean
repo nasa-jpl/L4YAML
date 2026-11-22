@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `rec_seq_body_nested_project` measure + offset-rebasing probe
@@ -145,3 +149,5 @@ def D : Array (Positioned YamlToken) :=
 #guard (((D.toList.take 7).drop 4).map (·.val)) == [D[4]!.val, D[5]!.val, D[6]!.val]
 
 end L4YAML.Proofs.EmitterScannability.SeqNestedProjectProbe
+
+end Blanket

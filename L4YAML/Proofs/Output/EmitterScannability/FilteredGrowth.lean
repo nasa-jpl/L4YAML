@@ -2,7 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.EmitterScannability.ScanSteps
+
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ScanSteps
+public import L4YAML.Proofs.Scanner.BlockScalarFlowGuard
+
+@[expose] public section Blanket
 
 /-!
 # Emitter Scannability — Filtered Token Growth Infrastructure
@@ -28,6 +34,7 @@ open L4YAML.Proofs.CouplingBridge
 open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.ScalarCoupling
+open L4YAML.Proofs.FlowAdjacency
 
 /-! ### First-filtered-token lemmas for flow-content scanners (Tier 2 Turn 1)
 
@@ -45,6 +52,7 @@ lemma scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : List
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0)
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
     (s.tokens.filter (fun t => t.val != .placeholder)).size <
       (s'.tokens.filter (fun t => t.val != .placeholder)).size ∧
@@ -69,11 +77,16 @@ lemma scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : List
   else saveSimpleKey s
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     simp only [s_ad]; split <;> exact h_sk_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '[' (h_ad_flow ▸ h_flow)
+  have h_ad_tokens : s_ad.tokens = (saveSimpleKey s).tokens := by
+    simp only [s_ad]; split <;> rfl
   have h_flow_disp := dispatchFlowIndicators_bracket s_ad
+    (checkFlowAdjacency_ok_of_notCompletes (fun t ht =>
+      saveSimpleKey_preserves_completesFalse s h_last t (h_ad_tokens ▸ ht)))
   have h_snt_eq : scanNextToken s = .ok (some (scanFlowSequenceStart s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowSequenceStart s_ad := by
     have h := h_snt.symm.trans h_snt_eq
     exact Option.some.inj (Except.ok.inj h)
@@ -82,7 +95,8 @@ lemma scanFlowSequenceStart_first_filtered_token (s : ScannerState) (rest : List
       = s_ad.tokens.push ⟨s_ad.currentPos, .flowSequenceStart, s_ad.currentPos⟩ := by
     show ({ ({ s_ad with simpleKey := _ }.emit .flowSequenceStart).advance with
         flowLevel := _, simpleKeyAllowed := _,
-        flowStack := _, simpleKeyStack := _ }).tokens = _
+        flowStack := _, simpleKeyStack := _,
+        explicitKeyStack := _, explicitKeyLine := _, explicitKeyCol := _ }).tokens = _
     simp only [ScannerCorrectness.advance_preserves_tokens,
                ScannerState.emit, ScannerState.currentPos]
   have h_ad_tokens_filter :
@@ -105,6 +119,7 @@ lemma scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : List 
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0)
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
     (s.tokens.filter (fun t => t.val != .placeholder)).size <
       (s'.tokens.filter (fun t => t.val != .placeholder)).size ∧
@@ -128,11 +143,16 @@ lemma scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : List 
   else saveSimpleKey s
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     simp only [s_ad]; split <;> exact h_sk_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
+  have h_ad_tokens : s_ad.tokens = (saveSimpleKey s).tokens := by
+    simp only [s_ad]; split <;> rfl
   have h_flow_disp := dispatchFlowIndicators_brace s_ad
+    (checkFlowAdjacency_ok_of_notCompletes (fun t ht =>
+      saveSimpleKey_preserves_completesFalse s h_last t (h_ad_tokens ▸ ht)))
   have h_snt_eq : scanNextToken s = .ok (some (scanFlowMappingStart s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowMappingStart s_ad := by
     have h := h_snt.symm.trans h_snt_eq
     exact Option.some.inj (Except.ok.inj h)
@@ -140,7 +160,8 @@ lemma scanFlowMappingStart_first_filtered_token (s : ScannerState) (rest : List 
       = s_ad.tokens.push ⟨s_ad.currentPos, .flowMappingStart, s_ad.currentPos⟩ := by
     show ({ ({ s_ad with simpleKey := _ }.emit .flowMappingStart).advance with
         flowLevel := _, simpleKeyAllowed := _,
-        flowStack := _, simpleKeyStack := _ }).tokens = _
+        flowStack := _, simpleKeyStack := _,
+        explicitKeyStack := _, explicitKeyLine := _, explicitKeyCol := _ }).tokens = _
     simp only [ScannerCorrectness.advance_preserves_tokens,
                ScannerState.emit, ScannerState.currentPos]
   have h_ad_tokens_filter :
@@ -219,6 +240,7 @@ lemma scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Char
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col : s.col > 0)
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
     (s.tokens.filter (fun t => t.val != .placeholder)).size <
       (s'.tokens.filter (fun t => t.val != .placeholder)).size ∧
@@ -243,9 +265,12 @@ lemma scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Char
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     simp only [s_ad]; split <;> exact h_sk_flow
   have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
+  have h_ad_tokens : s_ad.tokens = (saveSimpleKey s).tokens := by
+    simp only [s_ad]; split <;> rfl
   have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
     dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+      (checkFlowAdjacency_ok_of_notCompletes (fun t ht =>
+        saveSimpleKey_preserves_completesFalse s h_last t (h_ad_tokens ▸ ht)))
   have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
     dispatchBlockIndicators_none_quote _
   -- From h_snt + dispatch composition, dispatchContent must succeed and yield s'
@@ -254,14 +279,20 @@ lemma scanDoubleQuoted_first_filtered_token (s : ScannerState) (rest : List Char
     | error e =>
       exfalso
       have h_snt_err := scanNextToken_via_content_dispatch_error
-        _ _ _ _ _ h_pp h_struct rfl h_check h_flow_none h_block_none h_dc_eq
+        _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_none h_block_none
+        (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
         (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextToken_ok_checkDanglingNode h_pp h_snt)
       rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
     | ok s_dc =>
       have h_snt_eq : scanNextToken s = Except.ok (some s_dc) :=
-        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
-          h_flow_none h_block_none h_dc_eq
+        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt)
+          h_flow_none h_block_none
+          (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
           (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+          (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+          (scanNextToken_ok_checkDanglingNode h_pp h_snt)
       have h_eq2 : s' = s_dc := Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
       subst h_eq2; rfl
   -- Extract scanDoubleQuoted's effect from dispatchContent
@@ -348,6 +379,7 @@ lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : Li
     (h_ek : s.explicitKeyLine = none) (h_ska : s.simpleKeyAllowed = true)
     (h_ssv : ScannerCorrectness.SimpleKeyStackValid s)
     (h_c : c = '[' ∨ c = '{' ∨ c = '"')
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false)
     (h_snt : scanNextToken s = .ok (some s')) :
     s'.tokens.size = s.tokens.size + 3 ∧
     NoOverwriteAt s' (s.tokens.size + 2) ∧
@@ -366,6 +398,8 @@ lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : Li
     simp only [s_ad]; split <;> rfl
   have h_ad_tokens : s_ad.tokens = (saveSimpleKey s).tokens := by
     simp only [s_ad]; split <;> rfl
+  have h_nc : ∀ t, lastRealTokenVal? s_ad.tokens = some t → t.completesFlowValue = false :=
+    fun t ht => saveSimpleKey_preserves_completesFalse s h_last t (h_ad_tokens ▸ ht)
   have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
   rcases h_c with rfl | rfl | rfl
   · -- '[' : s' = scanFlowSequenceStart s_ad
@@ -373,11 +407,13 @@ lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : Li
       scanNextToken_preprocess_flow s '[' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
     have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '[' = .ok none :=
       dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
-    have h_check := checkBlockFlowIndent_ok_flow s_ad '[' (h_ad_flow ▸ h_flow)
     have h_flow_disp := dispatchFlowIndicators_bracket s_ad
+      (checkFlowAdjacency_ok_of_notCompletes h_nc)
     have h_snt_eq : scanNextToken s = .ok (some (scanFlowSequenceStart s_ad)) :=
-      scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+      scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
         (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextToken_ok_checkDanglingNode h_pp h_snt)
     have h_s' : s' = scanFlowSequenceStart s_ad :=
       Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
     have h_stack_eq : s'.simpleKeyStack = s.simpleKeyStack.push (saveSimpleKey s).simpleKey := by
@@ -401,11 +437,13 @@ lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : Li
       scanNextToken_preprocess_flow s '{' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
     have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '{' = .ok none :=
       dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
-    have h_check := checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
     have h_flow_disp := dispatchFlowIndicators_brace s_ad
+      (checkFlowAdjacency_ok_of_notCompletes h_nc)
     have h_snt_eq : scanNextToken s = .ok (some (scanFlowMappingStart s_ad)) :=
-      scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+      scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
         (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextToken_ok_checkDanglingNode h_pp h_snt)
     have h_s' : s' = scanFlowMappingStart s_ad :=
       Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
     have h_stack_eq : s'.simpleKeyStack = s.simpleKeyStack.push (saveSimpleKey s).simpleKey := by
@@ -430,9 +468,9 @@ lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : Li
     have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) '"' = .ok none :=
       dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent) (h_sk_col ▸ h_col)
     have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
-    have h_check := checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
     have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
       dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+        (checkFlowAdjacency_ok_of_notCompletes h_nc)
     have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
       dispatchBlockIndicators_none_quote _
     -- identify s' = dispatchContent output
@@ -441,14 +479,20 @@ lemma emitList_head_step_noOverwrite (s s' : ScannerState) (c : Char) (rest : Li
       | error e =>
         exfalso
         have h_snt_err := scanNextToken_via_content_dispatch_error
-          _ _ _ _ _ h_pp h_struct rfl h_check h_flow_none h_block_none h_dc_eq
+          _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_none h_block_none
+          (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
           (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+          (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+          (scanNextToken_ok_checkDanglingNode h_pp h_snt)
         rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
       | ok s_dc =>
         have h_snt_eq : scanNextToken s = Except.ok (some s_dc) :=
-          scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
-            h_flow_none h_block_none h_dc_eq
+          scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt)
+            h_flow_none h_block_none
+            (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
             (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+            (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+            (scanNextToken_ok_checkDanglingNode h_pp h_snt)
         have h_eq2 : s' = s_dc := Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
         subst h_eq2; rfl
     -- extract scanDoubleQuoted result and relate s' to it
@@ -709,7 +753,7 @@ lemma Array_filter_setIfInBounds_of_not_pass {α : Type} (a : Array α) (i : Nat
   have hi' : i < a.toList.length := by simpa [Array.length_toList] using hi
   have h_old' : p (a.toList[i]'hi') = false := by
     rw [Array.getElem_toList]; exact h_old
-  rw [Array.setIfInBounds, dif_pos hi, Array.toList_filter, Array.toList_set]
+  rw [Array.setIfInBounds, dite_eq_left hi, Array.toList_filter, Array.toList_set]
   exact List_filter_set_of_not_pass a.toList i v p hi' h_old' h_new
 
 /-- **Colon block-suffix identity.** If the filtered prefix `(l.take k).filter p`
@@ -958,6 +1002,8 @@ lemma scanTagDirective_new_token_eq (s s_after_ws : ScannerState) (startPos : Ya
   dsimp only [] at h
   simp only [bind, Except.bind] at h
   split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at h
   · -- some '#'
     split at h
     · contradiction
@@ -1144,7 +1190,7 @@ lemma scanBlockEntry_filtered_grows (s s' : ScannerState)
   -- h_new: the last token is .blockEntry (non-placeholder)
   unfold scanBlockEntry at h; dsimp only [] at h
   simp only [bind, Except.bind] at h
-  repeat (split at h)
+  repeat' (split at h)
   all_goals (first | contradiction | skip)
   all_goals (injection h with h_eq; subst h_eq; dsimp only [])
   all_goals simp only [ScannerCorrectness.advance_preserves_tokens, emit_tokens_push,
@@ -1164,9 +1210,10 @@ lemma scanKey_filtered_grows (s s' : ScannerState)
     (by have := ScannerCorrectness.scanKey_adds_one_token s s' h; omega)
   -- h_new: the last token is .key (non-placeholder)
   unfold scanKey at h
-  simp only [] at h
+  simp only [bind, Except.bind] at h
   split at h
-  · -- !inFlow: pushMappingIndent called
+  · -- !inFlow: `scanKeyValidate` (item 131), then pushMappingIndent
+    split at h <;> try contradiction
     split at h
     · split at h
       · contradiction
@@ -1205,77 +1252,79 @@ lemma scanValue_filtered_grows (s s' : ScannerState)
   · contradiction
   · split at h
     · contradiction
-    · injection h with h_eq; subst h_eq; dsimp only []
-      simp only [ScannerCorrectness.advance_preserves_tokens]
-      -- Goal: ((scanValuePrepare (scanValueClearKey s)).emit(.value).tokens.filter p).size
-      --       ≥ (s.tokens.filter p).size + 1
-      -- Step 1: emit .value adds 1 non-placeholder via filtered_grows_of_extended_prefix
-      have h_emit_grows :=
-        filtered_grows_of_extended_prefix
-          (scanValuePrepare (scanValueClearKey s)).tokens
-          ((scanValuePrepare (scanValueClearKey s)).emit .value).tokens
-          (fun t => t.val != .placeholder)
-          (by unfold ScannerState.emit; simp [Array.size_push])
-          (fun i hi => ScannerCorrectness.emit_preserves_tokens_at _ .value i hi)
-          (by simp only [emit_tokens_push, Array.getElem_push_eq]; decide)
-      -- Step 2: scanValuePrepare is filter-monotonic
-      have h_ck : (scanValueClearKey s).tokens = s.tokens :=
-        ScannerCorrectness.scanValueClearKey_preserves_tokens s
-      suffices h_prep_mono :
-          ((scanValuePrepare (scanValueClearKey s)).tokens.filter
-            (fun t => t.val != .placeholder)).size ≥
-          (s.tokens.filter (fun t => t.val != .placeholder)).size by omega
-      rw [← h_ck]
-      unfold scanValuePrepare
+    split at h
+    · contradiction   -- scanValueTabCheck (item 31 added the one above)
+    injection h with h_eq; subst h_eq; dsimp only []
+    simp only [ScannerCorrectness.advance_preserves_tokens]
+    -- Goal: ((scanValuePrepare (scanValueClearKey s)).emit(.value).tokens.filter p).size
+    --       ≥ (s.tokens.filter p).size + 1
+    -- Step 1: emit .value adds 1 non-placeholder via filtered_grows_of_extended_prefix
+    have h_emit_grows :=
+      filtered_grows_of_extended_prefix
+        (scanValuePrepare (scanValueClearKey s)).tokens
+        ((scanValuePrepare (scanValueClearKey s)).emit .value).tokens
+        (fun t => t.val != .placeholder)
+        (by unfold ScannerState.emit; simp [Array.size_push])
+        (fun i hi => ScannerCorrectness.emit_preserves_tokens_at _ .value i hi)
+        (by simp only [emit_tokens_push, Array.getElem_push_eq]; decide)
+    -- Step 2: scanValuePrepare is filter-monotonic
+    have h_ck : (scanValueClearKey s).tokens = s.tokens :=
+      ScannerCorrectness.scanValueClearKey_preserves_tokens s
+    suffices h_prep_mono :
+        ((scanValuePrepare (scanValueClearKey s)).tokens.filter
+          (fun t => t.val != .placeholder)).size ≥
+        (s.tokens.filter (fun t => t.val != .placeholder)).size by omega
+    rw [← h_ck]
+    unfold scanValuePrepare
+    split
+    · -- simpleKey.possible = true
+      rename_i h_sk
       split
-      · -- simpleKey.possible = true
-        rename_i h_sk
-        split
-        · split
-          · -- Two setIfInBounds
-            dsimp only []
-            have h1 := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
-              (scanValueClearKey s).simpleKey.tokenIndex
-              ⟨(scanValueClearKey s).simpleKey.pos, .blockMappingStart, (scanValueClearKey s).simpleKey.pos⟩
-              (fun t : Positioned YamlToken => t.val != .placeholder) rfl
-            have h2 := Array_setIfInBounds_filter_mono
-              ((scanValueClearKey s).tokens.setIfInBounds (scanValueClearKey s).simpleKey.tokenIndex
-                ⟨(scanValueClearKey s).simpleKey.pos, .blockMappingStart, (scanValueClearKey s).simpleKey.pos⟩)
-              ((scanValueClearKey s).simpleKey.tokenIndex + 1)
-              ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
-              (fun t : Positioned YamlToken => t.val != .placeholder) rfl
-            omega
-          · -- One setIfInBounds
-            dsimp only []
-            have := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
-              ((scanValueClearKey s).simpleKey.tokenIndex + 1)
-              ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
-              (fun t : Positioned YamlToken => t.val != .placeholder) rfl
-            omega
-        · -- inFlow: one setIfInBounds
+      · split
+        · -- Two setIfInBounds
+          dsimp only []
+          have h1 := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
+            (scanValueClearKey s).simpleKey.tokenIndex
+            ⟨(scanValueClearKey s).simpleKey.pos, .blockMappingStart, (scanValueClearKey s).simpleKey.pos⟩
+            (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+          have h2 := Array_setIfInBounds_filter_mono
+            ((scanValueClearKey s).tokens.setIfInBounds (scanValueClearKey s).simpleKey.tokenIndex
+              ⟨(scanValueClearKey s).simpleKey.pos, .blockMappingStart, (scanValueClearKey s).simpleKey.pos⟩)
+            ((scanValueClearKey s).simpleKey.tokenIndex + 1)
+            ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
+            (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+          omega
+        · -- One setIfInBounds
           dsimp only []
           have := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
             ((scanValueClearKey s).simpleKey.tokenIndex + 1)
             ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
             (fun t : Positioned YamlToken => t.val != .placeholder) rfl
           omega
+      · -- inFlow: one setIfInBounds
+        dsimp only []
+        have := Array_setIfInBounds_filter_mono (scanValueClearKey s).tokens
+          ((scanValueClearKey s).simpleKey.tokenIndex + 1)
+          ⟨(scanValueClearKey s).simpleKey.pos, .key, (scanValueClearKey s).simpleKey.pos⟩
+          (fun t : Positioned YamlToken => t.val != .placeholder) rfl
+        omega
+    · split
+      · dsimp only []; omega
       · split
-        · dsimp only []; omega
-        · split
-          · -- pushMappingIndent
-            unfold pushMappingIndent
-            split
-            · -- emit .blockMappingStart
-              dsimp only []
-              have := filtered_grows_of_extended_prefix (scanValueClearKey s).tokens
-                ((scanValueClearKey s).emit .blockMappingStart).tokens
-                (fun t : Positioned YamlToken => t.val != .placeholder)
-                (by unfold ScannerState.emit; simp [Array.size_push])
-                (fun i hi => ScannerCorrectness.emit_preserves_tokens_at _ .blockMappingStart i hi)
-                (by simp only [emit_tokens_push, Array.getElem_push_eq]; decide)
-              omega
-            · omega
+        · -- pushMappingIndent
+          unfold pushMappingIndent
+          split
+          · -- emit .blockMappingStart
+            dsimp only []
+            have := filtered_grows_of_extended_prefix (scanValueClearKey s).tokens
+              ((scanValueClearKey s).emit .blockMappingStart).tokens
+              (fun t : Positioned YamlToken => t.val != .placeholder)
+              (by unfold ScannerState.emit; simp [Array.size_push])
+              (fun i hi => ScannerCorrectness.emit_preserves_tokens_at _ .blockMappingStart i hi)
+              (by simp only [emit_tokens_push, Array.getElem_push_eq]; decide)
+            omega
           · omega
+        · omega
 
 -- Block indicator dispatch: scanBlockEntry, scanKey, scanValue.
 lemma dispatchBlockIndicators_filtered_grows (s s' : ScannerState) (c : Char)
@@ -1311,7 +1360,9 @@ lemma dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
   simp only [Except.bind] at h
   -- '&' anchor
   split at h
-  · generalize h_sc : scanAnchorOrAlias s true = result at h
+  · split at h   -- item 9e: the property-run guard
+    · simp at h
+    generalize h_sc : scanAnchorOrAlias s true = result at h
     cases result with
     | error => simp at h
     | ok s_a =>
@@ -1326,9 +1377,13 @@ lemma dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
         split <;> intro h <;> cases h
   · split at h
     · -- '*' alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
       split at h
       · simp at h
-      · generalize h_sc : scanAnchorOrAlias s false = result at h
+      · -- item 9h: peel `validateAliasClose`, then the alias bind.
+        replace h := L4YAML.Scanner.aliasArm_scan_ok h
+        generalize h_sc : scanAnchorOrAlias s false = result at h
         cases result with
         | error => simp at h
         | ok s_a =>
@@ -1343,6 +1398,8 @@ lemma dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
             intro h; cases h
     · split at h
       · -- '!' tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
         generalize h_sc : scanTag s = result at h
         cases result with
         | error => simp at h
@@ -1386,13 +1443,15 @@ lemma dispatchContent_new_not_placeholder (s s' : ScannerState) (c : Char)
               intro h; cases h
             · -- foundBang = false
               unfold ScannerState.emitAt; dsimp only []
-              simp only [ScannerCorrectness.ScanHelpers.collectTagHandleLoop_preserves_tokens,
+              simp only [ScannerCorrectness.ScanHelpers.collectTagSuffixLoop_preserves_tokens,
+                          ScannerCorrectness.ScanHelpers.collectTagHandleLoop_preserves_tokens,
                           ScannerCorrectness.advance_preserves_tokens, Array.getElem_push_eq]
               intro h; cases h
       · -- remaining: block scalar, double/single quoted, plain
         -- Further case-split per character
         split at h
-        · -- '|' or '>' → scanBlockScalar
+        · -- '|' or '>' → scanBlockScalar, under the item-9c `!inFlow` guard
+          replace h := Proofs.BlockScalarFlowGuard.peel_blockScalarGuard h
           generalize h_sc : scanBlockScalar s = result at h
           cases result with
           | error => simp at h
@@ -1538,7 +1597,6 @@ lemma scanNextToken_via_flow_dispatch_filtered_grows
     (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
-    (_h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
     (h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok (some s_result)) :
     (s_result.tokens.filter (fun t => t.val != .placeholder)).size ≥
     (s.tokens.filter (fun t => t.val != .placeholder)).size + 1 := by
@@ -1556,7 +1614,6 @@ lemma scanNextToken_via_block_dispatch_filtered_grows
     (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
-    (_h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
     (_h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
     (h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s_result)) :
     (s_result.tokens.filter (fun t => t.val != .placeholder)).size ≥
@@ -1575,7 +1632,6 @@ lemma scanNextToken_via_content_dispatch_filtered_grows
     (_h_struct : scanNextToken_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
-    (_h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok ())
     (_h_flow : scanNextToken_dispatchFlowIndicators s_ad c = .ok none)
     (_h_block : scanNextToken_dispatchBlockIndicators s_ad c = .ok none)
     (h_content : scanNextToken_dispatchContent s_ad c = .ok s_result) :
@@ -1590,9 +1646,9 @@ lemma scanNextToken_via_content_dispatch_filtered_grows
   omega
 
 -- In flow context, every successful `scanNextToken` step strictly grows the
--- filtered token count.  This is the in-flow analogue of the loose
--- `scanNextToken_filtered_grows` (which carries a sorry on the
--- structural-directive branch).  With `s.inFlow = true ∧ s.currentIndent < 0
+-- filtered token count.  The in-flow guard is what makes it unconditional:
+-- the structural-directive branch, where the general claim fails, is out of
+-- reach inside a flow collection.  With `s.inFlow = true ∧ s.currentIndent < 0
 -- ∧ s.col > 0` and the next character being non-whitespace,
 -- `dispatchStructural_none_flow` rules out the directive branch entirely, so
 -- the conclusion goes through unconditionally for emitter outputs.
@@ -1624,7 +1680,7 @@ lemma scanNextToken_filtered_grows_in_flow
   have h_struct : scanNextToken_dispatchStructural (saveSimpleKey s) c = .ok none :=
     dispatchStructural_none_flow _ _ (h_sk_flow ▸ h_flow) (h_sk_indent ▸ h_indent)
       (h_sk_col ▸ h_col_pos)
-  -- Step 3: post-allowDir state s_ad and its inFlow witness for checkBlockFlowIndent.
+  -- Step 3: post-allowDir state s_ad and its inFlow witness.
   let s_ad : ScannerState := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
@@ -1633,16 +1689,23 @@ lemma scanNextToken_filtered_grows_in_flow
     else saveSimpleKey s := rfl
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     simp only [s_ad]; split <;> exact h_sk_flow
-  have h_check : scanNextToken_checkBlockFlowIndent s_ad c = .ok () :=
-    checkBlockFlowIndent_ok_flow _ _ (h_ad_flow ▸ h_flow)
   -- Fix B: pending-directives check passes (dp = false is forced by h_snt's success).
   have h_ndp_ok : scanNextToken_checkNoPendingDirectives (saveSimpleKey s) = .ok () :=
     scanNextToken_checkNoPendingDirectives_ok _
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+  -- §9.2 bare-document check (item 132), read off the same `.ok` witness.
+  have h_bd_ok : scanNextToken_checkBareDocument (saveSimpleKey s) = .ok () :=
+    scanNextToken_ok_checkBareDocument h_pp h_struct h_snt
+  -- §9.2 dangling-node check (item 133), from the same `.ok` witness.
+  have h_dn_ok : scanNextToken_checkDanglingNode s (saveSimpleKey s) = .ok () :=
+    scanNextToken_ok_checkDanglingNode h_pp h_snt
+  -- §8.1 flow-value floor (item 172), from the same `.ok` witness.
+  have h_fv_ok : scanNextToken_checkFlowValueIndent s (saveSimpleKey s) = .ok () :=
+    scanNextToken_ok_checkFlowValueIndent h_pp h_snt
   -- Step 4: unfold scanNextToken using the pinned dispatch info.
   unfold scanNextToken at h_snt
-  simp only [bind, pure, Pure.pure, Except.pure, Except.bind, h_pp, h_struct,
-             h_ndp_ok, ← hs_ad, h_check] at h_snt
+  simp only [bind, pure, Pure.pure, Except.pure, Except.bind, h_pp, h_dn_ok, h_fv_ok,
+             h_struct, h_ndp_ok, h_bd_ok, ← hs_ad] at h_snt
   -- Step 5: case-analyze on dispatchFlowIndicators result.
   match h_flow_eq : scanNextToken_dispatchFlowIndicators s_ad c with
   | .error _ => rw [h_flow_eq] at h_snt; simp at h_snt
@@ -1650,7 +1713,7 @@ lemma scanNextToken_filtered_grows_in_flow
     rw [h_flow_eq] at h_snt; simp only at h_snt
     injection h_snt with h_eq; injection h_eq with h_eq; subst h_eq
     have h_grew := scanNextToken_via_flow_dispatch_filtered_grows
-      s _ s_ad s_flow c h_pp h_struct hs_ad h_check h_flow_eq
+      s _ s_ad s_flow c h_pp h_struct hs_ad h_flow_eq
     omega
   | .ok none =>
     rw [h_flow_eq] at h_snt; simp only at h_snt
@@ -1661,20 +1724,27 @@ lemma scanNextToken_filtered_grows_in_flow
       rw [h_block_eq] at h_snt; simp only at h_snt
       injection h_snt with h_eq; injection h_eq with h_eq; subst h_eq
       have h_grew := scanNextToken_via_block_dispatch_filtered_grows
-        s _ s_ad s_block c h_pp h_struct hs_ad h_check h_flow_eq h_block_eq
+        s _ s_ad s_block c h_pp h_struct hs_ad h_flow_eq h_block_eq
       omega
     | .ok none =>
       rw [h_block_eq] at h_snt; simp only at h_snt
-      -- Final dispatch: content.
-      match h_cont_eq : scanNextToken_dispatchContent s_ad c with
-      | .error _ => rw [h_cont_eq] at h_snt; simp at h_snt
-      | .ok s_cont =>
-        rw [h_cont_eq] at h_snt; simp only at h_snt
-        injection h_snt with h_eq; injection h_eq with h_eq; subst h_eq
-        have h_grew := scanNextToken_via_content_dispatch_filtered_grows
-          s _ s_ad s_cont c h_pp h_struct hs_ad h_check h_flow_eq h_block_eq h_cont_eq
-        omega
+      -- Item 47: the adjacent-value check (pure, no state change).
+      match h_adj_eq : scanNextToken_checkAdjacentValue s_ad c with
+      | .error _ => rw [h_adj_eq] at h_snt; simp at h_snt
+      | .ok _ =>
+        rw [h_adj_eq] at h_snt; simp only at h_snt
+        -- Final dispatch: content.
+        match h_cont_eq : scanNextToken_dispatchContent s_ad c with
+        | .error _ => rw [h_cont_eq] at h_snt; simp at h_snt
+        | .ok s_cont =>
+          rw [h_cont_eq] at h_snt; simp only at h_snt
+          injection h_snt with h_eq; injection h_eq with h_eq; subst h_eq
+          have h_grew := scanNextToken_via_content_dispatch_filtered_grows
+            s _ s_ad s_cont c h_pp h_struct hs_ad h_flow_eq h_block_eq h_cont_eq
+          omega
 
 
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

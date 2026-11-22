@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflections 359 & 361 — a recursion's branch ARMS are NOT uniform in difficulty; AUDIT each arm before authoring the skeleton, COMPOSE the landed-brick arms' SEAMS first (each its own green increment), and defer the new-infra arm. A seam is SERIAL (A's output → B's input, R359) or PARALLEL (two independent facts about the same descended state, fused; R361)
 
@@ -146,3 +151,5 @@ example : ((([10, 20, 30, 40] : List Nat).drop 1).drop 1 = ([10, 20, 30, 40] : L
   parallel_seam [10, 20, 30, 40] 1 [true, true] (by decide)
 
 end Tests.Reflections.ComposeArmSeamBeforeSkeleton
+
+end Blanket

@@ -2,19 +2,23 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Preserve.DpInv` — Phase 3 Step 6f.3b3.flowmono.preserve.dpinv
 
-**Sub-session 2 of `.flowmono.preserve`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 2166–2745, ~580 LOC).
+**Sub-session 2 of `.flowmono.preserve`** (~580 legacy LOC).
 State-level `directivesPresent` / `indents` / `explicitKeyLine`
 preservation lemmas for the primitives that compose into the
 double-quoted scalar pipeline.
 
 ## Indexed simplification (Reflection 124)
 
-Legacy lines 2166–2745 prove **36 theorems** — 12 functions
+The legacy slice proves **36 theorems** — 12 functions
 (`advance`, `consumeNewline`, `skipSpaces`, `skipWhitespace`, `emitAt`,
 `collectHexDigitsLoop`, `parseHexEscape`, `processEscape`,
 `foldQuotedNewlinesLoop`, `foldQuotedNewlines`,
@@ -68,7 +72,7 @@ dispatcher-level preservation obligations automatically.
 
 ## Legacy mapping
 
-Mirrors the structure of `EmitterScannability.lean` lines 2166–2745,
+Mirrors the structure of the legacy `EmitterScannability.lean` slice,
 collapsed by the substrate split above. See Reflection 124 for the
 detailed accounting.
 -/
@@ -151,3 +155,5 @@ variable {input : String}
     s.skipWhitespaceS.explicitKeyLine = s.explicitKeyLine := rfl
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

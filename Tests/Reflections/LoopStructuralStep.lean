@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 589 -- `parseFlow{Sequence,Mapping}Loop` one-step structural reduction (§5.10.2)
@@ -119,3 +123,5 @@ theorem map_loop_step_index (k v : YamlValue) :
 #print axioms parseFlowMappingLoop_step_push
 
 end LoopStructuralStep
+
+end Blanket

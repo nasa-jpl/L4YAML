@@ -2,18 +2,27 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Spec.CharPredicates
-import L4YAML.Proofs.Output.ScannerEmitBridge
-import L4YAML.Proofs.RoundTrip.RoundTrip
-import L4YAML.Proofs.Coupling.CouplingBridge
-import L4YAML.Proofs.Coupling.ScalarCoupling
-import L4YAML.Proofs.Parser.ParserGrammable
-import L4YAML.Proofs.Scanner.ScannerPlainContent
-import L4YAML.Proofs.Scanner.ScannerBound
+
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Spec.CharPredicates
+public import L4YAML.Proofs.Output.ScannerEmitBridge
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+public meta import L4YAML.Proofs.RoundTrip.RoundTrip
+public import L4YAML.Proofs.Coupling.CouplingBridge
+public import L4YAML.Proofs.Coupling.ScalarCoupling
+public import L4YAML.Proofs.Parser.ParserGrammable
+public import L4YAML.Proofs.Scanner.ScannerPlainContent
+public import L4YAML.Proofs.Scanner.ScannerBound
+
+-- `String.foldl` is sealed by its producer; `import all` of its
+-- declaring module unseals the body this file reduces through.
+import all Init.Data.String.Iterate
+@[expose] public section Blanket
 
 /-! # Escape & emitter-output string properties (foundation for emitter scannability)
 
@@ -75,7 +84,11 @@ lemma escapeChar_passthrough_is_valid (c : Char)
   · -- passthrough: c.val.toNat ≥ 0x20
     rename_i h_ge; simp only [Nat.not_lt] at h_ge
     refine ⟨?_, ?_, ?_⟩
-    · simp only [isNbJsonBool, isNbJsonProp, decide_eq_true_eq]
+    · -- 4.33: `decide_eq_true_eq` must fire BEFORE `isNbJsonProp` is unfolded —
+      -- rewriting the prop inside `decide`'s explicit arg but not its Decidable
+      -- instance leaves the goal ill-typed at reducible transparency.
+      simp only [isNbJsonBool, decide_eq_true_eq]
+      simp only [isNbJsonProp]
       right; constructor
       · show c.val.toNat ≥ 0x20; omega
       · show c.val.toNat ≤ 0x10FFFF
@@ -387,14 +400,19 @@ lemma hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
   native_decide
 
 /-- For any two hex chars (each with toNat < 128 and scannerHexCheck = true),
-    the 2-digit hex foldl value is < 0x110000. -/
+    the 2-digit hex foldl value is a Unicode scalar value.
+
+    This is `parseHexEscape`'s guard verbatim. It was `< 0x110000` until
+    2026-08-11, when the guard was strengthened to `Nat.isValidChar` to close
+    the surrogate hole; a 2-digit value is ≤ 0xFF, so it satisfies the
+    `< 0xD800` disjunct and the strengthening is free here. -/
 lemma hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
     scannerHexCheck (Char.ofNat n1.val) = true →
     scannerHexCheck (Char.ofNat n2.val) = true →
-    (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
+    Nat.isValidChar ((("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
       acc * 16 + if c.isDigit then c.toNat - '0'.toNat
                  else if c >= 'a' then c.toNat - 'a'.toNat + 10
-                 else c.toNat - 'A'.toNat + 10) 0 < 0x110000 := by native_decide
+                 else c.toNat - 'A'.toNat + 10) 0) := by native_decide
 
 /-- `escapeChar` output for hex-escaped characters (C0 controls with no named tag)
     has the form `['\\', 'x', h1, h2]` where h1, h2 are hex digits with toNat < 128. -/
@@ -478,9 +496,9 @@ lemma processEscape_hex_ok (sc : ScannerState) (h1 h2 : Char)
   have h_collect : collectHexDigitsLoop sc.advance "" 2 =
       (("".push h1).push h2, sc.advance.advance.advance) := by
     unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_h1]; dsimp only []
-    simp only [h_h1_hex, if_true]
+    simp only [h_h1_hex, ite_true]
     unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_h2]; dsimp only []
-    simp only [h_h2_hex, if_true]
+    simp only [h_h2_hex, ite_true]
     unfold collectHexDigitsLoop; dsimp only []
   -- Step 6: show foldl value < 0x110000
   have h_val_lt := hex_two_foldl_bound ⟨h1.toNat, h_h1_lt128⟩ ⟨h2.toNat, h_h2_lt128⟩
@@ -618,7 +636,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
           rw [h_peek_tag]; dsimp only []
           -- Check: tag is not a linebreak
           have h_tag_nlb := escapeTag_not_linebreak c tag h_tag
-          rw [h_tag_nlb, if_neg Bool.false_ne_true]
+          rw [h_tag_nlb, ite_eq_right Bool.false_ne_true]
           -- processEscape succeeds with named tag and returns original char c
           have h_proc := processEscape_named_content sc.advance c tag h_tag h_peek_tag
           simp only [bind, Except.bind, h_proc]
@@ -678,7 +696,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
             (by decide) (by decide)
           have ⟨h_peek_x, _⟩ := peek_of_chars_cons sc.advance 'x' _ _ hcorr_bs
           rw [h_peek_x]; dsimp only []
-          rw [show isLineBreakBool 'x' = false from by decide, if_neg Bool.false_ne_true]
+          rw [show isLineBreakBool 'x' = false from by decide, ite_eq_right Bool.false_ne_true]
           -- processEscape handles 'x' → parseHexEscape
           have h_col_bs : (sc.col + 1 : Nat) = sc.advance.col := hcorr_bs.col_eq
           rw [h_col_bs] at hcorr_bs
@@ -724,9 +742,9 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
             have h_coll : collectHexDigitsLoop sc.advance.advance "" 2 =
                 (("".push d1).push d2, sc.advance.advance.advance.advance) := by
               unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_d1']; dsimp only []
-              simp only [h_d1_hex', if_true]
+              simp only [h_d1_hex', ite_true]
               unfold collectHexDigitsLoop; dsimp only []; rw [h_peek_d2']; dsimp only []
-              simp only [h_d2_hex', if_true]
+              simp only [h_d2_hex', ite_true]
               unfold collectHexDigitsLoop; dsimp only []
             simp only [h_coll] at h_proc
             -- Step 5: Reduce length check and value bound
@@ -789,7 +807,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
           have h_nlb : isLineBreakBool c = false := by
             unfold isLineBreakBool isLineFeedBool isCarriageReturnBool
             simp [beq_eq_false_iff_ne, h_ne_nl, h_ne_cr]
-          rw [h_nlb, if_neg Bool.false_ne_true]
+          rw [h_nlb, ite_eq_right Bool.false_ne_true]
           -- isNbJsonBool c = true (c.val ≥ 0x20)
           have h_json : isNbJsonBool c = true := by
             have h_ascii : ∀ n : Fin 128, isEscapedChar (Char.ofNat n.val) = false →
@@ -807,7 +825,7 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
               · change (0x20 : Nat) ≤ c.val.toNat; omega
               · change c.val.toNat ≤ (0x10FFFF : Nat)
                 have := c.valid; unfold UInt32.isValidChar at this; omega
-          simp only [h_json, Bool.not_true]; rw [if_neg Bool.false_ne_true]
+          simp only [h_json, Bool.not_true]; rw [ite_eq_right Bool.false_ne_true]
           -- Advance and apply IH
           have hcorr_c := advance_non_newline_corr sc c _ hcorr h_lt_c
             (fun h => by subst h; exact absurd h_ef (by decide))
@@ -824,3 +842,5 @@ lemma collectDoubleQuotedLoop_escapeString_succeeds
             h_line_s'.trans (advance_line_of_peek sc c h_lt_c h_peek_c h_ne_nl h_ne_cr)⟩
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

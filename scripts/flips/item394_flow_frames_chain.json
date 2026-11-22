@@ -1,0 +1,60 @@
+{
+ "item": 394,
+ "tag": "FLOW-FRAMES-CHAIN",
+ "rev": "7b4d9754",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/394-flow-frames-chain.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "  value : GateOf g → ∀ sp_ne sp_mid, SFlowContent n .flowOut sp_br sp_ne →",
+    "    SSLComments sp_ne sp_mid → SLYamlStream sp_start sp_mid"
+   ],
+   "new": [
+    "  value : GateOf g → ∀ sp_ne sp_mid, SFlowContent n .flowOut sp_br sp_ne →",
+    "    SSLComments sp_ne sp_mid → SLYamlStream sp_start sp_mid",
+    "  valueF : GateOf g → ∀ sp_ne sp_mid, SFlowContent n .flowOut sp_br sp_ne →",
+    "    SSLComments sp_ne sp_mid → (∃ ks : List FrameLevel, ResumeFrames (SLYamlStream sp_start) ks sp_mid) ∨ True"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "  ⟨value, Or.inr trivial, Or.inr trivial⟩"
+   ],
+   "new": [
+    "  ⟨value, Or.inr trivial, Or.inr trivial, Or.inr trivial⟩"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "                      -- PAID as `h_vpack` above.",
+    "                      (Or.inr trivial)"
+   ],
+   "new": [
+    "                      -- PAID as `h_vpack` above.",
+    "                      (sorry)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "                      -- `h_framesV` PAID from the closed state.",
+    "                      (Or.inr trivial)"
+   ],
+   "new": [
+    "                      -- `h_framesV` PAID from the closed state.",
+    "                      (sorry)"
+   ],
+   "count": 1
+  }
+ ]
+}

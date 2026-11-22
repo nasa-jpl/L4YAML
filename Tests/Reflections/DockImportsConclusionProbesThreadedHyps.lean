@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 441 — docking a producer by currying an ALREADY-PROVEN composition brick discharges the
 # producer's CONCLUSION de-risk for free (import the proof), but RELOCATES the unsatisfiability risk
@@ -189,3 +194,5 @@ example :
   ⟨foldTotal_false_on_badStream, docked goodStream trivial foldTotal_true_on_goodStream⟩
 
 end Tests.Reflections.DockImportsConclusionProbesThreadedHyps
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 450 — an ADDITIVE recursive field is trivial at the TYPE level, but its PRODUCER can force
 # a MUTUAL recursion the existing acyclic producer-citation DAG forbids.  Before pricing "additive field
@@ -172,3 +177,5 @@ theorem r450_finding :
   ⟨by decide, by decide, by decide, rfl, rfl⟩
 
 end Tests.Reflections.AdditiveFieldForcesProducerMutualRecursion
+
+end Blanket

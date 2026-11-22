@@ -18,6 +18,11 @@ copy across the bad token — unprovable, and a `#guard` exhibits a state where 
 the target copy is false.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.TargetAnchoredTwinRefutesWalkBreak
 
 set_option autoImplicit false
@@ -77,3 +82,5 @@ theorem refute_via_target (walk : List Nat) (bad : Nat)
 #guard (7 % 2 == 0) == false
 
 end Tests.Reflections.TargetAnchoredTwinRefutesWalkBreak
+
+end Blanket

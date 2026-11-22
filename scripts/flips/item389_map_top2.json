@@ -1,0 +1,56 @@
+{
+ "item": 389,
+ "tag": "MAP-TOP2",
+ "rev": "b674b2f5",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/389-flip-map-top2.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+    "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)",
+    "      (h_nodir : sc.allowDirectives = false)"
+   ],
+   "new": [
+    "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+    "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)",
+    "      (h_nodir : sc.allowDirectives = false)",
+    "      (h_mapTop : (∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →",
+    "        ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < n) ∧",
+    "        ∀ sp_mid : SurfPos, SSLComments sp_gram sp_mid →",
+    "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+    "        ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_fin)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "        ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →",
+    "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)",
+    "      (h_nodir : sc.allowDirectives = false)"
+   ],
+   "new": [
+    "        ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →",
+    "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_end) ∨ True)",
+    "      (h_nodir : sc.allowDirectives = false)",
+    "      (h_mapTop : (∃ e, sc.indents.back? = some e ∧ e.isSequence = false) →",
+    "        ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < n) ∧",
+    "        ∀ sp_mid : SurfPos, SBlockIndented n .blockIn sp_scan sp_mid →",
+    "        ∀ sp_end : SurfPos, SCompactSeqTail n sp_mid sp_end →",
+    "        ∀ sp_fin : SurfPos, SCompactMapTail n sp_end sp_fin →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_fin)"
+   ],
+   "count": 1
+  }
+ ]
+}

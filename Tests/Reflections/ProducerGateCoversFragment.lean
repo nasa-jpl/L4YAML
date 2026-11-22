@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 507 — a landed producer's gate may cover only a FRAGMENT of the consumer's domain
 
 R506 ([[LocatedContainerRead]]) landed the navigator's terminal READ (located entry ⟹ content). R507
@@ -93,3 +98,5 @@ theorem demo :
   ⟨navigator_arm, fragment_is_strict, dispatch⟩
 
 end ProducerGateCoversFragment
+
+end Blanket

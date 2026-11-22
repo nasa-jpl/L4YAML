@@ -1,0 +1,28 @@
+{
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "rev": "58926158",
+ "item": 441,
+ "tag": "PRICE-441-PACKALT-MARKS-B",
+ "log": "scratch/pay441_b.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L1120.PackAlt.body",
+     "line": 1120,
+     "old": [
+      "abbrev PackAlt (_sc : ScannerState) : Prop := True"
+     ],
+     "new": [
+      "abbrev PackAlt (sc : ScannerState) : Prop := RegisterWitness.markedCols sc ≠ []"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

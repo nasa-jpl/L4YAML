@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 337 — de-risk a navigator's DOMAIN-RESTRICTION with a PRESERVATION/NEGATION pair
 
@@ -93,3 +98,5 @@ example :
   ⟨preservation [true, true] (by decide), negation [true, true]⟩
 
 end Tests.Reflections.DomainRestrictionPreservationNegation
+
+end Blanket

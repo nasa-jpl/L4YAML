@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 489 — a RESTRICTION producer cannot upgrade the guard: re-threading a window-parametric
 chain onto the boundary-true WEAKER twin stays in the weak family END-TO-END, even at descended windows
@@ -99,3 +104,5 @@ theorem root_child_is_weak : Weak 1 := child_weak weak_at_root (by omega)
 theorem strong_child_needs_strong_parent (h : Strong 0) : Strong 1 := child_strong h (by omega)
 
 end RethreadStaysInWeakerTwinFamily
+
+end Blanket

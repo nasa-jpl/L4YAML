@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 451 — when two mutually-citing producers recurse on the SAME inductive, the cycle is broken
 # by a CONJUNCTION-MOTIVE single induction, NOT a `mutual theorem` block.  The mutual recursion stays in
@@ -127,3 +132,5 @@ example : Good (.node [.pairs [(.leaf, .pairs [(.leaf, .node [.leaf])])]]) := by
             · match k with | ⟨0, _⟩ => exact .node _ (fun m => match m with | ⟨0, _⟩ => .leaf)
 
 end Tests.Reflections.ConjunctionMotiveBreaksProducerCycle
+
+end Blanket

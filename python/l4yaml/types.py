@@ -30,8 +30,10 @@ _KIND_NAMES: dict[int, str] = {
 }
 
 # Scalar style constants (must match l4yaml.h L4YAML_STYLE_*)
+_PLAIN: int = 0
+
 _STYLE_NAMES: dict[int, str] = {
-    0: "plain",
+    _PLAIN: "plain",
     1: "single_quoted",
     2: "double_quoted",
     3: "literal",
@@ -46,13 +48,16 @@ class YamlValue:
     :func:`l4yaml.load_all` to obtain values.
     """
 
-    __slots__ = ("_handle", "_lib")
+    __slots__ = ("_handle", "_lib", "_repr")
 
     def __init__(self, handle: int, lib: ctypes.CDLL | None = None) -> None:
         if not handle:
             raise L4YAMLError("Cannot create YamlValue from null handle")
         self._handle: int = handle
         self._lib: ctypes.CDLL = lib or _ffi.get_lib()
+        # Dump cache for __repr__/__eq__/__hash__; valid because the
+        # Lean value behind the handle never changes.
+        self._repr: str | None = None
 
     def __del__(self) -> None:
         h: int = getattr(self, "_handle", 0)
@@ -84,8 +89,11 @@ class YamlValue:
         subject to type resolution — quoted and block scalars are
         always strings.
         """
-        s: int = self._lib.l4yaml_value_scalar_style(self._handle)
-        return _STYLE_NAMES.get(s)
+        return _STYLE_NAMES.get(self._style_id)
+
+    @property
+    def _style_id(self) -> int:
+        return self._lib.l4yaml_value_scalar_style(self._handle)
 
     def as_str(self) -> str:
         """Return scalar content as a Python string.
@@ -97,10 +105,17 @@ class YamlValue:
             raise L4YAMLError(
                 f"as_str() requires a scalar, got {self.kind}"
             )
-        raw: bytes | None = self._lib.l4yaml_value_string(self._handle)
-        if raw is None:
+        return self._str_unchecked()
+
+    def _str_unchecked(self) -> str:
+        """Scalar content for a handle the caller already knows is a scalar."""
+        byte_len = ctypes.c_size_t()
+        ptr: int = self._lib.l4yaml_value_string_bytes(
+            self._handle, ctypes.byref(byte_len)
+        )
+        if not ptr:
             return ""
-        return raw.decode("utf-8")
+        return ctypes.string_at(ptr, byte_len.value).decode("utf-8")
 
     # ── Sequence ─────────────────────────────────────────────────────
 
@@ -114,12 +129,14 @@ class YamlValue:
             raise L4YAMLError(
                 f"as_list() requires a sequence, got {self.kind}"
             )
-        n: int = self._lib.l4yaml_value_seq_length(self._handle)
-        result: list[YamlValue] = []
-        for i in range(n):
-            h: int = self._lib.l4yaml_value_seq_get(self._handle, i)
-            result.append(YamlValue(handle=h, lib=self._lib))
-        return result
+        return list(self._seq_unchecked())
+
+    def _seq_unchecked(self) -> Iterator[YamlValue]:
+        """Items of a handle the caller already knows is a sequence."""
+        lib = self._lib
+        h: int = self._handle
+        for i in range(lib.l4yaml_value_seq_length(h)):
+            yield YamlValue(handle=lib.l4yaml_value_seq_get(h, i), lib=lib)
 
     # ── Mapping ──────────────────────────────────────────────────────
 
@@ -135,15 +152,15 @@ class YamlValue:
             raise L4YAMLError(
                 f"as_dict() requires a mapping, got {self.kind}"
             )
-        n: int = self._lib.l4yaml_value_map_length(self._handle)
-        result: dict[str, YamlValue] = {}
-        for i in range(n):
-            kh: int = self._lib.l4yaml_value_map_key(self._handle, i)
-            key_val = YamlValue(handle=kh, lib=self._lib)
-            key_str: str = key_val.as_str()
-            vh: int = self._lib.l4yaml_value_map_val(self._handle, i)
-            result[key_str] = YamlValue(handle=vh, lib=self._lib)
-        return result
+        return {k.as_str(): v for k, v in self._map_unchecked()}
+
+    def _map_unchecked(self) -> Iterator[tuple[YamlValue, YamlValue]]:
+        """Pairs of a handle the caller already knows is a mapping."""
+        lib = self._lib
+        h: int = self._handle
+        for i in range(lib.l4yaml_value_map_length(h)):
+            key_val = YamlValue(handle=lib.l4yaml_value_map_key(h, i), lib=lib)
+            yield key_val, YamlValue(handle=lib.l4yaml_value_map_val(h, i), lib=lib)
 
     def keys(self) -> list[str]:
         """Return mapping keys as a list of strings."""
@@ -151,13 +168,12 @@ class YamlValue:
             raise L4YAMLError(
                 f"keys() requires a mapping, got {self.kind}"
             )
-        n: int = self._lib.l4yaml_value_map_length(self._handle)
-        result: list[str] = []
-        for i in range(n):
-            kh: int = self._lib.l4yaml_value_map_key(self._handle, i)
-            key_val = YamlValue(handle=kh, lib=self._lib)
-            result.append(key_val.as_str())
-        return result
+        lib = self._lib
+        h: int = self._handle
+        return [
+            YamlValue(handle=lib.l4yaml_value_map_key(h, i), lib=lib).as_str()
+            for i in range(lib.l4yaml_value_map_length(h))
+        ]
 
     def items(self) -> list[tuple[str, YamlValue]]:
         """Return mapping as a list of ``(key_str, value)`` pairs."""
@@ -165,15 +181,7 @@ class YamlValue:
             raise L4YAMLError(
                 f"items() requires a mapping, got {self.kind}"
             )
-        n: int = self._lib.l4yaml_value_map_length(self._handle)
-        result: list[tuple[str, YamlValue]] = []
-        for i in range(n):
-            kh: int = self._lib.l4yaml_value_map_key(self._handle, i)
-            key_val = YamlValue(handle=kh, lib=self._lib)
-            key_str: str = key_val.as_str()
-            vh: int = self._lib.l4yaml_value_map_val(self._handle, i)
-            result.append((key_str, YamlValue(handle=vh, lib=self._lib)))
-        return result
+        return [(k.as_str(), v) for k, v in self._map_unchecked()]
 
     def raw_items(self) -> list[tuple[YamlValue, YamlValue]]:
         """Return mapping as ``(key, value)`` pairs with the keys as
@@ -183,14 +191,7 @@ class YamlValue:
             raise L4YAMLError(
                 f"raw_items() requires a mapping, got {self.kind}"
             )
-        n: int = self._lib.l4yaml_value_map_length(self._handle)
-        result: list[tuple[YamlValue, YamlValue]] = []
-        for i in range(n):
-            kh: int = self._lib.l4yaml_value_map_key(self._handle, i)
-            key_val = YamlValue(handle=kh, lib=self._lib)
-            vh: int = self._lib.l4yaml_value_map_val(self._handle, i)
-            result.append((key_val, YamlValue(handle=vh, lib=self._lib)))
-        return result
+        return list(self._map_unchecked())
 
     # ── Tag / Anchor ─────────────────────────────────────────────────
 
@@ -240,7 +241,9 @@ class YamlValue:
                     f"string key lookup requires a mapping, got {self.kind}"
                 )
             key_bytes: bytes = key.encode("utf-8")
-            h = self._lib.l4yaml_value_lookup(self._handle, key_bytes)
+            h = self._lib.l4yaml_value_lookup_bytes(
+                self._handle, key_bytes, len(key_bytes)
+            )
             if not h:
                 raise KeyError(key)
             return YamlValue(handle=h, lib=self._lib)
@@ -251,7 +254,9 @@ class YamlValue:
         if self._kind_id != _MAPPING:
             return False
         key_bytes: bytes = key.encode("utf-8")
-        h: int = self._lib.l4yaml_value_lookup(self._handle, key_bytes)
+        h: int = self._lib.l4yaml_value_lookup_bytes(
+            self._handle, key_bytes, len(key_bytes)
+        )
         if h:
             self._lib.l4yaml_free(h)
             return True
@@ -260,20 +265,21 @@ class YamlValue:
     def __iter__(self) -> Iterator[YamlValue | tuple[str, YamlValue]]:
         k: int = self._kind_id
         if k == _SEQUENCE:
-            n: int = self._lib.l4yaml_value_seq_length(self._handle)
-            for i in range(n):
-                h: int = self._lib.l4yaml_value_seq_get(self._handle, i)
-                yield YamlValue(handle=h, lib=self._lib)
+            yield from self._seq_unchecked()
         elif k == _MAPPING:
-            yield from self.items()
+            for key_val, val in self._map_unchecked():
+                yield key_val.as_str(), val
         else:
             raise L4YAMLError(f"iteration not supported for {self.kind}")
 
     def __repr__(self) -> str:
-        raw: bytes | None = self._lib.l4yaml_dump(self._handle)
-        if raw is None:
-            return f"YamlValue({self.kind})"
-        return raw.decode("utf-8").rstrip("\n")
+        if self._repr is None:
+            raw: bytes | None = self._lib.l4yaml_dump(self._handle)
+            if raw is None:
+                self._repr = f"YamlValue({self.kind})"
+            else:
+                self._repr = raw.decode("utf-8").rstrip("\n")
+        return self._repr
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, YamlValue):

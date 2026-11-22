@@ -1,0 +1,24 @@
+{
+ "item": 384,
+ "tag": "COMPLETED-TAIL-S1",
+ "rev": "b641e57a",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/384-flip-completed-tail_stage1.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (h_mono : IndentStackMono.Mono sc)",
+    "    (h_tail139 : CompletedTail sc ∨ True)"
+   ],
+   "new": [
+    "    (h_mono : IndentStackMono.Mono sc)",
+    "    (h_tail139 : CompletedTail sc)"
+   ],
+   "count": 1
+  }
+ ]
+}

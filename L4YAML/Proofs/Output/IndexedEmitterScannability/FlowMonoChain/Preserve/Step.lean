@@ -2,12 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Preserve.Step` — Phase 3 Step 6f.3b3.flowmono.preserve.step
 
-**Sub-session 1 of `.flowmono.preserve`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 1806–2165, ~360 LOC
+**Sub-session 1 of `.flowmono.preserve`** (~360 legacy LOC
 originally; ~140 LOC after the `.sync.invariant` retroactive move).
 Per-step preservation primitives that feed the chain-level sync
 proofs in `Sync/Invariant.lean`.
@@ -40,7 +44,7 @@ namespaces changed — pure relocation.
 ## Legacy mapping
 
 Mirrors the inner-stage and per-dispatcher slices of
-`EmitterScannability.lean` lines 1806–1885 (the per-stage
+`EmitterScannability.lean` (the per-stage
 preservation primitives consumed by chain-level proofs).
 
 The indexed versions are typically shorter than their legacy
@@ -222,6 +226,8 @@ lemma scanValueIx_preserves_flowLevel
     s'.flowLevel = s.flowLevel := by
   unfold scanValueIx at h
   simp only [bind, Except.bind] at h
+  -- Three guards since item 31: validate, indent-tab check, tab check
+  split at h <;> try contradiction
   split at h <;> try contradiction
   split at h <;> try contradiction
   simp only [Except.ok.injEq] at h; subst h
@@ -328,60 +334,88 @@ lemma scanNextTokenIx_dispatchContent_preserves_flowLevel
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h
-    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    rw [ite_eq_left hg1] at h
+    try simp only [Bind.bind, Except.bind] at h
+    split at h   -- item 9e: the property-run guard
+    · cases h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>
       rw [hA] at h
       simp only [Except.ok.injEq] at h; subst h
       exact scanAnchorOrAliasIx_preserves_flowLevel s true v hA
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h
+      rw [ite_eq_left hg2] at h
+      split at h   -- item 9e: the property-run guard
+      · cases h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h
+        -- item 9h: `aliasTrailingErrIx` is a CHECK — the state is untouched.
+        dsimp only [] at h
+        split at h
+        · cases h
         simp only [Except.ok.injEq] at h; subst h
         exact scanAnchorOrAliasIx_preserves_flowLevel s false v hA
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h
+        rw [ite_eq_left hg3] at h
+        split at h   -- item 9e: the property-run guard
+        · cases h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h
           simp only [Except.ok.injEq] at h; subst h
           exact scanTagIx_preserves_flowLevel s v hT
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h
+          rw [ite_eq_left hg4] at h
+          -- Peel the §6.7 header-newline guard: its throw arm cannot be `.ok`.
+          split at h
+          · cases h
+          -- Peel the §6.1/§8.1.3 body-validator guard (item 7 strictness).
+          split at h
+          · cases h
+          -- Peel the §6.1/§8.1.1 tab-stop guard (`blockScalarTabStopErrIx`).
+          split at h
+          · cases h
           split at h
           · simp only [Except.ok.injEq] at h; subst h; rfl
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h
+            rw [ite_eq_left hg5] at h
+            -- Peel the quoted-scalar strictness guard (item 7).
+            split at h
+            · cases h
             split at h
             · simp only [Except.ok.injEq] at h; subst h; rfl
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h
+              rw [ite_eq_left hg6] at h
+              -- Peel the quoted-scalar strictness guard (item 7).
+              split at h
+              · cases h
               split at h
               · simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               -- plain scalar (success) vs error: one small inner `if`
               split at h
-              · simp only [Except.ok.injEq] at h; subst h; rfl
+              · -- item 50: the plain strictness walker's throw contradicts `.ok`
+                split at h
+                · cases h
+                simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
 
 lemma scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
@@ -394,60 +428,90 @@ lemma scanNextTokenIx_dispatchContent_preserves_simpleKeyStack
   unfold scanNextTokenIx_dispatchContent at h
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h
-    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
+    rw [ite_eq_left hg1] at h
+    try simp only [Bind.bind, Except.bind] at h
+    split at h   -- item 9e: the property-run guard
+    · cases h
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h; cases h
     | ok v =>
       rw [hA] at h
       simp only [Except.ok.injEq] at h; subst h
       exact scanAnchorOrAliasIx_preserves_simpleKeyStack s true v hA
-  · rw [if_neg hg1] at h
+  · rw [ite_eq_right hg1] at h
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h
+      rw [ite_eq_left hg2] at h
+      split at h   -- item 9e: the property-run guard
+      · cases h
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h; cases h
       | ok v =>
         rw [hA] at h
+        -- item 9h: `aliasTrailingErrIx` is a CHECK — the state is untouched.
+        dsimp only [] at h
+        split at h
+        · cases h
         simp only [Except.ok.injEq] at h; subst h
         exact scanAnchorOrAliasIx_preserves_simpleKeyStack s false v hA
-    · rw [if_neg hg2] at h
+    · rw [ite_eq_right hg2] at h
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h
+        rw [ite_eq_left hg3] at h
+        split at h   -- item 9e: the property-run guard
+        · cases h
         cases hT : scanTagIx s with
         | error e => rw [hT] at h; cases h
         | ok v =>
           rw [hT] at h
           simp only [Except.ok.injEq] at h; subst h
           exact scanTagIx_preserves_simpleKeyStack s v hT
-      · rw [if_neg hg3] at h
+      · rw [ite_eq_right hg3] at h
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h
+          rw [ite_eq_left hg4] at h
+          -- Peel the §6.7 header-newline guard: its throw arm cannot be `.ok`.
+          split at h
+          · cases h
+          -- Peel the §6.1/§8.1.3 body-validator guard (item 7 strictness).
+          split at h
+          · cases h
+          -- Peel the §6.1/§8.1.1 tab-stop guard (`blockScalarTabStopErrIx`).
+          split at h
+          · cases h
           split at h
           · simp only [Except.ok.injEq] at h; subst h; rfl
           · cases h
-        · rw [if_neg hg4] at h
+        · rw [ite_eq_right hg4] at h
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h
+            rw [ite_eq_left hg5] at h
+            -- Peel the quoted-scalar strictness guard (item 7).
+            split at h
+            · cases h
             split at h
             · simp only [Except.ok.injEq] at h; subst h; rfl
             · cases h
-          · rw [if_neg hg5] at h
+          · rw [ite_eq_right hg5] at h
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h
+              rw [ite_eq_left hg6] at h
+              -- Peel the quoted-scalar strictness guard (item 7).
+              split at h
+              · cases h
               split at h
               · simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
-            · rw [if_neg hg6] at h
+            · rw [ite_eq_right hg6] at h
               -- plain scalar (success) vs error: one small inner `if`
               split at h
-              · simp only [Except.ok.injEq] at h; subst h; rfl
+              · -- item 50: the plain strictness walker's throw contradicts `.ok`
+                split at h
+                · cases h
+                simp only [Except.ok.injEq] at h; subst h; rfl
               · cases h
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

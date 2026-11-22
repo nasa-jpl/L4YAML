@@ -1,8 +1,12 @@
-import L4YAML.Output.Dump
-import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
-import L4YAML.Proofs.Output.DumpRoundTrip
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Output.Dump
+public import L4YAML.Output.Emitter
+public import L4YAML.Parser.Composition
+public import L4YAML.Proofs.Output.DumpRoundTrip
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -37,7 +41,7 @@ namespace Tests.DumpRoundTrip
 /-! ## Helpers -/
 
 /-- Dump a value, parse it back, check content equivalence. -/
-private def dumpRoundTrips (v : YamlValue) (cfg : DumpConfig := {}) : Bool :=
+def dumpRoundTrips (v : YamlValue) (cfg : DumpConfig := {}) : Bool :=
   match parseYamlSingle (dump v cfg) with
   | .ok v' => contentEq v v'
   | .error _ => false
@@ -198,8 +202,15 @@ def testStylePreservation (state : IO.Ref TestCollector) : IO Unit := do
   -- Anchor/tag emission
   check state "anchor emitted"
     (dump (.scalar ⟨"val", .plain, none, some "a1", none⟩) == "&a1 val")
-  check state "tag emitted"
-    (dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) == "!!int 42")
+  check state "redundant core tag elided (plain 42 is already an int)"
+    (dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) == "42")
+  check state "redundant core tag kept with plainCoreScalars := false"
+    (dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩)
+      { plainCoreScalars := false } == "!!int 42")
+  check state "non-redundant core tag emitted (!!str on 42)"
+    (dump (.scalar ⟨"42", .plain, some "!!str", none, none⟩) == "!!str 42")
+  check state "core tag that content does not satisfy is emitted (!!int abc)"
+    (dump (.scalar ⟨"abc", .plain, some "!!int", none, none⟩) == "!!int abc")
   check state "tag + anchor both emitted"
     (dump (.scalar ⟨"v", .plain, some "!!str", some "anc", none⟩) ==
       "!!str &anc v")
@@ -417,3 +428,5 @@ def collectTests : IO VerifiedSuiteResult := do
   }
 
 end Tests.DumpRoundTrip
+
+end Blanket

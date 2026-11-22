@@ -1,4 +1,10 @@
-import L4YAML.Proofs.Scanner.ScannerCorrectness
+module
+
+public import L4YAML.Proofs.Scanner.ScannerCorrectness
+
+
+public meta import L4YAML.Scanner.Scanner
+@[expose] public section Blanket
 
 namespace ScanHelpers
 
@@ -28,3 +34,5 @@ def checkValidStream (input : String) : Bool :=
 #guard checkValidStream "literal: |\n  text"
 
 end ScanHelpers
+
+end Blanket

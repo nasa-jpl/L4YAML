@@ -2,11 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.ScanStrictCoupling
-import L4YAML.Proofs.Production.StructureProduction
-import L4YAML.Proofs.Production.NodeProduction
-import L4YAML.Proofs.Composition
-import L4YAML.Proofs.Production.StreamAccum
+
+module
+
+public import L4YAML.Proofs.Scanner.ScanStrictCoupling
+public import L4YAML.Proofs.Production.StructureProduction
+public import L4YAML.Proofs.Production.NodeProduction
+public import L4YAML.Proofs.Composition
+public import L4YAML.Proofs.Production.StreamAccum
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-! # Document & Stream Production (Phase D of v0.4.4)
 
@@ -60,10 +66,12 @@ lemma trivial_prefix (sp : SurfPos) :
   SLDocumentPrefix.comments sp sp (GStar.nil _)
 
 /-- BOM produces a document prefix.
-    '\uFEFF' at any column advances by 1, then no comments. -/
+    `[3] c-byte-order-mark` spends NO column (§5.2, item 35): the character
+    after it opens the line where the marker stood, so `[63] s-indent(n)` on
+    the first line counts from there. -/
 lemma bom_gives_prefix (rest : List Char) (col : Nat) :
-    SLDocumentPrefix ⟨'\uFEFF' :: rest, col⟩ ⟨rest, col + 1⟩ :=
-  SLDocumentPrefix.bom rest col ⟨rest, col + 1⟩ (GStar.nil _)
+    SLDocumentPrefix ⟨'\uFEFF' :: rest, col⟩ ⟨rest, col⟩ :=
+  SLDocumentPrefix.bom rest col ⟨rest, col⟩ (GStar.nil _)
 
 /-! ## §3 Document Suffix Helpers -/
 
@@ -259,3 +267,5 @@ theorem parse_strict_proof
   · contradiction
 
 end L4YAML.Proofs.DocumentProduction
+
+end Blanket

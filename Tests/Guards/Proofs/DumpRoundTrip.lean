@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Output.DumpRoundTrip
+module
+
+public import L4YAML.Proofs.Output.DumpRoundTrip
+
+
+
+public meta import L4YAML.Output.Emitter
+public meta import L4YAML.Parser.Composition
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.DumpRoundTrip
 
@@ -135,3 +143,5 @@ private def dumpRoundTrips (v : YamlValue) (cfg : DumpConfig := {}) : Bool :=
   (.plainScalar "key", .sequence .block #[.plainScalar "a"])]) { indent := 4 }
 
 end L4YAML.Proofs.DumpRoundTrip
+
+end Blanket

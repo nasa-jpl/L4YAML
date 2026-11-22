@@ -1,4 +1,8 @@
-import Tests.Reflections.RebaseFactFromEnclosingWindow
+module
+
+public import Tests.Reflections.RebaseFactFromEnclosingWindow
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 306 — reuse the WEAKER structure's existing wrapper via a strong→weak COERCION, not a mirrored wrapper
@@ -140,3 +144,5 @@ example : ∃ (h_ne : goodBody ≠ []), Qhead (goodBody.head h_ne) :=
   bodyS_headQ Qhead Qhead_not_sep bodyS_good
 
 end Tests.Reflections.CoerceToWeakerReuseWrapper
+
+end Blanket

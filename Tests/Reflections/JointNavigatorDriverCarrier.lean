@@ -32,6 +32,11 @@ The joint two-branch (seq+map) structure is demoed in `JointGuardDescendTail` (R
 carries a single `Body` so the new content — the balance routing — is the only moving part.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointNavigatorDriverCarrier
 
 set_option autoImplicit false
@@ -149,3 +154,5 @@ end JointNavigatorDriverCarrier
 /-- info: 'JointNavigatorDriverCarrier.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointNavigatorDriverCarrier.demo
+
+end Blanket

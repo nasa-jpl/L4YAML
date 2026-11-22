@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 503 — bundle the free projection INTO the producer that already holds the deliverable
 
 R502 ([[EdgesUnifyAsDeliverableProjection]]) named the free projection `content = proj(deliverable)`: the
@@ -88,3 +93,5 @@ theorem twin_demo : Deliv body ∧ Content body := oracleContent body (by decide
 theorem deliv_needs_nonempty : ¬ Deliv [] := fun h => h.1 rfl
 
 end BundleFreeProjectionIntoProducer
+
+end Blanket

@@ -15,6 +15,11 @@ ADVANCE reads it backward (start-exclusion `win_lo`, `advance_winlo_exclusion` b
 one question: real bracket boundary, or flat separator?
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.StrictContainmentNeedsOpener
 
 set_option autoImplicit false
@@ -108,3 +113,5 @@ theorem advance_winlo_exclusion
 #guard bal 2 3 == 0 && (bal 2 3 == 1) == false
 
 end Tests.Reflections.StrictContainmentNeedsOpener
+
+end Blanket

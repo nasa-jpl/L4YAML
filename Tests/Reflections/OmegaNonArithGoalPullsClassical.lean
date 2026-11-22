@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 545 companion — `omega` on a NON-arithmetic goal silently pulls `Classical.choice`
 
@@ -46,3 +51,5 @@ theorem closeViaAbsurd (Q : Prop) (n : Nat) (h : n + 5 ≤ n + 2) : Q :=
 #print axioms closeViaAbsurd
 
 end OmegaNonArithGoalPullsClassical
+
+end Blanket

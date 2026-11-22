@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflections 251 + 252 — stored-vs-projected severs the producer's recursion edge; the dependent twin's IH is dead
 
@@ -219,3 +224,5 @@ theorem key_projects_to_entry : Entry [Tok.os, Tok.a, Tok.cs] := built_key_seq.1
 #guard decide (bal [Tok.os, Tok.a] ≠ 0)            -- … but not on an unbalanced one ⇒ no KeyEntry
 
 end Tests.Reflections.StoredVsProjectedRecursionEdge
+
+end Blanket

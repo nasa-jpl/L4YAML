@@ -2,11 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Proofs.Scanner.ScannerPlainContent
-import L4YAML.Proofs.Scanner.ScannerCorrectness
-import L4YAML.Proofs.Foundation.StringProperties
-import L4YAML.Proofs.Foundation.CharClass
+
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Proofs.Scanner.ScannerPlainContent
+public import L4YAML.Proofs.Scanner.ScannerCorrectness
+public import L4YAML.Proofs.Foundation.StringProperties
+public import L4YAML.Proofs.Foundation.CharClass
+
+@[expose] public section Blanket
 
 /-!
 # Plain Scalar Content Validity (B3.4)
@@ -117,7 +122,10 @@ lemma collectPlainScalarLoop_content_isPrefix
             | mk folded s_fold =>
               split at h
               · injection h with h_eq; cases h_eq; exact List.prefix_rfl
-              · generalize h_loop : collectPlainScalarLoop s_fold (content ++ folded) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+              · -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ folded) "" fuel' inFlow contentIndent inputEnd = cont_result at h
                 cases cont_result with
                 | ok inner_result =>
                   dsimp only [] at h
@@ -458,3 +466,5 @@ lemma scanPlainScalar_content_valid (s : ScannerState)
            fun hflow => trimTrailingWS_noFlowIndicators result.content (inv.content_noFlowIndicators hflow)⟩
 
 end L4YAML.Proofs.ScannerPlainScalar
+
+end Blanket

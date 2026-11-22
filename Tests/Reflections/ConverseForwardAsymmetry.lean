@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Converse/forward invariant-asymmetry — runnable demonstration
 
@@ -155,3 +160,5 @@ theorem valEndChar_bad_is_false : ¬ valEndChar bad := by decide
 theorem valEndChar_good : valEndChar good := by decide
 
 end ConverseForwardAsymmetry
+
+end Blanket

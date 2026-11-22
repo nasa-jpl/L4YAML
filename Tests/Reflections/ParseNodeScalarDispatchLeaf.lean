@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 587 — `parseNode` scalar dispatch leaf (§5.4.1): complete the position-generic
@@ -190,3 +194,5 @@ theorem advance_by_one_fires_concrete :
 #print axioms parseNode_scalar_advances_by_one
 
 end ParseNodeScalarDispatchLeaf
+
+end Blanket

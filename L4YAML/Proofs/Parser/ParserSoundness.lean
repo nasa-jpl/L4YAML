@@ -2,10 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Proofs.Soundness
+
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Proofs.Soundness
+
+@[expose] public section Blanket
 
 /-!
 # Parser Soundness (P10.8d)
@@ -300,6 +305,127 @@ decreasing_by
           have h2 := prod_snd_sizeOf_lt (pairs[i.val])
           omega))
 
+/-- **Value Witness Theorem, alias-admitting form**: every `Scannable`
+`YamlValue` has a corresponding `ValidNode` whose canonical form matches.
+
+`Scannable` is `Grammable` plus `| alias (name) (inFlow)`; this is
+`yamlValue_has_witness` with that one case added, discharged by
+`ValidNode.aliasNode` ([104] `c-ns-alias-node`).  It is the route a composed
+value takes when it carries a node that has itself as a descendant via an
+alias — §3.2.1.3 — for which `Grammable` has no constructor and
+`compose_scannable` (`ParserGrammableBase.lean`) is the producer.
+
+`Grammable` is deliberately *not* widened to admit an alias: `universal_roundtrip`
+hypothesizes exactly `Grammable v false`, and the canonical emitter routes
+`.alias` through `emitScalar`, which double-quotes unconditionally — so
+`emit (.alias "x")` is the string `"*x"` and re-parses as a scalar, making
+`contentEq` false.  Widening `Grammable` would falsify that theorem rather
+than leave it unproven.
+
+`noncomputable` because `Classical.choice` is used to select witnesses. -/
+lemma scannableValue_has_witness :
+    (v : YamlValue) → (inFlow : Bool) → Scannable v inFlow →
+    ∃ n : ValidNode, stripAnnotations (toYamlValue n) = stripAnnotations v
+  | YamlValue.alias name, _, .alias _ _ => ⟨.aliasNode name, rfl⟩
+  | YamlValue.scalar s, inFlow, .scalar _ _ h => scalar_has_witness s inFlow h
+  | YamlValue.sequence style items _tag _anchor, inFlow, .sequence _ _ _ _ _ hchildren => by
+    let childFlow := inFlow || (style == .flow)
+    have ih : ∀ i : Fin items.size,
+        ∃ n : ValidNode,
+          stripAnnotations (toYamlValue n) = stripAnnotations items[i] :=
+      fun i => scannableValue_has_witness items[i] childFlow (hchildren i)
+    let nodes : List ValidNode :=
+      (List.finRange items.size).map fun i => (ih i).choose
+    have hNodesLen : nodes.length = items.size := by
+      show ((List.finRange items.size).map _).length = items.size
+      simp [List.length_map, List.length_finRange]
+    have hNodesSpec : ∀ (i : Nat) (hi : i < items.size),
+        stripAnnotations (toYamlValue (nodes.get ⟨i, by omega⟩)) =
+          stripAnnotations items[i] := by
+      intro i hi
+      show stripAnnotations (toYamlValue
+        (((List.finRange items.size).map (fun j => (ih j).choose)).get ⟨i, by
+          rw [List.length_map, List.length_finRange]; omega⟩)) = _
+      simp only [List.get_eq_getElem, List.getElem_map, List.getElem_finRange]
+      exact (ih ⟨i, hi⟩).choose_spec
+    have hlist := stripped_list_eq nodes items hNodesLen hNodesSpec
+    have hlistArr : ∀ s,
+        YamlValue.sequence s
+          (stripAnnotations.stripAnnotationsList
+            (toYamlValue.toYamlValueList nodes)).toArray =
+          YamlValue.sequence s
+            (stripAnnotations.stripAnnotationsList items.toList).toArray := by
+      intro s; congr 1
+      rw [stripAnnotationsList_eq_map, Soundness.toYamlValueList_eq_map,
+          stripAnnotationsList_eq_map]
+      exact congrArg List.toArray hlist
+    match style with
+    | .block => exact ⟨.blockSeq 0 nodes, hlistArr .block⟩
+    | .flow  => exact ⟨.flowSeq nodes, hlistArr .flow⟩
+  | YamlValue.mapping style pairs _tag _anchor, inFlow, .mapping _ _ _ _ _ hk hv => by
+    let childFlow := inFlow || (style == .flow)
+    have ihk : ∀ i : Fin pairs.size,
+        ∃ n : ValidNode,
+          stripAnnotations (toYamlValue n) = stripAnnotations pairs[i].1 :=
+      fun i => scannableValue_has_witness pairs[i].1 childFlow (hk i)
+    have ihv : ∀ i : Fin pairs.size,
+        ∃ n : ValidNode,
+          stripAnnotations (toYamlValue n) = stripAnnotations pairs[i].2 :=
+      fun i => scannableValue_has_witness pairs[i].2 childFlow (hv i)
+    let nodePairs : List (ValidNode × ValidNode) :=
+      (List.finRange pairs.size).map fun i => ((ihk i).choose, (ihv i).choose)
+    have hPairsLen : nodePairs.length = pairs.size := by
+      show ((List.finRange pairs.size).map _).length = pairs.size
+      simp [List.length_map, List.length_finRange]
+    have hPairsKeys : ∀ (i : Nat) (hi : i < pairs.size),
+        stripAnnotations (toYamlValue (nodePairs.get ⟨i, by omega⟩).1) =
+          stripAnnotations pairs[i].1 := by
+      intro i hi
+      show stripAnnotations (toYamlValue
+        (((List.finRange pairs.size).map (fun j =>
+          ((ihk j).choose, (ihv j).choose))).get ⟨i, by
+          rw [List.length_map, List.length_finRange]; omega⟩).1) = _
+      simp only [List.get_eq_getElem, List.getElem_map, List.getElem_finRange]
+      exact (ihk ⟨i, hi⟩).choose_spec
+    have hPairsVals : ∀ (i : Nat) (hi : i < pairs.size),
+        stripAnnotations (toYamlValue (nodePairs.get ⟨i, by omega⟩).2) =
+          stripAnnotations pairs[i].2 := by
+      intro i hi
+      show stripAnnotations (toYamlValue
+        (((List.finRange pairs.size).map (fun j =>
+          ((ihk j).choose, (ihv j).choose))).get ⟨i, by
+          rw [List.length_map, List.length_finRange]; omega⟩).2) = _
+      simp only [List.get_eq_getElem, List.getElem_map, List.getElem_finRange]
+      exact (ihv ⟨i, hi⟩).choose_spec
+    have hplist := stripped_pairs_eq nodePairs pairs hPairsLen hPairsKeys hPairsVals
+    have hplistArr : ∀ s,
+        YamlValue.mapping s
+          (stripAnnotations.stripAnnotationsPairs
+            (toYamlValue.toYamlValuePairs nodePairs)).toArray =
+          YamlValue.mapping s
+            (stripAnnotations.stripAnnotationsPairs pairs.toList).toArray := by
+      intro s; congr 1
+      rw [stripAnnotationsPairs_eq_map, Soundness.toYamlValuePairs_eq_map,
+          stripAnnotationsPairs_eq_map]
+      exact congrArg List.toArray hplist
+    match style with
+    | .block => exact ⟨.blockMap 0 nodePairs, hplistArr .block⟩
+    | .flow  => exact ⟨.flowMap nodePairs, hplistArr .flow⟩
+termination_by v => sizeOf v
+decreasing_by
+  all_goals simp_wf
+  all_goals
+    first
+    | omega
+    | (first
+       | (have := array_sizeOf_getElem_lt items i.val i.isLt; omega)
+       | (have h1 := array_sizeOf_getElem_lt pairs i.val i.isLt
+          have h2 := prod_fst_sizeOf_lt (pairs[i.val])
+          omega)
+       | (have h1 := array_sizeOf_getElem_lt pairs i.val i.isLt
+          have h2 := prod_snd_sizeOf_lt (pairs[i.val])
+          omega))
+
 /-! ### §7.1  Parser Soundness Corollary -/
 
 /--
@@ -331,3 +457,5 @@ lemma parseStream_sound
   yamlValue_has_witness docs[i].value false (hgrammable i)
 
 end L4YAML.Proofs.ParserSoundness
+
+end Blanket

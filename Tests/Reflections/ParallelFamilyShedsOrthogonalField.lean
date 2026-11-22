@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 462 — porting a verified-but-unconsumed PARALLEL family to the main lib should SHED any
 # flat-type field that is ORTHOGONAL to the family's purpose and re-derivable from the field the family
@@ -158,3 +163,5 @@ theorem parallel_family_sheds_orthogonal_field :
    fun _l h => FBody.toB (DBody.toFlat h)⟩
 
 end Tests.Reflections.ParallelFamilyShedsOrthogonalField
+
+end Blanket

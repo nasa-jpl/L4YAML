@@ -2,17 +2,24 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Composition
-import L4YAML.Proofs.Scanner.ScanStrictCoupling
-import L4YAML.Proofs.EndToEndCorrectness
-import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.Output.EmitterScannability
-import L4YAML.Proofs.Output.ScannerEmitBridge
-import L4YAML.Proofs.Production.DocumentProduction
-import L4YAML.Proofs.Parser.ParserCompleteness
-import L4YAML.Proofs.Parser.IndexedCompleteness
-import L4YAML.Proofs.Coupling.SurfaceCoupling
-import L4YAML.Proofs.RoundTrip.RoundTrip
+
+module
+
+public import L4YAML.Proofs.Composition
+public import L4YAML.Proofs.Scanner.ScanStrictCoupling
+public import L4YAML.Proofs.EndToEndCorrectness
+public import L4YAML.Proofs.Soundness
+public import L4YAML.Proofs.Output.EmitterScannability
+public import L4YAML.Proofs.Output.ScannerEmitBridge
+public import L4YAML.Proofs.Output.AlignProofs
+public import L4YAML.Proofs.Production.DocumentProduction
+public import L4YAML.Proofs.Parser.ParserCompleteness
+public import L4YAML.Proofs.Parser.IndexedCompleteness
+public import L4YAML.Proofs.Coupling.SurfaceCoupling
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Capstones — the library's trust kernel, machine-pinned
@@ -23,12 +30,12 @@ so that any drift **fails the build**:
 
 - the `#capstones` pin freezes the tagged **set** — adding, removing, or
   renaming a capstone must update this file (and `scripts/capstones.txt`,
-  which drives `scripts/check-theorem-keyword.sh`: these are the only
+  which drives `lake run check-theorem-keyword`: these are the only
   declarations allowed to use the `theorem` keyword);
 - the `#assert_capstone_axioms` pin freezes each capstone's **axiom
   profile** — `pure` = `propext`/`Classical.choice`/`Quot.sound` only,
-  `native` = additionally `Lean.ofReduceBool`-backed `native_decide`
-  reflected-decide leaves. Any `sorryAx` or project-declared axiom is a
+  `native` = additionally the per-call-site axiom each `native_decide`
+  reflected-decide leaf emits. Any `sorryAx` or project-declared axiom is a
   hard error, and a capstone silently acquiring a `native_decide`
   dependency flips its line and fails the pin;
 - the `#guard` sentinels are compile-time non-vacuity witnesses: the
@@ -42,7 +49,7 @@ so that any drift **fails the build**:
 | 3 parser | `parseStream_respects_grammar_unconditional`, `soundness_completeness_compose` ×2, `grammar_value_roundtrip` ×2 (indexed twins) |
 | 4 end-to-end | `parse_sound_shallow`, `parse_sound_deep`, `parse_complete`, `parse_deterministic` |
 | 5 values | `validYaml_construct`, `toYamlValue_correct` |
-| 6 round-trip | `universal_roundtrip`, `emit_roundtrip_content_eq`, `canonical_roundtrip_conditional`, `escapeTag_roundtrip` |
+| 6 round-trip | `universal_roundtrip`, `emit_roundtrip_content_eq`, `canonical_roundtrip_conditional`, `escapeTag_roundtrip`, `format_whitespace_only` (whitespace-only reformat) |
 | 7 strictness | `parse_strict_proof`, `scan_strict_proof` |
 | 8 coupling | `SIndent_zero/succ/col/chars/all_spaces`, `GChar_col` |
 -/
@@ -61,6 +68,7 @@ L4YAML.Proofs.SurfaceCoupling.GChar_col
 L4YAML.Proofs.SurfaceCoupling.SIndent_all_spaces
 L4YAML.Proofs.EndToEndCorrectness.parse_sound_shallow
 L4YAML.Proofs.Composition.parseYaml_pipeline
+L4YAML.Align.format_whitespace_only
 L4YAML.Proofs.SurfaceCoupling.SIndent_chars
 L4YAML.Proofs.RoundTrip.escapeTag_roundtrip
 L4YAML.Proofs.SurfaceCoupling.SIndent_succ
@@ -91,6 +99,7 @@ L4YAML.Proofs.SurfaceCoupling.GChar_col: pure
 L4YAML.Proofs.SurfaceCoupling.SIndent_all_spaces: pure
 L4YAML.Proofs.EndToEndCorrectness.parse_sound_shallow: pure
 L4YAML.Proofs.Composition.parseYaml_pipeline: pure
+L4YAML.Align.format_whitespace_only: pure
 L4YAML.Proofs.SurfaceCoupling.SIndent_chars: pure
 L4YAML.Proofs.RoundTrip.escapeTag_roundtrip: native
 L4YAML.Proofs.SurfaceCoupling.SIndent_succ: pure
@@ -112,3 +121,5 @@ L4YAML.Proofs.Soundness.validYaml_construct: pure
 #guard (L4YAML.TokenParser.parseYaml "a: 1").isOk
 #guard (L4YAML.TokenParser.parseYaml "- x\n- y").isOk
 #guard (L4YAML.TokenParser.parseYaml "[1, 2, {k: v}]").isOk
+
+end Blanket

@@ -1,4 +1,8 @@
-import L4YAML.Output.Emitter
+module
+
+public import L4YAML.Output.Emitter
+
+@[expose] public section Blanket
 
 /-!
 # contentEq_refl full proof
@@ -57,3 +61,5 @@ decreasing_by
     cases pairs; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
   · have := List.sizeOf_lt_of_mem hp
     cases pairs; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
+
+end Blanket

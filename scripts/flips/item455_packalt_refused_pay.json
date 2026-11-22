@@ -1,0 +1,28 @@
+{
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "rev": "83df3057",
+ "item": 455,
+ "tag": "PRICE-455-PACKALT-REFUSED-PAY",
+ "log": "scratch/pay455.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L1128.PackAlt.body",
+     "line": 1128,
+     "old": [
+      "abbrev PackAlt (_sc : ScannerState) : Prop := True"
+     ],
+     "new": [
+      "abbrev PackAlt (sc : ScannerState) : Prop := ExplicitValueRefused sc"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

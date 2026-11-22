@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 398 — a gated invariant field's sibling wrappers shed hypotheses by the gate:
 the head that fails the gate discharges the whole head obligation.
@@ -165,3 +170,5 @@ theorem openerAdj_seqSameBody_false : ¬ OpenerAdj [Tok.opn, .sep, .cls] := by
 #guard ([Tok.mapOpn, .sep, .cls])[0]! != ([Tok.opn, .sep, .cls])[0]!   -- only the opener differs
 
 end Tests.Reflections.GatedFieldSiblingWrapperShedsHyp
+
+end Blanket

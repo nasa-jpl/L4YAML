@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 363 — a seam's deferred "source it LATER by frame-transport" typed-fact obligation is often
 ALREADY carried by the recursion's existing guard `G` and ALREADY transported by a SIBLING driver over that
@@ -143,3 +148,5 @@ example : ¬ typed mapEntry := by decide
 example : ¬ Win mapEntry := fun w => absurd w.wholeTyped (by decide)
 
 end Tests.Reflections.DeferredTypedFactInGuard
+
+end Blanket

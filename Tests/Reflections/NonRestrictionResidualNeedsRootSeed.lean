@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 296 — a non-restriction residual needs a ROOT SEED, not a stronger local invariant
 
@@ -122,3 +127,5 @@ theorem bridge_checked_to_bang (T : Array Tok)
 #guard decide (wt 2 = Tok.comma) == false
 
 end Tests.Reflections.NonRestrictionResidualNeedsRootSeed
+
+end Blanket

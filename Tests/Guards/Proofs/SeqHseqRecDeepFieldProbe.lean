@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `seqWindowRecSeqBody` DEEP-FIELD probe — its `FlowBodyContentDeep` hypothesis is ALSO too strong
@@ -130,3 +134,5 @@ theorem flowBodyContentDeepSeq_holds_on_map_window : FlowBodyContentDeepSeq Q 2 
     · rw [q6] at hfe; exact YamlToken.noConfusion hfe
 
 end L4YAML.Proofs.EmitterScannability.SeqHseqRecDeepFieldProbe
+
+end Blanket

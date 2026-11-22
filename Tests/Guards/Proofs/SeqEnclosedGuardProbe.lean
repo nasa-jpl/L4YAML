@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `SeqEnclosed` guard edge-reconstruction probe (de-risk for `(i'-b-B3-enclosed-guard)`)
@@ -109,3 +113,5 @@ def M : Array (Positioned YamlToken) :=
 #guard enclosingMark M 6 == some true          -- seq-value body IS seq-enclosed (immediate bracket = `[`)
 
 end L4YAML.Proofs.EmitterScannability.SeqEnclosedGuardProbe
+
+end Blanket

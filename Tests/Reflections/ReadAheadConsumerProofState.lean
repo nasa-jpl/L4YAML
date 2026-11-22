@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 352 — read-ahead the CONSUMER chain to de-alarm a terse downstream step-list: proof-STATE, not prose, sets the pace
 
@@ -97,3 +102,5 @@ theorem no_hidden_wall : ∀ s ∈ resolvedChain, isHiddenWall s = false := by
   intro s _; cases s <;> rfl
 
 end Tests.Reflections.ReadAheadConsumerProofState
+
+end Blanket

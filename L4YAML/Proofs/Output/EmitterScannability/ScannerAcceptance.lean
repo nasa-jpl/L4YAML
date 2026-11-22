@@ -2,19 +2,26 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Spec.CharPredicates
-import L4YAML.Proofs.Output.ScannerEmitBridge
-import L4YAML.Proofs.RoundTrip.RoundTrip
-import L4YAML.Proofs.Coupling.CouplingBridge
-import L4YAML.Proofs.Coupling.ScalarCoupling
-import L4YAML.Proofs.Parser.ParserGrammable
-import L4YAML.Proofs.Scanner.ScannerPlainContent
-import L4YAML.Proofs.Scanner.ScannerBound
-import L4YAML.Proofs.Output.EmitterScannability.EscapeProperties
+
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Spec.CharPredicates
+public import L4YAML.Proofs.Output.ScannerEmitBridge
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+public import L4YAML.Proofs.Coupling.CouplingBridge
+public import L4YAML.Proofs.Coupling.ScalarCoupling
+public import L4YAML.Proofs.Parser.ParserGrammable
+public import L4YAML.Proofs.Scanner.ScannerPlainContent
+public import L4YAML.Proofs.Scanner.ScannerBound
+public import L4YAML.Proofs.Output.EmitterScannability.EscapeProperties
+public import L4YAML.Proofs.Scanner.FlowAdjacency
+public import L4YAML.Proofs.Scanner.CloseStaleExplicitKey
+
+@[expose] public section Blanket
 
 /-!
 # Emitter Scannability — §3 Scanner Acceptance + Substrate Predicates
@@ -34,6 +41,8 @@ prefix preservation, and the substrate predicate layers `NoOverwriteAt` (d),
 
 namespace L4YAML.Proofs.EmitterScannability
 
+open L4YAML.Proofs.CloseStaleExplicitKey
+
 open L4YAML
 open L4YAML.Emit
 open L4YAML.Proofs.RoundTrip
@@ -42,6 +51,7 @@ open L4YAML.Grammar
 open L4YAML.TokenParser
 open L4YAML.CharPredicates
 open L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.FlowAdjacency
 open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.ScalarCoupling
@@ -156,7 +166,7 @@ lemma scanDoubleQuoted_emitScalar_ok (sc : ScannerState)
       (ScannerCorrectness.advance_preserves_tokens sc)
   -- Build the result state and prove all conjuncts
   refine ⟨{ (s_after.emitAt sc.currentPos (.scalar content .doubleQuoted))
-              with simpleKeyAllowed := false }, ?_, ?_, ?_⟩
+              with simpleKeyAllowed := false, needIndentCheck := false }, ?_, ?_, ?_⟩
   · -- scanDoubleQuoted sc = .ok _
     simp only [scanDoubleQuoted, bind, Except.bind]
     rw [h_ie]
@@ -217,25 +227,21 @@ lemma scanNextToken_eof (s : ScannerState) (h_peek : s.peek? = none) :
 -- flow indicators, block indicators) return none for '"'.
 lemma dispatchContent_quote (s : ScannerState) (c : Char) (hc : c = '"')
     (h_notFlow : s.flowLevel = 0)
-    (h_indent : s.currentIndent = -1)
     (h_noDocStart : atDocumentStart s = false)
     (h_noDocEnd : atDocumentEnd s = false) :
     scanNextToken_dispatchStructural s c = .ok none
-    ∧ scanNextToken_checkBlockFlowIndent s c = .ok ()
     ∧ scanNextToken_dispatchFlowIndicators s c = .ok none
     ∧ scanNextToken_dispatchBlockIndicators s c = .ok none := by
   subst hc
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · -- dispatchStructural: '"' doesn't match %, -, .
     unfold scanNextToken_dispatchStructural
     simp [ScannerState.inFlow, h_notFlow, h_noDocStart, h_noDocEnd,
           pure, Except.pure]
-  · -- checkBlockFlowIndent: currentIndent = -1 < 0, condition false
-    unfold scanNextToken_checkBlockFlowIndent
-    simp [ScannerState.inFlow, h_notFlow, h_indent]
   · -- dispatchFlowIndicators: '"' doesn't match [, ], {, }, ,
     unfold scanNextToken_dispatchFlowIndicators
-    simp [pure, Except.pure]
+    rw [checkFlowAdjacency_ok_of_notInFlow (by simp [ScannerState.inFlow, h_notFlow])]
+    simp [pure, Except.pure, bind, Except.bind]
   · -- dispatchBlockIndicators: '"' doesn't match -, ?, :
     unfold scanNextToken_dispatchBlockIndicators
     simp [pure, Except.pure]
@@ -283,7 +289,9 @@ lemma scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_snt0 : scanNextToken s₀ = .ok (some s₁))
     (h_snt1 : scanNextToken s₁ = .ok none)
     (h_flow : s₁.flowLevel = 0)
-    (h_dp : s₁.directivesPresent = false) :
+    (h_dp : s₁.directivesPresent = false)
+    (h_dn : scanLoop_checkDanglingNode s₁ = .ok ())
+    (h_fv : scanLoop_checkFlowValueIndent s₁ = .ok ()) :
     ∃ toks, scanLoop s₀ fuel = .ok toks := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
   -- First iteration: scanNextToken s₀ = .ok (some s₁) → recurse
@@ -291,7 +299,7 @@ lemma scanLoop_two_iter {s₀ s₁ : ScannerState} {fuel : Nat}
     simp only [scanLoop, h_snt0]
   -- Second iteration: scanNextToken s₁ = .ok none → checks → ok
   have h2 : ∃ toks, scanLoop s₁ (f + 1) = .ok toks := by
-    simp only [scanLoop, h_snt1, h_flow, h_dp, Bool.false_and]
+    simp only [scanLoop, h_snt1, h_flow, h_dp, h_dn, h_fv]
     exact ⟨_, rfl⟩
   rw [h1]; exact h2
 
@@ -301,10 +309,12 @@ lemma scanLoop_two_iter_eq {s₀ s₁ : ScannerState} {fuel : Nat}
     (h_snt0 : scanNextToken s₀ = .ok (some s₁))
     (h_snt1 : scanNextToken s₁ = .ok none)
     (h_flow : s₁.flowLevel = 0)
-    (h_dp : s₁.directivesPresent = false) :
+    (h_dp : s₁.directivesPresent = false)
+    (h_dn : scanLoop_checkDanglingNode s₁ = .ok ())
+    (h_fv : scanLoop_checkFlowValueIndent s₁ = .ok ()) :
     scanLoop s₀ fuel = .ok ((unwindIndents s₁ (-1)).emit .streamEnd).tokens := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
-  simp only [scanLoop, h_snt0, h_snt1, h_flow, h_dp, Bool.false_and]
+  simp only [scanLoop, h_snt0, h_snt1, h_flow, h_dp, h_dn, h_fv]
   simp (config := { decide := true }) only [ite_false]
 
 -- ═══ scanLoop compositionality ═══
@@ -366,10 +376,12 @@ lemma scanLoop_fuel_mono {s : ScannerState} {fuel₁ fuel₂ : Nat}
 lemma scanLoop_eof {s : ScannerState}
     (h_snt : scanNextToken s = .ok none)
     (h_fl : s.flowLevel = 0)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_dn : scanLoop_checkDanglingNode s = .ok ())
+    (h_fv : scanLoop_checkFlowValueIndent s = .ok ()) :
     ∃ toks, scanLoop s 1 = .ok toks := by
   unfold scanLoop; rw [h_snt]
-  simp [show ¬(s.flowLevel > 0) from by omega, h_dp]
+  simp [show ¬(s.flowLevel > 0) from by omega, h_dp, h_dn, h_fv]
 
 /-- **Terminal step (equality)**: If `scanNextToken` returns `.ok none` (EOF),
     `scanLoop` produces exactly the unwind+streamEnd tokens. -/
@@ -377,11 +389,13 @@ lemma scanLoop_eof_eq {s : ScannerState} {fuel : Nat}
     (h_fuel : fuel ≥ 1)
     (h_snt : scanNextToken s = .ok none)
     (h_fl : s.flowLevel = 0)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_dn : scanLoop_checkDanglingNode s = .ok ())
+    (h_fv : scanLoop_checkFlowValueIndent s = .ok ()) :
     scanLoop s fuel = .ok ((unwindIndents s (-1)).emit .streamEnd).tokens := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 1 := ⟨fuel - 1, by omega⟩
   unfold scanLoop; rw [h_snt]
-  simp [show ¬(s.flowLevel > 0) from by omega, h_dp]
+  simp [show ¬(s.flowLevel > 0) from by omega, h_dp, h_dn, h_fv]
 
 -- ═══ ScanChain: composition of N successful scanNextToken calls ═══
 
@@ -643,17 +657,17 @@ lemma SimpleKeyAboveFloor_of_flow_open (s_out s_in : ScannerState) (n fl₀ : Na
   · simp only [h_stack, Array.size_push] at hj
     by_cases hlt : j < s_in.simpleKeyStack.size
     · have hp' : s_in.simpleKeyStack[j].possible = true := by
-        simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+        simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
       have h_ge := h_inv.2.1 j hfl hlt hp'
       show s_out.simpleKeyStack[j].tokenIndex ≥ n
-      simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_ge
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_ge
     · have hj_eq : j = s_in.simpleKeyStack.size := by omega
       subst hj_eq
       have hp' : s_in.simpleKey.possible = true := by
-        simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+        simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
       have h_ge := h_inv.1 hp'
       show s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ≥ n
-      simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_ge
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_ge
   · simp only [h_stack, Array.size_push]; have := h_inv.2.2; omega
 
 lemma SimpleKeyAboveFloor_of_flow_close (s_out s_in : ScannerState) (n fl₀ : Nat)
@@ -715,7 +729,7 @@ lemma preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]
+            rw [closeStaleExplicitKey_flowLevel, ScannerCorrectness.saveSimpleKey_preserves_flowLevel]
             show (unwindIndents s_skip s_skip.col).flowLevel = s.flowLevel
             rw [ScannerCorrectness.unwindIndents_preserves_flowLevel]; exact h_fl_skip
       · split at h
@@ -724,7 +738,7 @@ lemma preprocess_preserves_flowLevel (s s1 : ScannerState) (c : Char)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            rw [ScannerCorrectness.saveSimpleKey_preserves_flowLevel]; exact h_fl_skip
+            rw [closeStaleExplicitKey_flowLevel, ScannerCorrectness.saveSimpleKey_preserves_flowLevel]; exact h_fl_skip
 
 lemma preprocess_maintains_SimpleKeyAboveFloor (s s1 : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s1, c)))
@@ -772,6 +786,7 @@ lemma dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c
     (h_fl_post : s'.flowLevel ≥ fl₀) :
     SimpleKeyAboveFloor s' n₀ fl₀ := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
@@ -787,8 +802,9 @@ lemma dispatchFlowIndicators_maintains_SimpleKeyAboveFloor (s : ScannerState) (c
     | exact SimpleKeyAboveFloor_of_flow_open _ s n₀ fl₀
         (ScannerCorrectness.scanFlowMappingStart_simpleKey_cleared s)
         (ScannerCorrectness.scanFlowMappingStart_stack_pushed s) h_inv
-    | (rename_i h_eq; exact SimpleKeyAboveFloor_of_preserved _ s n₀ fl₀
-        (ScannerCorrectness.scanFlowEntry_preserves_simpleKey s _ h_eq)
+    | -- item 9q: the `,` clears the current key, preserves the stack
+      (rename_i h_eq; exact SimpleKeyAboveFloor_of_cleared_preserved _ s n₀ fl₀
+        (ScannerCorrectness.scanFlowEntry_clears_simpleKey s _ h_eq)
         (ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
     | (simp_all; done)
     | -- Flow close (seq end or mapping end)
@@ -849,7 +865,9 @@ lemma dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char
   unfold scanNextToken_dispatchContent at h
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
   split at h
-  · -- '&': scanAnchorOrAlias bind
+  · -- '&': item-9e property-run guard, then the scanAnchorOrAlias bind
+    split at h
+    · simp at h
     generalize h_anch : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -860,10 +878,18 @@ lemma dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char
           (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch)
           (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
   · split at h
-    · -- '*': alias
+    · -- '*': alias, under the item-9e property-run guard
+      split at h
+      · simp at h
       split at h
       · contradiction
-      · generalize h_anch : scanAnchorOrAlias s false = result at h
+      · -- item 9h: peel `validateAliasClose`, then the alias bind.  The
+        -- emitter never writes `*` (`emitTokVals` renders an alias as a
+        -- quoted scalar), so this arm carries no new obligation — but the
+        -- acceptance proof splits on the DISPATCHER's arms, not on the
+        -- emitted characters, so the peel is still needed here.
+        replace h := aliasArm_scan_ok h
+        generalize h_anch : scanAnchorOrAlias s false = result at h
         cases result with
         | error e => simp at h
         | ok s_a =>
@@ -873,7 +899,9 @@ lemma dispatchContent_maintains_SimpleKeyAboveFloor (s : ScannerState) (c : Char
             (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch)
               h_inv
     · split at h
-      · -- '!': tag
+      · -- '!': item-9e property-run guard, then the scanTag bind
+        split at h
+        · simp at h
         generalize h_tag : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -1091,6 +1119,7 @@ lemma dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
     (h_sync : s.simpleKeyStack.size ≥ s.flowLevel) :
     s'.simpleKeyStack.size ≥ s'.flowLevel := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, Except.bind, pure, Except.pure] at h
   -- c == '['
   split at h
@@ -1107,13 +1136,15 @@ lemma dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
       · simp at h
       · split at h
         · simp at h
-        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-          dsimp only [scanFlowSequenceEnd]
-          simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
-            ScannerCorrectness.advance_preserves_flowLevel,
-            ScannerCorrectness.emit_preserves_simpleKeyStack,
-            ScannerCorrectness.emit_preserves_flowLevel,
-            Array.size_pop]; split <;> omega
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            dsimp only [scanFlowSequenceEnd]
+            simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
+              ScannerCorrectness.advance_preserves_flowLevel,
+              ScannerCorrectness.emit_preserves_simpleKeyStack,
+              ScannerCorrectness.emit_preserves_flowLevel,
+              Array.size_pop]; split <;> omega
     -- c == '{'
     · split at h
       · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
@@ -1129,13 +1160,15 @@ lemma dispatchFlowIndicators_preserves_sync (s s' : ScannerState) (c : Char)
           · simp at h
           · split at h
             · simp at h
-            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-              dsimp only [scanFlowMappingEnd]
-              simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
-                ScannerCorrectness.advance_preserves_flowLevel,
-                ScannerCorrectness.emit_preserves_simpleKeyStack,
-                ScannerCorrectness.emit_preserves_flowLevel,
-                Array.size_pop]; split <;> omega
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                dsimp only [scanFlowMappingEnd]
+                simp only [ScannerCorrectness.advance_preserves_simpleKeyStack,
+                  ScannerCorrectness.advance_preserves_flowLevel,
+                  ScannerCorrectness.emit_preserves_simpleKeyStack,
+                  ScannerCorrectness.emit_preserves_flowLevel,
+                  Array.size_pop]; split <;> omega
         -- c == ','
         · split at h
           · split at h
@@ -1165,6 +1198,10 @@ lemma scanNextToken_preserves_sync (s s' : ScannerState)
   have h_pre_fl := preprocess_preserves_flowLevel s _ _ h_pre
   have h_pre_sync : s1.simpleKeyStack.size ≥ s1.flowLevel := by
     rw [h_pre_stack, h_pre_fl]; exact h_sync
+  -- §9.2 dangling-node check (item 133)
+  split at h_next <;> (try (simp at h_next; done))
+  -- §8.1 flow-value floor (item 172)
+  split at h_next <;> (try (simp at h_next; done))
   split at h_next <;> (try (simp at h_next; done)) -- structural Except
   split at h_next
   · -- structural some
@@ -1191,7 +1228,7 @@ lemma scanNextToken_preserves_sync (s s' : ScannerState)
       rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
     -- Pending-directives check (Fix B)
     split at h_next <;> (try (simp at h_next; done))
-    -- checkBlockFlowIndent
+    -- §9.2 bare-document check (item 132)
     split at h_next <;> (try (simp at h_next; done))
     -- Flow Except
     split at h_next <;> (try (simp at h_next; done))
@@ -1211,6 +1248,7 @@ lemma scanNextToken_preserves_sync (s s' : ScannerState)
           _ c1 _ (by assumption)
         rw [h_d_stack, h_d_fl]; rw [h_allow_stack, h_allow_fl]; exact h_pre_sync
       · -- block none → content
+        split at h_next <;> (try (simp at h_next; done)) -- adjacent-value check (item 47)
         split at h_next <;> (try (simp at h_next; done)) -- content Except
         simp only [Except.ok.injEq, Option.some.injEq] at h_next; subst h_next
         have h_d_stack := ScannerCorrectness.dispatchContent_preserves_simpleKeyStack
@@ -1313,19 +1351,19 @@ lemma NoOverwriteAt_of_flow_open
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_orig := h_inv.2 j hlt hp'
     show m ≠ s_out.simpleKeyStack[j].tokenIndex ∧
          m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_orig
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_orig := h_inv.1 hp'
     show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ∧
          m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_orig
 
 /-- endLine-update transport: `s_out`'s simpleKey shares `possible` and `tokenIndex`
     with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the
@@ -1432,6 +1470,7 @@ lemma preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
                     needIndentCheck := false } : ScannerState).simpleKey.tokenIndex + 1 := by
               show (unwindIndents s_skip s_skip.col).simpleKey.possible = true → _
               simp only [h_sk_u, h_sk_skip]; exact h_inv
+            simp only [closeStaleExplicitKey_simpleKey] at h_poss ⊢
             exact saveSimpleKey_simpleKey_pointwise_inv _ m h_tok_post h_sk_post h_poss
       · split at h
         · contradiction
@@ -1445,6 +1484,7 @@ lemma preprocess_simpleKey_pointwise_inv (s s1 : ScannerState) (c : Char)
                 m ≠ s_skip.simpleKey.tokenIndex ∧
                 m ≠ s_skip.simpleKey.tokenIndex + 1 := by
               simp only [h_sk_skip]; exact h_inv
+            simp only [closeStaleExplicitKey_simpleKey] at h_poss ⊢
             exact saveSimpleKey_simpleKey_pointwise_inv s_skip m h_tok_post h_sk_post h_poss
 
 /-- `scanNextToken_preprocess` maintains the full `NoOverwriteAt` invariant.
@@ -1499,6 +1539,7 @@ lemma dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Cha
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : NoOverwriteAt s m) :
     NoOverwriteAt s' m := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
@@ -1519,8 +1560,9 @@ lemma dispatchFlowIndicators_maintains_NoOverwriteAt (s : ScannerState) (c : Cha
     | exact NoOverwriteAt_of_flow_close _ s m
         (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s)
         (ScannerCorrectness.scanFlowMappingEnd_stack_popped s) h_inv
-    | (rename_i h_eq; exact NoOverwriteAt_of_preserved _ s m
-        (ScannerCorrectness.scanFlowEntry_preserves_simpleKey s _ h_eq)
+    | -- item 9q: the `,` clears the current key, preserves the stack
+      (rename_i h_eq; exact NoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanFlowEntry_clears_simpleKey s _ h_eq)
         (ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
     | (simp_all; done)
 
@@ -1561,7 +1603,9 @@ lemma dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
   unfold scanNextToken_dispatchContent at h
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
   split at h
-  · -- '&': scanAnchorOrAlias bind
+  · -- '&': item-9e property-run guard, then the scanAnchorOrAlias bind
+    split at h
+    · simp at h
     generalize h_anch : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -1572,10 +1616,18 @@ lemma dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
           (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch)
           (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
   · split at h
-    · -- '*': alias
+    · -- '*': alias, under the item-9e property-run guard
+      split at h
+      · simp at h
       split at h
       · contradiction
-      · generalize h_anch : scanAnchorOrAlias s false = result at h
+      · -- item 9h: peel `validateAliasClose`, then the alias bind.  The
+        -- emitter never writes `*` (`emitTokVals` renders an alias as a
+        -- quoted scalar), so this arm carries no new obligation — but the
+        -- acceptance proof splits on the DISPATCHER's arms, not on the
+        -- emitted characters, so the peel is still needed here.
+        replace h := aliasArm_scan_ok h
+        generalize h_anch : scanAnchorOrAlias s false = result at h
         cases result with
         | error e => simp at h
         | ok s_a =>
@@ -1585,7 +1637,9 @@ lemma dispatchContent_maintains_NoOverwriteAt (s : ScannerState) (c : Char)
             (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch)
               h_inv
     · split at h
-      · -- '!': tag
+      · -- '!': item-9e property-run guard, then the scanTag bind
+        split at h
+        · simp at h
         generalize h_tag : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -1659,6 +1713,12 @@ lemma scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
       have h_pre_inv := preprocess_maintains_NoOverwriteAt s _ _ hPre m h_m h_inv
       have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _ hPre
       have h_pre_m : m < s1.tokens.size := Nat.lt_of_lt_of_le h_m h_pre_mono
+      -- §9.2 dangling-node check (item 133)
+      split at h_next
+      · contradiction
+      -- §8.1 flow-value floor (item 172)
+      split at h_next
+      · contradiction
       split at h_next
       · contradiction
       · split at h_next
@@ -1679,23 +1739,27 @@ lemma scanNextToken_maintains_NoOverwriteAt (s s' : ScannerState)
             rw [h_allow_tok]; exact h_pre_m
           split at h_next
           · contradiction
+          -- §9.2 bare-document check (item 132)
+          split at h_next
+          · contradiction
           · split at h_next
             · contradiction
             · split at h_next
-              · contradiction
+              · rename_i s'' hFlow
+                simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                subst h_next
+                exact dispatchFlowIndicators_maintains_NoOverwriteAt _ _ _ hFlow m h_s2_m h_s2_inv
               · split at h_next
-                · rename_i s'' hFlow
-                  simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                  subst h_next
-                  exact dispatchFlowIndicators_maintains_NoOverwriteAt _ _ _ hFlow m h_s2_m h_s2_inv
+                · contradiction
                 · split at h_next
-                  · contradiction
-                  · split at h_next
-                    · rename_i s'' hBlock
-                      simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                      subst h_next
-                      exact dispatchBlockIndicators_maintains_NoOverwriteAt _ _ _ hBlock
-                        m h_s2_m h_s2_inv
+                  · rename_i s'' hBlock
+                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                    subst h_next
+                    exact dispatchBlockIndicators_maintains_NoOverwriteAt _ _ _ hBlock
+                      m h_s2_m h_s2_inv
+                  · -- item 47: adjacent-value check (pure, no state change)
+                    split at h_next
+                    · contradiction
                     · split at h_next
                       · contradiction
                       · rename_i sC hContent
@@ -1763,33 +1827,35 @@ lemma scanValue_preserves_position_specific (s s' : ScannerState)
   · contradiction
   · split at h_ok
     · contradiction
-    · injection h_ok with h_eq
-      subst h_eq
-      dsimp only []
-      have h_ck := ScannerCorrectness.scanValueClearKey_preserves_tokens s
-      have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
-          m ≠ (scanValueClearKey s).simpleKey.tokenIndex ∧
-          m ≠ (scanValueClearKey s).simpleKey.tokenIndex + 1 := by
-        unfold scanValueClearKey
-        split
+    split at h_ok
+    · contradiction   -- scanValueTabCheck (item 31 added the one above)
+    injection h_ok with h_eq
+    subst h_eq
+    dsimp only []
+    have h_ck := ScannerCorrectness.scanValueClearKey_preserves_tokens s
+    have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
+        m ≠ (scanValueClearKey s).simpleKey.tokenIndex ∧
+        m ≠ (scanValueClearKey s).simpleKey.tokenIndex + 1 := by
+      unfold scanValueClearKey
+      split
+      · split
+        · simp
         · split
           · simp
-          · split
-            · simp
-            · exact h_inv
-        · exact h_inv
-      have h_m' : m < (scanValueClearKey s).tokens.size := by rw [h_ck]; exact h_m
-      have h_prep := scanValuePrepare_preserves_position_specific (scanValueClearKey s)
-        m h_m' h_inv'
-      have h_prep_sz := ScannerCorrectness.scanValuePrepare_tokens_monotonic
-        (scanValueClearKey s)
-      have h_m_lt_prep : m < (scanValuePrepare (scanValueClearKey s)).tokens.size := by
-        rw [h_ck] at h_prep_sz; omega
-      have h_emit := ScannerCorrectness.emit_preserves_tokens_at
-        (scanValuePrepare (scanValueClearKey s)) YamlToken.value m h_m_lt_prep
-      have h_adv := ScannerCorrectness.advance_preserves_tokens
-        ((scanValuePrepare (scanValueClearKey s)).emit .value)
-      simp_all
+          · exact h_inv
+      · exact h_inv
+    have h_m' : m < (scanValueClearKey s).tokens.size := by rw [h_ck]; exact h_m
+    have h_prep := scanValuePrepare_preserves_position_specific (scanValueClearKey s)
+      m h_m' h_inv'
+    have h_prep_sz := ScannerCorrectness.scanValuePrepare_tokens_monotonic
+      (scanValueClearKey s)
+    have h_m_lt_prep : m < (scanValuePrepare (scanValueClearKey s)).tokens.size := by
+      rw [h_ck] at h_prep_sz; omega
+    have h_emit := ScannerCorrectness.emit_preserves_tokens_at
+      (scanValuePrepare (scanValueClearKey s)) YamlToken.value m h_m_lt_prep
+    have h_adv := ScannerCorrectness.advance_preserves_tokens
+      ((scanValuePrepare (scanValueClearKey s)).emit .value)
+    simp_all
 
 /-- Pointwise (≠m) version of `dispatchBlockIndicators_preserves_prefix`. The
     block-indicators dispatcher is the only one of the four that can call
@@ -1974,17 +2040,17 @@ lemma FlowNoOverwriteAt_of_flow_open
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_orig := h_inv.2 j hlt hp'
     show m ≠ s_out.simpleKeyStack[j].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_orig
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_orig := h_inv.1 hp'
     show m ≠ s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex + 1
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_orig
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_orig
 
 /-- endLine-update transport: `s_out`'s simpleKey shares `possible` and `tokenIndex`
     with `s_in.simpleKey` (only the `endLine` and `pos` fields may differ) and the
@@ -2082,6 +2148,7 @@ lemma preprocess_simpleKey_pointwise_inv_flow (s s1 : ScannerState) (c : Char)
                     needIndentCheck := false } : ScannerState).simpleKey.tokenIndex + 1 := by
               show (unwindIndents s_skip s_skip.col).simpleKey.possible = true → _
               simp only [h_sk_u, h_sk_skip]; exact h_inv
+            simp only [closeStaleExplicitKey_simpleKey] at h_poss ⊢
             exact saveSimpleKey_simpleKey_pointwise_inv_flow _ m h_tok_post h_sk_post h_poss
       · split at h
         · contradiction
@@ -2094,6 +2161,7 @@ lemma preprocess_simpleKey_pointwise_inv_flow (s s1 : ScannerState) (c : Char)
             have h_sk_post : s_skip.simpleKey.possible = true →
                 m ≠ s_skip.simpleKey.tokenIndex + 1 := by
               simp only [h_sk_skip]; exact h_inv
+            simp only [closeStaleExplicitKey_simpleKey] at h_poss ⊢
             exact saveSimpleKey_simpleKey_pointwise_inv_flow s_skip m h_tok_post h_sk_post h_poss
 
 /-- `scanNextToken_preprocess` maintains the full `FlowNoOverwriteAt` invariant.
@@ -2146,6 +2214,7 @@ lemma dispatchFlowIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c :
     (m : Nat) (_h_m : m < s.tokens.size) (h_inv : FlowNoOverwriteAt s m) :
     FlowNoOverwriteAt s' m := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
@@ -2166,8 +2235,9 @@ lemma dispatchFlowIndicators_maintains_FlowNoOverwriteAt (s : ScannerState) (c :
     | exact FlowNoOverwriteAt_of_flow_close _ s m
         (ScannerCorrectness.scanFlowMappingEnd_simpleKey_restored s)
         (ScannerCorrectness.scanFlowMappingEnd_stack_popped s) h_inv
-    | (rename_i h_eq; exact FlowNoOverwriteAt_of_preserved _ s m
-        (ScannerCorrectness.scanFlowEntry_preserves_simpleKey s _ h_eq)
+    | -- item 9q: the `,` clears the current key, preserves the stack
+      (rename_i h_eq; exact FlowNoOverwriteAt_of_cleared_preserved _ s m
+        (ScannerCorrectness.scanFlowEntry_clears_simpleKey s _ h_eq)
         (ScannerCorrectness.scanFlowEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
     | (simp_all; done)
 
@@ -2208,7 +2278,9 @@ lemma dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
   unfold scanNextToken_dispatchContent at h
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure] at h
   split at h
-  · -- '&': scanAnchorOrAlias bind
+  · -- '&': item-9e property-run guard, then the scanAnchorOrAlias bind
+    split at h
+    · simp at h
     generalize h_anch : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -2219,10 +2291,18 @@ lemma dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
           (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch)
           (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
   · split at h
-    · -- '*': alias
+    · -- '*': alias, under the item-9e property-run guard
+      split at h
+      · simp at h
       split at h
       · contradiction
-      · generalize h_anch : scanAnchorOrAlias s false = result at h
+      · -- item 9h: peel `validateAliasClose`, then the alias bind.  The
+        -- emitter never writes `*` (`emitTokVals` renders an alias as a
+        -- quoted scalar), so this arm carries no new obligation — but the
+        -- acceptance proof splits on the DISPATCHER's arms, not on the
+        -- emitted characters, so the peel is still needed here.
+        replace h := aliasArm_scan_ok h
+        generalize h_anch : scanAnchorOrAlias s false = result at h
         cases result with
         | error e => simp at h
         | ok s_a =>
@@ -2232,7 +2312,9 @@ lemma dispatchContent_maintains_FlowNoOverwriteAt (s : ScannerState) (c : Char)
             (ScannerCorrectness.scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch)
               h_inv
     · split at h
-      · -- '!': tag
+      · -- '!': item-9e property-run guard, then the scanTag bind
+        split at h
+        · simp at h
         generalize h_tag : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -2304,6 +2386,12 @@ lemma scanNextToken_maintains_FlowNoOverwriteAt (s s' : ScannerState)
       have h_pre_inv := preprocess_maintains_FlowNoOverwriteAt s _ _ hPre m h_m h_inv
       have h_pre_mono := ScannerCorrectness.ScanHelpers.preprocess_tokens_mono s _ _ hPre
       have h_pre_m : m < s1.tokens.size := Nat.lt_of_lt_of_le h_m h_pre_mono
+      -- §9.2 dangling-node check (item 133)
+      split at h_next
+      · contradiction
+      -- §8.1 flow-value floor (item 172)
+      split at h_next
+      · contradiction
       split at h_next
       · contradiction
       · split at h_next
@@ -2324,24 +2412,28 @@ lemma scanNextToken_maintains_FlowNoOverwriteAt (s s' : ScannerState)
             rw [h_allow_tok]; exact h_pre_m
           split at h_next
           · contradiction
+          -- §9.2 bare-document check (item 132)
+          split at h_next
+          · contradiction
           · split at h_next
             · contradiction
             · split at h_next
-              · contradiction
+              · rename_i s'' hFlow
+                simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                subst h_next
+                exact dispatchFlowIndicators_maintains_FlowNoOverwriteAt _ _ _ hFlow
+                  m h_s2_m h_s2_inv
               · split at h_next
-                · rename_i s'' hFlow
-                  simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                  subst h_next
-                  exact dispatchFlowIndicators_maintains_FlowNoOverwriteAt _ _ _ hFlow
-                    m h_s2_m h_s2_inv
+                · contradiction
                 · split at h_next
-                  · contradiction
-                  · split at h_next
-                    · rename_i s'' hBlock
-                      simp only [Except.ok.injEq, Option.some.injEq] at h_next
-                      subst h_next
-                      exact dispatchBlockIndicators_maintains_FlowNoOverwriteAt _ _ _ hBlock
-                        m h_s2_m h_s2_inv
+                  · rename_i s'' hBlock
+                    simp only [Except.ok.injEq, Option.some.injEq] at h_next
+                    subst h_next
+                    exact dispatchBlockIndicators_maintains_FlowNoOverwriteAt _ _ _ hBlock
+                      m h_s2_m h_s2_inv
+                  · -- item 47: adjacent-value check (pure, no state change)
+                    split at h_next
+                    · contradiction
                     · split at h_next
                       · contradiction
                       · rename_i sC hContent
@@ -2416,37 +2508,39 @@ lemma scanValue_preserves_position_specific_flow (s s' : ScannerState)
   · contradiction
   · split at h_ok
     · contradiction
-    · injection h_ok with h_eq
-      subst h_eq
-      dsimp only []
-      have h_ck := ScannerCorrectness.scanValueClearKey_preserves_tokens s
-      have h_ck_fl := scanValueClearKey_preserves_flowLevel s
-      have h_kc_in_flow : (scanValueClearKey s).inFlow = true := by
-        unfold ScannerState.inFlow at h_in_flow ⊢
-        rw [h_ck_fl]
-        exact h_in_flow
-      have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
-          m ≠ (scanValueClearKey s).simpleKey.tokenIndex + 1 := by
-        unfold scanValueClearKey
-        split
+    split at h_ok
+    · contradiction   -- scanValueTabCheck (item 31 added the one above)
+    injection h_ok with h_eq
+    subst h_eq
+    dsimp only []
+    have h_ck := ScannerCorrectness.scanValueClearKey_preserves_tokens s
+    have h_ck_fl := scanValueClearKey_preserves_flowLevel s
+    have h_kc_in_flow : (scanValueClearKey s).inFlow = true := by
+      unfold ScannerState.inFlow at h_in_flow ⊢
+      rw [h_ck_fl]
+      exact h_in_flow
+    have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
+        m ≠ (scanValueClearKey s).simpleKey.tokenIndex + 1 := by
+      unfold scanValueClearKey
+      split
+      · split
+        · simp
         · split
           · simp
-          · split
-            · simp
-            · exact h_inv
-        · exact h_inv
-      have h_m' : m < (scanValueClearKey s).tokens.size := by rw [h_ck]; exact h_m
-      have h_prep := scanValuePrepare_preserves_position_specific_flow
-        (scanValueClearKey s) h_kc_in_flow m h_m' h_inv'
-      have h_prep_sz := ScannerCorrectness.scanValuePrepare_tokens_monotonic
-        (scanValueClearKey s)
-      have h_m_lt_prep : m < (scanValuePrepare (scanValueClearKey s)).tokens.size := by
-        rw [h_ck] at h_prep_sz; omega
-      have h_emit := ScannerCorrectness.emit_preserves_tokens_at
-        (scanValuePrepare (scanValueClearKey s)) YamlToken.value m h_m_lt_prep
-      have h_adv := ScannerCorrectness.advance_preserves_tokens
-        ((scanValuePrepare (scanValueClearKey s)).emit .value)
-      simp_all
+          · exact h_inv
+      · exact h_inv
+    have h_m' : m < (scanValueClearKey s).tokens.size := by rw [h_ck]; exact h_m
+    have h_prep := scanValuePrepare_preserves_position_specific_flow
+      (scanValueClearKey s) h_kc_in_flow m h_m' h_inv'
+    have h_prep_sz := ScannerCorrectness.scanValuePrepare_tokens_monotonic
+      (scanValueClearKey s)
+    have h_m_lt_prep : m < (scanValuePrepare (scanValueClearKey s)).tokens.size := by
+      rw [h_ck] at h_prep_sz; omega
+    have h_emit := ScannerCorrectness.emit_preserves_tokens_at
+      (scanValuePrepare (scanValueClearKey s)) YamlToken.value m h_m_lt_prep
+    have h_adv := ScannerCorrectness.advance_preserves_tokens
+      ((scanValuePrepare (scanValueClearKey s)).emit .value)
+    simp_all
 
 /-- Pointwise (≠ idx+1) version of `dispatchBlockIndicators_preserves_position_specific`,
     restricted to FLOW context. -/
@@ -3000,3 +3094,5 @@ lemma NoColonDispatchChain.trans {fl₀ : Nat}
 
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

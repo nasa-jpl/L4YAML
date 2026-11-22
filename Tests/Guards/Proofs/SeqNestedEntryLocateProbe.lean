@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Emission-spine-walk LOCATOR single-step probe — `(i'-b-B2c-nested-fbc-emission-locator)`
@@ -134,3 +138,5 @@ def D : Array (Positioned YamlToken) :=
             .scalar "2" .doubleQuoted, .flowSequenceEnd]
 
 end L4YAML.Proofs.EmitterScannability.SeqNestedEntryLocateProbe
+
+end Blanket

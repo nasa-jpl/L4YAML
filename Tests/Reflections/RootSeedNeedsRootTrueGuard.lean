@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 488 — a width-parametric carrier lemma is VACUOUS at the recursion's ROOT SEED when its
 keying guard is provably false there: the root and the interior satisfy DIFFERENT guards.
@@ -106,3 +111,5 @@ theorem interiorChain_at_root_is_vacuous (h : Deep 0) : Carrier 0 :=
 theorem interiorChain_at_nested : Carrier 3 := widthEnc_of_deep 3 (deep_at_nested 3 (by decide))
 
 end RootSeedNeedsRootTrueGuard
+
+end Blanket

@@ -130,7 +130,7 @@ Examples:
     profiles pinned by `#guard_msgs` in
     [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean), plus
     [`scripts/capstones.txt`](../scripts/capstones.txt) driving
-    [`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+    `lake run check-theorem-keyword` (`Scripts/Main/TheoremKeyword.lean`)
     (Rule 7).
   - **External mirror**:
     [`L4YAML.FGM/KeyTheoremCatalogue.lean`](../../L4YAML.FGM/KeyTheoremCatalogue.lean)
@@ -204,11 +204,20 @@ the keyword itself carries Rule 1's traceability.
   once for the classic and once for the indexed twin) plus the
   `SIndent_*`/`GChar_*` wildcard families.
 - **Gates**:
-  [`scripts/check-theorem-keyword.sh`](../scripts/check-theorem-keyword.sh)
+  `lake run check-theorem-keyword` (`Scripts/Main/TheoremKeyword.lean`)
   fails CI on any non-whitelisted `theorem` in `L4YAML/`;
-  [`scripts/check-import-closure.sh`](../scripts/check-import-closure.sh)
+  `lake run check-import-closure` (`Scripts/Main/CheckImportClosure.lean`)
   ensures no module dodges the gates by dropping out of the import
-  closure.
+  closure; and
+  `lake run check-reflection-index` (`Scripts/Main/CheckReflectionIndex.lean`)
+  holds the *narrative* half of `Tests/Reflections.lean` to its own
+  claims — every bullet listed by the sub-theme it sits under, every
+  listed number backed by a bullet, no number claimed twice, blocks
+  ascending. Added 2026-08-11: the import gate proves a demo *builds*,
+  which says nothing about whether a reader can find it, and twelve
+  reflections had drifted into a sub-theme whose list never mentioned
+  them while a thirteenth sat between two headings, belonging to
+  neither.
 - **Registry**: the `@[capstone]`-tagged set and each capstone's
   axiom profile (18 `pure`, 7 `native`) are pinned by `#guard_msgs`
   in [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean) — silently
@@ -220,6 +229,106 @@ path: justify it under Rule 1, add it to
 [`04-capstones.md`](04-capstones.md), tag it `@[capstone]`, and
 update the `Capstones.lean` pins + `scripts/capstones.txt` (and the
 FGM catalogue, per Rule 4).
+
+## Rule 8 — No ghost index on the accumulation invariant
+
+Added 2026-10-21 (DOCS item 331), when row 12's two open forks (items 320
+and 325) turned out to be one question. Every index a carrier of the
+accumulation invariant introduces — a parameter, a constructor field, a
+quantifier inside a field's statement — must be one of three things:
+
+1. **a surface position** (`SurfPos`, or a predicate on positions): the
+   correspondence is the theorem;
+2. **an obligation** (a `Prop`: a continuation, a route, a fact about the
+   state): the induction hypothesis;
+3. **a projection of the scanner state**, `f sc` for the `ScannerState`
+   the carrier is about — the kinds index is `sc.flowStack` (9b(i)), the
+   frame lists are `sc.indents` above a floor, the frame tail is
+   `FrameTail.ofToken` of the last real token.
+
+When a proof needs a fact that none of the three gives, **the scanner is
+incomplete**: add the field to `ScannerState` (and its indexed twin), make
+the scanner *read* it, and prove the projection — as `explicitKeyCol`
+(item 48), `explicitKeyStack` (item 98), `docStartLine` (item 299) and
+`definedAnchors` were added. What the rule forbids is the fourth option:
+a proof-side datum or disjunct carried beside the data the scanner
+already holds — a `List Nat` that mirrors the indent stack without its
+kinds, an `Option ScannerState` snapshot of the open-time state, a
+`∨ <stack-shape fact>` on a park's alternative. Such a datum needs a
+transport lemma per step (the `DispatchPrice`/`ParkGapWidth` ladders are
+what that costs), and it hides a missing field: the scalar `?` register
+was one (item 326 found it dead under an open outer `?`; item 331 found
+the over-refusal that follows, `?⏎  ? y⏎  : z⏎: w: x`).
+
+- **Gate**:
+  [`Tests/Guards/Proofs/GhostIndexCensus.lean`](../Tests/Guards/Proofs/GhostIndexCensus.lean)
+  walks the carriers' telescopes, constructor fields and nested `∃`/`∀`
+  binders and pins, per carrier, the binders by class — `surface`, `state`,
+  `prop`, `scalar`, `snapshot` (an `Option ScannerState`), `ghost` (a
+  `List Nat`, an `Array Bool`, a `FrameTail`) — and the full `ghost` +
+  `snapshot` list. The carriers are read off the environment (every
+  `Prop`-valued declaration of `StreamAccum`, plus `ScannerSurfCorr`), so a
+  new predicate cannot escape it. Baseline at item 331: 52 carriers, 9
+  snapshot indices, 73 ghost binders. **The list may only shrink**: a row leaves it when its
+  carrier is re-indexed by a projection or a new field; a re-pin that adds
+  a row is a Rule 8 violation and the PR must say which of the three
+  classes the new index belongs to instead.
+- **Not covered**: `scalar` binders (`Nat`, `Bool`, `Char`, contexts, token
+  arrays). Most are grammar parameters (`n`, `c`) or pinned to the state by
+  an inequality (`n ≤ minContentIndentOf sc`); the census lists their counts
+  so a growth there is visible, but does not name them.
+
+## Rule 9 — Scripts are written in Lean, not Python
+
+Added 2026-11-01 (owner's ruling). Every script this repository runs —
+a CI gate, a pricing or flip instrument, a census reader, a docs
+navigator, a report generator — is a Lean program (a `lean_exe` under
+`Scripts/`, or a Lake `script` in `lakefile.lean`), invoked through
+`lake exe <name>` / `lake run <name>`. The shell wrappers in `scripts/*.sh`
+may stay as entry points and may compose Lean executables with `git`,
+`lake` and coreutils; they may not call `python3`.
+
+Why. The instruments are the campaign's memory (Rule 6, §9, §10): a
+number an item quotes is only as reliable as the program that re-derives
+it, and today those programs live in a language the build never checks,
+with their own re-implementations of what Lean already knows — which
+line is a declaration opener (`flip_census.py`'s `OPENER` regex), which
+lines are imports (the `public import`/`meta import` regression that read
+the migrated library as empty on 2026-10-17), what a module's dependents
+are (`lake run drop-sweep` and `DropDependents.lean` are two implementations
+of one walk). A Lean script reads the environment instead of grepping
+its text, elaborates under the same toolchain the proofs use, and is
+built and type-checked by `lake build` like everything else.
+
+What the rule requires:
+
+1. **No new `scripts/*.py`.** A new instrument is a Lean program; a
+   change to an existing Python instrument that is more than a one-line
+   fix converts it first (see the plan in
+   [`09-scripts-in-lean.md`](09-scripts-in-lean.md)).
+2. **Read the environment, not the text, when the question is about
+   declarations** — openers, imports, dependents, binders, axioms. Text
+   reading is for what Lean does not see: docstrings (`GateVocabulary`),
+   `DOCS.md`, build logs.
+3. **An instrument that edits library source** (a flip) states what it
+   patches, builds, and restores the bytes it read, printing both
+   checksums — the protocol `.devin/skills/l4yaml-price-instruments`
+   describes, now enforced by one shared `Scripts.Flip` library rather
+   than re-typed per script.
+4. **Python stays where it is the product**, not a script: the `l4yaml`
+   package under `python/` and its tests (`python/tests/`,
+   `Tests/test_python_ffi.py`) are the FFI binding this project ships.
+5. **Third-party tooling with no Lean counterpart** (PDF rasterisation,
+   the docker-driven processor matrix) is called as an external
+   program from a Lean or shell driver; the logic around it — what to
+   compare, how to score, what to write — is Lean. Exceptions are
+   listed, with their reason, in the plan's §4; an unlisted `.py` is a
+   Rule 9 violation.
+
+- **Gate**: `lake run check-scripts-lean` (plan §3, phase 0; the `.sh` until 4.5) fails
+  when a `.py` exists under `scripts/` that is not on the plan's
+  conversion ledger, or when a `.sh` or workflow step invokes `python3`
+  outside the ledger's listed exceptions. The ledger may only shrink.
 
 ## Checklist before merging a new lemma or theorem
 

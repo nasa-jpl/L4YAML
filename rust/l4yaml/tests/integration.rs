@@ -170,6 +170,27 @@ fn as_list() {
     assert_eq!(list[0].as_str().unwrap(), "x");
 }
 
+#[test]
+fn strings_outlive_later_shim_calls() {
+    // The C shim reuses one thread-local slot for every returned string;
+    // `as_str`/`tag`/`anchor` must copy out of it so earlier results stay valid.
+    let v = load("a: !!str x\nb: y", LimitsPreset::Default).unwrap();
+    let a = v.get("a").unwrap();
+    let b = v.get("b").unwrap();
+
+    let a_str = a.as_str().unwrap();
+    let a_tag = a.tag().unwrap();
+    let b_str = b.as_str().unwrap();
+    let dumped = dump(&v).unwrap();
+
+    assert_eq!(a_str, "x");
+    assert_eq!(a_tag, "!!str");
+    assert_eq!(b_str, "y");
+    assert!(dumped.contains("y"));
+    assert_eq!(b.tag(), None);
+    assert_eq!(b.anchor(), None);
+}
+
 // --- Iterator ---
 
 #[test]
@@ -239,4 +260,23 @@ fn load_configured_basic() {
     let config = "structural:\n  maxDepth: 10";
     let v = load_configured("key: value", config).unwrap();
     assert_eq!(v.kind(), Kind::Mapping);
+}
+
+#[test]
+fn load_configured_bad_config_is_config_error() {
+    // The input is fine under default limits; a bad config must not
+    // silently fall back to them.
+    match load_configured("key: value", "{unclosed") {
+        Err(Error::Config(msg)) => assert!(msg.starts_with("config error:"), "{msg}"),
+        other => panic!("expected Error::Config, got {other:?}"),
+    }
+}
+
+#[test]
+fn dump_configured_bad_config_is_config_error() {
+    let v = load("key: value", LimitsPreset::Default).unwrap();
+    match dump_configured(&v, "indent: banana") {
+        Err(Error::Config(msg)) => assert!(!msg.is_empty()),
+        other => panic!("expected Error::Config, got {other:?}"),
+    }
 }

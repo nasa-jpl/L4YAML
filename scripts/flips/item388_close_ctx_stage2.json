@@ -1,0 +1,92 @@
+{
+ "item": 388,
+ "tag": "CLOSE-CTX-S2",
+ "rev": "a011f471",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/388-flip-close-ctx_stage2.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "        SBlockNode (n + 1) .blockIn sp_scan sp_mid →"
+   ],
+   "new": [
+    "        SBlockNode (n + 1) .blockOut sp_scan sp_mid →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "          IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc) ∨ True) ∧",
+    "        ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_mid →"
+   ],
+   "new": [
+    "          IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc) ∨ True) ∧",
+    "        ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockOut sp_scan sp_mid →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+    "        ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockIn sp_scan sp_mid →"
+   ],
+   "new": [
+    "          IndentStackCover.Covered lo ks sc) ∨ True) ∧",
+    "        ∀ sp_mid : SurfPos, SBlockNode (n + 1) .blockOut sp_scan sp_mid →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      (nv : Int) ≤ sc.currentIndent ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧",
+    "      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →"
+   ],
+   "new": [
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      (nv : Int) ≤ sc.currentIndent ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧",
+    "      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockOut sp_gram sp_mid →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "      -- Item 386: the park's level at or below the scanner's top (`h_floor`).",
+    "      (nv : Int) ≤ sc.currentIndent ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧",
+    "      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockIn sp_gram sp_mid →"
+   ],
+   "new": [
+    "      -- Item 386: the park's level at or below the scanner's top (`h_floor`).",
+    "      (nv : Int) ≤ sc.currentIndent ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧",
+    "      ∀ sp_mid : SurfPos, SBlockNode (nv + 1) .blockOut sp_gram sp_mid →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "      ∀ sp_mid : SurfPos, SBlockNode (nn + 1) .blockIn sp_gram sp_mid →"
+   ],
+   "new": [
+    "      ∀ sp_mid : SurfPos, SBlockNode (nn + 1) .blockOut sp_gram sp_mid →"
+   ],
+   "count": 1
+  }
+ ]
+}

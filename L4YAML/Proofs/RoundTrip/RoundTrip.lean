@@ -2,9 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Output.Emitter
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
+
+module
+
+public import L4YAML.Output.Emitter
+
+public meta import L4YAML.Output.Emitter
+public import L4YAML.Spec.Grammar
+public meta import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+
+public meta import L4YAML.Spec.Types
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Round-Trip Proofs (Phase 5)
@@ -671,3 +681,5 @@ not runtime tests.
 
 
 end L4YAML.Proofs.RoundTrip
+
+end Blanket

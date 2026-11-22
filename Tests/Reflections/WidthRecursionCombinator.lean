@@ -38,6 +38,11 @@ the driver's interface was satisfiable in the first place.
     step's recursive call genuinely DECREASES the width metric (the `#guard`s on `hi' - lo' < hi - lo`).
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.WidthRecursionCombinator
 
 /-! ## The combinator — the grammar-free half (drives both axes)
@@ -213,3 +218,5 @@ theorem not_guard_noSeven : ¬ Guard noSeven := fun h => absurd h.1 (by decide)
 #guard ([4,1,5,7,2] : List Nat).length < ([3,1,4,1,5,7,2] : List Nat).length
 
 end Tests.Reflections.WidthRecursionCombinator
+
+end Blanket

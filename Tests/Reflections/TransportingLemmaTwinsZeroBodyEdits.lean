@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 492 — a TRANSPORTING lemma (guard obtained-then-rethreaded, never inspected) re-threads to
 its `_seq` twin with ZERO body edits: a SIGNATURE-ONLY swap, the FLOOR of the grep-bounded cost.
@@ -106,3 +111,5 @@ example (n : Nat) (hc : Content n) (hg : Weak n) (recIH : Weak n → Rec n) :
   transport_seq n ⟨hc, hg⟩ recIH
 
 end TransportingLemmaTwinsZeroBodyEdits
+
+end Blanket

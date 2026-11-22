@@ -6,9 +6,9 @@
 #   scripts/bump-version.sh +m         # bump minor  (X.Y.Z   -> X.(Y+1).0)
 #   scripts/bump-version.sh +M         # bump major  (X.Y.Z   -> (X+1).0.0)
 #
-# The version is declared in five places kept in lockstep: the Lean package
-# (lakefile.lean), the Python package and its __version__, and the two Rust
-# crates. The script refuses to bump when they disagree, so a divergence is
+# The version is declared in six places kept in lockstep: the Lean package
+# (lakefile.lean), the Python package and its __version__, the two Rust
+# crates, and the l4yaml-fmt executable. The script refuses to bump when they disagree, so a divergence is
 # fixed by hand rather than half-bumped. CI's YAML Test Matrix and its `v*`
 # trigger key off this version, so after a bump: commit, then `git tag vX.Y.Z`
 # to cut the release and fire the matrix.
@@ -26,6 +26,7 @@ SITES=(
   'python/l4yaml/__init__.py|__version__ = "|"'
   'rust/l4yaml/Cargo.toml|version = "|"'
   'rust/l4yaml-sys/Cargo.toml|version = "|"'
+  'Tests/L4YamlFmt.lean|def version : String := "|"'
 )
 
 SEMVER='[0-9]+\.[0-9]+\.[0-9]+'

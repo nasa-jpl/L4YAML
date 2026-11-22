@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 392 — a deferred universal consumed ONLY by restriction lemmas hides its own
 falsity; probe it at the ROOT (the un-restricted instance) before producing it.
@@ -84,3 +89,5 @@ theorem scoped_holds : ∀ k, opener k = true → k ≠ 3 → content (k + 1) = 
 #guard content 4 == false     -- its successor is a `.key` — the root fails HERE (never consumed)
 
 end Tests.Reflections.RestrictionHidesRootFalsity
+
+end Blanket

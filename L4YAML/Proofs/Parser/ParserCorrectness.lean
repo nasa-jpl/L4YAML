@@ -2,11 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.Composition
-import L4YAML.Spec.Grammar
-import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Scanner.ScannerCorrectness
+
+module
+
+public import L4YAML.Parser.Composition
+public import L4YAML.Spec.Grammar
+public import L4YAML.Proofs.Soundness
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Scanner.ScannerCorrectness
+
+@[expose] public section Blanket
 
 /-!
 # Parser Correctness (P10.11b)
@@ -166,3 +171,5 @@ lemma parseStream_respects_grammar
 
 
 end L4YAML.Proofs.ParserCorrectness
+
+end Blanket

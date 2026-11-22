@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 387 — a conjunctive / multi-axis universal consumer cannot be discharged by a
 single-axis producer, no matter how complete that axis's chain; recursion makes the "obviously
@@ -126,3 +131,5 @@ theorem badGlobal_not_axis_uniform : ∃ n, n % 15 = 0 ∧ ¬ (n % 10 = 0) :=
 #guard 15 % 15 == 0 && !(15 % 10 == 0)  -- but a NON-uniform intermediate breaks on the map axis
 
 end Tests.Reflections.ConjunctiveConsumerGatesOnOrthogonalAxis
+
+end Blanket

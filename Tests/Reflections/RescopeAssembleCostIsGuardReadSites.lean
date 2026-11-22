@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 491 — the TERMINAL ASSEMBLE of a guard re-thread is GREP-BOUNDED: its cost is exactly the
 guard's read sites (each swapped to a pre-landed child twin), while the locate/floor SKELETON is
@@ -135,3 +140,5 @@ example (n : Nat) (hw : WindowFacts n) (h_deep : Weak n) : Content n :=
   content_weak n h_deep sk.opener sk.floor
 
 end RescopeAssembleCostIsGuardReadSites
+
+end Blanket

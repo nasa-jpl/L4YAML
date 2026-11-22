@@ -23,12 +23,21 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, NoReturn
 
 from l4yaml import _ffi
-from l4yaml.exceptions import ConfigError, L4YAMLError
-from l4yaml.types import YamlDocument, YamlValue
+from l4yaml.exceptions import ConfigError, L4YAMLError, LimitError, ParseError
+from l4yaml.types import (
+    _ALIAS,
+    _MAPPING,
+    _PLAIN,
+    _SCALAR,
+    _SEQUENCE,
+    YamlDocument,
+    YamlValue,
+)
 
 __all__: list[str] = [
     "safe_load",
@@ -47,6 +56,7 @@ _NULL_VALS: frozenset[str] = frozenset({"null", "Null", "NULL", "~", ""})
 _POS_INF: frozenset[str] = frozenset({".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF"})
 _NEG_INF: frozenset[str] = frozenset({"-.inf", "-.Inf", "-.INF"})
 _NAN_VALS: frozenset[str] = frozenset({".nan", ".NaN", ".NAN"})
+_EXPLICIT_INT = re.compile(r"[-+]?(?:0[oO][0-7]+|0[xX][0-9a-fA-F]+|[0-9]+)\Z")
 
 
 def _coerce_scalar(s: str) -> Any:
@@ -87,14 +97,62 @@ def _coerce_scalar(s: str) -> Any:
 
 
 def _scalar_to_python(v: YamlValue) -> Any:
-    """Convert one scalar node to Python.
+    """Convert one scalar node to Python (kind checked by ``as_str``)."""
+    return _resolve_scalar(v, v.as_str())
+
+
+def _resolve_scalar(v: YamlValue, s: str) -> Any:
+    """Resolve the content ``s`` of the scalar node ``v``.
 
     Core Schema resolution applies to PLAIN scalars only
     (YAML 1.2 §10.3.2): a quoted or block scalar is always a string,
-    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.
+    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.  The style
+    is fetched only when the content would resolve to a non-string.
     """
-    s: str = v.as_str()
-    return _coerce_scalar(s) if v.style == "plain" else s
+    # An explicit tag takes precedence over presentation style and implicit
+    # Core Schema inference.  The underlying Lean scalarType follows the same
+    # rule; preserve that decision across the C/Python conversion boundary.
+    tag = v.tag
+    if tag is not None:
+        if tag.startswith("!!"):
+            tag = "tag:yaml.org,2002:" + tag[2:]
+        elif tag.startswith("!<") and tag.endswith(">"):
+            tag = tag[2:-1]
+
+        if tag == "tag:yaml.org,2002:str":
+            return s
+        if tag == "tag:yaml.org,2002:null":
+            return None
+        if tag == "tag:yaml.org,2002:bool":
+            if s in _BOOL_TRUE:
+                return True
+            if s in _BOOL_FALSE:
+                return False
+            return s
+        if tag == "tag:yaml.org,2002:int":
+            if _EXPLICIT_INT.fullmatch(s):
+                try:
+                    return int(s, 0 if s.lstrip("+-").lower().startswith(("0x", "0o")) else 10)
+                except ValueError:
+                    pass
+            return s
+        if tag == "tag:yaml.org,2002:float":
+            if s in _POS_INF:
+                return math.inf
+            if s in _NEG_INF:
+                return -math.inf
+            if s in _NAN_VALS:
+                return math.nan
+            try:
+                return float(s)
+            except ValueError:
+                return s
+        return s  # Unknown explicit tags do not invoke implicit resolution.
+
+    coerced: Any = _coerce_scalar(s)
+    if coerced is s:
+        return s
+    return coerced if v._style_id == _PLAIN else s
 
 
 # ── Recursive conversion ─────────────────────────────────────────────
@@ -110,17 +168,17 @@ def to_python(v: YamlValue) -> Any:
     - Mappings become ``dict`` (keys are converted the same way).
     - Aliases return the raw anchor name as ``str``.
     """
-    kind: str = v.kind
-    if kind == "scalar":
-        return _scalar_to_python(v)
-    if kind == "sequence":
-        return [to_python(item) for item in v.as_list()]
-    if kind == "mapping":
+    kind: int = v._kind_id
+    if kind == _SCALAR:
+        return _resolve_scalar(v, v._str_unchecked())
+    if kind == _SEQUENCE:
+        return [to_python(item) for item in v._seq_unchecked()]
+    if kind == _MAPPING:
         return {
             _scalar_to_python(k): to_python(val)
-            for k, val in v.raw_items()
+            for k, val in v._map_unchecked()
         }
-    if kind == "alias":
+    if kind == _ALIAS:
         return v.as_str()
     return None
 
@@ -165,6 +223,20 @@ def _read_dump_config(config: str | Path | None) -> str | None:
 # ── Parsing helpers (configured) ──────────────────────────────────────
 
 
+def _raise_configured_error(msg: str) -> NoReturn:
+    """Map an `l4yaml_parse_configured` error message onto an exception.
+
+    A limits config that does not parse comes back as ``config error: …``
+    (the parser does not fall back to default limits); the rest is a
+    limit violation or a syntax error in the data.
+    """
+    if msg.startswith("config error:"):
+        raise ConfigError(msg)
+    if "limit" in msg.lower() or "exceeded" in msg.lower():
+        raise LimitError(msg)
+    raise ParseError(msg)
+
+
 def _load_configured_single(input_str: str, config_yaml: str) -> YamlValue:
     """Parse a single YAML document with custom limits (YAML config)."""
     lib = _ffi.ensure_initialized()
@@ -178,10 +250,7 @@ def _load_configured_single(input_str: str, config_yaml: str) -> YamlValue:
         raw: bytes | None = lib.l4yaml_result_error_message(result)
         msg: str = raw.decode("utf-8") if raw else "unknown parse error"
         lib.l4yaml_free(result)
-        from l4yaml.exceptions import LimitError, ParseError
-        if "limit" in msg.lower() or "exceeded" in msg.lower():
-            raise LimitError(msg)
-        raise ParseError(msg)
+        _raise_configured_error(msg)
     # l4yaml_parse_configured returns a multi-doc result;
     # extract the first document's root value.
     docs_h: int = lib.l4yaml_result_docs(result)
@@ -213,10 +282,7 @@ def _load_configured_all(
         raw: bytes | None = lib.l4yaml_result_error_message(result)
         msg: str = raw.decode("utf-8") if raw else "unknown parse error"
         lib.l4yaml_free(result)
-        from l4yaml.exceptions import LimitError, ParseError
-        if "limit" in msg.lower() or "exceeded" in msg.lower():
-            raise LimitError(msg)
-        raise ParseError(msg)
+        _raise_configured_error(msg)
     docs_h: int = lib.l4yaml_result_docs(result)
     count: int = lib.l4yaml_docs_count(docs_h)
     docs: list[YamlDocument] = []
@@ -368,9 +434,9 @@ def safe_dump_all(
 
 
 # DumpConfig fields (L4YAML/Output/Dump.lean) and their value shapes,
-# used to validate user configs eagerly: the Lean config reader falls
-# back to ALL defaults when any field fails to parse, which would
-# silently drop the fidelity settings below over a cosmetic typo.
+# used to validate user configs eagerly with a field-level message: the
+# Lean config reader rejects the WHOLE config when any field fails to
+# parse, so a cosmetic typo would otherwise fail the dump outright.
 _DUMP_CONFIG_SPEC: dict[str, Any] = {
     "indent": int,
     "lineWidth": int,
@@ -417,8 +483,7 @@ def _fidelity_config(user_cfg: str | None) -> str:
             ok = val in spec
             expected = " | ".join(spec)
         elif spec is int:
-            # The Lean fields are Nat: bools and negatives would fail
-            # its reader and silently drop the whole config.
+            # The Lean fields are Nat: bools and negatives fail its reader.
             ok = isinstance(val, int) and not isinstance(val, bool) and val >= 0
             expected = "non-negative int"
         else:
@@ -468,20 +533,40 @@ def _quote_scalar(s: str) -> str:
     """Quote a string if it could be misinterpreted as a non-string."""
     if not s:
         return "''"
+    # YAML single-quoted strings represent an apostrophe by doubling it.
+    single_quoted = "'" + s.replace("'", "''") + "'"
+    # A literal BOM at the start of a YAML stream is consumed as an
+    # encoding marker, and unescaped controls/separators can alter the
+    # scalar or make the stream invalid.  JSON's double-quote escapes
+    # cover C0; explicitly escape the remaining Unicode troublemakers.
+    escaped_codepoints = {0xFEFF, 0x2028, 0x2029, 0xFFFE, 0xFFFF}
+    if any(ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F
+           or ord(c) in escaped_codepoints for c in s):
+        quoted = json.dumps(s, ensure_ascii=False)
+        return "".join(
+            f"\\u{ord(c):04X}"
+            if 0x7F <= ord(c) <= 0x9F or ord(c) in escaped_codepoints
+            else c
+            for c in quoted
+        )
+    # These are reserved indicators at the start of a plain scalar;
+    # a document-end marker prefix must not be emitted as a plain scalar.
+    if s.startswith(("@", "`", "%", "...")):
+        return single_quoted
     # Values that need quoting
     if s in _NULL_VALS or s in _BOOL_TRUE or s in _BOOL_FALSE:
-        return f"'{s}'"
+        return single_quoted
     if s in _POS_INF or s in _NEG_INF or s in _NAN_VALS:
-        return f"'{s}'"
+        return single_quoted
     # Strings that look like numbers
     try:
         int(s, 0)
-        return f"'{s}'"
+        return single_quoted
     except (ValueError, TypeError):
         pass
     try:
         float(s)
-        return f"'{s}'"
+        return single_quoted
     except (ValueError, TypeError):
         pass
     # Strings with special YAML characters
@@ -492,9 +577,9 @@ def _quote_scalar(s: str) -> str:
             escaped = escaped.replace("\n", "\\n").replace("\r", "\\r")
             escaped = escaped.replace("\t", "\\t")
             return f'"{escaped}"'
-        return f"'{s}'"
+        return single_quoted
     if s.startswith(("-", "?", " ")) or s.endswith(" "):
-        return f"'{s}'"
+        return single_quoted
     return s
 
 

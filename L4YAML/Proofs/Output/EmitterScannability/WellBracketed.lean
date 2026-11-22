@@ -3,7 +3,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
+
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.EmitterScannability
 
@@ -228,7 +232,7 @@ lemma SafeBody_array_flowEntry {Q : YamlToken → Prop}
   -- body[k - lo].val = arr[k].val
   have h_drop_get : ((arr.toList.drop lo)[k - lo]'hj_lt).val = (arr[k]'hk).val := by
     rw [List.getElem_drop]
-    rw [Array.getElem_toList (by omega)]
+    rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2
     omega
   have h_fe' : ((arr.toList.drop lo)[k - lo]'hj_lt).val = .flowEntry := by
@@ -242,7 +246,7 @@ lemma SafeBody_array_flowEntry {Q : YamlToken → Prop}
   refine ⟨hk1, ?_⟩
   have h_get : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1).val := by
     rw [List.getElem_drop]
-    rw [Array.getElem_toList (by omega)]
+    rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2
     omega
   rw [← h_get]; exact hQ
@@ -590,9 +594,9 @@ lemma OpenerAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
   have hj0 : k - lo < (arr.toList.drop lo).length := by omega
   -- the slice element at the local offset equals the array element at the global index
   have h_get_k : ((arr.toList.drop lo)[k - lo]'hj0).val = arr[k]!.val := by
-    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 2; omega
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 2; omega
   have h_get_k1 : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = arr[k+1]!.val := by
-    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2; omega
   have hopen' : ((arr.toList.drop lo)[k - lo]'hj0).val = .flowSequenceStart := by
     rw [h_get_k]; exact hopen
@@ -703,9 +707,9 @@ lemma SepAdj_array (arr : Array (Positioned YamlToken)) (lo : Nat)
   have hj0 : k - lo < (arr.toList.drop lo).length := by omega
   -- the slice element at the local offset equals the array element at the global index
   have h_get_k : ((arr.toList.drop lo)[k - lo]'hj0).val = arr[k]!.val := by
-    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by omega)]; congr 2; omega
+    rw [getElem!_pos arr k hk0, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]; congr 2; omega
   have h_get_k1 : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = arr[k+1]!.val := by
-    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by omega)]
+    rw [getElem!_pos arr (k+1) hk1, List.getElem_drop, Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2; omega
   have hsep' : ((arr.toList.drop lo)[k - lo]'hj0).val = .flowEntry := by
     rw [h_get_k]; exact hsep
@@ -1298,7 +1302,7 @@ lemma SafeBodyUnit_array_succ {Q : YamlToken → Prop}
   have hj_lt : k - lo < (arr.toList.drop lo).length := by rw [h_len]; omega
   have h_drop_get : ((arr.toList.drop lo)[k - lo]'hj_lt).val = (arr[k]'hk).val := by
     rw [List.getElem_drop]
-    rw [Array.getElem_toList (by omega)]
+    rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
     congr 2
     omega
   have h_nfe' : ((arr.toList.drop lo)[k - lo]'hj_lt).val ≠ .flowEntry := by
@@ -1316,7 +1320,7 @@ lemma SafeBodyUnit_array_succ {Q : YamlToken → Prop}
     refine ⟨hk1, ?_⟩
     have h_get : ((arr.toList.drop lo)[(k - lo) + 1]'hj1).val = (arr[k+1]'hk1).val := by
       rw [List.getElem_drop]
-      rw [Array.getElem_toList (by omega)]
+      rw [Array.getElem_toList (by simp only [Array.length_toList]; omega)]
       congr 2
       omega
     rw [← h_get]; exact hfe1
@@ -2834,11 +2838,14 @@ lemma scanNextToken_flow_open_seq_filtered_push (s : ScannerState) (rest : List 
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
   have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '[' (h_ad_flow ▸ h_flow)
   have h_flow_disp := dispatchFlowIndicators_bracket s_ad
+    (checkFlowAdjacency_ok_of_scanNextToken_ok h_pp h_struct rfl
+      (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_snt_eq : scanNextToken s = .ok (some (scanFlowSequenceStart s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowSequenceStart s_ad :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
@@ -2868,11 +2875,14 @@ lemma scanNextToken_flow_open_map_filtered_push (s : ScannerState) (rest : List 
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
   have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
   have h_flow_disp := dispatchFlowIndicators_brace s_ad
+    (checkFlowAdjacency_ok_of_scanNextToken_ok h_pp h_struct rfl
+      (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_snt_eq : scanNextToken s = .ok (some (scanFlowMappingStart s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowMappingStart s_ad :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
@@ -2888,6 +2898,7 @@ lemma scanNextToken_flow_close_seq_filtered_push (s : ScannerState) (rest : List
     (hcorr : ScannerSurfCorr s ⟨']' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
+    (h_kind : s.flowStack.back? = some true)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
     ∃ tok : Positioned YamlToken, tok.val = .flowSequenceEnd ∧
       s'.tokens.filter (fun t => t.val != .placeholder)
@@ -2903,14 +2914,19 @@ lemma scanNextToken_flow_close_seq_filtered_push (s : ScannerState) (rest : List
   let s_ad := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
-  have h_check := checkBlockFlowIndent_ok_close_bracket s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_ad_fl_ge2 : s_ad.flowLevel ≥ 2 := by rw [h_ad_fl]; exact h_fl_ge2
-  have h_flow_disp := dispatchFlowIndicators_close_bracket_nested s_ad h_ad_fl_ge2
+  have h_ad_kind : s_ad.flowStack.back? = some true := by
+    have h_ad_fs : s_ad.flowStack = s.flowStack := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowStack s
+    rw [h_ad_fs]; exact h_kind
+  have h_flow_disp := dispatchFlowIndicators_close_bracket_nested s_ad h_ad_fl_ge2 h_ad_kind
   have h_snt_eq : scanNextToken s = .ok (some (scanFlowSequenceEnd s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowSequenceEnd s_ad :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
@@ -2926,6 +2942,7 @@ lemma scanNextToken_flow_close_map_filtered_push (s : ScannerState) (rest : List
     (hcorr : ScannerSurfCorr s ⟨'}' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_fl_ge2 : s.flowLevel ≥ 2)
+    (h_kind : s.flowStack.back? = some false)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
     ∃ tok : Positioned YamlToken, tok.val = .flowMappingEnd ∧
       s'.tokens.filter (fun t => t.val != .placeholder)
@@ -2941,14 +2958,19 @@ lemma scanNextToken_flow_close_map_filtered_push (s : ScannerState) (rest : List
   let s_ad := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
-  have h_check := checkBlockFlowIndent_ok_close_brace s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_ad_fl_ge2 : s_ad.flowLevel ≥ 2 := by rw [h_ad_fl]; exact h_fl_ge2
-  have h_flow_disp := dispatchFlowIndicators_close_brace_nested s_ad h_ad_fl_ge2
+  have h_ad_kind : s_ad.flowStack.back? = some false := by
+    have h_ad_fs : s_ad.flowStack = s.flowStack := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowStack s
+    rw [h_ad_fs]; exact h_kind
+  have h_flow_disp := dispatchFlowIndicators_close_brace_nested s_ad h_ad_fl_ge2 h_ad_kind
   have h_snt_eq : scanNextToken s = .ok (some (scanFlowMappingEnd s_ad)) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowMappingEnd s_ad :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
@@ -2980,9 +3002,10 @@ lemma scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List Ch
   else saveSimpleKey s
   have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
   have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
   have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
     dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+      (checkFlowAdjacency_ok_of_scanNextToken_ok h_pp h_struct rfl
+        (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
     dispatchBlockIndicators_none_quote _
   have h_dc : scanNextToken_dispatchContent s_ad '"' = Except.ok s' := by
@@ -2990,14 +3013,20 @@ lemma scanNextToken_flow_scalar_filtered_push (s : ScannerState) (rest : List Ch
     | error e =>
       exfalso
       have h_snt_err := scanNextToken_via_content_dispatch_error
-        _ _ _ _ _ h_pp h_struct rfl h_check h_flow_none h_block_none h_dc_eq
+        _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_none h_block_none
+        (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
         (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextToken_ok_checkDanglingNode h_pp h_snt)
       rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
     | ok s_dc =>
       have h_snt_eq : scanNextToken s = Except.ok (some s_dc) :=
-        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
-          h_flow_none h_block_none h_dc_eq
+        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt)
+          h_flow_none h_block_none
+          (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
           (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+          (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+          (scanNextToken_ok_checkDanglingNode h_pp h_snt)
       have h_eq2 : s' = s_dc := Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
       subst h_eq2; rfl
   have h_tokens_push : ∃ c, s'.tokens
@@ -3056,9 +3085,10 @@ lemma scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
   else saveSimpleKey s
   have h_ad_flow : s_ad.inFlow = s.inFlow := by simp only [s_ad]; split <;> exact h_sk_flow
   have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
-  have h_check := checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
   have h_flow_none : scanNextToken_dispatchFlowIndicators s_ad '"' = .ok none :=
     dispatchFlowIndicators_none _ _ (by decide) (by decide) (by decide) (by decide) (by decide)
+      (checkFlowAdjacency_ok_of_scanNextToken_ok h_pp h_struct rfl
+        (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_block_none : scanNextToken_dispatchBlockIndicators s_ad '"' = .ok none :=
     dispatchBlockIndicators_none_quote _
   have h_dc : scanNextToken_dispatchContent s_ad '"' = Except.ok s' := by
@@ -3066,14 +3096,20 @@ lemma scanNextToken_flow_scalar_filtered_push_content (s : ScannerState)
     | error e =>
       exfalso
       have h_snt_err := scanNextToken_via_content_dispatch_error
-        _ _ _ _ _ h_pp h_struct rfl h_check h_flow_none h_block_none h_dc_eq
+        _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_none h_block_none
+        (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
         (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextToken_ok_checkDanglingNode h_pp h_snt)
       rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
     | ok s_dc =>
       have h_snt_eq : scanNextToken s = Except.ok (some s_dc) :=
-        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl h_check
-          h_flow_none h_block_none h_dc_eq
+        scanNextToken_via_content_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt)
+          h_flow_none h_block_none
+          (scanNextToken_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
           (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
+          (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+          (scanNextToken_ok_checkDanglingNode h_pp h_snt)
       have h_eq2 : s' = s_dc := Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
       subst h_eq2; rfl
   have h_ad_col : s_ad.col = s.col := by simp only [s_ad]; split <;> exact h_sk_col
@@ -3140,7 +3176,6 @@ lemma scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List Cha
   let s_ad := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
-  have h_check := checkBlockFlowIndent_ok_comma s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_fl_pos : s_ad.flowLevel > 0 := by
@@ -3154,10 +3189,12 @@ lemma scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List Cha
     exact saveSimpleKey_preserves_lastRealTokenVal_ne_flow s h_last t ht
   have h_flow_disp := dispatchFlowIndicators_comma s_ad h_fl_pos h_ad_last
   have h_snt_eq : scanNextToken s =
-      .ok (some { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+      .ok (some { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } }) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
-  have h_s' : s' = { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true } :=
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
+  have h_s' : s' = { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } } :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   have h_ad_filter : s_ad.tokens.filter (fun t => t.val != .placeholder)
       = s.tokens.filter (fun t => t.val != .placeholder) := by
@@ -3168,21 +3205,26 @@ lemma scanNextToken_flow_comma_filtered_push (s : ScannerState) (rest : List Cha
   rw [hf, h_ad_filter]
 
 /-- **Comma simple-key add-on** (companion to `scanNextToken_flow_comma`): the flow
-    `,` separator leaves `simpleKeyAllowed = true` (literally set by `scanFlowEntry`)
-    and threads the simple key through unchanged from `saveSimpleKey s`.  Combined with
-    `saveSimpleKey_id_of_flow_ska_false_ek_none` (when the pre-comma `simpleKeyAllowed`
-    is `false`, as it is right after a value scan), the caller recovers
-    `s'.simpleKey = s.simpleKey` — hence `simpleKey.possible` preservation.  The
-    mapping-body producer needs both to re-establish the per-pair preconditions
-    (`simpleKeyAllowed = true`, `simpleKey.possible = false`) before the recursive
-    `EmitPairListScansInFlowBlock` call. -/
+    `,` separator leaves `simpleKeyAllowed = true` and `simpleKey.possible = false`,
+    both literally set by `scanFlowEntry` — exactly the per-pair preconditions the
+    mapping-body producer must re-establish before the recursive
+    `EmitPairListScansInFlowBlock` call.
+
+    Item 9q sharpened the second conjunct.  It used to read
+    `s'.simpleKey = (saveSimpleKey s).simpleKey` — the `,` threaded the pending key
+    through unchanged — and every caller then had to compose it with
+    `saveSimpleKey_id_of_flow_ska_false_ek_none` to recover `possible = false`
+    (which is why all six destructured the conjunct as `_`).  Now the `,` clears the
+    key outright, so the precondition is immediate, and — the reason for the
+    change — the state after the `,` no longer carries a reservation index BELOW
+    the incoming token array's end, which is what `SimpleKeyAboveFloor` forbids. -/
 lemma scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
     (hcorr : ScannerSurfCorr s ⟨',' :: rest, s.col⟩)
     (h_flow : s.inFlow = true) (h_indent : s.currentIndent < 0) (h_col : s.col > 0)
     (h_last : ∀ t, lastRealTokenVal? s.tokens = some t →
       t ≠ .flowSequenceStart ∧ t ≠ .flowMappingStart ∧ t ≠ .flowEntry)
     {s' : ScannerState} (h_snt : scanNextToken s = .ok (some s')) :
-    s'.simpleKeyAllowed = true ∧ s'.simpleKey = (saveSimpleKey s).simpleKey := by
+    s'.simpleKeyAllowed = true ∧ s'.simpleKey.possible = false := by
   have h_pp : scanNextToken_preprocess s = .ok (some (saveSimpleKey s, ',')) :=
     scanNextToken_preprocess_flow s ',' rest s.col hcorr h_flow (by decide) (by decide) (by decide)
   have h_sk_flow : (saveSimpleKey s).inFlow = s.inFlow := saveSimpleKey_preserves_inFlow s
@@ -3194,7 +3236,6 @@ lemma scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
   let s_ad := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
-  have h_check := checkBlockFlowIndent_ok_comma s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_fl_pos : s_ad.flowLevel > 0 := by
@@ -3208,16 +3249,15 @@ lemma scanNextToken_flow_comma_simpleKey (s : ScannerState) (rest : List Char)
     exact saveSimpleKey_preserves_lastRealTokenVal_ne_flow s h_last t ht
   have h_flow_disp := dispatchFlowIndicators_comma s_ad h_fl_pos h_ad_last
   have h_snt_eq : scanNextToken s =
-      .ok (some { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true }) :=
-    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+      .ok (some { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } }) :=
+    scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl (scanNextToken_ok_checkFlowValueIndent h_pp h_snt) h_flow_disp
       (scanNextToken_ok_directivesPresent_false h_pp h_struct h_snt)
-  have h_s' : s' = { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true } :=
+      (scanNextToken_ok_checkBareDocument h_pp h_struct h_snt)
+      (scanNextToken_ok_checkDanglingNode h_pp h_snt)
+  have h_s' : s' = { (s_ad.emit .flowEntry).advance with simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } } :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   rw [h_s']
-  refine ⟨rfl, ?_⟩
-  dsimp only []
-  rw [ScannerCorrectness.advance_preserves_simpleKey, ScannerCorrectness.emit_preserves_simpleKey]
-  simp only [s_ad]; split <;> rfl
+  exact ⟨rfl, rfl⟩
 
 /-- `ScanChain_deterministic`: two chains with the same start state and step count
     reach the same final state (since `scanNextToken` is a function). -/
@@ -3249,3 +3289,5 @@ lemma ScanChain.split {s s₁ s₂ : ScannerState} {n₁ n₂ : Nat}
 
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

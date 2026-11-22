@@ -2,8 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Parser.Composition
+
+module
+
+public import L4YAML.Spec.Types
+
+public meta import L4YAML.Spec.Types
+public import L4YAML.Parser.Composition
+
+public meta import L4YAML.Parser.Composition
+@[expose] public section Blanket
 
 /-!
 # Compile-Time Parser Tests (`#guard`)
@@ -389,3 +397,5 @@ def collStyle (input : String) : Option CollectionStyle :=
   | _ => false
 
 end L4YAML.Tests.Suite
+
+end Blanket

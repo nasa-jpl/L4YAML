@@ -3,6 +3,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflections 245 + 246 + 247 — the producer-dual of a consumer joint, its non-verbatim symmetric mirror, and the bundle assembler that lifts a field-level dual to the consumer's bundled deliverable
 
@@ -374,3 +379,5 @@ theorem atom_not_opener : (Tok.a = Tok.os) = False := by simp
 #guard bal (some 0) [.cm, .om] = none                -- close-before-open underflows
 
 end ProducerDualOfConsumer
+
+end Blanket

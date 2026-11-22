@@ -1,4 +1,8 @@
-import L4YAML.Spec.Types
+module
+
+public import L4YAML.Spec.Types
+
+@[expose] public section Blanket
 
 /-!
 # yaml-test-suite Metadata Parser
@@ -122,26 +126,26 @@ structure ParseState where
   blockIndent : Nat := 0
 
 /-- Count leading spaces in a string. -/
-private def countLeadingSpaces (s : String) : Nat :=
+def countLeadingSpaces (s : String) : Nat :=
   s.toList.takeWhile (· == ' ') |>.length
 
 /-- Trim ASCII whitespace from both ends of a string. -/
-private def trim (s : String) : String :=
+def trim (s : String) : String :=
   s.trimAscii.toString
 
 /-- Trim ASCII whitespace from the left side of a string. -/
-private def trimLeft (s : String) : String :=
+def trimLeft (s : String) : String :=
   String.ofList (s.toList.dropWhile fun c => c == ' ' || c == '\t'
       || c == '\n' || c == '\r')
 
 /-- Strip exactly `n` leading spaces, or return the line as-is if fewer. -/
-private def stripIndent (n : Nat) (s : String) : String :=
+def stripIndent (n : Nat) (s : String) : String :=
   let chars := s.toList
   let stripped := chars.drop n
   String.ofList stripped
 
 /-- Process a single line in a block scalar field. -/
-private def processBlockLine (st : ParseState) (line : String) : ParseState :=
+def processBlockLine (st : ParseState) (line : String) : ParseState :=
   let indent := countLeadingSpaces line
   -- First content line of block scalar sets the base indent
   let blockIndent :=
@@ -165,7 +169,7 @@ private def processBlockLine (st : ParseState) (line : String) : ParseState :=
     | _ => { st with blockIndent := blockIndent }
 
 /-- Finalize the current test case and add it to the accumulated list. -/
-private def finalizeItem (st : ParseState) : ParseState :=
+def finalizeItem (st : ParseState) : ParseState :=
   if st.inItem then
     let cases := st.cases.push st.current
     { cases := cases, inItem := false,
@@ -174,7 +178,7 @@ private def finalizeItem (st : ParseState) : ParseState :=
     { st with field := .none, blockIndent := 0 }
 
 /-- Process a key-value line (e.g., "  name: Test Name"). -/
-private def processKeyValue (st : ParseState) (key : String)
+def processKeyValue (st : ParseState) (key : String)
     (value : String) : ParseState :=
   let st := { st with field := .none, blockIndent := 0 }
   let val := trim value
@@ -206,7 +210,7 @@ private def processKeyValue (st : ParseState) (key : String)
   | _ => st
 
 /-- Parse a line that starts a new list item ("- key: value"). -/
-private def processListItem (st : ParseState) (rest : String) : ParseState :=
+def processListItem (st : ParseState) (rest : String) : ParseState :=
   let st := finalizeItem st
   let newCase : TestCase :=
     { id := "", name := "", tags := [], expectFail := false,
@@ -220,7 +224,7 @@ private def processListItem (st : ParseState) (rest : String) : ParseState :=
   | [] => st
 
 /-- Process a single line of the test file. -/
-private partial def processLine (st : ParseState) (line : String) :
+partial def processLine (st : ParseState) (line : String) :
     ParseState :=
   -- If we're in a block scalar, check if this line continues it
   -- (must check BEFORE the `---` separator check, because `---` can appear
@@ -307,3 +311,5 @@ def unescapeTestYaml (s : String) : String :=
   s
 
 end Tests.SuiteRunner
+
+end Blanket

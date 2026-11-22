@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Sync.Scenarios.Preflow
-import L4YAML.Proofs.Scanner.IndexedScalar
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Sync.Scenarios.Preflow
+public import L4YAML.Proofs.Scanner.IndexedScalar
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Sync.Scenarios.FlowScalar` — Phase 3 Step
 `6f.3b3.emitscans.flowpair` (SS2, double-quoted-scalar track)
@@ -18,7 +23,7 @@ it, so it is ported here.
 
   * **§1 fuel-bound length helpers** (`CharsFromOffset_length_le`,
     `escapeString_length_ge`) — tiny ports of the legacy lemmas of the
-    same names (legacy 850/877). Needed to discharge the
+    same names. Needed to discharge the
     `input.utf8ByteSize ≥ content.length + 1` fuel obligation of the
     loop lemma. Kept local (not hoisted to `Basic`) to avoid a
     foundation-wide rebuild; `escapeString_length_ge` uses the
@@ -35,8 +40,7 @@ it, so it is ported here.
 
   * **§3 `scanNextTokenIx_flow_scanDoubleQuoted`** — the full
     `scanNextTokenIx` scenario for a double-quoted scalar in flow
-    context. Indexed twin of `scanNextToken_flow_scanDoubleQuoted`
-    (legacy 3910).
+    context. Indexed twin of `scanNextToken_flow_scanDoubleQuoted`.
 
 ## Indexed simplification vs legacy
 
@@ -67,6 +71,7 @@ open L4YAML.Proofs.Indexed.EmitterScannability.Basic
 open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.ScannerPlainScalarValid
 open L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.FlowAdjacencyIx
 open L4YAML.Surface
 
 variable {input : String}
@@ -75,7 +80,7 @@ variable {input : String}
 
 /-- Each character occupies at least one UTF-8 byte: a `CharsFromOffset`
     witness bounds its list length by the remaining byte count. Local
-    port of legacy `CharsFromOffset_length_le` (legacy 850). -/
+    port of legacy `CharsFromOffset_length_le`. -/
 lemma CharsFromOffset_length_le {offset : Nat} {chars : List Char}
     (h : CharsFromOffset input offset chars) :
     chars.length ≤ input.utf8ByteSize - offset := by
@@ -88,7 +93,7 @@ lemma CharsFromOffset_length_le {offset : Nat} {chars : List Char}
     omega
 
 /-- `escapeString` never shrinks the character count. Local port of
-    legacy `escapeString_length_ge` (legacy 877), using the
+    legacy `escapeString_length_ge`, using the
     already-ported `escapeChar_nonempty`. -/
 lemma escapeString_length_ge (cs : List Char) :
     (escapeString (String.ofList cs)).toList.length ≥ cs.length := by
@@ -146,16 +151,46 @@ lemma scanDoubleQuotedIx_escapeString_corr (c : IxCursor input)
   refine ⟨c', ?_, hcorr_c', h_col_c', ?_⟩
   · unfold scanDoubleQuotedIx
     rw [h_peek]
-    simp only [show isDoubleQuoteBool '"' = true from by decide, if_true]
+    simp only [show isDoubleQuoteBool '"' = true from by decide, ite_true]
     rw [h_loop, h_content_eq]
   · rw [h_line_c']
     exact advance_line_of_peekIx c '"' h_lt h_peek (by decide) (by decide)
 
+/-- The dispatcher-level strictness walker `quotedScalarErrIx` (item 7)
+    returns `none` on a full emitted double-quoted scalar
+    `'"' :: escapeString content ++ ['"'] ++ rest` — the emitted
+    surface has no raw line break, so no fold-time check can fire.
+    Wraps `quotedScalarErrLoopIx_escapeString_none` (Basic §3.5) with
+    the opening-quote advance and the fuel discharge. -/
+lemma quotedScalarErrIx_escapeString_none (c : IxCursor input)
+    (content : String) (rest : List Char) (inFlow : Bool) (ci : Int)
+    (hcorr : CursorSurfCorrIx c
+      ⟨'"' :: ((escapeString content).toList ++ ['"'] ++ rest), c.pos.col⟩) :
+    L4YAML.Scanner.Indexed.quotedScalarErrIx c true inFlow ci = none := by
+  have ⟨h_peek, h_lt⟩ := peek_of_chars_consIx c '"'
+    ((escapeString content).toList ++ ['"'] ++ rest) c.pos.col hcorr
+  have hcorr_adv := advance_non_newline_corrIx c '"'
+    ((escapeString content).toList ++ ['"'] ++ rest) hcorr h_lt (by decide) (by decide)
+  have h_col_adv : (c.pos.col + 1 : Nat) = c.advance.pos.col := hcorr_adv.col_eq
+  rw [h_col_adv] at hcorr_adv
+  have h_len := CharsFromOffset_length_le hcorr.chars_from
+  have h_corr_loop : CursorSurfCorrIx c.advance
+      ⟨(escapeString (String.ofList content.toList)).toList ++ ['"'] ++ rest,
+        c.advance.pos.col⟩ := by
+    rw [String.ofList_toList]; exact hcorr_adv
+  have h_fuel : input.utf8ByteSize + 1 ≥
+      (escapeString (String.ofList content.toList)).toList.length + 1 := by
+    rw [String.ofList_toList]
+    simp only [List.length_cons, List.length_append] at h_len
+    omega
+  unfold L4YAML.Scanner.Indexed.quotedScalarErrIx
+  exact Basic.quotedScalarErrLoopIx_escapeString_none content.toList rest c.pos.line
+    inFlow ci c.advance (input.utf8ByteSize + 1) h_corr_loop h_fuel
+
 /-! ## §3  `scanNextTokenIx_flow_scanDoubleQuoted` -/
 
 /-- Full `scanNextTokenIx` for a double-quoted scalar `"…"` in flow
-    context. Indexed twin of `scanNextToken_flow_scanDoubleQuoted`
-    (legacy 3910). -/
+    context. Indexed twin of `scanNextToken_flow_scanDoubleQuoted`. -/
 lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
     (content : String) (rest : List Char)
     (hcorr : ScannerSurfCorrIx s
@@ -165,7 +200,8 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
     (h_endline : EndLineOnLineIx s)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_last : ∀ t, lastRealTokenValIx? s.tokens = some t → t.completesFlowValue = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
       ∧ s'.flowLevel = s.flowLevel
@@ -180,7 +216,14 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
       ∧ s'.cursor.pos.line = s.cursor.pos.line
       ∧ AllTokensOnLineIx s' s'.cursor.pos.line
       ∧ EndLineOnLineIx s'
-      ∧ s'.simpleKeyStack = s.simpleKeyStack := by
+      ∧ s'.simpleKeyStack = s.simpleKeyStack
+      -- item 9r: the reservation layout. From an entry boundary
+      -- (`simpleKeyAllowed`, raw array capped by a non-`.value`), the
+      -- save reserves at the incoming array's end and the scalar push
+      -- preserves every slot below it — so the pending key the `:` will
+      -- read sits at the boundary.
+      ∧ (s.simpleKeyAllowed = true → s.explicitKeyLine = none →
+          LastRawNotValueIx s → SavedKeyAtEntryBoundaryIx s') := by
   -- ── Dispatch composition prefix (mirror `scanDoubleQuotedIx_first_filtered_token`)
   have h_pp : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s, '"')) :=
     scanNextTokenIx_preprocess_flow s '"'
@@ -201,11 +244,13 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     rw [h_s_ad_def]; split <;> exact h_sk_flow
   have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '"' = .ok () :=
-    checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
+  have h_ad_tokens' : s_ad.tokens = (saveSimpleKeyIx s).tokens := by
+    rw [h_s_ad_def]; split <;> rfl
   have h_flow_none : scanNextTokenIx_dispatchFlowIndicators s_ad '"' = .ok none :=
     dispatchFlowIndicators_none _ _
       (by decide) (by decide) (by decide) (by decide) (by decide)
+      (checkFlowAdjacencyIx_ok_of_notCompletes (fun t ht =>
+        saveSimpleKeyIx_preserves_completesFalse s h_last t (h_ad_tokens' ▸ ht)))
   have h_block_none : scanNextTokenIx_dispatchBlockIndicators s_ad '"' = .ok none :=
     dispatchBlockIndicators_none_quote _
   -- ── s_ad field equalities
@@ -273,7 +318,11 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
       show ('"' == '|') = false from by decide,
       show ('"' == '>') = false from by decide,
       show ('"' == '"') = true from by decide,
-      Bool.or_self, Bool.false_eq_true, ↓reduceIte]
+      Bool.or_self, Bool.false_eq_true, ↓reduceIte,
+      -- Item 7 strictness walker: `none` on the emitted surface (no raw
+      -- line break), so the guard falls through.
+      quotedScalarErrIx_escapeString_none s_ad.cursor content rest
+        s_ad.inFlow s_ad.currentIndent h_ad_cursor_corr]
     split
     · rename_i r heq
       rw [h_dq] at heq
@@ -283,13 +332,17 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
     · rename_i heq; rw [h_dq] at heq; exact absurd heq (by simp)
   have h_snt : scanNextTokenIx s = .ok (some s') :=
     scanNextTokenIx_via_content_dispatch s (saveSimpleKeyIx s) s_ad s' '"'
-      h_pp h_struct h_s_ad_def h_check h_flow_none h_block_none h_dc
+      h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_none h_block_none
+      (scanNextTokenIx_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc
       ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
+      (scanNextTokenIx_checkBareDocument_ok_of_inFlow _
+        ((saveSimpleKeyIx_inFlow s).trans h_flow))
+      (scanNextTokenIx_checkDanglingNode_ok_of_inFlow _ _ h_flow)
   -- ── line equality (used by several conjuncts)
   have h_s'_line_eq : s'.cursor.pos.line = s.cursor.pos.line := by
     rw [h_s'_cursor, h_line_cAfter]; exact h_ad_line
   have h_ids_eq : s'.indents = s.indents := h_s'_ids.trans h_ad_ids
-  refine ⟨s', h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨s', h_snt, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- ScannerSurfCorrIx s' ⟨rest, s'.cursor.pos.col⟩
     refine ⟨?_, rfl, ?_, ?_⟩
     · rw [h_s'_cursor]; exact hcorr_cAfter.chars_from
@@ -354,5 +407,22 @@ lemma scanNextTokenIx_flow_scanDoubleQuoted (s : ScannerStateIx input)
     · rw [h_s'_sk, h1, h_line']
     · rw [h_s'_sk, h2, h_line']
   · rw [h_s'_stack]; exact h_ad_stack
+  · -- item 9r: the entry-boundary layout of the saved key
+    intro h_ska h_ekn h_lrv
+    obtain ⟨-, h_tidx⟩ := saveSimpleKeyIx_simpleKey_of_saved s h_ska h_ekn
+    refine savedKeyAtEntryBoundaryIx_of_prefix ?_ ?_ h_lrv
+    · rw [h_s'_sk, h_ad_simpleKey, h_tidx]
+    · intro i hi
+      have hi_ad : i < s_ad.tokens.tokens.size := by
+        rw [h_ad_tokens]
+        exact Nat.lt_of_lt_of_le hi (saveSimpleKeyIx_tokens_size_ge s)
+      have h1 : s'.tokens.tokens[i]? = s_ad.tokens.tokens[i]? := by
+        rw [h_s'_tokens]
+        show (s_ad.tokens.tokens.push _)[i]? = s_ad.tokens.tokens[i]?
+        rw [Array.getElem?_push_lt hi_ad, Array.getElem?_eq_getElem hi_ad]
+      rw [h1, h_ad_tokens]
+      exact saveSimpleKeyIx_tokens_prefix s i hi
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

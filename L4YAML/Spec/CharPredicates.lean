@@ -2,7 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.YamlSpec
+
+module
+
+public import L4YAML.Spec.YamlSpec
+
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Character Predicates (Shared Module)
@@ -1577,3 +1584,5 @@ lemma noFlowIndicatorsProp_of_whitespace (s : String)
   rcases this with rfl | rfl <;> simp [isFlowIndicatorProp] at hfi
 
 end L4YAML.CharPredicates
+
+end Blanket

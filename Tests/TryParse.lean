@@ -1,4 +1,8 @@
-import L4YAML
+module
+
+public import L4YAML
+
+@[expose] public section Blanket
 
 /-!
 # TryParse — single-file YAML parse attempt
@@ -45,3 +49,5 @@ def main (args : List String) : IO UInt32 := do
     match parseYamlSafe content lim with
     | .ok _ => return 0
     | .error e => IO.eprintln (toString e); return 1
+
+end Blanket

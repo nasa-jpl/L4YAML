@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 423 — derive a recursion-seam side-condition from the PROGRESS WITNESS, not a new field
 
@@ -104,3 +109,5 @@ theorem cannot_thread_unconditional : ¬ DeltaAlwaysNonempty := by
 #guard ([] : List Nat).length == 0          -- the degenerate run's empty delta (carrier would lie)
 
 end Tests.Reflections.ProgressWitnessCertifiesDelta
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 504 — surface a locator's buried witness to propagate a free child projection
 
 R503 ([[BundleFreeProjectionIntoProducer]]) bundled the free child `FlowBodyContent` projection INTO the
@@ -98,3 +103,5 @@ theorem demo : (∃ m, Entry m) ∧ (∃ j, 0 < j ∧ Content j) := locatedConte
 theorem body_needs_nonempty : ¬ Body 0 := Nat.lt_irrefl 0
 
 end ContentSurfacingLocatorTwin
+
+end Blanket

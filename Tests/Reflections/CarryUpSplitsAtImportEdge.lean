@@ -3,6 +3,11 @@ Copyright (c) 2026 L4YAML contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 408 — a carry-up splits at a reversed import edge
 
 Self-contained toy for [[ref-carry-up-splits-at-import-edge]].
@@ -153,3 +158,5 @@ theorem map_contract_differs_from_seq :
   · unfold floorOK; decide
 
 end Tests.Reflections.CarryUpSplitsAtImportEdge
+
+end Blanket

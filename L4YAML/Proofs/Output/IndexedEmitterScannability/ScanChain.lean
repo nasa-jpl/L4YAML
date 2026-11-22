@@ -2,22 +2,27 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.Basic
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
-import L4YAML.Proofs.Scanner.IndexedScannerProgress
-import L4YAML.Proofs.Coupling.CouplingBridge
-import L4YAML.Output.Emitter
 
-/-! # `IndexedEmitterScannability.ScanChain` — Phase 3 Step 6f.3b3 staging
+module
 
-**Status**: staging file, fully populated through §3. §1 ports the
-legacy §3 prelude *utility lemmas* (lines 842–1184 of
-`Proofs/Output/EmitterScannability.lean`); §2 ports the `ScanChain`
-inductive + helpers (legacy lines 1185–1232 + 1261–1280). §3 lifts
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.Basic
+public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+public import L4YAML.Proofs.Scanner.IndexedScannerProgress
+public import L4YAML.Proofs.Coupling.CouplingBridge
+public import L4YAML.Output.Emitter
+
+@[expose] public section Blanket
+
+/-! # `IndexedEmitterScannability.ScanChain` — Phase 3 Step 6f.3b3
+
+**Status**: fully populated through §3. §1 ports the
+legacy §3 prelude *utility lemmas* of
+`Proofs/Output/EmitterScannability.lean`; §2 ports the `ScanChain`
+inductive + helpers. §3 lifts
 the strict-progress capstone (`scanNextTokenIx_progress` from
 `Proofs/Scanner/IndexedScannerProgress.lean` §7) into the
-`ScanChainIx.bound_invariant` strict form and `ScanChainIx.fuel_bound`
-(legacy lines 1281–1303).
+`ScanChainIx.bound_invariant` strict form and `ScanChainIx.fuel_bound`.
 
 ## Scope of §1 (utility slice, landed 2026-05-24)
 
@@ -43,7 +48,7 @@ the strict-progress capstone (`scanNextTokenIx_progress` from
 
   - **§2.0** — `ScanChainIx` inductive: `n` consecutive successful
     `scanNextTokenIx` steps from `s` to `s'`. Twin of legacy
-    `ScanChain` (line 1185).
+    `ScanChain`.
   - **§2.1** — Combinators: `.trans` / `.single`.
   - **§2.2** — `scanLoopIx` connection: `.to_scanLoopIx` /
     `.to_scanLoopIx_exists`.
@@ -51,7 +56,7 @@ the strict-progress capstone (`scanNextTokenIx_progress` from
     `IxCursor.posBound` field subsumes legacy `inputEnd`/`input`/
     `IsValid` bookkeeping; `scanNextTokenIx_offset_monotonic`
     (`IndexedDispatch.lean:1608`) is the only "preservation"
-    needed. The legacy `scanNextToken_preserves_bound` (line 1251)
+    needed. The legacy `scanNextToken_preserves_bound`
     becomes vacuous — no theorem needed, replaced by direct
     `posBound` projection. `.offset_monotonic_weak` gives the
     `s_final.offset ≥ s₀.offset` form (no strict-progress needed).
@@ -86,6 +91,7 @@ open L4YAML.Scanner.Indexed
 open L4YAML.Scanner.Indexed.ScannerStateIx
 open L4YAML.Surface
 open L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.FlowAdjacencyIx
 
 variable {input : String}
 
@@ -121,6 +127,9 @@ lemma scanNextTokenIx_preprocess_eof (s : ScannerStateIx input)
     (h : s.peek? = none) :
     scanNextTokenIx_preprocess s = .ok none := by
   unfold scanNextTokenIx_preprocess
+  -- Item 7 strictness walker: `none` at EOF, so the gate falls through.
+  rw [L4YAML.Scanner.Indexed.skipToContentErrIx_none_atEnd s.cursor
+        s.inFlow s.currentIndent s.needIndentCheck h]
   rw [skipToContentS_atEnd s h]
   have h_not : ¬ s.cursor.pos.offset < input.utf8ByteSize := by
     have h_le : input.utf8ByteSize ≤ s.cursor.pos.offset :=
@@ -199,7 +208,9 @@ lemma scanLoopIx_two_iter {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     (h_snt0 : scanNextTokenIx s₀ = .ok (some s₁))
     (h_snt1 : scanNextTokenIx s₁ = .ok none)
     (h_flow : s₁.flowLevel = 0)
-    (h_dp : s₁.directivesPresent = false) :
+    (h_dp : s₁.directivesPresent = false)
+    (h_dn : scanLoopIx_checkDanglingNode s₁ = .ok ())
+    (h_fv : scanLoopIx_checkFlowValueIndent s₁ = .ok ()) :
     ∃ ts, scanLoopIx s₀ fuel = .ok ts := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
   -- One step: scanLoopIx s₀ (f+2) = scanLoopIx s₁ (f+1).
@@ -210,10 +221,11 @@ lemma scanLoopIx_two_iter {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     unfold scanLoopIx
     rw [h_snt1]
     have h_flow_not : ¬ s₁.flowLevel > 0 := by omega
-    rw [if_neg h_flow_not]
+    rw [ite_eq_right h_flow_not]
     have h_dp_check : ¬ s₁.directivesPresent = true := by
       simp [h_dp]
-    rw [if_neg h_dp_check]
+    rw [ite_eq_right h_dp_check]
+    rw [h_dn, h_fv]
     exact ⟨_, rfl⟩
   rw [h1]; exact h2
 
@@ -224,7 +236,9 @@ lemma scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
     (h_snt0 : scanNextTokenIx s₀ = .ok (some s₁))
     (h_snt1 : scanNextTokenIx s₁ = .ok none)
     (h_flow : s₁.flowLevel = 0)
-    (h_dp : s₁.directivesPresent = false) :
+    (h_dp : s₁.directivesPresent = false)
+    (h_dn : scanLoopIx_checkDanglingNode s₁ = .ok ())
+    (h_fv : scanLoopIx_checkFlowValueIndent s₁ = .ok ()) :
     scanLoopIx s₀ fuel = .ok ((unwindIndentsIx s₁ (-1)).emit YamlToken.streamEnd).tokens := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 2 := ⟨fuel - 2, by omega⟩
   have h_step : scanLoopIx s₀ (f + 2) = scanLoopIx s₁ (f + 1) := by
@@ -233,10 +247,11 @@ lemma scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
   unfold scanLoopIx
   rw [h_snt1]
   have h_flow_not : ¬ s₁.flowLevel > 0 := by omega
-  rw [if_neg h_flow_not]
+  rw [ite_eq_right h_flow_not]
   have h_dp_check : ¬ s₁.directivesPresent = true := by
     simp [h_dp]
-  rw [if_neg h_dp_check]
+  rw [ite_eq_right h_dp_check]
+  rw [h_dn, h_fv]
 
 /-- **Terminal step (existential)**: at EOF (and with the no-error
     preconditions on `flowLevel` and `directivesPresent`),
@@ -244,15 +259,18 @@ lemma scanLoopIx_two_iter_eq {s₀ s₁ : ScannerStateIx input} {fuel : Nat}
 lemma scanLoopIx_eof {s : ScannerStateIx input}
     (h_snt : scanNextTokenIx s = .ok none)
     (h_fl : s.flowLevel = 0)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_dn : scanLoopIx_checkDanglingNode s = .ok ())
+    (h_fv : scanLoopIx_checkFlowValueIndent s = .ok ()) :
     ∃ ts, scanLoopIx s 1 = .ok ts := by
   unfold scanLoopIx
   rw [h_snt]
   have h_flow_not : ¬ s.flowLevel > 0 := by omega
-  rw [if_neg h_flow_not]
+  rw [ite_eq_right h_flow_not]
   have h_dp_check : ¬ s.directivesPresent = true := by
     simp [h_dp]
-  rw [if_neg h_dp_check]
+  rw [ite_eq_right h_dp_check]
+  rw [h_dn, h_fv]
   exact ⟨_, rfl⟩
 
 /-- **Terminal step (equality)**: at EOF, `scanLoopIx` produces
@@ -261,16 +279,19 @@ lemma scanLoopIx_eof_eq {s : ScannerStateIx input} {fuel : Nat}
     (h_fuel : fuel ≥ 1)
     (h_snt : scanNextTokenIx s = .ok none)
     (h_fl : s.flowLevel = 0)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_dn : scanLoopIx_checkDanglingNode s = .ok ())
+    (h_fv : scanLoopIx_checkFlowValueIndent s = .ok ()) :
     scanLoopIx s fuel = .ok ((unwindIndentsIx s (-1)).emit YamlToken.streamEnd).tokens := by
   obtain ⟨f, rfl⟩ : ∃ n, fuel = n + 1 := ⟨fuel - 1, by omega⟩
   unfold scanLoopIx
   rw [h_snt]
   have h_flow_not : ¬ s.flowLevel > 0 := by omega
-  rw [if_neg h_flow_not]
+  rw [ite_eq_right h_flow_not]
   have h_dp_check : ¬ s.directivesPresent = true := by
     simp [h_dp]
-  rw [if_neg h_dp_check]
+  rw [ite_eq_right h_dp_check]
+  rw [h_dn, h_fv]
 
 /-! ## §1.3  Surface correspondence (`ScannerSurfCorrIx`)
 
@@ -335,24 +356,20 @@ upstream dispatcher, so control falls through to
     `dispatchContent`. -/
 lemma dispatchContentIx_quote (s : ScannerStateIx input) (c : Char) (hc : c = '"')
     (h_notFlow : s.flowLevel = 0)
-    (h_indent : s.currentIndent = -1)
     (h_noDocStart : atDocumentStartIx s.cursor = false)
     (h_noDocEnd : atDocumentEndIx s.cursor = false) :
     scanNextTokenIx_dispatchStructural s c = .ok none
-    ∧ scanNextTokenIx_checkBlockFlowIndent s c = .ok ()
     ∧ scanNextTokenIx_dispatchFlowIndicators s c = .ok none
     ∧ scanNextTokenIx_dispatchBlockIndicators s c = .ok none := by
   subst hc
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_⟩
   · -- dispatchStructural: '"' doesn't match %, ---, ...
     unfold scanNextTokenIx_dispatchStructural
     simp [ScannerStateIx.inFlow, h_notFlow, h_noDocStart, h_noDocEnd, pure, Except.pure]
-  · -- checkBlockFlowIndent: currentIndent = -1 < 0, condition false
-    unfold scanNextTokenIx_checkBlockFlowIndent
-    simp [ScannerStateIx.inFlow, h_notFlow, h_indent]
   · -- dispatchFlowIndicators: '"' doesn't match [, ], {, }, ,
     unfold scanNextTokenIx_dispatchFlowIndicators
-    simp [pure, Except.pure]
+    rw [checkFlowAdjacencyIx_ok_of_notInFlow (by simp [ScannerStateIx.inFlow, h_notFlow])]
+    simp [bind, Except.bind, pure, Except.pure]
   · -- dispatchBlockIndicators: '"' doesn't match -, ?, :
     unfold scanNextTokenIx_dispatchBlockIndicators
     simp [pure, Except.pure]
@@ -361,7 +378,7 @@ lemma dispatchContentIx_quote (s : ScannerStateIx input) (c : Char) (hc : c = '"
 
 Pure facts about `Output.Emitter.emitScalar` — no scanner involvement.
 Ported verbatim from legacy `emitScalar_toList` /
-`emitScalar_utf8ByteSize_ge` (lines 1058–1070). -/
+`emitScalar_utf8ByteSize_ge`. -/
 
 /-- `emitScalar content` decomposes as `'"' :: escapeString content :: '"'`. -/
 lemma emitScalar_toList (content : String) :
@@ -381,8 +398,7 @@ lemma emitScalar_utf8ByteSize_ge (content : String) :
 
 /-! ## §2  `ScanChainIx` — n-step scan chains
 
-Indexed twin of legacy `ScanChain` (lines 1185–1232 + 1261–1280 of
-`Proofs/Output/EmitterScannability.lean`). Captures the fact that
+Indexed twin of legacy `ScanChain`. Captures the fact that
 `n` successive `scanNextTokenIx` calls each return `.ok (some ...)`,
 threading an intermediate state through to the final state `s'`.
 
@@ -415,7 +431,7 @@ inductive ScanChainIx {input : String} :
 /-! ### §2.1  Combinators (`.trans`, `.single`) -/
 
 /-- Transitivity: concatenate two scan chains. Mirrors legacy
-    `ScanChain.trans` (line 1193). -/
+    `ScanChain.trans`. -/
 lemma ScanChainIx.trans {s₁ s₂ s₃ : ScannerStateIx input} {n₁ n₂ : Nat}
     (h1 : ScanChainIx s₁ n₁ s₂) (h2 : ScanChainIx s₂ n₂ s₃) :
     ScanChainIx s₁ (n₁ + n₂) s₃ := by
@@ -428,7 +444,7 @@ lemma ScanChainIx.trans {s₁ s₂ s₃ : ScannerStateIx input} {n₁ n₂ : Nat
     exact .step h_snt h_ih
 
 /-- A single `scanNextTokenIx` step as a `ScanChainIx`. Mirrors
-    legacy `ScanChain.single` (line 1205). -/
+    legacy `ScanChain.single`. -/
 lemma ScanChainIx.single {s s' : ScannerStateIx input}
     (h : scanNextTokenIx s = .ok (some s')) :
     ScanChainIx s 1 s' :=
@@ -438,7 +454,7 @@ lemma ScanChainIx.single {s s' : ScannerStateIx input}
 
 /-- If `n` steps succeed reaching `s'`, and `scanLoopIx s' fuel`
     succeeds, then `scanLoopIx s (fuel + n)` succeeds with the same
-    result. Mirrors legacy `ScanChain.to_scanLoop` (line 1213). -/
+    result. Mirrors legacy `ScanChain.to_scanLoop`. -/
 lemma ScanChainIx.to_scanLoopIx {s s' : ScannerStateIx input}
     {n fuel : Nat} {ts : Indexed.TokenStream input}
     (h_chain : ScanChainIx s n s')
@@ -453,7 +469,7 @@ lemma ScanChainIx.to_scanLoopIx {s s' : ScannerStateIx input}
     exact scanLoopIx_step_eq h_snt h_ih
 
 /-- Existential variant of `.to_scanLoopIx`. Mirrors legacy
-    `ScanChain.to_scanLoop_exists` (line 1227). -/
+    `ScanChain.to_scanLoop_exists`. -/
 lemma ScanChainIx.to_scanLoopIx_exists {s s' : ScannerStateIx input}
     {n : Nat}
     (h_chain : ScanChainIx s n s')
@@ -464,7 +480,7 @@ lemma ScanChainIx.to_scanLoopIx_exists {s s' : ScannerStateIx input}
 
 /-! ### §2.3  Weak offset/bound invariants
 
-Legacy's `scanNextToken_preserves_bound` (line 1251) tracks
+Legacy's `scanNextToken_preserves_bound` tracks
 `offset ≤ inputEnd`, `inputEnd = input.utf8ByteSize`,
 `input = input`, and `IsValid`. In the indexed substrate:
   - `inputEnd` does not exist (replaced by `input.utf8ByteSize`).
@@ -482,7 +498,7 @@ inductively. -/
     `s_final.cursor.pos.offset ≥ s₀.cursor.pos.offset`.
 
     *Weak* form (no strict progress): the legacy
-    `bound_invariant` (line 1261) would give
+    `bound_invariant` would give
     `offset ≥ offset + n`, but that requires the strict-progress
     capstone `scanNextTokenIx_progress` which is not yet ported.
     See `.internals.progress` slice. -/
@@ -559,3 +575,5 @@ lemma ScanChainIx.fuel_bound (s₀ s_final : ScannerStateIx input)
   omega
 
 end L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
+
+end Blanket

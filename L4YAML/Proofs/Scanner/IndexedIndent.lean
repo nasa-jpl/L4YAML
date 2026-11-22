@@ -2,12 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.IndexedWhitespace
 
-/-! # `IndexedIndent` — Phase 3 indentation / line-break dispatch proofs (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 cutover commit (Step 6).
+public import L4YAML.Proofs.Scanner.IndexedWhitespace
+
+@[expose] public section Blanket
+
+/-! # `IndexedIndent` — Phase 3 indentation / line-break dispatch proofs
 
 This file extends `IndexedWhitespace.lean` to cover the four
 Step 3 productions listed in the blueprint:
@@ -230,6 +232,159 @@ lemma skipToContent_at_content {input : String} (c : IxCursor input)
     simp [hHash]
   simp [hCommentBool, hLB]
 
+/-! ## Strictness walker (`skipToContentErrIx`) — `none` characterisations
+
+Item 7 gates `scanNextTokenIx_preprocess` (and `_preprocessWC`) on the
+§6.1/§6.6 strictness walker. Forward reductions of `preprocess` (at
+EOF; at a content character) need the walker to return `none` there:
+with nothing skippable at the cursor, no indentation is entered and no
+`#` is consumed, so no strictness error can fire. -/
+
+/-- `skipSpaces` is a no-op when the cursor is not at a space
+    (including EOF). -/
+lemma skipSpaces_no_space {input : String} (c : IxCursor input)
+    (h : peekIsIndentChar c = false) :
+    skipSpaces c = (c, 0) := by
+  unfold skipSpaces skipSpacesLoop
+  cases input.utf8ByteSize with
+  | zero => rfl
+  | succ n => simp [h]
+
+/-- The strictness walker is `none` at end-of-input. -/
+lemma skipToContentErrIx_none_atEnd {input : String} (c : IxCursor input)
+    (inFlow : Bool) (ci : Int) (nic : Bool)
+    (h : c.peek? = none) :
+    skipToContentErrIx c inFlow ci nic = none := by
+  have h_sp : skipSpaces c = (c, 0) :=
+    skipSpaces_no_space c (by unfold peekIsIndentChar; rw [h])
+  have h_ws : skipWhitespace c = c := by
+    have hpw : peekIsWhiteSpace c = false := by
+      unfold peekIsWhiteSpace; rw [h]
+    unfold skipWhitespace skipWhitespaceLoop
+    cases input.utf8ByteSize with
+    | zero => rfl
+    | succ n => simp [hpw]
+  unfold skipToContentErrIx skipToContentErrLoopIx skipToContentErrWsIx
+  simp [h_sp, h_ws, h]
+
+/-- The strictness walker is `none` when the cursor already sits at a
+    content character (not whitespace, not a line break, not `'#'`). -/
+lemma skipToContentErrIx_none_of_content {input : String} (c : IxCursor input)
+    (inFlow : Bool) (ci : Int) (nic : Bool) {ch : Char}
+    (hpe : c.peek? = some ch)
+    (hWS : isWhiteSpaceBool ch = false)
+    (hLB : isLineBreakBool ch = false)
+    (hHash : ch ≠ '#') :
+    skipToContentErrIx c inFlow ci nic = none := by
+  have h_tab : ch ≠ '\t' := by
+    intro he; subst he; simp [isWhiteSpaceBool, isTabBool] at hWS
+  have h_pw : peekIsWhiteSpace c = false := by
+    unfold peekIsWhiteSpace; rw [hpe]; exact hWS
+  have h_ws : skipWhitespace c = c := by
+    unfold skipWhitespace skipWhitespaceLoop
+    cases input.utf8ByteSize with
+    | zero => rfl
+    | succ n => simp [h_pw]
+  have h_sp : skipSpaces c = (c, 0) := by
+    apply skipSpaces_no_space
+    unfold peekIsIndentChar
+    rw [hpe]
+    have : isIndentCharBool ch = false := by
+      unfold isWhiteSpaceBool isSpaceBool isTabBool at hWS
+      unfold isIndentCharBool
+      simp only [Bool.or_eq_false_iff] at hWS
+      exact hWS.1
+    exact this
+  have h_cm : isCommentBool ch = false := by
+    unfold isCommentBool; simp [hHash]
+  have h_ok : skipToContentErrWsIx c inFlow ci nic = .ok c := by
+    unfold skipToContentErrWsIx
+    simp only [h_sp, h_ws, hpe]
+    split
+    · split
+      · split
+        · rename_i heq
+          injection heq with heq'
+          first
+            | exact absurd heq' h_tab
+            | exact absurd heq'.symm h_tab
+        · rfl
+      · rfl
+    · rfl
+  unfold skipToContentErrIx skipToContentErrLoopIx
+  rw [h_ok]
+  simp [hpe, h_cm, hLB]
+
+/-- The strictness walker is `none` when the cursor sits at a single
+    space followed by a content character (the flow `", x"` shape):
+    the space is `s-separate-in-line`, never indentation territory
+    that a tab could violate, and the `#`/line-break cases are
+    excluded by the content hypotheses. -/
+lemma skipToContentErrIx_none_of_ws1 {input : String} (c : IxCursor input)
+    (inFlow : Bool) (ci : Int) (nic : Bool) {ch : Char}
+    (h_sp : c.peek? = some ' ')
+    (h_next : c.advance.peek? = some ch)
+    (hWS : isWhiteSpaceBool ch = false)
+    (hLB : isLineBreakBool ch = false)
+    (hHash : ch ≠ '#') :
+    skipToContentErrIx c inFlow ci nic = none := by
+  have h_lt : c.pos.offset < input.utf8ByteSize := by
+    by_cases h : c.pos.offset < input.utf8ByteSize
+    · exact h
+    · rw [(IxCursor.peek?_eq_none_iff c).mpr (Nat.le_of_not_lt h)] at h_sp
+      simp at h_sp
+  have h_tab : ch ≠ '\t' := by
+    intro he; subst he; simp [isWhiteSpaceBool, isTabBool] at hWS
+  have h_pic : peekIsIndentChar c = true := by
+    unfold peekIsIndentChar; rw [h_sp]; rfl
+  have h_pic_adv : peekIsIndentChar c.advance = false := by
+    unfold peekIsIndentChar; rw [h_next]
+    unfold isWhiteSpaceBool isSpaceBool isTabBool at hWS
+    unfold isIndentCharBool
+    simp only [Bool.or_eq_false_iff] at hWS
+    exact hWS.1
+  have h_pwc : peekIsWhiteSpace c = true := by
+    unfold peekIsWhiteSpace; rw [h_sp]; rfl
+  have h_pw_adv : peekIsWhiteSpace c.advance = false := by
+    unfold peekIsWhiteSpace; rw [h_next]; exact hWS
+  have h_sps : skipSpaces c = (c.advance, 1) := by
+    unfold skipSpaces skipSpacesLoop
+    cases hn : input.utf8ByteSize with
+    | zero => rw [hn] at h_lt; exact absurd h_lt (by omega)
+    | succ n =>
+      simp only [h_pic, ite_true]
+      cases n with
+      | zero => rfl
+      | succ m => simp [skipSpacesLoop, h_pic_adv]
+  have h_ws : skipWhitespace c = c.advance := by
+    unfold skipWhitespace skipWhitespaceLoop
+    cases hn : input.utf8ByteSize with
+    | zero => rw [hn] at h_lt; exact absurd h_lt (by omega)
+    | succ n =>
+      simp only [h_pwc, ite_true]
+      cases n with
+      | zero => rfl
+      | succ m => simp [skipWhitespaceLoop, h_pw_adv]
+  have h_cm : isCommentBool ch = false := by
+    unfold isCommentBool; simp [hHash]
+  have h_ok : skipToContentErrWsIx c inFlow ci nic = .ok c.advance := by
+    unfold skipToContentErrWsIx
+    simp only [h_sps, h_ws, h_next]
+    split
+    · split
+      · split
+        · rename_i heq
+          injection heq with heq'
+          first
+            | exact absurd heq' h_tab
+            | exact absurd heq'.symm h_tab
+        · rfl
+      · rfl
+    · rfl
+  unfold skipToContentErrIx skipToContentErrLoopIx
+  rw [h_ok]
+  simp [h_next, h_cm, hLB]
+
 /-! ## `skipToContent` — global progress (closes the Step 3 → Step 4
 deferred obligation, Reflection 38)
 
@@ -353,3 +508,5 @@ lemma skipToContent_progress {input : String} (c : IxCursor input) :
   omega
 
 end L4YAML.Scanner.Indexed
+
+end Blanket

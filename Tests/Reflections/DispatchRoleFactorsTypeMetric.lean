@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 383 — a search-recursion's FIXED N-arm dispatch assigns each arm a ROLE of
 PRODUCE / REFUTE / VANISH, and for a SUM-TYPED head the role FACTORS as head-TYPE × head-METRIC
@@ -115,3 +120,5 @@ def producingArms (h : Head) : Nat :=
 #guard producingArms .map      == 1     -- only ADVANCE (LEAF/DESCEND refuted)
 
 end Tests.Reflections.DispatchRoleFactorsTypeMetric
+
+end Blanket

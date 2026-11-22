@@ -1,0 +1,48 @@
+{
+ "item": 391,
+ "tag": "ROOT-FRAME-LE",
+ "rev": "f5e2ee07",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/391-flip-root-frame-le.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "      -- `Or.inr trivial` for both.",
+    "      (h_closeF : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < n) ∧"
+   ],
+   "new": [
+    "      -- `Or.inr trivial` for both.",
+    "      (h_closeF : (∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width ≤ n) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧"
+   ],
+   "new": [
+    "    {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nv) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧"
+   ],
+   "new": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width ≤ nv) ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

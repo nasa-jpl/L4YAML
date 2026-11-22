@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 493 — a LIFT (a lemma whose body is a composition of child-lemma calls) re-keys to a
 guard's weaker twin via one NAME swap per guard-KEYED child it invokes; guard-NEUTRAL calls are free.
@@ -154,3 +159,5 @@ example (n : Nat) (hg : Weak n) (hc : Content n) (k : Weak n → Rec n) (h_safe 
   funnel_seq n hg hc k h_safe
 
 end LiftRekeysByGuardKeyedChildNames
+
+end Blanket

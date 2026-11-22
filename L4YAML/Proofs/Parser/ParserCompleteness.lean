@@ -2,11 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.Parser.ParserSoundness
+
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Proofs.Soundness
+public import L4YAML.Proofs.Parser.ParserSoundness
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Parser Completeness (P10.8e)
@@ -229,3 +235,5 @@ theorem soundness_completeness_compose
   ParserSoundness.yamlValue_has_witness v false hg
 
 end L4YAML.Proofs.ParserCompleteness
+
+end Blanket

@@ -2,13 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.IndexedScanner
-import L4YAML.Proofs.Foundation.CharClass
 
-/-! # `IndexedWhitespace` — Phase 3 character/whitespace spec proofs (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 cutover commit (Step 6).
+public import L4YAML.Scanner.IndexedScanner
+public import L4YAML.Proofs.Foundation.CharClass
+
+@[expose] public section Blanket
+
+/-! # `IndexedWhitespace` — Phase 3 character/whitespace spec proofs
 
 This file lands the *bidirectional* proofs that bridge the runtime
 recognisers in `Scanner.Indexed` to the YAML 1.2.2 spec predicates in
@@ -254,10 +256,10 @@ lemma advance_indent_col_succ {input : String} (c : IxCursor input)
     peekIsIndentChar_implies_hasMore c h
   have hCh : String.Pos.Raw.get input ⟨c.pos.offset⟩ = ' ' := by
     unfold peekIsIndentChar IxCursor.peek? at h
-    rw [if_pos hMore] at h
+    rw [ite_eq_left hMore] at h
     simpa [isIndentCharBool] using h
   unfold IxCursor.advance
-  simp [dif_pos hMore, hCh]
+  simp [dite_eq_left hMore, hCh]
 
 lemma skipSpacesLoop_col_eq_count {input : String} (c : IxCursor input)
     (fuel : Nat) :
@@ -413,3 +415,5 @@ lemma consumeLineBreak_strict {input : String} (c : IxCursor input)
     · rw [consumeLineBreak_CR_no_LF c hp hCRLF]; exact hAdv
 
 end L4YAML.Scanner.Indexed
+
+end Blanket

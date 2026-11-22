@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 461 — the severance-free deep family that resolves a recursive token-indistinguishable
 # severance must mirror the FULL mutual group of the recursion (BOTH the seq and map axes), not just
@@ -296,3 +301,5 @@ theorem deep_family_mirrors_full_mutual_group :
    fun _e _i h h_eq => DEntry.seq_interior h h_eq⟩
 
 end Tests.Reflections.DeepFamilyMirrorsFullMutualGroup
+
+end Blanket

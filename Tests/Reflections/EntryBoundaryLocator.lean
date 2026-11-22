@@ -44,6 +44,11 @@ witnesses: `not_marker_inside` — an interior position with non-zero balance is
 concrete). The general helper is exercised by `least_ge3` on a pure-`Nat` predicate.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.EntryBoundaryLocator
 
 /-! ## The general constructive least-witness locator (toy of `exists_least_in_range`) -/
@@ -590,7 +595,7 @@ theorem balR_compose (l : List Tok) (lo mid hi : Nat) (h1 : lo ≤ mid) (h2 : mi
       have e2 : ¬ lo ≥ mid := by omega
       have e3 : ¬ mid ≥ hi := by omega
       unfold balR
-      rw [if_neg e1, if_neg e2, if_neg e3]
+      rw [ite_eq_right e1, ite_eq_right e2, ite_eq_right e3]
       have hsplit : (l.drop lo).take (hi - lo)
           = (l.drop lo).take (mid - lo) ++ (l.drop mid).take (hi - mid) := by
         rw [show hi - lo = (mid - lo) + (hi - mid) from by omega, List.take_add,
@@ -604,7 +609,7 @@ theorem balR_single (l : List Tok) (i : Nat) (h : i < l.length) :
   have hslice : (l.drop i).take (i + 1 - i) = [l[i]'h] := by
     rw [show i + 1 - i = 1 from by omega, List.drop_eq_getElem_cons h]; rfl
   unfold balR
-  rw [if_neg (show ¬ i ≥ i + 1 from by omega), hslice]
+  rw [ite_eq_right (show ¬ i ≥ i + 1 from by omega), hslice]
   simp [sumD]
 
 /-- **ADVANCE-step tail invariant** (toy of `advanceTail_invariant`).  Given a balanced window
@@ -1719,3 +1724,5 @@ theorem classify_map_substrate_load_bearing :
   exact absurd h (by decide)
 
 end Tests.Reflections.EntryBoundaryLocator
+
+end Blanket

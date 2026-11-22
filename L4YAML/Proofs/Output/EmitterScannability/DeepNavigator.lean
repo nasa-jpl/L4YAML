@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+
+@[expose] public section Blanket
 
 /-!
 # The deep-family positional navigator (Phase J — the R447 residual's substrate)
@@ -732,7 +737,7 @@ lemma deep_navigate_core (tokens : Array (Positioned YamlToken)) :
         have h_lo_d0 : flowBracketBalance tokens lo0 lo = 0 := by
           rw [← h_eq]
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl lo0)]
+          rw [ite_eq_left (Nat.le_refl lo0)]
         have h_hi_eq : hi = hi0 := window_depth0_closer_ends_at_end tokens lo0 hi0 lo hi
           (Nat.le_of_lt h_hi0_sz) h_body_floor h_lo0_lo h_lo_hi h_hi_hi0 h_lo_d0 h_bal
           h_hi_closer
@@ -784,7 +789,7 @@ lemma deep_navigate_core (tokens : Array (Positioned YamlToken)) :
       · have h_lo_d0 : flowBracketBalance tokens lo0 lo = 0 := by
           rw [← h_eq]
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl lo0)]
+          rw [ite_eq_left (Nat.le_refl lo0)]
         have h_hi_eq : hi = hi0 := window_depth0_closer_ends_at_end tokens lo0 hi0 lo hi
           (Nat.le_of_lt h_hi0_sz) h_body_floor h_lo0_lo h_lo_hi h_hi_hi0 h_lo_d0 h_bal
           h_hi_closer
@@ -846,7 +851,8 @@ lemma emitList_body_recseqbodyDeep
     (h_atol : AllTokensOnLine s s.line)
     (h_endline : EndLineOnLine s)
     (h_sync : s.simpleKeyStack.size = s.flowLevel)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -868,7 +874,7 @@ lemma emitList_body_recseqbodyDeep
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt,
           h_rec, _h_oa, _h_sa⟩ :=
     emitList_scans_recseqbodyDeep items h_ne h_all s rest h_corr h_flow h_fl h_indent h_col
-      h_ek h_atol h_endline h_sync h_dp
+      h_ek h_atol h_endline h_sync h_dp h_last
   have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
       (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
     rw [h_block_eq,
@@ -897,7 +903,7 @@ lemma seqRoot_recseqbodyDeep
   -- Open bracket → s₁
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
           h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁,
-          h_sync₁, _h_ska₁, _h_ssv₁⟩ :=
+          h_sync₁, _h_ska₁, _h_ssv₁, h_last_s₁, h_push₁⟩ :=
     scanNextToken_flow_open_init input
       ((emit.emitList items.toList).toList ++ [']']) h_toList
   -- Body scanning → s₂ via the DEEP producer (delivers `RecSeqBodyDeep` of the body block)
@@ -905,11 +911,12 @@ lemma seqRoot_recseqbodyDeep
           h_indent₂, h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_rec₂⟩ :=
     emitList_body_recseqbodyDeep items.toList h_ne h_all s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁ h_dp₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁ h_dp₁ h_last_s₁
   -- Close bracket → s₃
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
       (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      (by rw [h_fmc₂.flowStack_eq rfl h_fl₂]; exact h_push₁)
   -- EOF + chain composition
   have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
   have h_chain_all := (ScanChain.single h_snt₁).trans
@@ -928,11 +935,16 @@ lemma seqRoot_recseqbodyDeep
     unfold ScannerState.emit ScannerState.mk'
     dsimp only []
     decide
+  -- Item 180: the crossed-block clause reads content the sentinel stack does
+  -- not see; these lemmas HOLD acceptance, so the checks are read off it.
+  obtain ⟨h_dn₃, h_fv₃⟩ := scanLoop_checks_of_scanFiltered_ok _ _ _ _ rfl h_no_bom
+    h_chain_all h_eof h_fl₃ h_dp₃
+    (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof) h_scan
   -- Token equation: tokens = (s₃.emit .streamEnd).tokens.filter p
   have h_tok_eq : Scanner.scanFiltered input =
       .ok ((s₃.emit .streamEnd).tokens.filter p) :=
     scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
-      h_chain_all h_eof h_fl₃ h_dp₃
+      h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
       (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
       h_indents_small
   have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
@@ -1318,23 +1330,23 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = kv by omega]; exact h_vt, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · refine ⟨k + 2, by omega, by omega, Or.inr ⟨h_op, by
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = kv by omega]; exact h_vt, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · -- `[ interior ]` key: own close at `kv - 1`, interior balanced + floored
         obtain ⟨h_int_bal, h_int_floor⟩ := wellBracketed_slice_positional tokens (k + 2) (kv - 1)
@@ -1412,23 +1424,23 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = e by omega]; exact h_succ.2, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · refine ⟨k + 2, by omega, by omega, Or.inr ⟨h_op, by
             rw [show k + 2 = k + 1 + 1 from rfl]; exact h_cl⟩, ?_, by omega, by
             rw [show k + 2 + 1 = e by omega]; exact h_succ.2, ?_⟩
         · unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
         · intro p hp1 hp2
           have : p = k + 2 := by omega
           subst this
           unfold flowBracketBalance
-          rw [if_pos (Nat.le_refl _)]
+          rw [ite_eq_left (Nat.le_refl _)]
           decide
       · obtain ⟨h_int_bal, h_int_floor⟩ := wellBracketed_slice_positional tokens (k + 2) (e - 1)
           (by omega) (by omega) (RecSeqBodyDeep.toFlat h_int).toWellBracketed
@@ -1461,7 +1473,7 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
       · rw [h_op0] at h_sc; cases h_sc
       · refine ⟨k + 1, by omega, by omega, h_cl, ?_⟩
         unfold flowBracketBalance
-        rw [if_pos (Nat.le_refl _)]
+        rw [ite_eq_left (Nat.le_refl _)]
       · rw [h_op0] at h_op; cases h_op
       · obtain ⟨h_int_bal, _⟩ := wellBracketed_slice_positional tokens (k + 1) (b - 1)
           (by omega) (by omega) (RecSeqBodyDeep.toFlat h_int).toWellBracketed
@@ -1481,7 +1493,7 @@ lemma mapBodyProps_of_recmapbodydeep (tokens : Array (Positioned YamlToken)) (lo
       · rw [h_op0] at h_op; cases h_op
       · refine ⟨k + 1, by omega, by omega, h_cl, ?_⟩
         unfold flowBracketBalance
-        rw [if_pos (Nat.le_refl _)]
+        rw [ite_eq_left (Nat.le_refl _)]
       · rw [h_op0] at h_op; cases h_op
       · obtain ⟨h_int_bal, _⟩ := wellBracketed_slice_positional tokens (k + 1) (b - 1)
           (by omega) (by omega) (RecMapBodyDeep.toFlat h_int).toWellBracketed
@@ -1605,7 +1617,9 @@ lemma emitPairList_body_recmapbodyDeep
     (h_endline : EndLineOnLine s)
     (h_ska : s.simpleKeyAllowed = true)
     (h_sync : s.simpleKeyStack.size = s.flowLevel)
-    (h_dp : s.directivesPresent = false) :
+    (h_pse : PairStartAtEntryBoundary s)
+    (h_dp : s.directivesPresent = false)
+    (h_last : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     let old_sz := (s.tokens.filter p).size
     ∃ n s', ScanChain s n s'
@@ -1627,7 +1641,7 @@ lemma emitPairList_body_recmapbodyDeep
           h_indent', h_line', h_atol', h_endline', h_stack', h_fmc, h_block_eq, h_wb, h_wt,
           h_rec, _h_oa, _h_sa, _h_n3⟩ :=
     emitPairList_scans_recmapbodyDeep pairs h_ne h_all_k h_all_v s rest h_corr h_flow h_fl
-      h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+      h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp h_last h_pse
   have h_drop : (s'.tokens.filter (fun t => t.val != .placeholder)).toList.drop
       (s.tokens.filter (fun t => t.val != .placeholder)).size = block := by
     rw [h_block_eq,
@@ -1657,7 +1671,7 @@ lemma mapRoot_recmapbodydeep
   -- Open brace → s₁
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
           h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, h_sk₁, h_filt₁,
-          h_sync₁, h_ska₁, _h_ssv₁⟩ :=
+          h_sync₁, h_ska₁, _h_ssv₁, h_last_s₁, h_push₁⟩ :=
     scanNextToken_flow_open_mapping_init input
       ((emit.emitPairList pairs.toList).toList ++ ['}']) h_toList
   -- Pair body → s₂ via the DEEP producer
@@ -1665,11 +1679,12 @@ lemma mapRoot_recmapbodydeep
           h_indent₂, h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂, h_rec₂⟩ :=
     emitPairList_body_recmapbodyDeep pairs.toList h_ne h_all_k h_all_v s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁ h_dp₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁ h_push₁.2.2 h_dp₁ h_last_s₁
   -- Close brace → s₃
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
       (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      (by rw [h_fmc₂.flowStack_eq rfl h_fl₂]; exact h_push₁.1)
   -- EOF + chain composition
   have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
   have h_chain_all := (ScanChain.single h_snt₁).trans
@@ -1688,11 +1703,16 @@ lemma mapRoot_recmapbodydeep
     unfold ScannerState.emit ScannerState.mk'
     dsimp only []
     decide
+  -- Item 180: the crossed-block clause reads content the sentinel stack does
+  -- not see; these lemmas HOLD acceptance, so the checks are read off it.
+  obtain ⟨h_dn₃, h_fv₃⟩ := scanLoop_checks_of_scanFiltered_ok _ _ _ _ rfl h_no_bom
+    h_chain_all h_eof h_fl₃ h_dp₃
+    (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof) h_scan
   -- Token equation
   have h_tok_eq : Scanner.scanFiltered input =
       .ok ((s₃.emit .streamEnd).tokens.filter p) :=
     scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
-      h_chain_all h_eof h_fl₃ h_dp₃
+      h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
       (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
       h_indents_small
   have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter p := by
@@ -1722,3 +1742,5 @@ lemma mapRoot_recmapbodydeep
   exact h_rec₂
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

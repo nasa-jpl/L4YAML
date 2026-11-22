@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # PATH-dispatch discriminator probe (de-risk for the R335-reshaped driver)
@@ -111,3 +115,5 @@ def D : Array (Positioned YamlToken) :=
 #guard D[2]!.val == .flowSequenceStart
 
 end L4YAML.Proofs.EmitterScannability.SeqPathDispatchProbe
+
+end Blanket

@@ -1,4 +1,10 @@
-import L4YAML.Output.Events
+module
+
+public import L4YAML.Output.Events
+
+
+public meta import L4YAML.Output.Events
+@[expose] public section Blanket
 
 /-!
 # Reflection — INHABITATION / BIRTH probe for the tag percent-decode fix (matrix defect D, 6CK3)
@@ -131,3 +137,5 @@ theorem streamToEvents_6ck3_correct : out6ck3Actual = out6ck3 := by native_decid
 #print axioms streamToEvents_6ck3_correct
 
 end EmitterTagPercentDecode
+
+end Blanket

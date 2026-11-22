@@ -2,8 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
-import Lean
+
+module
+
+public import L4YAML.Init
+public import Lean
+
+-- This module's `elab` bodies are `meta` definitions, while the helpers they
+-- call are ordinary code that the library also uses at runtime.  A declaration
+-- carries one phase and the `meta` modifier cannot be dropped retroactively,
+-- so mixed references inside this module need to be permitted explicitly.
+set_option compiler.relaxedMetaCheck true
+
+@[expose] public section Blanket
 
 /-!
 # YAML 1.2.2 Spec Attribute
@@ -136,3 +147,5 @@ elab "#yaml_spec_coverage" : command => do
   logInfo (String.intercalate "\n" lines.toList)
 
 end L4YAML
+
+end Blanket

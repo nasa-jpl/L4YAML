@@ -1,4 +1,18 @@
-import L4YAML.Proofs.Scanner.ScannerDocument
+module
+
+public import L4YAML.Proofs.Scanner.ScannerDocument
+
+
+
+
+
+
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Scanner.Document
+public meta import L4YAML.Scanner.NodeProperties
+public meta import L4YAML.Scanner.State
+public meta import L4YAML.Token.Token
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerDocument
 
@@ -555,3 +569,5 @@ private def scanOk (input : String) : Bool :=
 #guard scanOk "%YAML 1.2\n%TAG !! tag:yaml.org,2002:\n---\nvalue"
 
 end L4YAML.Proofs.ScannerDocument
+
+end Blanket

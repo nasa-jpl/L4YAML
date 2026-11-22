@@ -57,6 +57,11 @@ array take/drop *window* identity `(take hi).drop lo = (take m).drop lo ++ token
 hi).drop (m+1)`, the `L4YAML`-specific positional plumbing the principle is otherwise agnostic to.)
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.StructuralMovesAdvance
 
 inductive Tok | A | OB | CB | FE | KY | VL
@@ -287,3 +292,5 @@ theorem no_mpair_no_key : ¬ MPair [Tok.A] := by intro h; cases h
          Tok.FE, Tok.KY, Tok.A, Tok.VL, Tok.A] : List Tok).length == 14
 
 end Tests.Reflections.StructuralMovesAdvance
+
+end Blanket

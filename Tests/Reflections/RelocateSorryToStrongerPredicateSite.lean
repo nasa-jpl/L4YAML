@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 442 — when a `sorry` needs a STRONGER hypothesis than its host lemma threads, RELOCATE the
 # sorry (and the conjunct it feeds) to the consumer that natively HAS the strength.  Do NOT strengthen the
@@ -117,3 +122,5 @@ example :
   ⟨host_cannot_reach_parserFact, mainCaller⟩
 
 end Tests.Reflections.RelocateSorryToStrongerPredicateSite
+
+end Blanket

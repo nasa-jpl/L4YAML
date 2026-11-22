@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 344 — a multi-field guard INPUT localizes its dependency knot to ONE load-bearing field; audit field-by-field before concluding the whole guard is needed
 
@@ -126,3 +131,5 @@ example : ConclT := dispatch_via_deep_and_succ HeadT OpenerT SuccT FeStartT Conc
 #guard true               -- the de-front delivers with NO `FeStart` field in its signature
 
 end Tests.Reflections.FieldAuditLocalizesKnot
+
+end Blanket

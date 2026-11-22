@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 505 — lift a recursion's sole carrier use into an abstract provider hypothesis
 
 R504 ([[ContentSurfacingLocatorTwin]]) isolated, by reading `seqWindowRecSeqBody_seq_general` against
@@ -96,3 +101,5 @@ theorem demo : ((∀ n, Guard n → Content n) → ∀ (n : Nat), Guard n → Bo
   ⟨fun prov n g => recBodyOfProvider prov n g, fun cr n g => recBodyOfCarrier cr n g⟩
 
 end ParametricCarrierExtraction
+
+end Blanket

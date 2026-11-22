@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 424 — an invariant-NEUTRAL sibling token needs an extra hypothesis to mirror an
 invariant-derived edge-token lemma (the separator is invisible to bracket-balance, so the mirror
@@ -91,3 +96,5 @@ theorem head_content_rules_out_lone_sep :
 #guard delta Tok.sep == 0        -- separator: NEUTRAL (admits the singleton — needs the head)
 
 end Tests.Reflections.InvariantNeutralSiblingNeedsHead
+
+end Blanket

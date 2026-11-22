@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 422 — a relocated obligation's SOURCE field is leaf-UNCONDITIONAL vs recursive-GATE-COLLAPSED:
 the leaf head bridges to any gate for free, but the recursive carrier (already projected to the SIBLING'S
@@ -132,3 +137,5 @@ theorem gateA_and_gateB_of_headC : gateA_head wScal ∧ gateB_head wScal :=
 #guard isContent Tok.scal   == true       -- the unconditional source's content head
 
 end Tests.Reflections.SourceGateCollapseBlocksMirror
+
+end Blanket

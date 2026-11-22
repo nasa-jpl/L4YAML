@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 436 — a self-propagating guard's descent lemma is usually already built
 
@@ -98,3 +103,5 @@ theorem field_underdetermines_first_return :
   ⟨by decide, by decide, by decide⟩
 
 end Tests.Reflections.SelfPropagatingGuardDescent
+
+end Blanket

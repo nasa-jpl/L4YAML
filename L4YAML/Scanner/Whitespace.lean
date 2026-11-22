@@ -2,7 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.State
+
+module
+
+public import L4YAML.Scanner.State
+
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Scanner — Whitespace, Comments, and Line Prefixes
@@ -60,6 +67,42 @@ def ScannerState.hasTabInPrecedingWhitespaceLoop (input : String) (pos : Nat) (f
 @[yaml_spec "6.1"]
 def ScannerState.hasTabInPrecedingWhitespace (s : ScannerState) : Bool :=
   ScannerState.hasTabInPrecedingWhitespaceLoop s.input s.offset s.offset
+
+/-- Backward scan over the WHOLE of the current line in front of `pos`: are
+    all `col` characters between the line start and `pos` `s-white`, and is at
+    least one of them a TAB?
+
+    The distinction from `hasTabInPrecedingWhitespaceLoop` is the stopping
+    rule, and it is what makes the answer a statement about `[63] s-indent(n)`
+    rather than about `[66] s-separate-in-line`.  That loop stops at the first
+    non-white and reports the run it walked; this one walks a FIXED `col`
+    characters and reports `false` the moment one of them is not a white.  So
+    `true` says: nothing on this line precedes the token, hence the run in
+    front of it is the line's indentation — and `s-indent` is spaces only.
+
+    Reaching `pos = 0` with `col` still positive is the start of the input,
+    which is a line start too, so the accumulated `sawTab` is the answer
+    there as well. -/
+@[yaml_spec "6.1" 63 "s-indent"]
+def ScannerState.tabInLineIndentLoop (input : String) (pos : Nat) (col : Nat)
+    (sawTab : Bool) : Bool :=
+  match col with
+  | 0 => sawTab
+  | col' + 1 =>
+    if pos == 0 then sawTab
+    else
+      let prevPos := (String.Pos.Raw.prev input ⟨pos⟩).byteIdx
+      let c := String.Pos.Raw.get input ⟨prevPos⟩
+      if c == '\t' then ScannerState.tabInLineIndentLoop input prevPos col' true
+      else if c == ' ' then ScannerState.tabInLineIndentLoop input prevPos col' sawTab
+      else false  -- content on the line: the run is separation, not indentation
+
+/-- `true` when the entire line prefix in front of the current offset is
+    whitespace and a TAB occurs in it — i.e. when the token about to be
+    scanned is indented, and its `[63] s-indent(n)` is not derivable. -/
+@[yaml_spec "6.1" 63 "s-indent"]
+def ScannerState.tabInLineIndent (s : ScannerState) : Bool :=
+  ScannerState.tabInLineIndentLoop s.input s.offset s.col false
 
 /-- Helper for skipWhitespace using structural recursion.
 
@@ -260,11 +303,21 @@ def skipToContentLoop (s : ScannerState) (fuel : Nat) : Except ScanError Scanner
       | some c =>
         if isLineBreakBool c then
           let s3 := consumeNewline s2
-          -- §7.4.2: In flow sequences, implicit keys are restricted to a
-          -- single line.  Don't re-enable simple keys on newline so that
-          -- `saveSimpleKey` preserves (rather than overwrites) the pending
-          -- key, allowing `scanValue` to detect the line mismatch.
-          if !s3.isInFlowSequence then
+          -- §7.4.2: Inside a flow collection, don't re-enable simple keys on a
+          -- newline, so that `saveSimpleKey` preserves (rather than overwrites)
+          -- the pending key and `scanValue`'s guards read the true entry state.
+          -- For flow SEQUENCES this lets the §7.4.2 multiline check detect the
+          -- line mismatch (the original scope of this gate).  For flow MAPPINGS
+          -- (item 10, 2026-08-10) it keeps the entry-boundary reservation alive
+          -- across the break, so T833 rejects `{a: b⏎: c}` at the scanner the
+          -- same way it rejects `{a: b: c}` — previously the newline re-enable
+          -- let `saveSimpleKey` mask the completed entry with a fresh key at
+          -- the `:` itself, and the shape scanned clean.  Legal multi-line keys
+          -- are unaffected: `{a⏎: b}` and `{"a"⏎: b}` resolve the ORIGINAL
+          -- reservation (saved before the key node, slot after `{`), which is
+          -- exactly what the same-line forms produce.  In block context a break
+          -- always re-enables, as before.
+          if !s3.inFlow then
             skipToContentLoop { s3 with simpleKeyAllowed := true } fuel'
           else
             skipToContentLoop s3 fuel'
@@ -312,3 +365,5 @@ def skipTrailingSpaces (s : ScannerState) (fuel : Nat) : ScannerState :=
     | none => s
 
 end L4YAML.Scanner
+
+end Blanket

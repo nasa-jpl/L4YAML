@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 588 — `parseFlow{Sequence,Mapping}Loop` per-element invariant (§5.10.1): the value-half
@@ -167,3 +171,5 @@ theorem map_loop_provenance_empty (ps : ParseState)
 #print axioms parseFlowMappingLoop_all
 
 end LoopElementInvariant
+
+end Blanket

@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Coupling.CouplingBridge
+
+module
+
+public import L4YAML.Proofs.Coupling.CouplingBridge
+
+@[expose] public section Blanket
 
 /-!
 # Scanner Loop Coupling
@@ -324,6 +329,16 @@ lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
 
 /-! ## §7 skipToContentComment Coupling -/
 
+/-- The scanner's own comment-start gate (`commentOk` in
+    `skipToContentComment`): column 0, start of input, or a previous char that
+    is white, a break, or the BOM.  Exported so a `#` the scanner accepted
+    at `col > 0` with no whites of its own is traceable to the white the
+    PREVIOUS token consumed (`a #b`). -/
+def CommentOk (sc : ScannerState) : Prop :=
+  sc.col = 0 ∨ sc.peekBack? = none ∨
+    ∃ c, sc.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = true
+
 /-- `skipToContentComment` optionally consumes a `#`-comment and preserves
     correspondence.  When `#` is matched and the comment is valid, produces
     `SCNbCommentText`; otherwise identity (`GOpt.none`).
@@ -333,7 +348,8 @@ lemma collectCommentTextLoop_corr (sc : ScannerState) (sp : SurfPos)
 lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) :
     ∃ sp', GOpt SCNbCommentText sp sp' ∧
-           ScannerSurfCorr (skipToContentComment sc) sp' := by
+           ScannerSurfCorr (skipToContentComment sc) sp' ∧
+           (sp' = sp ∨ CommentOk sc) := by
   unfold skipToContentComment
   -- Inline let bindings so split targets matches/ifs cleanly
   dsimp only []
@@ -344,10 +360,15 @@ lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
     -- split targets match sc.peekBack? inside the commentOk condition
     split
     · -- peekBack? = some c
-      rename_i c
+      rename_i c hpb
       -- split targets if commentOk
       split
       · -- commentOk = true: process comment
+        rename_i hok
+        have hcok : CommentOk sc := by
+          rcases Bool.or_eq_true_iff.mp hok with h | h
+          · exact Or.inl (by simpa using h)
+          · exact Or.inr (Or.inr ⟨c, hpb, h⟩)
         have hmore := peek_some_hasMore sc '#' hpeek
         obtain ⟨rest, hchars⟩ := peek_some_chars sc sp '#' hcorr hpeek
         have hcol := hcorr.col_eq
@@ -362,13 +383,15 @@ lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
         obtain ⟨sp', hstar, hcorr'⟩ :=
           collectCommentTextLoop_corr sc.advance ⟨rest, sc.col + 1⟩ "" _ hadv hfuel
         exact ⟨sp', GOpt.some _ _ (SCNbCommentText.mk rest sc.col sp' hstar),
-               corr_of_comments_update _ hcorr'⟩
+               corr_of_comments_update _ hcorr', Or.inr hcok⟩
       · -- commentOk = false: identity
-        exact ⟨sp, GOpt.none sp, hcorr⟩
+        exact ⟨sp, GOpt.none sp, hcorr, Or.inl rfl⟩
     · -- peekBack? = none
+      rename_i hpb
       -- commentOk = sc.col == 0 || true, so split on if
       split
       · -- commentOk = true: process comment (same as above)
+        have hcok : CommentOk sc := Or.inr (Or.inl hpb)
         have hmore := peek_some_hasMore sc '#' hpeek
         obtain ⟨rest, hchars⟩ := peek_some_chars sc sp '#' hcorr hpeek
         have hcol := hcorr.col_eq
@@ -383,11 +406,11 @@ lemma skipToContentComment_corr (sc : ScannerState) (sp : SurfPos)
         obtain ⟨sp', hstar, hcorr'⟩ :=
           collectCommentTextLoop_corr sc.advance ⟨rest, sc.col + 1⟩ "" _ hadv hfuel
         exact ⟨sp', GOpt.some _ _ (SCNbCommentText.mk rest sc.col sp' hstar),
-               corr_of_comments_update _ hcorr'⟩
+               corr_of_comments_update _ hcorr', Or.inr hcok⟩
       · -- commentOk = false: impossible (condition is _ || true)
         rename_i h; exfalso; simp [Bool.or_true] at h
   · -- peek? ≠ some '#'
-    exact ⟨sp, GOpt.none sp, hcorr⟩
+    exact ⟨sp, GOpt.none sp, hcorr, Or.inl rfl⟩
 
 /-! ## §8 skipToContentWs Coupling
 
@@ -401,6 +424,37 @@ preserves correspondence and the consumed characters form valid whitespace
     On every `.ok s'` return, the scanner state `s'` has a corresponding
     surface position `sp'` that is reachable from `sp` via indentation
     spaces (`SIndent`) and/or whitespace (`GStar SSWhite`). -/
+private lemma skipSpacesLoop_input' (s : ScannerState) (fuel : Nat) :
+    (skipSpacesLoop s fuel).input = s.input := by
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipSpacesLoop
+    split
+    · rw [ih, advance_input]
+    · rfl
+
+/-- `skipToContentWs` never changes the input; with `ScannerSurfCorr_same_offset`
+    this pins the entry state's `peekBack?` from the exit state's. -/
+lemma skipToContentWs_input (sc s' : ScannerState)
+    (hok : skipToContentWs sc = .ok s') : s'.input = sc.input := by
+  unfold skipToContentWs at hok
+  dsimp only [] at hok
+  split at hok
+  · split at hok
+    · split at hok
+      · split at hok
+        · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+        · split at hok
+          · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+          · split at hok
+            · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+            · cases hok
+        · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+      · cases hok; exact skipSpacesLoop_input' _ _
+    · cases hok; exact (skipWhitespace_input _).trans (skipSpacesLoop_input' _ _)
+  · cases hok; exact skipWhitespace_input _
+
 lemma skipToContentWs_ok_corr (sc : ScannerState) (sp : SurfPos) (s' : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContentWs sc = .ok s') :
@@ -547,6 +601,124 @@ lemma skipWhitespace_noop (sc : ScannerState)
     skipWhitespace sc = sc := by
   unfold skipWhitespace
   exact skipWhitespaceLoop_noop_of_not_ws sc _ h
+
+/-- Fuel above the remaining-byte count does not change where
+    `skipWhitespaceLoop` stops: it can consume at most one byte per unit. -/
+lemma skipWhitespaceLoop_fuel_irrel (t : ScannerState) (f g : Nat)
+    (hf : t.inputEnd - t.offset ≤ f) (hg : t.inputEnd - t.offset ≤ g) :
+    skipWhitespaceLoop t f = skipWhitespaceLoop t g := by
+  induction f generalizing t g with
+  | zero =>
+    have hnone : t.peek? = none := by
+      simp only [ScannerState.peek?]; simp only [ite_eq_right_iff]; omega
+    rw [skipWhitespaceLoop_noop_of_not_ws t 0 (by simp [hnone]),
+        skipWhitespaceLoop_noop_of_not_ws t g (by simp [hnone])]
+  | succ f' ih =>
+    cases g with
+    | zero =>
+      have hnone : t.peek? = none := by
+        simp only [ScannerState.peek?]; simp only [ite_eq_right_iff]; omega
+      rw [skipWhitespaceLoop_noop_of_not_ws t (f' + 1) (by simp [hnone]),
+          skipWhitespaceLoop_noop_of_not_ws t 0 (by simp [hnone])]
+    | succ g' =>
+      unfold skipWhitespaceLoop
+      cases hpeek : t.peek? with
+      | none => simp
+      | some c =>
+        simp only []
+        by_cases hws : isWhiteSpaceBool c = true
+        · simp only [hws, ite_true]
+          have hmore := peek_some_hasMore t c hpeek
+          have hgt : t.advance.offset > t.offset := by
+            rw [advance_offset_eq t hmore]; exact raw_next_gt _ _
+          have hend := advance_inputEnd t
+          exact ih t.advance g' (by omega) (by omega)
+        · simp only [Bool.not_eq_true] at hws; simp [hws]
+
+/-- Where `skipWhitespaceLoop` stops, the next character is not `s-white`. -/
+lemma skipWhitespaceLoop_peek_not_ws (t : ScannerState) (f : Nat)
+    (hf : t.inputEnd - t.offset ≤ f) :
+    ∀ ch, (skipWhitespaceLoop t f).peek? = some ch → isWhiteSpaceBool ch = false := by
+  induction f generalizing t with
+  | zero =>
+    have hnone : t.peek? = none := by
+      simp only [ScannerState.peek?]; simp only [ite_eq_right_iff]; omega
+    rw [skipWhitespaceLoop_noop_of_not_ws t 0 (by simp [hnone])]
+    intro ch h; rw [hnone] at h; cases h
+  | succ f' ih =>
+    unfold skipWhitespaceLoop
+    cases hpeek : t.peek? with
+    | none => simp only []; intro ch h; rw [hpeek] at h; cases h
+    | some c =>
+      simp only []
+      by_cases hws : isWhiteSpaceBool c = true
+      · simp only [hws, ite_true]
+        have hmore := peek_some_hasMore t c hpeek
+        have hgt : t.advance.offset > t.offset := by
+          rw [advance_offset_eq t hmore]; exact raw_next_gt _ _
+        have hend := advance_inputEnd t
+        exact ih t.advance (by omega)
+      · simp only [Bool.not_eq_true] at hws
+        simp only [hws, Bool.false_eq_true, ite_false]
+        intro ch h; rw [hpeek] at h; injection h with h; subst h; exact hws
+
+/-- `skipWhitespace` lands on a non-`s-white` character, or at end of input. -/
+lemma skipWhitespace_peek_not_ws (t : ScannerState) :
+    ∀ ch, (skipWhitespace t).peek? = some ch → isWhiteSpaceBool ch = false :=
+  skipWhitespaceLoop_peek_not_ws t _ (Nat.le_refl _)
+
+lemma skipWhitespace_offset_mono (t : ScannerState) :
+    (skipWhitespace t).offset ≥ t.offset ∧ (skipWhitespace t).inputEnd = t.inputEnd :=
+  skipWhitespaceLoop_offset_mono t _
+
+lemma skipSpaces_inputEnd (t : ScannerState) : (skipSpaces t).inputEnd = t.inputEnd :=
+  (skipSpacesLoop_offset_mono t _).2
+
+/-- Consuming one `s-white` does not change where `skipWhitespace` lands. -/
+lemma skipWhitespace_advance_of_ws (t : ScannerState) (c : Char)
+    (hpeek : t.peek? = some c) (hws : isWhiteSpaceBool c = true) :
+    skipWhitespace t = skipWhitespace t.advance := by
+  have hmore := peek_some_hasMore t c hpeek
+  have hgt : t.advance.offset > t.offset := by
+    rw [advance_offset_eq t hmore]; exact raw_next_gt _ _
+  have hend := advance_inputEnd t
+  have hbound : t.advance.inputEnd - t.advance.offset ≤ t.inputEnd - t.offset - 1 := by omega
+  have h1 : skipWhitespaceLoop t (t.inputEnd - t.offset)
+      = skipWhitespaceLoop t.advance (t.inputEnd - t.offset - 1) := by
+    rw [show t.inputEnd - t.offset = (t.inputEnd - t.offset - 1) + 1 by omega]
+    rw [skipWhitespaceLoop]
+    simp only [hpeek, hws, ite_true, Nat.add_sub_cancel]
+  unfold skipWhitespace
+  rw [h1]
+  exact skipWhitespaceLoop_fuel_irrel t.advance (t.inputEnd - t.offset - 1)
+    (t.advance.inputEnd - t.advance.offset) hbound (Nat.le_refl _)
+
+/-- `s-indent` skipping is absorbed by `s-white` skipping: both land in the same
+    place, because every space is an `s-white`. -/
+lemma skipWhitespace_skipSpacesLoop (t : ScannerState) (f : Nat) :
+    skipWhitespace (skipSpacesLoop t f) = skipWhitespace t := by
+  induction f generalizing t with
+  | zero => simp only [skipSpacesLoop]
+  | succ f' ih =>
+    unfold skipSpacesLoop
+    split
+    · rename_i hpeek
+      rw [ih t.advance]
+      exact (skipWhitespace_advance_of_ws t ' ' hpeek (by decide)).symm
+    · rfl
+
+lemma skipWhitespace_skipSpaces (t : ScannerState) :
+    skipWhitespace (skipSpaces t) = skipWhitespace t :=
+  skipWhitespace_skipSpacesLoop t _
+
+lemma consumeNewline_inputEnd (s : ScannerState) :
+    (consumeNewline s).inputEnd = s.inputEnd := by
+  unfold consumeNewline
+  split
+  · exact advance_inputEnd s
+  · simp only []
+    split <;> exact advance_inputEnd s
+  · rfl
 
 /-- Monotonicity: `collectCommentTextLoop` does not decrease the offset. -/
 lemma collectCommentTextLoop_offset_mono (sc : ScannerState) (text : String) (fuel : Nat) :
@@ -722,7 +894,7 @@ lemma skipToContentLoop_ok_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
     · -- skipToContentWs = .ok s1
       rename_i s1 hok_ws
       obtain ⟨sp1, _, hcorr1⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
-      obtain ⟨sp2, _, hcorr2⟩ := skipToContentComment_corr s1 sp1 hcorr1
+      obtain ⟨sp2, _, hcorr2, _⟩ := skipToContentComment_corr s1 sp1 hcorr1
       -- Split on peek of (skipToContentComment s1)
       split at hok
       · -- peek? = some c
@@ -758,3 +930,5 @@ lemma skipToContentLoop_ok_corr (sc : ScannerState) (sp : SurfPos) (fuel : Nat)
         exact ⟨sp2, hcorr2⟩
 
 end L4YAML.Proofs.ScannerCoupling
+
+end Blanket

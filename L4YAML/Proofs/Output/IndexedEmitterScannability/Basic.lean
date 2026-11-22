@@ -2,10 +2,23 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
-import L4YAML.Proofs.RoundTrip.RoundTrip
-import L4YAML.Proofs.Coupling.CouplingBridge
-import L4YAML.Scanner.IndexedScanner
+
+module
+
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+public meta import L4YAML.Proofs.RoundTrip.RoundTrip
+public import L4YAML.Proofs.Coupling.CouplingBridge
+public import L4YAML.Scanner.IndexedScanner
+
+public meta import L4YAML.Scanner.IndexedScanner
+
+-- `String.foldl` is sealed by its producer; `import all` of its
+
+-- declaring module unseals the body this file reduces through.
+
+import all Init.Data.String.Iterate
+@[expose] public section Blanket
 
 /-! # `IndexedEmitterScannability.Basic` — Phase 3 Step 6f.3b3 (`.basic` landed)
 
@@ -16,27 +29,27 @@ of legacy `Proofs/Output/EmitterScannability.lean`. No axioms remain.
 
 ## Scope (mapping to legacy `EmitterScannability.lean`)
 
-  - **§1 Escape Character Properties** (legacy lines 76–139, ~64 LOC).
+  - **§1 Escape Character Properties** (~64 legacy LOC).
     Pure value-level facts about `escapeChar c` —
     `escapeChar_passthrough_is_valid`, `escapeChar_output_nbJson`. No
     scanner state involved; ports verbatim (namespace only).
 
-  - **§2.1 escapeString Decomposition** (legacy lines 140–197, ~57 LOC).
+  - **§2.1 escapeString Decomposition** (~57 legacy LOC).
     `emit_nonempty`, `string_foldl_toList`, `escapeString_foldl_shift`,
     `escapeString_nil`, `escapeString_cons`. Pure list/string homo.
 
-  - **§2.2 First-Character Properties** (legacy lines 198–277, ~80 LOC).
+  - **§2.2 First-Character Properties** (~80 legacy LOC).
     `escapeChar_head_not_quote`, `escapeChar_head_not_linebreak`,
     `escapeChar_output_no_linebreak`, `escapeChar_nonempty`. Pure
     character predicates.
 
-  - **§2.3 escapeString Character Properties** (legacy lines 278–337,
-    ~60 LOC). `foldl_append_toList_eq_flatMap`, `escapeString_mem_iff`,
+  - **§2.3 escapeString Character Properties** (~60 legacy LOC).
+    `foldl_append_toList_eq_flatMap`, `escapeString_mem_iff`,
     `escapeString_all_nbJson`, `escapeString_no_linebreak`. Pure
     homomorphism lifts.
 
   - **§2.4 collectDoubleQuotedLoop Acceptance — value-level helpers**
-    (legacy lines 338–456 value-level slice). `escapeTag_not_linebreak`,
+    (legacy value-level slice). `escapeTag_not_linebreak`,
     `escapeChar_passthrough_toList`, `escapeChar_named_toList`,
     `scannerHexCheck`, `hexNibble_is_hex`, `hexNibble_lt128`,
     `hex_two_foldl_bound`, `escapeChar_hex_structure`,
@@ -44,7 +57,7 @@ of legacy `Proofs/Output/EmitterScannability.lean`. No axioms remain.
     `hex_foldl_roundtrip`.
 
   - **§3 collectDoubleQuotedLoopIx Acceptance — closure** (legacy
-    lines 355–841 state-dependent slice). Cursor-level surface
+    state-dependent slice). Cursor-level surface
     correspondence (`CursorSurfCorrIx`); indexed advance helpers
     (`peek_corrIx`, `eof_corrIx`, `advance_non_newline_corrIx`,
     `advance_line_non_newline_ix`); state-dependent helpers
@@ -116,7 +129,10 @@ lemma escapeChar_passthrough_is_valid (c : Char)
     exact h_ne h_not_escaped
   · rename_i h_ge; simp only [Nat.not_lt] at h_ge
     refine ⟨?_, ?_, ?_⟩
-    · simp only [isNbJsonBool, isNbJsonProp, decide_eq_true_eq]
+    · -- 4.33: `decide_eq_true_eq` first, `isNbJsonProp` after — see the legacy
+      -- twin (EmitterScannability/EscapeProperties.lean) for the mechanism.
+      simp only [isNbJsonBool, decide_eq_true_eq]
+      simp only [isNbJsonProp]
       right; constructor
       · show c.val.toNat ≥ 0x20; omega
       · show c.val.toNat ≤ 0x10FFFF
@@ -358,14 +374,15 @@ lemma hexNibble_is_hex : ∀ n : Fin 16, scannerHexCheck (hexNibble n.val) = tru
 lemma hexNibble_lt128 : ∀ n : Fin 16, (hexNibble n.val).toNat < 128 := by
   native_decide
 
-/-- Two-character hex foldl is bounded by 0x110000. -/
+/-- Two-character hex foldl is a Unicode scalar value — `parseHexEscape`'s
+    guard verbatim (`< 0x110000` before 2026-08-11; see the surrogate fix). -/
 lemma hex_two_foldl_bound : ∀ (n1 n2 : Fin 128),
     scannerHexCheck (Char.ofNat n1.val) = true →
     scannerHexCheck (Char.ofNat n2.val) = true →
-    (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
+    Nat.isValidChar ((("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val)).foldl (fun acc c =>
       acc * 16 + if c.isDigit then c.toNat - '0'.toNat
                  else if c >= 'a' then c.toNat - 'a'.toNat + 10
-                 else c.toNat - 'A'.toNat + 10) 0 < 0x110000 := by native_decide
+                 else c.toNat - 'A'.toNat + 10) 0) := by native_decide
 
 /-- Structural decomposition of `escapeChar c` for hex-escaped chars. -/
 lemma escapeChar_hex_structure (c : Char)
@@ -402,6 +419,18 @@ lemma push_append_ofList_eq (s : String) (c : Char) (cs : List Char) :
 /-- String helper: `s ++ String.ofList [] = s`. -/
 lemma append_ofList_nil (s : String) : s ++ String.ofList [] = s := by
   apply String.ext; simp
+
+/-- Flushing the `spaces` buffer and pushing `c` is the merged append. -/
+lemma append_flush_push_ofList_eq (s t : String) (c : Char) (cs : List Char) :
+    (s ++ t).push c ++ "" ++ String.ofList cs = s ++ t ++ String.ofList (c :: cs) := by
+  apply String.ext
+  simp [String.toList_append, String.toList_push, String.toList_ofList]
+
+/-- Buffering `c` into `spaces` is the merged append. -/
+lemma append_buffer_ofList_eq (s t : String) (c : Char) (cs : List Char) :
+    s ++ t.push c ++ String.ofList cs = s ++ t ++ String.ofList (c :: cs) := by
+  apply String.ext
+  simp [String.toList_append, String.toList_push, String.toList_ofList]
 
 /-- Hex foldl roundtrip for control characters. -/
 lemma hex_foldl_roundtrip : ∀ n : Fin 32,
@@ -459,7 +488,7 @@ lemma peek_corrIx {input : String} (c : IxCursor input) (sp : SurfPos)
     refine ⟨ch, rest, rfl, ?_⟩
     show c.peek? = some ch
     unfold IxCursor.peek?
-    rw [if_pos hmore, hch]
+    rw [ite_eq_left hmore, hch]
 
 /-- At end of input, the surface position has no remaining characters.
     Twin of legacy `eof_corr`. -/
@@ -491,7 +520,7 @@ lemma advance_line_non_newline_ix {input : String} (c : IxCursor input)
     (hcr : ¬ (String.Pos.Raw.get input ⟨c.pos.offset⟩ == '\r') = true) :
     c.advance.pos.line = c.pos.line := by
   unfold IxCursor.advance
-  simp [dif_pos h, hnl, hcr]
+  simp [dite_eq_left h, hnl, hcr]
 
 /-- `IxCursor.advance` past a non-newline, non-CR character bumps `col`
     by 1. -/
@@ -501,7 +530,7 @@ lemma advance_col_non_newline_ix {input : String} (c : IxCursor input)
     (hcr : ¬ (String.Pos.Raw.get input ⟨c.pos.offset⟩ == '\r') = true) :
     c.advance.pos.col = c.pos.col + 1 := by
   unfold IxCursor.advance
-  simp [dif_pos h, hnl, hcr]
+  simp [dite_eq_left h, hnl, hcr]
 
 /-- Advance past a non-newline, non-CR character preserves cursor
     surface correspondence (column bumped by 1). Twin of legacy
@@ -564,13 +593,15 @@ The indexed scanner uses `hexStringValue` (via `parseHexEscapeIx`) and
 from `scannerHexCheck` and the legacy explicit-foldl below, but agree
 on every ASCII hex digit by `native_decide`. -/
 
-/-- The 2-digit hex foldl bound, restated using the indexed scanner's
-    `hexStringValue`. -/
+/-- The 2-digit hex foldl guard, restated using the indexed scanner's
+    `hexStringValue`. Mirrors `parseHexEscapeIx`'s `Nat.isValidChar` test
+    (`< 0x110000` before the 2026-08-11 surrogate fix). -/
 lemma hex_two_foldl_boundIx : ∀ (n1 n2 : Fin 128),
     isHexDigitBool (Char.ofNat n1.val) = true →
     isHexDigitBool (Char.ofNat n2.val) = true →
-    hexStringValue (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val))
-      < 0x110000 := by native_decide
+    Nat.isValidChar
+      (hexStringValue (("".push (Char.ofNat n1.val)).push (Char.ofNat n2.val))) := by
+  native_decide
 
 /-- For C0-control chars (`c.val.toNat < 0x20`), the hex-foldl round-trip
     recovers the original code point. Indexed-scanner variant of
@@ -637,7 +668,7 @@ lemma advance_line_of_peekIx {input : String} (c : IxCursor input) (ch : Char)
     c.advance.pos.line = c.pos.line := by
   have hc : String.Pos.Raw.get input ⟨c.pos.offset⟩ = ch := by
     unfold IxCursor.peek? at h_peek
-    rw [if_pos h_lt] at h_peek
+    rw [ite_eq_left h_lt] at h_peek
     exact Option.some.inj h_peek
   exact advance_line_non_newline_ix c h_lt (by rw [hc]; simp [hnl])
     (by rw [hc]; simp [hcr])
@@ -686,10 +717,10 @@ lemma processEscapeIx_hex_ok {input : String} (c : IxCursor input)
       (("".push h1).push h2, c.advance.advance.advance) := by
     unfold collectHexDigitsLoopIx; dsimp only []
     rw [h_peek_h1]; dsimp only []
-    simp only [h_h1_hexIx, if_true]
+    simp only [h_h1_hexIx, ite_true]
     unfold collectHexDigitsLoopIx; dsimp only []
     rw [h_peek_h2]; dsimp only []
-    simp only [h_h2_hexIx, if_true]
+    simp only [h_h2_hexIx, ite_true]
     unfold collectHexDigitsLoopIx; dsimp only []
   -- Step 5: value bound for the 2-digit foldl.
   have h_val_lt := hex_two_foldl_boundIx ⟨h1.toNat, h_h1_lt128⟩ ⟨h2.toNat, h_h2_lt128⟩
@@ -703,7 +734,7 @@ lemma processEscapeIx_hex_ok {input : String} (c : IxCursor input)
   have h_simple_x : simpleEscapeChar 'x' = none := by decide
   have h_8bit_x : isNsEsc8BitBool 'x' = true := by decide
   rw [h_simple_x]
-  simp only [h_8bit_x, if_true]
+  simp only [h_8bit_x, ite_true]
   unfold parseHexEscapeIx
   rw [h_collect]; dsimp only []
   have h_len : (("".push h1).push h2).length = 2 := by
@@ -726,7 +757,7 @@ lemma processEscapeIx_hex_ok {input : String} (c : IxCursor input)
 
 `collectDoubleQuotedLoopIx` succeeds on `escapeString content ++ "\"" ++ rest`,
 leaving the cursor at `rest`. Twin of legacy
-`collectDoubleQuotedLoop_escapeString_succeeds` (lines 577–840).
+`collectDoubleQuotedLoop_escapeString_succeeds`.
 
 The legacy `isNbJsonBool` check has no indexed counterpart — the
 indexed loop accepts any non-`"`/non-`\\`/non-linebreak character — so
@@ -742,12 +773,30 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
       ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'] ++ rest, c.pos.col⟩)
     (h_fuel : fuel ≥ content_rest.length + 1) :
     ∃ c',
-      collectDoubleQuotedLoopIx c acc fuel =
+      collectDoubleQuotedLoopIx c acc "" fuel =
         some (acc ++ String.ofList content_rest, c') ∧
       CursorSurfCorrIx c' ⟨rest, c'.pos.col⟩ ∧
       c'.pos.col > 0 ∧
       c'.pos.line = c.pos.line := by
-  induction content_rest generalizing c acc fuel with
+  -- The `spaces` buffer (empty at every real entry) is generalised so the IH
+  -- covers the whitespace branch's buffering and the flushes (B2);
+  -- `escapeString` output has no line folds, so nothing is ever dropped and
+  -- the returned content is the merged `acc ++ spaces ++ content_rest`.
+  suffices H : ∀ (spaces : String) (c : IxCursor input) (acc : String) (fuel : Nat),
+      CursorSurfCorrIx c
+        ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'] ++ rest, c.pos.col⟩ →
+      fuel ≥ content_rest.length + 1 →
+      ∃ c',
+        collectDoubleQuotedLoopIx c acc spaces fuel =
+          some (acc ++ spaces ++ String.ofList content_rest, c') ∧
+        CursorSurfCorrIx c' ⟨rest, c'.pos.col⟩ ∧
+        c'.pos.col > 0 ∧
+        c'.pos.line = c.pos.line by
+    have h := H "" c acc fuel hcorr h_fuel
+    rwa [String.append_empty] at h
+  clear hcorr h_fuel
+  intro spaces c acc fuel hcorr h_fuel
+  induction content_rest generalizing c acc fuel spaces with
   | nil =>
     -- Closing quote: escapeString "" = "" → chars start with '"'.
     have h_ofnil : (String.ofList ([] : List Char)) = "" := rfl
@@ -759,8 +808,8 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
       unfold collectDoubleQuotedLoopIx
       rw [h_peek]
       have h_dq : isDoubleQuoteBool '"' = true := by decide
-      simp only [h_dq, if_true]
-      rw [show acc ++ String.ofList [] = acc from append_ofList_nil acc]
+      simp only [h_dq, ite_true]
+      rw [show acc ++ spaces ++ String.ofList [] = acc ++ spaces from append_ofList_nil _]
       refine ⟨c.advance, rfl, ?_, ?_, ?_⟩
       · have hcorr_adv := advance_non_newline_corrIx c '"' rest hcorr h_lt
           (by decide) (by decide)
@@ -787,7 +836,7 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
           rw [h_peek_bs]
           have h_dq : isDoubleQuoteBool '\\' = false := by decide
           have h_es : isEscapeBool '\\' = true := by decide
-          simp only [h_dq, h_es, Bool.false_eq_true, if_false, if_true]
+          simp only [h_dq, h_es, Bool.false_eq_true, ite_false, ite_true]
           -- After backslash: peek tag.
           have hcorr_bs := advance_non_newline_corrIx c '\\' _ hcorr h_lt_bs
             (by decide) (by decide)
@@ -795,7 +844,7 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
           rw [h_peek_tag]
           -- Confirm tag is not a linebreak (so we fall through to processEscapeIx).
           have h_tag_nlb := escapeTag_not_linebreak ch tag h_tag
-          simp only [h_tag_nlb, Bool.false_eq_true, if_false]
+          simp only [h_tag_nlb, Bool.false_eq_true, ite_false]
           -- processEscapeIx succeeds with origChar = ch.
           have h_proc := processEscapeIx_named_content c.advance ch tag h_tag h_peek_tag
           rw [h_proc]
@@ -808,10 +857,11 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
           have h_col_tag : (c.advance.pos.col + 1 : Nat) =
               c.advance.advance.pos.col := hcorr_tag.col_eq
           rw [h_col_tag] at hcorr_tag
-          rw [show acc ++ String.ofList (ch :: cs) = acc.push ch ++ String.ofList cs
-              from (push_append_ofList_eq acc ch cs).symm]
+          rw [show acc ++ spaces ++ String.ofList (ch :: cs) =
+              (acc ++ spaces).push ch ++ "" ++ String.ofList cs
+              from (append_flush_push_ofList_eq acc spaces ch cs).symm]
           obtain ⟨c', h_loop, hcorr_c', h_col_c', h_line_c'⟩ :=
-            ih c.advance.advance (acc.push ch) fuel'
+            ih "" c.advance.advance ((acc ++ spaces).push ch) fuel'
             hcorr_tag (by simp [List.length_cons] at h_f; omega)
           refine ⟨c', h_loop, hcorr_c', h_col_c', ?_⟩
           have l_bs := advance_line_of_peekIx c '\\' h_lt_bs h_peek_bs (by decide) (by decide)
@@ -852,13 +902,13 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
           rw [h_peek_bs]
           have h_dq : isDoubleQuoteBool '\\' = false := by decide
           have h_es : isEscapeBool '\\' = true := by decide
-          simp only [h_dq, h_es, Bool.false_eq_true, if_false, if_true]
+          simp only [h_dq, h_es, Bool.false_eq_true, ite_false, ite_true]
           have hcorr_bs := advance_non_newline_corrIx c '\\' _ hcorr h_lt_bs
             (by decide) (by decide)
           have ⟨h_peek_x, h_lt_x_in⟩ := peek_of_chars_consIx c.advance 'x' _ _ hcorr_bs
           rw [h_peek_x]
           have h_x_nlb : isLineBreakBool 'x' = false := by decide
-          simp only [h_x_nlb, Bool.false_eq_true, if_false]
+          simp only [h_x_nlb, Bool.false_eq_true, ite_false]
           have h_col_bs : (c.pos.col + 1 : Nat) = c.advance.pos.col := hcorr_bs.col_eq
           rw [h_col_bs] at hcorr_bs
           obtain ⟨decoded, c_after, h_proc, hcorr_after, h_line_proc⟩ :=
@@ -906,16 +956,16 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
             have h_simple_x : simpleEscapeChar 'x' = none := by decide
             have h_8bit_x : isNsEsc8BitBool 'x' = true := by decide
             rw [h_simple_x] at h_proc
-            simp only [h_8bit_x, if_true] at h_proc
+            simp only [h_8bit_x, ite_true] at h_proc
             unfold parseHexEscapeIx at h_proc
             have h_coll : collectHexDigitsLoopIx c.advance.advance "" 2 =
                 (("".push d1).push d2, c.advance.advance.advance.advance) := by
               unfold collectHexDigitsLoopIx; dsimp only []
               rw [h_peek_d1']; dsimp only []
-              simp only [h_d1_hexIx, if_true]
+              simp only [h_d1_hexIx, ite_true]
               unfold collectHexDigitsLoopIx; dsimp only []
               rw [h_peek_d2']; dsimp only []
-              simp only [h_d2_hexIx, if_true]
+              simp only [h_d2_hexIx, ite_true]
               unfold collectHexDigitsLoopIx; dsimp only []
             simp only [h_coll] at h_proc
             have h_len : (("".push d1).push d2).length = 2 := by
@@ -938,10 +988,11 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
           have h_col_after : (c.advance.pos.col + 3 : Nat) =
               c_after.pos.col := hcorr_after.col_eq
           rw [h_col_after] at hcorr_after
-          rw [show acc ++ String.ofList (ch :: cs) = acc.push ch ++ String.ofList cs
-              from (push_append_ofList_eq acc ch cs).symm]
+          rw [show acc ++ spaces ++ String.ofList (ch :: cs) =
+              (acc ++ spaces).push ch ++ "" ++ String.ofList cs
+              from (append_flush_push_ofList_eq acc spaces ch cs).symm]
           obtain ⟨c', h_loop, hcorr_c', h_col_c', h_line_c'⟩ :=
-            ih c_after (acc.push ch) fuel' hcorr_after
+            ih "" c_after ((acc ++ spaces).push ch) fuel' hcorr_after
             (by simp [List.length_cons] at h_f; omega)
           refine ⟨c', h_loop, hcorr_c', h_col_c', ?_⟩
           have l_bs := advance_line_of_peekIx c '\\' h_lt_bs h_peek_bs (by decide) (by decide)
@@ -971,18 +1022,249 @@ lemma collectDoubleQuotedLoopIx_escapeString_succeeds {input : String}
           show (ch == '\n' || ch == '\r') = false
           rw [Bool.or_eq_false_iff]
           exact ⟨beq_eq_false_iff_ne.mpr h_ne_nl, beq_eq_false_iff_ne.mpr h_ne_cr⟩
-        simp only [h_dq, h_es, h_nlb, Bool.false_eq_true, if_false]
-        -- Advance and recurse.
+        simp only [h_dq, h_es, h_nlb, Bool.false_eq_true, ite_false]
+        -- Advance and recurse: `s-white` is buffered, anything else flushes
+        -- the buffer; both land on `acc ++ spaces ++ (ch :: cs)`.
         have hcorr_c := advance_non_newline_corrIx c ch _ hcorr h_lt_c h_ne_nl h_ne_cr
         have h_col_c : (c.pos.col + 1 : Nat) = c.advance.pos.col := hcorr_c.col_eq
         rw [h_col_c] at hcorr_c
-        rw [show acc ++ String.ofList (ch :: cs) = acc.push ch ++ String.ofList cs
-            from (push_append_ofList_eq acc ch cs).symm]
-        obtain ⟨c', h_loop, hcorr_c', h_col_c', h_line_c'⟩ :=
-          ih c.advance (acc.push ch) fuel' hcorr_c
-          (by simp [List.length_cons] at h_f; omega)
-        refine ⟨c', h_loop, hcorr_c', h_col_c', ?_⟩
         have l_c := advance_line_of_peekIx c ch h_lt_c h_peek_c h_ne_nl h_ne_cr
-        omega
+        by_cases h_ws : isWhiteSpaceBool ch = true
+        · simp only [h_ws, ite_true]
+          rw [show acc ++ spaces ++ String.ofList (ch :: cs) =
+              acc ++ spaces.push ch ++ String.ofList cs
+              from (append_buffer_ofList_eq acc spaces ch cs).symm]
+          obtain ⟨c', h_loop, hcorr_c', h_col_c', h_line_c'⟩ :=
+            ih (spaces.push ch) c.advance acc fuel' hcorr_c
+            (by simp [List.length_cons] at h_f; omega)
+          refine ⟨c', h_loop, hcorr_c', h_col_c', ?_⟩
+          omega
+        · simp only [h_ws, Bool.false_eq_true, ite_false]
+          rw [show acc ++ spaces ++ String.ofList (ch :: cs) =
+              (acc ++ spaces).push ch ++ "" ++ String.ofList cs
+              from (append_flush_push_ofList_eq acc spaces ch cs).symm]
+          obtain ⟨c', h_loop, hcorr_c', h_col_c', h_line_c'⟩ :=
+            ih "" c.advance ((acc ++ spaces).push ch) fuel' hcorr_c
+            (by simp [List.length_cons] at h_f; omega)
+          refine ⟨c', h_loop, hcorr_c', h_col_c', ?_⟩
+          omega
+
+/-! ### §3.5  Strictness walker on emitter output (item 7)
+
+`quotedScalarErrLoopIx` (the §6.1/§8.1/§9.1.2 strictness walker the
+dispatcher's `"` arm runs before `scanDoubleQuotedIx`) returns `none`
+on `escapeString content ++ "\"" ++ rest`: the emitted surface contains
+no raw line break — every fold-time check sits under an
+`isLineBreakBool` branch that is never taken — so the walk steps
+through the escapes exactly as `collectDoubleQuotedLoopIx` does and
+stops at the closing quote. Same induction skeleton as
+`collectDoubleQuotedLoopIx_escapeString_succeeds`, with a fuel bound
+in *surface* characters (the walker spends up to three iterations on a
+hex escape, one per surface character past the backslash pair). -/
+
+/-- The strictness walker returns `none` on an emitted double-quoted
+    body: `escapeString content ++ ['"'] ++ rest` from the cursor. -/
+lemma quotedScalarErrLoopIx_escapeString_none {input : String}
+    (content_rest : List Char) (rest : List Char) (startLine : Nat)
+    (inFlow : Bool) (ci : Int) :
+    ∀ (c : IxCursor input) (fuel : Nat),
+      CursorSurfCorrIx c
+        ⟨(escapeString (String.ofList content_rest)).toList ++ ['"'] ++ rest,
+          c.pos.col⟩ →
+      fuel ≥ (escapeString (String.ofList content_rest)).toList.length + 1 →
+      L4YAML.Scanner.Indexed.quotedScalarErrLoopIx c true startLine inFlow ci fuel
+        = none := by
+  induction content_rest with
+  | nil =>
+    intro c fuel hcorr h_fuel
+    have h_ofnil : (String.ofList ([] : List Char)) = "" := rfl
+    rw [h_ofnil, escapeString_nil] at hcorr h_fuel
+    simp only [String.toList_empty, List.nil_append] at hcorr
+    simp only [String.toList_empty, List.length_nil] at h_fuel
+    have ⟨h_peek, _⟩ := peek_of_chars_consIx c '"' rest _ hcorr
+    match fuel, h_fuel with
+    | fuel' + 1, _ =>
+      unfold L4YAML.Scanner.Indexed.quotedScalarErrLoopIx
+      rw [h_peek]
+      simp [show isDoubleQuoteBool '"' = true from by decide]
+  | cons ch cs ih =>
+    intro c fuel hcorr h_fuel
+    rw [escapeString_cons, String.toList_append] at hcorr h_fuel
+    by_cases h_esc : isEscapedChar ch
+    · by_cases h_tag_some : (escapeTag ch).isSome
+      · -- NAMED ESCAPE: surface = '\\' :: tag :: escapeString cs ++ …
+        obtain ⟨tag, h_tag⟩ := Option.isSome_iff_exists.mp h_tag_some
+        rw [escapeChar_named_toList ch tag h_tag] at hcorr h_fuel
+        simp only [List.cons_append, List.nil_append] at hcorr
+        simp only [List.length_append, List.length_cons, List.length_nil] at h_fuel
+        have ⟨h_peek_bs, h_lt_bs⟩ := peek_of_chars_consIx c '\\' _ _ hcorr
+        match fuel, h_fuel with
+        | fuel' + 1, h_f =>
+          unfold L4YAML.Scanner.Indexed.quotedScalarErrLoopIx
+          rw [h_peek_bs]
+          simp only [show isDoubleQuoteBool '\\' = false from by decide,
+            show isEscapeBool '\\' = true from by decide,
+            Bool.true_and, Bool.not_true, Bool.false_and,
+            Bool.false_eq_true, ite_false, ite_true]
+          have hcorr_bs := advance_non_newline_corrIx c '\\' _ hcorr h_lt_bs
+            (by decide) (by decide)
+          have ⟨h_peek_tag, h_lt_tag⟩ := peek_of_chars_consIx c.advance tag _ _ hcorr_bs
+          rw [h_peek_tag]
+          have h_tag_nlb := escapeTag_not_linebreak ch tag h_tag
+          simp only [h_tag_nlb, Bool.false_eq_true, ite_false]
+          have h_col_bs : (c.pos.col + 1 : Nat) = c.advance.pos.col := hcorr_bs.col_eq
+          rw [h_col_bs] at hcorr_bs
+          have hcorr_tag := advance_non_newline_corrIx c.advance tag _ hcorr_bs h_lt_tag
+            (fun h => by subst h; exact absurd h_tag_nlb (by decide))
+            (fun h => by subst h; exact absurd h_tag_nlb (by decide))
+          have h_col_tag : (c.advance.pos.col + 1 : Nat) =
+              c.advance.advance.pos.col := hcorr_tag.col_eq
+          rw [h_col_tag] at hcorr_tag
+          exact ih c.advance.advance fuel' hcorr_tag (by omega)
+      · -- HEX ESCAPE: surface = '\\' :: 'x' :: d1 :: d2 :: escapeString cs ++ …
+        have h_tag_none : escapeTag ch = none := by
+          cases h : escapeTag ch
+          · rfl
+          · exact absurd (show (escapeTag ch).isSome = true by rw [h]; rfl) h_tag_some
+        have h_lt_c : ch.val.toNat < 0x20 := by
+          have h_lt128 : ch.val.toNat < 128 := by
+            cases Nat.lt_or_ge ch.val.toNat 128 with
+            | inl hl => exact hl
+            | inr hge =>
+              exfalso
+              have h_not_esc : isEscapedChar ch = false := by
+                unfold isEscapedChar; split
+                all_goals (simp_all (config := { decide := true }) <;> omega)
+              simp [h_not_esc] at h_esc
+          have h_classify : ∀ n : Fin 128,
+              isEscapedChar (Char.ofNat n.val) = true →
+              escapeTag (Char.ofNat n.val) = none →
+              n.val < 0x20 := by native_decide
+          exact h_classify ⟨ch.toNat, by unfold Char.toNat; omega⟩
+            (by rwa [Char.ofNat_toNat]) (by rwa [Char.ofNat_toNat])
+        obtain ⟨d1, d2, h_ec_list, h_d1_nn, h_d1_cr, h_d2_nn, h_d2_cr,
+            h_d1_hex, h_d2_hex, h_d1_lt128, h_d2_lt128⟩ :=
+          escapeChar_hex_structure ch h_lt_c h_tag_none
+        rw [h_ec_list] at hcorr h_fuel
+        simp only [List.cons_append, List.nil_append] at hcorr
+        simp only [List.length_append, List.length_cons, List.length_nil] at h_fuel
+        -- Hex digits are never quotes, escapes, or line breaks.
+        have h_d1_hexIx : isHexDigitBool d1 = true := by
+          rw [← scannerHexCheck_eq_isHexDigitBool d1 h_d1_lt128]; exact h_d1_hex
+        have h_d2_hexIx : isHexDigitBool d2 = true := by
+          rw [← scannerHexCheck_eq_isHexDigitBool d2 h_d2_lt128]; exact h_d2_hex
+        have h_d1_ndq : isDoubleQuoteBool d1 = false := by
+          show (d1 == '"') = false
+          exact beq_eq_false_iff_ne.mpr
+            (fun h => by subst h; exact absurd h_d1_hexIx (by decide))
+        have h_d1_nes : isEscapeBool d1 = false := by
+          show (d1 == '\\') = false
+          exact beq_eq_false_iff_ne.mpr
+            (fun h => by subst h; exact absurd h_d1_hexIx (by decide))
+        have h_d1_nlb : isLineBreakBool d1 = false := by
+          show (d1 == '\n' || d1 == '\r') = false
+          rw [Bool.or_eq_false_iff]
+          exact ⟨beq_eq_false_iff_ne.mpr h_d1_nn, beq_eq_false_iff_ne.mpr h_d1_cr⟩
+        have h_d2_ndq : isDoubleQuoteBool d2 = false := by
+          show (d2 == '"') = false
+          exact beq_eq_false_iff_ne.mpr
+            (fun h => by subst h; exact absurd h_d2_hexIx (by decide))
+        have h_d2_nes : isEscapeBool d2 = false := by
+          show (d2 == '\\') = false
+          exact beq_eq_false_iff_ne.mpr
+            (fun h => by subst h; exact absurd h_d2_hexIx (by decide))
+        have h_d2_nlb : isLineBreakBool d2 = false := by
+          show (d2 == '\n' || d2 == '\r') = false
+          rw [Bool.or_eq_false_iff]
+          exact ⟨beq_eq_false_iff_ne.mpr h_d2_nn, beq_eq_false_iff_ne.mpr h_d2_cr⟩
+        have ⟨h_peek_bs, h_lt_bs⟩ := peek_of_chars_consIx c '\\' _ _ hcorr
+        match fuel, h_fuel with
+        | fuel' + 1, h_f =>
+          unfold L4YAML.Scanner.Indexed.quotedScalarErrLoopIx
+          rw [h_peek_bs]
+          simp only [show isDoubleQuoteBool '\\' = false from by decide,
+            show isEscapeBool '\\' = true from by decide,
+            Bool.true_and, Bool.not_true, Bool.false_and,
+            Bool.false_eq_true, ite_false, ite_true]
+          have hcorr_bs := advance_non_newline_corrIx c '\\' _ hcorr h_lt_bs
+            (by decide) (by decide)
+          have ⟨h_peek_x, h_lt_x⟩ := peek_of_chars_consIx c.advance 'x' _ _ hcorr_bs
+          rw [h_peek_x]
+          simp only [show isLineBreakBool 'x' = false from by decide,
+            Bool.false_eq_true, ite_false]
+          have h_col_bs : (c.pos.col + 1 : Nat) = c.advance.pos.col := hcorr_bs.col_eq
+          rw [h_col_bs] at hcorr_bs
+          have hcorr_x_raw := advance_non_newline_corrIx c.advance 'x' _ hcorr_bs h_lt_x
+            (by decide) (by decide)
+          have hcorr_x : CursorSurfCorrIx c.advance.advance
+              ⟨d1 :: d2 :: (escapeString (String.ofList cs)).toList ++ ['"'] ++ rest,
+               c.advance.advance.pos.col⟩ := by
+            rw [← hcorr_x_raw.col_eq]; exact hcorr_x_raw
+          have ⟨h_peek_d1, h_lt_d1⟩ := peek_of_chars_consIx c.advance.advance d1 _ _ hcorr_x
+          match fuel', (show fuel' ≥
+              (escapeString (String.ofList cs)).toList.length + 3 from by omega) with
+          | fuel'' + 1, h_f2 =>
+            unfold L4YAML.Scanner.Indexed.quotedScalarErrLoopIx
+            rw [h_peek_d1]
+            simp only [h_d1_ndq, h_d1_nes, h_d1_nlb,
+              Bool.not_true, Bool.false_and,
+              Bool.and_false, Bool.false_eq_true, ite_false]
+            have hcorr_d1_raw := advance_non_newline_corrIx c.advance.advance d1 _
+              hcorr_x h_lt_d1 h_d1_nn h_d1_cr
+            have hcorr_d1 : CursorSurfCorrIx c.advance.advance.advance
+                ⟨d2 :: (escapeString (String.ofList cs)).toList ++ ['"'] ++ rest,
+                 c.advance.advance.advance.pos.col⟩ := by
+              rw [← hcorr_d1_raw.col_eq]; exact hcorr_d1_raw
+            have ⟨h_peek_d2, h_lt_d2⟩ :=
+              peek_of_chars_consIx c.advance.advance.advance d2 _ _ hcorr_d1
+            match fuel'', (show fuel'' ≥
+                (escapeString (String.ofList cs)).toList.length + 2 from by omega) with
+            | fuel''' + 1, _ =>
+              unfold L4YAML.Scanner.Indexed.quotedScalarErrLoopIx
+              rw [h_peek_d2]
+              simp only [h_d2_ndq, h_d2_nes, h_d2_nlb,
+                Bool.not_true, Bool.false_and,
+                Bool.and_false, Bool.false_eq_true, ite_false]
+              have hcorr_d2_raw := advance_non_newline_corrIx c.advance.advance.advance
+                d2 _ hcorr_d1 h_lt_d2 h_d2_nn h_d2_cr
+              have hcorr_d2 : CursorSurfCorrIx c.advance.advance.advance.advance
+                  ⟨(escapeString (String.ofList cs)).toList ++ ['"'] ++ rest,
+                   c.advance.advance.advance.advance.pos.col⟩ := by
+                rw [← hcorr_d2_raw.col_eq]; exact hcorr_d2_raw
+              exact ih c.advance.advance.advance.advance fuel''' hcorr_d2 (by omega)
+    · -- PASSTHROUGH: escapeChar ch = ch.toString.
+      have h_ef : isEscapedChar ch = false := by
+        cases hv : isEscapedChar ch
+        · rfl
+        · exact absurd hv h_esc
+      rw [escapeChar_passthrough_toList ch h_ef] at hcorr h_fuel
+      simp only [List.cons_append, List.nil_append] at hcorr
+      simp only [List.length_append, List.length_cons, List.length_nil] at h_fuel
+      have ⟨h_peek_c, h_lt_c⟩ := peek_of_chars_consIx c ch _ _ hcorr
+      match fuel, h_fuel with
+      | fuel' + 1, h_f =>
+        unfold L4YAML.Scanner.Indexed.quotedScalarErrLoopIx
+        rw [h_peek_c]
+        have h_ne_quote : ch ≠ '"' := fun h => by subst h; exact absurd h_ef (by decide)
+        have h_ne_bs : ch ≠ '\\' := fun h => by subst h; exact absurd h_ef (by decide)
+        have h_ne_nl : ch ≠ '\n' := fun h => by subst h; exact absurd h_ef (by decide)
+        have h_ne_cr : ch ≠ '\r' := fun h => by subst h; exact absurd h_ef (by decide)
+        have h_dq : isDoubleQuoteBool ch = false := by
+          show (ch == '"') = false; exact beq_eq_false_iff_ne.mpr h_ne_quote
+        have h_es : isEscapeBool ch = false := by
+          show (ch == '\\') = false; exact beq_eq_false_iff_ne.mpr h_ne_bs
+        have h_nlb : isLineBreakBool ch = false := by
+          show (ch == '\n' || ch == '\r') = false
+          rw [Bool.or_eq_false_iff]
+          exact ⟨beq_eq_false_iff_ne.mpr h_ne_nl, beq_eq_false_iff_ne.mpr h_ne_cr⟩
+        simp only [h_dq, h_es, h_nlb,
+          Bool.not_true, Bool.false_and,
+          Bool.and_false, Bool.false_eq_true, ite_false]
+        have hcorr_c := advance_non_newline_corrIx c ch _ hcorr h_lt_c h_ne_nl h_ne_cr
+        have h_col_c : (c.pos.col + 1 : Nat) = c.advance.pos.col := hcorr_c.col_eq
+        rw [h_col_c] at hcorr_c
+        exact ih c.advance fuel' hcorr_c (by omega)
 
 end L4YAML.Proofs.Indexed.EmitterScannability.Basic
+
+end Blanket

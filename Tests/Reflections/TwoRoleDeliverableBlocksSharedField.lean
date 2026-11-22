@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 453 — a deliverable consumed in TWO ROLES at different strengths cannot carry an
 # additive REQUIRED field on its SHARED constructor: the weak-role builder has no data to fill it.
@@ -169,3 +174,5 @@ theorem separate_constructor_resolves_two_roles :
   ⟨navMap, prodMap, flat_does_not_determine_MB⟩
 
 end Tests.Reflections.TwoRoleDeliverableBlocksSharedField
+
+end Blanket

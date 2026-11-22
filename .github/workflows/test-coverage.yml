@@ -2,13 +2,17 @@ name: Build Documentation and Test Coverage
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, fix-a-grammar-completeness ]
     # Version tags additionally trigger the YAML Test Matrix (see the gated
     # "Generate YAML Test Matrix" step) and republish the site with it.
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, fix-a-grammar-completeness ]
   workflow_dispatch:
+
+# Default for any job that does not declare its own scopes.
+permissions:
+  contents: read
 
 jobs:
   docs-and-tests:
@@ -16,6 +20,15 @@ jobs:
 
     permissions:
       contents: write
+      # The "Comment on PR with coverage summary" step POSTs to
+      # /repos/.../issues/{n}/comments, which needs `pull-requests: write`.
+      # Declaring a `permissions` block at all drops every scope not listed, so
+      # with `contents` alone that step got 403 "Resource not accessible by
+      # integration" -- and it runs only `if: github.event_name ==
+      # 'pull_request'`, so it could never succeed: all three `pull_request`
+      # runs in this repo's history are failures, the most recent one
+      # (GHE 202516) green on every other step including doc-gen4.
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -97,12 +110,16 @@ jobs:
           fi
           # Install weasyprint into the CI venv (python3 = the hermetic
           # venv from the previous step, via GITHUB_PATH). Verify by
-          # IMPORT, not pip exit status: import is what html-to-pdf.py
-          # does, and it also proves the system pango/cairo libraries
-          # above are actually present.
-          if python3 -c "import weasyprint" 2>/dev/null \
+          # STARTING it, not pip exit status: `weasyprint --version` imports
+          # the package (and so loads the system pango/cairo libraries
+          # above) exactly as `lake run html-to-pdf` does — never `command -v`,
+          # which would pass with the libraries missing (Rule 9, Q3). The
+          # venv's own CLI, by path: an ambient /usr/bin/weasyprint would
+          # pass the probe while the venv's python3 cannot import it.
+          WP="$RUNNER_TEMP/ci-venv/bin/weasyprint"
+          if "$WP" --version >/dev/null 2>&1 \
              || { python3 -m pip install --quiet --disable-pip-version-check weasyprint \
-                  && python3 -c "import weasyprint" 2>/dev/null; }; then
+                  && "$WP" --version >/dev/null 2>&1; }; then
             echo "has_weasyprint=true" >> "$GITHUB_OUTPUT"
           else
             echo "::warning::weasyprint unavailable — PDF generation will be skipped"
@@ -124,10 +141,11 @@ jobs:
             suiterunner tryparse tryroundtrip trydump \
             tests demo explicitkeytests flowtests \
             validationtests dumproundtrip rawparsetests \
-            specexamples schemadump scannertests scannerspecexamples \
+            specexamples schemadump derivingconsumer scannertests scannerspecexamples \
             adversarialtests mutationtests propertytests productioncoverage \
             limittests \
             flowregressioncheck errorstagediag scalarstagediag \
+            l4yaml-fmt aligntest \
             2>&1 | tee "$RUNNER_TEMP/lake-build.log"
           if JOBS=$(grep -oE '\([0-9]+ jobs\)' "$RUNNER_TEMP/lake-build.log" | tail -1 | grep -oE '[0-9]+'); then
             echo "BUILD_JOBS_TOTAL=$JOBS" >> "$GITHUB_ENV"
@@ -135,6 +153,11 @@ jobs:
           else
             echo "::warning::could not parse lake job count — build_jobs will be null in stats.json"
           fi
+
+      - name: Kernel-check serialization proofs and exact axiom profiles
+        # Fresh #print axioms observations, both placeholder negative-control
+        # signals, and exact headline sets. Runs on every runtime dependency edit.
+        run: lake run check-serialization-proofs
 
       # -------------------------------------------------------
       # Phase 2: Run all test suites
@@ -147,7 +170,7 @@ jobs:
       - name: Run Lean test suites
         run: |
           mkdir -p docs/reports
-          bash scripts/run-all-tests.sh docs/reports
+          lake run run-all-tests -- docs/reports
 
       - name: Build C shared library and tryparse_c
         # Build straight into ffi/out — the canonical layout from the
@@ -199,66 +222,26 @@ jobs:
 
       - name: Run cross-language yaml-test-suite comparison
         run: |
-          # pipefail: the heredoc python's sys.exit(1) on a backend
-          # mismatch must fail this step, not be eaten by tee.
+          # pipefail: the script's exit 1 on a backend mismatch must fail this
+          # step, not be eaten by tee.
+          #
+          # The comparison itself is `suiterunner --compare` (Tests/SuiteRunner/
+          # Reports.lean) so that this step and scripts/generate-all.sh score the
+          # four backends with one implementation rather than two copies of it.
           set -o pipefail
           RESULTS="docs/reports"
           echo "=== Cross-Language yaml-test-suite Comparison ===" | tee "$RESULTS/cross-lang-comparison.txt"
           L4YAML_LIB="$GITHUB_WORKSPACE/ffi/out/libl4yaml.so" \
           LD_LIBRARY_PATH="$GITHUB_WORKSPACE/ffi/out:${LD_LIBRARY_PATH:-}" \
-          python3 - "$RESULTS" <<'PYEOF' | tee -a "$RESULTS/cross-lang-comparison.txt"
-          import subprocess, sys, json, pathlib
-
-          results_dir = pathlib.Path(sys.argv[1])
-          BACKENDS = ["lean", "c", "python", "rust"]
-          PRESETS = ["unlimited", "default", "strict", "permissive", "safe_tags"]
-          suiterunner = ".lake/build/bin/suiterunner"
-          results = {}
-          all_match = True
-
-          for preset in PRESETS:
-              for backend in BACKENDS:
-                  cmd = [suiterunner, "--backend", backend, "--limits", preset]
-                  proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                  output = proc.stdout + proc.stderr
-                  for line in output.splitlines():
-                      if "TOTAL:" in line:
-                          parts = line.split()
-                          p, f, s, t = int(parts[1]), int(parts[3]), int(parts[5]), int(parts[7].strip("()"))
-                          results[(backend, preset)] = (p, f, s, t)
-                          break
-                  else:
-                      print(f"ERROR: no TOTAL line for {backend}/{preset}", file=sys.stderr)
-                      results[(backend, preset)] = (0, 0, 0, 0)
-                      all_match = False
-
-              vals = [results[(b, preset)] for b in BACKENDS]
-              if len(set(vals)) != 1:
-                  print(f"MISMATCH for preset '{preset}': {dict(zip(BACKENDS, vals))}")
-                  all_match = False
-              else:
-                  p, f, s, t = vals[0]
-                  print(f"{preset:12s}: {p} passed, {f} failed, {s} skipped ({t} total) — all 4 backends identical")
-
-          print()
-          if all_match:
-              print("✓ All backends produce identical results for every preset")
-          else:
-              print("✗ Backend mismatch detected!")
-              sys.exit(1)
-
-          json_data = {}
-          for (backend, preset), (p, f, s, t) in results.items():
-              json_data.setdefault(preset, {})[backend] = {"passed": p, "failed": f, "skipped": s, "total": t}
-          (results_dir / "cross-lang-results.json").write_text(json.dumps(json_data, indent=2))
-          PYEOF
+          lake run cross-lang-compare -- "$RESULTS" \
+            | tee -a "$RESULTS/cross-lang-comparison.txt"
 
       # -------------------------------------------------------
       # Phase 3: Generate HTML reports from test data
       # -------------------------------------------------------
       - name: Generate test result HTML reports
         run: |
-          python3 scripts/generate-test-reports.py docs/reports
+          lake run test-reports -- docs/reports
 
       - name: Collect stats (kernel-accurate axiom + sorry counts)
         # Runs after every other report under docs/reports/ has landed so
@@ -276,30 +259,44 @@ jobs:
           grep -q 'statsJson? : Option String := some' doc/Doc/L4YAML/StatsData.lean
 
       - name: Enforce proof-hygiene gates
-        # Three hard gates (Blueprint/06-discipline.md):
+        # Five hard gates (Blueprint/06-discipline.md):
         #   * keyword discipline — the `theorem` keyword is reserved for
         #     @[capstone] declarations (scripts/capstones.txt whitelist);
         #     everything else must use `lemma`. The tagged set itself is
         #     pinned at build time by L4YAML/Capstones.lean.
         #   * import closure — no orphan library modules; the
         #     Tests/Reflections index must cover every reflection file.
+        #   * reflection index — the index's narrative half (theme/sub-theme
+        #     headings and their number lists) must match its own bullets:
+        #     every bullet claimed by its sub-theme, every claim backed by a
+        #     bullet, no number claimed twice, blocks ascending. Added
+        #     2026-08-11 after Reflections 630-641 drifted into a sub-theme
+        #     that never listed them and R613's bullet stranded between two
+        #     headings.
+        #   * closure-log order — DOCS.md's β.5 closure log must ascend by
+        #     (item number, letter), must not regress in date, and must
+        #     declare every gap with the anchor documenting it elsewhere.
+        #     Added 2026-09-27 after three commits that did nothing but move
+        #     entries back into sequence (items 139/140, 159/160/161,
+        #     243/244).
+        #   * scripts in Lean (Rule 9) — every scripts/*.py and inline
+        #     python3 invocation is on scripts/scripts-ledger.txt and the
+        #     ledger only shrinks; the gate is itself a Lean exe, built here.
         #   * sorry/axiom freedom — kernel-accurate (Lean.collectAxioms
         #     via collect-stats): zero theorems with (transitive) sorry,
         #     zero custom axioms in the compiled environment.
         run: |
-          bash scripts/check-theorem-keyword.sh
-          bash scripts/check-import-closure.sh
-          python3 - <<'EOF'
-          import json, sys
-          env = json.load(open('docs/reports/stats.json'))['env']
-          bad = {k: env[k] for k in
-                 ('theorems_with_transitive_sorry',
-                  'theorems_with_direct_sorry',
-                  'theorems_with_custom_axiom', 'axioms') if env[k] != 0}
-          if bad:
-              sys.exit(f"proof-hygiene gate failed: {bad}")
-          print(f"env clean: {env['theorems']} theorems, 0 sorries, 0 custom axioms")
-          EOF
+          lake run check-theorem-keyword
+          lake run check-import-closure
+          lake run check-reflection-index
+          lake run check-doc-graphs
+          lake run check-closure-log
+          lake build scripts-check-ledger
+          lake run check-scripts-lean
+          lake run check-pack-births
+          lake run dead-census -- --check
+          lake run census-dashboard -- --check
+          lake run check-hygiene -- docs/reports/stats.json
 
       # -------------------------------------------------------
       # Phase 4: Build and generate documentation
@@ -344,52 +341,25 @@ jobs:
             -o doc/Doc/L4YAML/graphs/import-graph.svg
           ls -lh doc/Doc/L4YAML/graphs/import-graph.*
 
-      - name: Download theorem dependency graphs from L4YAML.FGM
-        # We fetch only the headlines tarball — the ~20 SVGs for headline
-        # and categoryCapstone entries embedded directly into the Verso
-        # verification doc. The full-catalogue tarball
-        # (`theorem-graphs-all.tar.gz`, ~400 SVGs) stays on the GitHub
-        # release and is linked from the doc for on-demand download.
-        run: |
-          mkdir -p doc/Doc/L4YAML/graphs
-          REPO="pass/L4YAML.FGM"
-          TAG="graphs-latest"
-          ASSET="theorem-graphs-headlines.tar.gz"
-          API_URL="${GITHUB_SERVER_URL}/api/v3/repos/${REPO}/releases/tags/${TAG}"
-
-          # Fetch the release metadata to find the asset download URL
-          ASSET_URL=$(curl -sSf \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "${API_URL}" \
-            | python3 -c "
-          import sys, json
-          release = json.load(sys.stdin)
-          for asset in release.get('assets', []):
-              if asset['name'] == '${ASSET}':
-                  print(asset['url'])
-                  sys.exit(0)
-          print('ERROR: asset not found', file=sys.stderr)
-          sys.exit(1)
-          ")
-
-          # Download the asset
-          curl -sSfL \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            "${ASSET_URL}" \
-            -o "doc/Doc/L4YAML/graphs/${ASSET}"
-
-          # Extract SVGs
-          tar xzf "doc/Doc/L4YAML/graphs/${ASSET}" -C doc/Doc/L4YAML/graphs/
-          rm -f "doc/Doc/L4YAML/graphs/${ASSET}"
-          echo "Downloaded $(ls doc/Doc/L4YAML/graphs/*.svg 2>/dev/null | wc -l) SVG graphs from L4YAML.FGM release"
+      - name: Check the doc's graph references
+        # The theorem dependency graphs (headline + categoryCapstone chain and
+        # bipartite SVGs from L4YAML.FGM's `theoremgraph`) are committed under
+        # doc/Doc/L4YAML/graphs/ and refreshed by PR from L4YAML.FGM; nothing is
+        # downloaded here.  --strict also requires the import graph rendered above.
+        run: lake run check-doc-graphs -- --strict
 
       - name: Generate Verso documentation
         run: |
           cd doc
           lake exe l4yaml-doc
           echo "Verso HTML generated in doc/_out/html-multi/"
+
+      - name: Rewrite SVG images as interactive <object> embeds
+        # Multi-page site only: <img> disables SVG-internal navigation, so the
+        # doc-gen4 links on the theorem-graph nodes need <object>. The single
+        # page keeps <img> — it feeds `lake run html-to-pdf`, and WeasyPrint
+        # rasterizes <img src="*.svg"> natively.
+        run: lake run svg-objects -- doc/_out/html-multi
 
       - name: Copy Verso output to docs/
         run: |
@@ -420,7 +390,10 @@ jobs:
           # Render from the self-contained single page (emitted by l4yaml-doc), so the
           # document and its PDF bookmark outline are in true document order — not the
           # alphabetical, lossy order a multi-page directory merge produces.
-          python3 scripts/html-to-pdf.py \
+          # Lean merges the page(s) into one PDF-ready document; the venv's own
+          # weasyprint CLI (the one the probe above started) renders it.
+          WEASYPRINT="$RUNNER_TEMP/ci-venv/bin/weasyprint" \
+            lake run html-to-pdf -- \
             doc/_out/html-single/index.html \
             docs/L4YAML.pdf
           echo "PDF generated: docs/L4YAML.pdf"

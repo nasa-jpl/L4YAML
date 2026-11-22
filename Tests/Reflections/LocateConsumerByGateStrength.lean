@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 388 — locate which consumer a refined-GATE producer actually serves by comparing gate
 STRENGTH against each candidate consumer's window-guard in BOTH directions, not by deliverable-shape
@@ -84,3 +89,5 @@ theorem discriminator : ∃ n, GdescWide n ∧ ¬ (n % 3 = 0) := by
 #guard !(3 % 6 == 0)     -- and on a div-3-but-not-div-6 witness (too strong for "div-3")
 
 end Tests.Reflections.LocateConsumerByGateStrength
+
+end Blanket

@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 585 — per-element re-parse consumer joint (§5.15): retype the two Front-B frontier sorries
@@ -158,3 +162,5 @@ theorem reparse_map_shape
 #print axioms contentEqPairList_of_reparse
 
 end ReparseConsumerJoint
+
+end Blanket

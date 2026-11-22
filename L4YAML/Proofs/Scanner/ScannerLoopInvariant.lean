@@ -1,4 +1,8 @@
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -106,7 +110,7 @@ lemma utf8GetAux_skip (cs₁ cs₂ : List Char) (base : Nat) :
             then c
             else String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂) (String.Pos.Raw.mk base + c)
               (String.Pos.Raw.mk (base + (c.utf8Size + (cs₁.map Char.utf8Size).sum)))) = _
-    rw [if_neg hne]
+    rw [ite_eq_right hne]
     -- Normalize the position arithmetic
     show String.Pos.Raw.utf8GetAux (cs₁ ++ cs₂) (String.Pos.Raw.mk (base + c.utf8Size))
         (String.Pos.Raw.mk (base + (c.utf8Size + (cs₁.map Char.utf8Size).sum))) = _
@@ -399,3 +403,5 @@ lemma emit_preserves_wellFormed (s : ScannerState) (tok : YamlToken)
 
 
 end L4YAML.Proofs.ScannerLoopInvariant
+
+end Blanket

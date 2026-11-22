@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Schema.SchemaResolution
+module
+
+public import L4YAML.Proofs.Schema.SchemaResolution
+
+@[expose] public section Blanket
 
 namespace L4YAML.Schema.Proofs
 
@@ -59,9 +63,22 @@ open L4YAML
 #guard resolve (.scalar ⟨"true", .plain, none, none, none⟩) == .bool true
 #guard resolve (.scalar ⟨"hello", .plain, none, none, none⟩) == .str "hello"
 
+-- Style-aware resolution (§10.3.2): only plain untagged scalars are typed
+#guard resolve (.scalar ⟨"42", .doubleQuoted, none, none, none⟩) == .str "42"
+#guard resolve (.scalar ⟨"true", .singleQuoted, none, none, none⟩) == .str "true"
+#guard resolve (.scalar ⟨"null", .doubleQuoted, none, none, none⟩) == .str "null"
+#guard resolve (.scalar ⟨"42", .literal, none, none, none⟩) == .str "42"
+#guard resolve (.scalar ⟨"42", .folded, none, none, none⟩) == .str "42"
+-- An explicit tag wins over style, in shorthand or URI form
+#guard resolve (.scalar ⟨"42", .doubleQuoted, some "!!int", none, none⟩) == .int 42
+#guard resolve (.scalar ⟨"42", .plain, some "tag:yaml.org,2002:str", none, none⟩) == .str "42"
+#guard resolve (.scalar ⟨"42", .plain, some "!<tag:yaml.org,2002:str>", none, none⟩) == .str "42"
+
 -- Explicit tag overrides via resolve
 #guard resolve (.scalar ⟨"true", .plain, some "tag:yaml.org,2002:str", none, none⟩) == .str "true"
 #guard resolve (.scalar ⟨"42", .plain, some "tag:yaml.org,2002:str", none, none⟩) == .str "42"
 #guard resolve (.scalar ⟨"hello", .plain, some "tag:yaml.org,2002:null", none, none⟩) == .null
 
 end L4YAML.Schema.Proofs
+
+end Blanket

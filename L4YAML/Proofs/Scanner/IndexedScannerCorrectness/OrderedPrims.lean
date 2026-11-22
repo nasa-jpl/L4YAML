@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedDefs
+
+module
+
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedDefs
+
+@[expose] public section Blanket
 
 /-! # `IndexedScannerCorrectness.OrderedPrims` — §8.3–§8.6
 
@@ -64,8 +69,10 @@ lemma emit_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
         if h : k < s.tokens.tokens.size then (s.tokens.tokens[k]'h).start.offset
                                          else s.cursor.pos.offset := by
     intro k hk
-    show ((s.tokens.tokens.push _)[k]'hk).start.offset = _
-    rw [push_start_offset_eq]
+    -- 4.33: unfold `emit` inside the simp call — a `show` carrying the emit-typed
+    -- validity proof `hk` over to the pushed array leaves the goal ill-typed at
+    -- reducible transparency, and the rewrite refuses to match.
+    simp only [ScannerStateIx.emit, TokenStream.push, push_start_offset_eq]
     split <;> rfl
   have h_sz : (s.emit tok).tokens.tokens.size = s.tokens.tokens.size + 1 := by
     show (s.tokens.tokens.push _).size = _; exact Array.size_push ..
@@ -119,8 +126,8 @@ lemma emitAt_preserves_ScanInvIx {input : String} (s : ScannerStateIx input)
         if h : k < s.tokens.tokens.size then (s.tokens.tokens[k]'h).start.offset
                                          else startPos.offset := by
     intro k hk
-    show ((s.tokens.tokens.push _)[k]'hk).start.offset = _
-    rw [push_start_offset_eq]
+    -- 4.33: unfold `emitAt` inside the simp call — see emit_preserves_ScanInvIx.
+    simp only [ScannerStateIx.emitAt, TokenStream.push, push_start_offset_eq]
     split <;> rfl
   refine ⟨?_, ?_⟩
   · intro ⟨i, hi⟩ ⟨j, hj⟩ hij
@@ -202,11 +209,11 @@ lemma overwriteAtCursor_preserves_ScanInvIx {input : String} (s : ScannerStateIx
       · subst h_ik
         rw [Array.getElem_set_self]
         simp [IxToken.mk']
-      · rw [Array.getElem_set_ne (h := h_ik), if_neg h_ik]
+      · rw [Array.getElem_set_ne (h := h_ik), ite_eq_right h_ik]
     · -- out-of-bounds: setIfInBounds = id; i ≠ k since k < size and i ≥ size.
       simp only [hi, dite_false]
       have h_ne : i ≠ k := fun h => by subst h; exact hi hk'
-      rw [if_neg h_ne]
+      rw [ite_eq_right h_ne]
   refine ⟨?_, ?_⟩
   · intro ⟨a, ha⟩ ⟨b, hb⟩ hab
     have hab' : a < b := hab
@@ -249,9 +256,10 @@ lemma overwriteAtCursor_start_at_idx {input : String} (s : ScannerStateIx input)
     (i : Nat) (sk : IxCursor input) (tok : YamlToken)
     (h_i : i < (s.overwriteAtCursor i sk tok).tokens.tokens.size) :
     ((s.overwriteAtCursor i sk tok).tokens.tokens[i]'h_i).start = sk.pos := by
-  show ((s.tokens.tokens.setIfInBounds i
-      (IxToken.mk' (input := input) sk.pos tok sk.pos (Nat.le_refl _) sk.posBound))[i]'h_i).start = sk.pos
-  rw [Array.getElem_setIfInBounds_self]
+  -- 4.33: unfold `overwriteAtCursor` inside the simp call — see
+  -- emit_preserves_ScanInvIx above for the mechanism.
+  simp only [ScannerStateIx.overwriteAtCursor, TokenStream.setIfInBounds,
+    Array.getElem_setIfInBounds_self]
   rfl
 
 lemma overwriteAtCursor_preserves_other_start {input : String}
@@ -315,7 +323,8 @@ lemma unwindIndentsLoopIx_preserves_ScanInvIx {input : String}
     · -- emit blockEnd + pop indents + recurse
       have h_emit : ScanInvIx (s.emit YamlToken.blockEnd) := emit_preserves_ScanInvIx s _ h
       have h_pop : ScanInvIx { s.emit YamlToken.blockEnd with
-          indents := (s.emit YamlToken.blockEnd).indents.pop } := by
+          indents := (s.emit YamlToken.blockEnd).indents.pop,
+          pendingKeys := (s.emit YamlToken.blockEnd).pendingKeys.pop } := by
         apply ScanInvIx_of_field_update _ _ h_emit rfl rfl
       exact ih _ h_pop
     · exact h
@@ -590,3 +599,5 @@ lemma ScanInvIx_of_one_emit_at_pre_cursor {input : String}
       rw [h_new k hk_lo hk]; exact h_off
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness
+
+end Blanket

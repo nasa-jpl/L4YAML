@@ -1,0 +1,73 @@
+{
+ "item": 413,
+ "tag": "COMPACT-CHAIN",
+ "rev": "6034cc4f",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/413-compact-chain.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (h_outer : (PendingKeySound.Sound s_prep ∧ RegisterWitness.MarkedColsIn s_prep [n + 1 + m] ∧",
+    "      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True) :"
+   ],
+   "new": [
+    "    (h_outer : (PendingKeySound.Sound s_prep ∧ RegisterWitness.MarkedColsIn s_prep [n + 1 + m] ∧",
+    "      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True)",
+    "    (h_chainUp : (∀ nv ∈ RegisterWitness.markedCols sc,",
+    "      ∀ sp_m : SurfPos, SBlockIndented n ctx sp_entry sp_m →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_m sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)",
+    "    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →",
+    "      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "        -- callers with a mark step for the compact `?`'s push (item 413): DECLINES.",
+    "        Or.inr trivial⟩"
+   ],
+   "new": [
+    "        -- callers with a mark step for the compact `?`'s push (item 413): DECLINES.",
+    "        sorry⟩"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "                (fun _ => Or.inr trivial)) (fun _ => Or.inr trivial))"
+   ],
+   "new": [
+    "                (fun _ => Or.inr trivial)) (fun _ => Or.inr trivial))",
+    "              sorry sorry"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "            (h_kslotUp.elim (fun ⟨ns, hdom, _⟩ => if hns : ∀ x ∈ ns, x = n + 1 + m",
+    "              then Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,",
+    "                (RegisterWitness.preprocess_markedCols h_preprocess hdom).mono (fun x hx => List.mem_singleton.2 (hns x hx)),",
+    "                fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩",
+    "              else Or.inr trivial) (fun _ => Or.inr trivial))"
+   ],
+   "new": [
+    "            (h_kslotUp.elim (fun ⟨ns, hdom, _⟩ => if hns : ∀ x ∈ ns, x = n + 1 + m",
+    "              then Or.inl ⟨PendingKeySound.preprocess_sound h_preprocess h_sound h_mono,",
+    "                (RegisterWitness.preprocess_markedCols h_preprocess hdom).mono (fun x hx => List.mem_singleton.2 (hns x hx)),",
+    "                fun _ => (preprocess_saved_key_col h_sk h_noflow h_preprocess).2⟩",
+    "              else Or.inr trivial) (fun _ => Or.inr trivial))",
+    "            sorry sorry"
+   ],
+   "count": 1
+  }
+ ]
+}

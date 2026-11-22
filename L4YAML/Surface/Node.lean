@@ -2,7 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Surface.Scalars
+
+module
+
+public import L4YAML.Surface.Scalars
+
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Node & Collection Surface Syntax — Chapters 7.4 & 8.2
@@ -73,17 +80,30 @@ mutual
         GOpt (GSeq (SCNsProperties n c) (SSeparate n c)) s₁ s₂ →
         SCLFolded n s₂ s' →
         SBlockNode n c s s'
-    /-- [199] Block sequence: optional properties + comments + sequence. -/
-    | blockSeq (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+    /-- [199] Block sequence: optional properties + comments + sequence.
+
+        `m` is `[183] l+block-sequence(n)`'s **auto-detected extra indentation**
+        — the production is `( s-indent(n+m) c-l-block-seq-entry(n+m) )+` for
+        some `m > 0` fixed once for the whole collection, so it is bound HERE,
+        on the constructor that opens the collection, and threaded into the
+        entries' shared index.  (Item 22.  Inlining it at its smallest legal
+        value, as this constructor did through item 21, makes every indented
+        block sequence — `  - a`, `a:⏎  - x` — underivable; binding it inside
+        `SBlockSeqEntries` instead would admit ragged indentation.  Reflection
+        647.) -/
+    | blockSeq (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s₂ s' : SurfPos) :
         GOpt (GSeq (SSeparate n c) (SCNsProperties n c)) s s₁ →
         SSLComments s₁ s₂ →
-        SBlockSeqEntries (seqSpaces n c) s₂ s' →
+        SBlockSeqEntries (seqSpaces n c + m) s₂ s' →
         SBlockNode n c s s'
-    /-- [199] Block mapping: optional properties + comments + mapping. -/
-    | blockMap (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+    /-- [199] Block mapping: optional properties + comments + mapping.
+
+        `m` is `[187] l+block-mapping(n)`'s auto-detected extra indentation,
+        bound exactly as `blockSeq`'s above. -/
+    | blockMap (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s₂ s' : SurfPos) :
         GOpt (GSeq (SSeparate n c) (SCNsProperties n c)) s s₁ →
         SSLComments s₁ s₂ →
-        SBlockMapEntries n s₂ s' →
+        SBlockMapEntries (n + m) s₂ s' →
         SBlockNode n c s s'
     /-- [195] Flow-in-block: separator + flow node + comments. -/
     | flowInBlock (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
@@ -97,22 +117,49 @@ mutual
         SBlockNode n c s s'
 
   /-- [185] s-l+block-indented(n,c): content inside a block entry.
-      Can be compact notation, a regular block node, or empty. -/
+      Can be compact notation, a regular block node, or empty.
+
+      **The compact index is `n+1+m`, not `n+m`** (item 33).  The production
+      is reached from `[184] c-l-block-seq-entry(n)` — `'-' s-l+block-indented`
+      — at the position immediately AFTER the indicator, so the entry's own
+      `s-indent(n)` has already been spent and the `-` occupies one more
+      column; `s-indent(m)` then walks `m` further.  A compact entry therefore
+      sits at column `n+1+m`, which is the width `[186] ns-l-compact-sequence`
+      and `[195] ns-l-compact-mapping` require of their SIBLINGS: in `- - a`
+      the inner `-` is at column 2 = 0+1+1, and `- - a⏎  - b`'s second entry
+      is indented to that same column.  Written `n+m` these two constructors
+      named a collection one column to the left of the one the input has.
+
+      Both survived unnoticed because they are the only alternatives of `[185]`
+      with NO producer and NO consumer anywhere in the tree — nothing ever
+      instantiated the index, so nothing could disagree with it.  Building
+      their first consumer is what evaluated them. -/
   @[yaml_spec "8.2.1" 185 "s-l+block-indented(n,c)"]
   inductive SBlockIndented : Nat → YamlContext → SurfPos → SurfPos → Prop where
-    /-- Compact sequence: indent(m) + compact-sequence(n+m). -/
+    /-- Compact sequence: indent(m) + compact-sequence(n+1+m). -/
     | compactSeq (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s' : SurfPos) :
         SIndent m s s₁ →
-        SCompactSeq (n + m) s₁ s' →
+        SCompactSeq (n + 1 + m) s₁ s' →
         SBlockIndented n c s s'
-    /-- Compact mapping: indent(m) + compact-mapping(n+m). -/
+    /-- Compact mapping: indent(m) + compact-mapping(n+1+m). -/
     | compactMap (n : Nat) (c : YamlContext) (m : Nat) (s s₁ s' : SurfPos) :
         SIndent m s s₁ →
-        SCompactMap (n + m) s₁ s' →
+        SCompactMap (n + 1 + m) s₁ s' →
         SBlockIndented n c s s'
-    /-- Regular block node. -/
+    /-- Regular block node.
+
+        **The node index is `n + 1`, not `n`** (item 179).  `[185]`'s
+        alternative is `s-l+block-node(n,c)` at the SPEC's parameter, and
+        `SBlockNode` is the one type in this tree indexed `n_lean = n_spec + 1`
+        (`SLBareDocument`'s convention, stated on `[198]`'s docstring above) —
+        `SBlockIndented`'s own `n` is the raw entry column, so the crossing
+        adds the one.  Written `n` this arm fed the node's separators and
+        collections an index one too small, which is what admitted the
+        at-column value readings (`k:⏎a`, the equal-width nested map) the
+        runtime refuses — item 107's `m = 0` families, Finding A's encoding
+        half. -/
     | node (n : Nat) (c : YamlContext) (s s' : SurfPos) :
-        SBlockNode n c s s' →
+        SBlockNode (n + 1) c s s' →
         SBlockIndented n c s s'
     /-- Empty node + comments. -/
     | empty (n : Nat) (c : YamlContext) (s s' : SurfPos) :
@@ -120,9 +167,11 @@ mutual
         SBlockIndented n c s s'
 
   /-- [183] l+block-sequence(n): one or more block sequence entries.
-      Each entry = s-indent(n+1) + '-' + s-l+block-indented(n+1,BLOCK-IN).
-      The '-' indicator must NOT be followed by ns-char (distinguishes
-      block entry from plain scalar starting with '-'). -/
+      Each entry = s-indent(N) + '-' + s-l+block-indented(N,BLOCK-IN), where
+      the index `N` is the production's ALREADY-DETECTED `n+m` — the whole
+      collection shares it, and `SBlockNode.blockSeq` is where `m` is chosen
+      (item 22).  The '-' indicator must NOT be followed by ns-char
+      (distinguishes block entry from plain scalar starting with '-'). -/
   @[yaml_spec "8.2.1" 183 "l+block-sequence(n)"]
   inductive SBlockSeqEntries : Nat → SurfPos → SurfPos → Prop where
     | single (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
@@ -150,11 +199,27 @@ mutual
         GLit ':' s₃ s₄ →
         SBlockIndented n .blockOut s₄ s' →
         SBlockMapEntry n s s'
-    /-- [189] Implicit key + ':' + block node. -/
+    /-- [186] Explicit entry whose VALUE is empty — `? a` with no `:` line at
+        all.  The production's tail is `( l-block-map-explicit-value(n) |
+        e-node )`, so the value is optional and its `e-node` alternative is
+        zero-width: the entry ends exactly where its key does.  (Item 20; the
+        `explicit` arm above is the other alternative, and without this one
+        `? a`, `?`, `? [1]` and every key-only entry parsed correctly with no
+        derivation.) -/
+    | explicitEmpty (n : Nat) (s s₁ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SBlockIndented n .blockOut s₁ s' →
+        SBlockMapEntry n s s'
+    /-- [189] Implicit key + ':' + block node.
+
+        The value's node index is `n + 1` for the same reason as
+        `SBlockIndented.node`'s (item 179): the implicit value production
+        spends `s-l+block-node(n, block-out)` at the spec's parameter, and
+        `n_lean = n_spec + 1` on `SBlockNode` alone. -/
     | implicitKeyNode (n : Nat) (s s₁ s₂ s' : SurfPos) :
         SImplicitKey s s₁ →
         GLit ':' s₁ s₂ →
-        SBlockNode n .blockOut s₂ s' →
+        SBlockNode (n + 1) .blockOut s₂ s' →
         SBlockMapEntry n s s'
     /-- [189] Implicit key + ':' + empty value (comments). -/
     | implicitKeyEmpty (n : Nat) (s s₁ s₂ s' : SurfPos) :
@@ -162,10 +227,11 @@ mutual
         GLit ':' s₁ s₂ →
         SSLComments s₂ s' →
         SBlockMapEntry n s s'
-    /-- [189] Empty key + ':' + block node. -/
+    /-- [189] Empty key + ':' + block node.  The value's node index is `n + 1`,
+        as on `implicitKeyNode` (item 179). -/
     | emptyKeyNode (n : Nat) (s s₁ s' : SurfPos) :
         GLit ':' s s₁ →
-        SBlockNode n .blockOut s₁ s' →
+        SBlockNode (n + 1) .blockOut s₁ s' →
         SBlockMapEntry n s s'
     /-- [189] Empty key + ':' + comments. -/
     | emptyKeyEmpty (n : Nat) (s s₁ s' : SurfPos) :
@@ -173,7 +239,9 @@ mutual
         SSLComments s₁ s' →
         SBlockMapEntry n s s'
 
-  /-- [187] l+block-mapping(n): one or more block mapping entries. -/
+  /-- [187] l+block-mapping(n): one or more block mapping entries.  As with
+      `SBlockSeqEntries`, the index is the production's already-detected
+      `n+m`; `SBlockNode.blockMap` chooses `m` (item 22). -/
   @[yaml_spec "8.2.2" 187 "l+block-mapping(n)"]
   inductive SBlockMapEntries : Nat → SurfPos → SurfPos → Prop where
     | single (n : Nat) (s s₁ s' : SurfPos) :
@@ -286,6 +354,34 @@ mutual
         SCDoubleQuoted n c s s' →
         SFlowContent n c s s'
 
+  /-- [157] c-flow-json-content(n,c): the JSON-like arms of `SFlowContent` (no plain scalar). -/
+  @[yaml_spec "7.5" 157 "c-flow-json-content(n,c)"]
+  inductive SCFlowJsonContent : Nat → YamlContext → SurfPos → SurfPos → Prop where
+    | flowSeq (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        SFlowSequence n c s s' →
+        SCFlowJsonContent n c s s'
+    | flowMap (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        SFlowMapping n c s s' →
+        SCFlowJsonContent n c s s'
+    | singleQ (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        SCSingleQuoted n c s s' →
+        SCFlowJsonContent n c s s'
+    | doubleQ (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        SCDoubleQuoted n c s s' →
+        SCFlowJsonContent n c s s'
+
+  /-- [160] c-flow-json-node(n,c): `(c-ns-properties s-separate)? c-flow-json-content`. -/
+  @[yaml_spec "7.5" 160 "c-flow-json-node(n,c)"]
+  inductive SCFlowJsonNode : Nat → YamlContext → SurfPos → SurfPos → Prop where
+    | content (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        SCFlowJsonContent n c s s' →
+        SCFlowJsonNode n c s s'
+    | propsContent (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+        SCNsProperties n c s s₁ →
+        SSeparate n c s₁ s₂ →
+        SCFlowJsonContent n c s₂ s' →
+        SCFlowJsonNode n c s s'
+
   /-- [137] c-flow-sequence(n,c): '[' + entries + ']'. -/
   @[yaml_spec "7.4.1" 137 "c-flow-sequence(n,c)"]
   inductive SFlowSequence : Nat → YamlContext → SurfPos → SurfPos → Prop where
@@ -322,8 +418,14 @@ mutual
         GOpt (SSeparate n c) s₃ s' →
         SFlowSeqEntries n c s s'
 
-  /-- [139] ns-flow-seq-entry(n,c): flow sequence entry (flow node or pair). -/
-  @[yaml_spec "7.4.1" 139 "ns-flow-seq-entry(n,c)"]
+  /-- [139] ns-flow-seq-entry(n,c): flow sequence entry (flow node or pair).
+
+      The `?`-headed and `:`-headed constructors inline `[150] ns-flow-pair`'s
+      two alternatives; the last three inline the two arms that only item 9l
+      supplied — `[143]`'s `( e-node e-node )` and `[146]`'s empty key. -/
+  @[yaml_spec "7.4.1" 139 "ns-flow-seq-entry(n,c)",
+    yaml_spec "7.4.2" 143 "ns-flow-map-explicit-entry(n,c)",
+    yaml_spec "7.4.2" 146 "c-ns-flow-map-empty-key-entry(n,c)"]
   inductive SFlowSeqEntry : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- Regular flow node. -/
     | node (n : Nat) (c : YamlContext) (s s' : SurfPos) :
@@ -341,6 +443,106 @@ mutual
     | pairEmpty (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
         SFlowNode n c s s₁ →
         GOpt (SSeparate n c) s₁ s₂ →
+        GLit ':' s₂ s' →
+        SFlowSeqEntry n c s s'
+    /-- [153] c-ns-flow-pair-json-key-entry then `[149]` (`["a":[1]]`). The key slot reads
+        `c-flow-json-node(n,c)` + `s-separate?`, as lenient as `pairValue`'s yaml key; the
+        strict `[155] c-s-implicit-json-key(flow-key)` (n = 0, one line) is a follow-up. -/
+    | pairJsonAdjacentValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
+        SCFlowJsonNode n c s s₁ →
+        GOpt (SSeparate n c) s₁ s₂ →
+        GLit ':' s₂ s₃ →
+        GOpt (SSeparate n c) s₃ s₄ →
+        SFlowNode n c s₄ s' →
+        SFlowSeqEntry n c s s'
+    /-- [150] ns-flow-pair, explicit case, around the JSON-key pair: `[? "a":b]` — the
+        explicit key is JSON-like, so `[149]` lets the value be glued to the `':'`. -/
+    | explicitPairJsonAdjacentValue (n : Nat) (c : YamlContext)
+        (s s₁ s₂ s₃ s₄ s₅ s₆ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SCFlowJsonNode n c s₂ s₃ →
+        GOpt (SSeparate n c) s₃ s₄ →
+        GLit ':' s₄ s₅ →
+        GOpt (SSeparate n c) s₅ s₆ →
+        SFlowNode n c s₆ s' →
+        SFlowSeqEntry n c s s'
+    /-- Explicit '?' flow pair with value: `? key : value`. Covers `[? a : b]`
+        (ns-flow-pair explicit case [149], reusing `'?' s-separate` + key/value). -/
+    | explicitPairValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s₅ s₆ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SFlowNode n c s₂ s₃ →
+        GOpt (SSeparate n c) s₃ s₄ →
+        GLit ':' s₄ s₅ →
+        SSeparate n c s₅ s₆ →
+        SFlowNode n c s₆ s' →
+        SFlowSeqEntry n c s s'
+    /-- Explicit '?' flow pair, empty value: `? key :`. Covers `[? a :]`. -/
+    | explicitPairEmpty (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SFlowNode n c s₂ s₃ →
+        GOpt (SSeparate n c) s₃ s₄ →
+        GLit ':' s₄ s' →
+        SFlowSeqEntry n c s s'
+    /-- Explicit '?' key, no value indicator: `? key`. Covers `[? a]`. -/
+    | explicitPairKeyOnly (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SFlowNode n c s₂ s' →
+        SFlowSeqEntry n c s s'
+    /-- Explicit '?' with BOTH nodes empty: `[? ]`, `[? , a]` — `[143]
+        ns-flow-map-explicit-entry`'s `( e-node e-node )` alternative, reached
+        through `[150] ns-flow-pair`'s explicit arm.  The `s-separate` after the
+        `?` is mandatory (item 9j) and both `e-node`s are zero-width, so the
+        entry is exactly `'?' s-separate` — the ONE `?` shape whose key is not an
+        `ns-flow-node`, which is why the four constructors above cannot spell it.
+
+        Added by item 9l: the shipped pipeline accepts `[? ]` and emits the
+        null/null pair, and until now the grammar had no derivation for it. -/
+    | explicitPairEmptyNodes (n : Nat) (c : YamlContext) (s s₁ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s' →
+        SFlowSeqEntry n c s s'
+    /-- Empty key + ':' + separator + value: `[: a]` — `[151]
+        ns-flow-pair-entry`'s `c-ns-flow-map-empty-key-entry` alternative
+        [146], the sequence twin of `SFlowMapEntry.emptyKeyValue`.
+
+        Added by item 9l.  `SFlowMapEntry` has carried the empty-key pair since
+        the start; the sequence side, where it is just as legal, did not. -/
+    | emptyKeyValue (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+        GLit ':' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SFlowNode n c s₂ s' →
+        SFlowSeqEntry n c s s'
+    /-- Empty key + ':' + empty value: `[:]` — `[146]` with an `e-node` value
+        (item 9l; the sequence twin of `SFlowMapEntry.emptyKeyEmpty`). -/
+    | emptyKeyEmpty (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        GLit ':' s s' →
+        SFlowSeqEntry n c s s'
+    /-- Explicit `?`, EMPTY key, value: `[? : a]` — `[150] ns-flow-pair`'s
+        explicit arm reaching `[143]`'s implicit alternative at `[146]
+        c-ns-flow-map-empty-key-entry`.
+
+        Item 9l added the two halves separately — `[146]` on its own
+        (`emptyKeyValue`, `[: a]`) and `[143]`'s `( e-node e-node )`
+        (`explicitPairEmptyNodes`, `[? ]`) — and deliberately left the
+        COMPOSITION out, because its only producer is the `:` dispatch and an
+        unproducible constructor is inhabitation debt.  Item 9n supplies the
+        producer (`SeqFrame.receiveColonQuestion`), so it lands here now. -/
+    | explicitEmptyKeyValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        GLit ':' s₂ s₃ →
+        SSeparate n c s₃ s₄ →
+        SFlowNode n c s₄ s' →
+        SFlowSeqEntry n c s s'
+    /-- Explicit `?`, empty key, empty value: `[? :]` — `[146]` with an `e-node`
+        value, under `[150]`'s explicit arm (item 9n). -/
+    | explicitEmptyKeyEmpty (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
         GLit ':' s₂ s' →
         SFlowSeqEntry n c s s'
 
@@ -380,8 +582,12 @@ mutual
         GOpt (SSeparate n c) s₃ s' →
         SFlowMapEntries n c s s'
 
-  /-- [142] ns-flow-map-entry(n,c): explicit '?' entry or implicit entry. -/
-  @[yaml_spec "7.4.2" 142 "ns-flow-map-entry(n,c)"]
+  /-- [142] ns-flow-map-entry(n,c): explicit '?' entry or implicit entry.
+
+      The explicit constructors inline `[143] ns-flow-map-explicit-entry`,
+      whose `( e-node e-node )` alternative arrived with item 9l. -/
+  @[yaml_spec "7.4.2" 142 "ns-flow-map-entry(n,c)",
+    yaml_spec "7.4.2" 143 "ns-flow-map-explicit-entry(n,c)"]
   inductive SFlowMapEntry : Nat → YamlContext → SurfPos → SurfPos → Prop where
     /-- Explicit '?' + key + ':' + separator + value. -/
     | explicitValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s₅ s₆ s' : SurfPos) :
@@ -401,6 +607,13 @@ mutual
         GOpt (SSeparate n c) s₃ s₄ →
         GLit ':' s₄ s' →
         SFlowMapEntry n c s s'
+    /-- Explicit '?' + key with no value indicator: `{? a}` — the `e-node` (empty
+        value, no `':'`) branch after `'?' s-separate ns-flow-yaml-node`. -/
+    | explicitKeyOnly (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SFlowNode n c s₂ s' →
+        SFlowMapEntry n c s s'
     /-- Implicit key + ':' + separator + value. -/
     | implicitValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
         SFlowNode n c s s₁ →
@@ -415,6 +628,34 @@ mutual
         GOpt (SSeparate n c) s₁ s₂ →
         GLit ':' s₂ s' →
         SFlowMapEntry n c s s'
+    /-- [148] c-ns-flow-map-json-key-entry + [149] c-ns-flow-map-adjacent-value: a JSON-like
+        key may be followed by `':'` and the value with NO separation (`{"a":b}`, `{"a":[1]}`).
+        The `e-node` value is `implicitEmpty`; the plain-key shape `{a:[1]}` has no arm. -/
+    | jsonKeyAdjacentValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
+        SCFlowJsonNode n c s s₁ →
+        GOpt (SSeparate n c) s₁ s₂ →
+        GLit ':' s₂ s₃ →
+        GOpt (SSeparate n c) s₃ s₄ →
+        SFlowNode n c s₄ s' →
+        SFlowMapEntry n c s s'
+    /-- [142] c-ns-flow-map-explicit-entry around [148]/[149]: `{? "a":b}` — the explicit
+        key is a JSON-like node, so the value may be glued to the `':'`. -/
+    | explicitJsonKeyAdjacentValue (n : Nat) (c : YamlContext)
+        (s s₁ s₂ s₃ s₄ s₅ s₆ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        SCFlowJsonNode n c s₂ s₃ →
+        GOpt (SSeparate n c) s₃ s₄ →
+        GLit ':' s₄ s₅ →
+        GOpt (SSeparate n c) s₅ s₆ →
+        SFlowNode n c s₆ s' →
+        SFlowMapEntry n c s s'
+    /-- Bare YAML key with no value indicator: `{a}` — the `e-node` (empty value,
+        no `':'`) branch of `ns-flow-map-yaml-key-entry(n,c)` [145]. Trailing
+        separation is absorbed by the enclosing `SFlowMapEntries` GOpt. -/
+    | bareKey (n : Nat) (c : YamlContext) (s s' : SurfPos) :
+        SFlowNode n c s s' →
+        SFlowMapEntry n c s s'
     /-- Empty key + ':' + separator + value. -/
     | emptyKeyValue (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
         GLit ':' s s₁ →
@@ -425,7 +666,31 @@ mutual
     | emptyKeyEmpty (n : Nat) (c : YamlContext) (s s' : SurfPos) :
         GLit ':' s s' →
         SFlowMapEntry n c s s'
+    /-- Explicit '?' with BOTH nodes empty: `{? }`, `{? , a}` — `[143]
+        ns-flow-map-explicit-entry`'s `( e-node e-node )` alternative (item 9l;
+        see `SFlowSeqEntry.explicitPairEmptyNodes`). -/
+    | explicitEmptyNodes (n : Nat) (c : YamlContext) (s s₁ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s' →
+        SFlowMapEntry n c s s'
+    /-- Explicit `?`, EMPTY key, value: `{? : a}` — see
+        `SFlowSeqEntry.explicitEmptyKeyValue` (item 9n). -/
+    | explicitEmptyKeyValue (n : Nat) (c : YamlContext) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        GLit ':' s₂ s₃ →
+        SSeparate n c s₃ s₄ →
+        SFlowNode n c s₄ s' →
+        SFlowMapEntry n c s s'
+    /-- Explicit `?`, empty key, empty value: `{? :}` (item 9n). -/
+    | explicitEmptyKeyEmpty (n : Nat) (c : YamlContext) (s s₁ s₂ s' : SurfPos) :
+        GLit '?' s s₁ →
+        SSeparate n c s₁ s₂ →
+        GLit ':' s₂ s' →
+        SFlowMapEntry n c s s'
 
 end -- mutual
 
 end L4YAML.Surface
+
+end Blanket

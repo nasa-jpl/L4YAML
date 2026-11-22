@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Empty-bracket ARM probe — the (R2) dispatch redesign needs NO new infra; the arm already exists
@@ -138,3 +142,5 @@ theorem empty_window_routes_through_classify :
     (Or.inr (Or.inl ⟨by native_decide, by native_decide, by native_decide, Or.inr (by native_decide)⟩))
 
 end L4YAML.Proofs.EmitterScannability.SeqEmptyEntryArmProbe
+
+end Blanket

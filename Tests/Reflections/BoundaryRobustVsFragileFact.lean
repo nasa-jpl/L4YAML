@@ -51,6 +51,11 @@ This file isolates the principle abstractly: the robust fact REBASES to sub-wind
 `bodySuccFact_rebase` mechanism), the fragile fact does NOT.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace BoundaryRobustVsFragileFact
 
 /-- A separator/marker fires at positions `trig`; the followed content satisfies `P`.
@@ -141,3 +146,5 @@ example : ToyFragile 9 := by decide
 example : ToyRobust 9 := by decide
 
 end BoundaryRobustVsFragileFact
+
+end Blanket

@@ -2,10 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.Scanner
-import L4YAML.Spec.Grammar
-import L4YAML.Proofs.Scanner.ScannerProofs
-import L4YAML.Proofs.Scanner.ScannerProgress
+
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Spec.Grammar
+public import L4YAML.Proofs.Scanner.ScannerProofs
+public import L4YAML.Proofs.Scanner.CloseStaleExplicitKey
+public import L4YAML.Proofs.Scanner.ScannerProgress
+public import L4YAML.Proofs.Scanner.FlowAdjacency
+public import L4YAML.Proofs.Scanner.BlockScalarFlowGuard
+public import L4YAML.Proofs.Scanner.AliasTrailingContent
+
+@[expose] public section Blanket
 
 /-!
 # Scanner Correctness (P10.11a)
@@ -68,12 +77,16 @@ Position monotonicity infrastructure:
 
 namespace L4YAML.Proofs.ScannerCorrectness
 
+open L4YAML.Proofs.CloseStaleExplicitKey
+
 open L4YAML
 open L4YAML.Scanner
+open L4YAML.Proofs.BlockScalarFlowGuard
 open L4YAML.CharPredicates
 open L4YAML.Grammar
 open L4YAML.Proofs.ScannerProgress
 open L4YAML.Proofs.ScannerProofs
+open L4YAML.Proofs.FlowAdjacency
 
 /-- Simple key invariant: all simple keys (current and stacked) have
     `tokenIndex ≥ n`. This is threaded through `scanLoop` to ensure that
@@ -107,6 +120,19 @@ lemma advance_preserves_tokens (s : ScannerState) :
   · -- Case: s.offset >= s.inputEnd
     rfl
 
+/-! ### `consumeBOM` — `advance` with the column put back (item 35)
+
+`consumeBOM` is `advance` followed by `col := 0` (§5.2: the BOM spends no
+column of the first line).  Everything the scan entry points know about the
+post-BOM state therefore rides through from the `advance` lemma above, one
+`simp` away — the column is the only field that differs, and no invariant
+here reads it. -/
+
+lemma consumeBOM_preserves_tokens (s : ScannerState) :
+    s.consumeBOM.tokens = s.tokens := by
+  unfold ScannerState.consumeBOM; simpa using advance_preserves_tokens s
+
+
 /-- The `advance` operation preserves flowLevel.
 
 `advance` only modifies position fields, not flow state. -/
@@ -120,6 +146,10 @@ lemma advance_preserves_flowLevel (s : ScannerState) :
     · split <;> rfl
   · rfl
 
+lemma consumeBOM_preserves_flowLevel (s : ScannerState) :
+    s.consumeBOM.flowLevel = s.flowLevel := by
+  unfold ScannerState.consumeBOM; simpa using advance_preserves_flowLevel s
+
 /-- The `advance` operation preserves flowStack.
 
 `advance` only modifies position fields, not flow state. -/
@@ -132,6 +162,10 @@ lemma advance_preserves_flowStack (s : ScannerState) :
     · rfl
     · split <;> rfl
   · rfl
+
+lemma consumeBOM_preserves_flowStack (s : ScannerState) :
+    s.consumeBOM.flowStack = s.flowStack := by
+  unfold ScannerState.consumeBOM; simpa using advance_preserves_flowStack s
 
 /-- The `emit` operation preserves flowLevel.
 
@@ -155,8 +189,9 @@ For any index i < original size, tokens[i] remains unchanged. -/
 lemma emit_preserves_tokens_at (s : ScannerState) (tok : YamlToken)
     (i : Nat) (h : i < s.tokens.size) :
     (s.emit tok).tokens[i]'(by have := emit_tokens_size s tok; omega) = s.tokens[i] := by
-  unfold ScannerState.emit
-  simp only [Array.getElem_push]
+  -- The index proof is typed at the un-unfolded `emit`, so unfolding first
+  -- leaves `Array.getElem_push` unable to match; unfold in the same pass.
+  simp only [ScannerState.emit, Array.getElem_push]
   split
   · rfl
   · -- This branch is when i = s.tokens.size, but h says i < s.tokens.size
@@ -182,7 +217,7 @@ lemma unwindIndentsLoop_tokens_monotonic (s : ScannerState) (col : Int) (fuel : 
       have h_emit := emit_tokens_size s .blockEnd
       -- After modifying indents, tokens stay same (only indents field changed)
       let s' := s.emit .blockEnd
-      let s'' := { s' with indents := s'.indents.pop }
+      let s'' := { s' with indents := s'.indents.pop, pendingKeys := s'.pendingKeys.pop }
       -- s''.tokens = s'.tokens (modifying indents doesn't affect tokens)
       have h_tokens_eq : s''.tokens = s'.tokens := by rfl
       -- Apply IH to s''
@@ -213,7 +248,7 @@ lemma unwindIndentsLoop_preserves_prefix (s : ScannerState) (col : Int) (fuel : 
     split
     · -- Condition true: emit and recurse
       let s_emit := s.emit .blockEnd
-      let s_pop := { s_emit with indents := s_emit.indents.pop }
+      let s_pop := { s_emit with indents := s_emit.indents.pop, pendingKeys := s_emit.pendingKeys.pop }
       -- We know emit increases size by 1
       have h_emit_size : s_emit.tokens.size = s.tokens.size + 1 := emit_tokens_size s .blockEnd
       -- So i < s_emit.tokens.size
@@ -276,6 +311,39 @@ lemma unwindIndents_preserves_flowLevel (s : ScannerState) (col : Int) :
   unfold unwindIndents
   exact unwindIndentsLoop_preserves_flowLevel s col s.indents.size
 
+/-- `unwindIndentsLoop` preserves `needIndentCheck` (item 48): each step is an
+    `emit .blockEnd` plus an `indents` update. -/
+lemma unwindIndentsLoop_preserves_needIndentCheck (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).needIndentCheck = s.needIndentCheck := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; rfl
+    · rfl
+
+lemma unwindIndents_preserves_needIndentCheck (s : ScannerState) (col : Int) :
+    (unwindIndents s col).needIndentCheck = s.needIndentCheck := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_needIndentCheck s col s.indents.size
+
+/-- `unwindIndentsLoop` preserves `line` (item 48): no step moves the cursor. -/
+lemma unwindIndentsLoop_preserves_line (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).line = s.line := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; rfl
+    · rfl
+
+lemma unwindIndents_preserves_line (s : ScannerState) (col : Int) :
+    (unwindIndents s col).line = s.line := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_line s col s.indents.size
+
 /-- `saveSimpleKey` preserves `flowLevel`. -/
 lemma saveSimpleKey_preserves_flowLevel (s : ScannerState) :
     (saveSimpleKey s).flowLevel = s.flowLevel := by
@@ -335,6 +403,10 @@ lemma scanLoop_success_emits_streamEnd : ∀ (s : ScannerState) (fuel : Nat) (to
       -- Need to handle the if-then-else for flowLevel and directivesPresent
       split at h <;> try contradiction
       split at h <;> try contradiction
+      -- §9.2 dangling-node check (item 133): the `.error` arm contradicts
+      split at h <;> try contradiction
+      -- §8.1 flow-value floor (item 172): the `.error` arm contradicts
+      split at h <;> try contradiction
       -- Now h : .ok ((unwindIndents s (-1)).emit .streamEnd).tokens = .ok tokens
       injection h with h_eq
       exists (unwindIndents s (-1))
@@ -387,8 +459,8 @@ lemma saveSimpleKey_preserves_prefix (s : ScannerState)
   · split
     · -- simpleKeyAllowed: push 2 placeholders, preserves prefix
       dsimp only []
-      rw [Array.getElem_push, dif_pos (show i < (s.tokens.push _).size by simp; omega)]
-      rw [Array.getElem_push, dif_pos h_bound]
+      rw [Array.getElem_push, dite_eq_left (show i < (s.tokens.push _).size by simp; omega)]
+      rw [Array.getElem_push, dite_eq_left h_bound]
     · rfl
 
 /-- scanFlowSequenceStart adds exactly one token.
@@ -438,6 +510,11 @@ lemma pushMappingIndent_tokens_monotonic (s : ScannerState) (col : Int) :
   · simp [ScannerState.emit, Array.size_push]
   · omega
 
+/-! Item 335: the pending-key helpers touch only `pendingKeys` (mark/clear) or the
+    explicit-key register (read); every other projection is definitional. -/
+
+@[simp] lemma markPendingKey_tokens (s : ScannerState) (l : Nat) : (s.markPendingKey l).tokens = s.tokens := rfl
+
 /-- `pushSequenceIndent` preserves or adds tokens. -/
 lemma pushSequenceIndent_tokens_monotonic (s : ScannerState) (col : Int) :
     (pushSequenceIndent s col).tokens.size ≥ s.tokens.size := by
@@ -459,9 +536,10 @@ lemma scanKey_adds_one_token (s : ScannerState) (s' : ScannerState)
     (h : scanKey s = .ok s') :
     s'.tokens.size ≥ s.tokens.size + 1 := by
   unfold scanKey at h
-  simp only [] at h
+  simp only [bind, Except.bind] at h
   split at h
-  · -- !inFlow → pushMappingIndent called
+  · -- !inFlow → `scanKeyValidate` (item 131), then pushMappingIndent
+    split at h <;> try contradiction
     split at h
     · split at h
       · contradiction
@@ -565,18 +643,22 @@ lemma scanValue_adds_tokens (s : ScannerState) (s' : ScannerState)
   · -- scanValueValidate = .error → contradiction
     contradiction
   · -- scanValueValidate = .ok ()
-    -- Split on inner match (scanValueTabCheck): .error first, .ok second
+    -- Split on the inner matches (item 31's `scanValueIndentTabCheck`, then
+    -- `scanValueTabCheck`): .error first, .ok second
+    split at h
+    · -- scanValueIndentTabCheck = .error → contradiction
+      contradiction
     split at h
     · -- scanValueTabCheck = .error → contradiction
       contradiction
-    · -- scanValueTabCheck = .ok () → h : .ok {...} = .ok s'
-      injection h with h_eq; subst h_eq
-      -- Reduce struct projection through { ... with simpleKeyAllowed := ... }
-      dsimp only []
-      rw [advance_preserves_tokens, emit_tokens_size]
-      have h_ck := scanValueClearKey_preserves_tokens s
-      have h_prep := scanValuePrepare_tokens_monotonic (scanValueClearKey s)
-      rw [h_ck] at h_prep; omega
+    -- both checks passed → h : .ok {...} = .ok s'
+    injection h with h_eq; subst h_eq
+    -- Reduce struct projection through { ... with simpleKeyAllowed := ... }
+    dsimp only []
+    rw [advance_preserves_tokens, emit_tokens_size]
+    have h_ck := scanValueClearKey_preserves_tokens s
+    have h_prep := scanValuePrepare_tokens_monotonic (scanValueClearKey s)
+    rw [h_ck] at h_prep; omega
 
 /-- Helper: consumeNewline preserves tokens.
 
@@ -1018,6 +1100,350 @@ lemma skipToContent_preserves_flowLevel (s : ScannerState) (s' : ScannerState) :
   unfold skipToContent at h
   exact skipToContentLoop_preserves_flowLevel s s' _ h
 
+/-! ## implicitValueLine preservation through the skipToContent chain (item 48)
+
+`implicitValueLine` is written by `scanValue` alone; the whole preprocessing
+chain carries it unchanged.  The clones below mirror the `flowLevel` ladder
+lemma-for-lemma — same functions, same branch structure. -/
+
+lemma advance_preserves_implicitValueLine (s : ScannerState) :
+    s.advance.implicitValueLine = s.implicitValueLine := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+/-- `docStartLine` twin of `advance_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma advance_preserves_docStartLine (s : ScannerState) :
+    s.advance.docStartLine = s.docStartLine := by
+  unfold ScannerState.advance
+  split
+  · simp only []
+    split
+    · rfl
+    · split <;> rfl
+  · rfl
+
+lemma emit_preserves_implicitValueLine (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).implicitValueLine = s.implicitValueLine := by
+  unfold ScannerState.emit
+  rfl
+
+/-- `docStartLine` twin of `emit_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma emit_preserves_docStartLine (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).docStartLine = s.docStartLine := by
+  unfold ScannerState.emit
+  rfl
+
+lemma unwindIndentsLoop_preserves_implicitValueLine (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; exact emit_preserves_implicitValueLine s .blockEnd
+    · rfl
+
+/-- `docStartLine` twin of `unwindIndentsLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma unwindIndentsLoop_preserves_docStartLine (s : ScannerState) (col : Int) (fuel : Nat) :
+    (unwindIndentsLoop s col fuel).docStartLine = s.docStartLine := by
+  induction fuel generalizing s with
+  | zero => unfold unwindIndentsLoop; rfl
+  | succ fuel' ih =>
+    unfold unwindIndentsLoop
+    split
+    · rw [ih]; exact emit_preserves_docStartLine s .blockEnd
+    · rfl
+
+lemma unwindIndents_preserves_implicitValueLine (s : ScannerState) (col : Int) :
+    (unwindIndents s col).implicitValueLine = s.implicitValueLine := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_implicitValueLine s col s.indents.size
+
+/-- `docStartLine` twin of `unwindIndents_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma unwindIndents_preserves_docStartLine (s : ScannerState) (col : Int) :
+    (unwindIndents s col).docStartLine = s.docStartLine := by
+  unfold unwindIndents
+  exact unwindIndentsLoop_preserves_docStartLine s col s.indents.size
+
+lemma saveSimpleKey_preserves_implicitValueLine (s : ScannerState) :
+    (saveSimpleKey s).implicitValueLine = s.implicitValueLine := by
+  unfold saveSimpleKey
+  split <;> (try rfl)
+  split <;> rfl
+
+/-- `docStartLine` twin of `saveSimpleKey_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma saveSimpleKey_preserves_docStartLine (s : ScannerState) :
+    (saveSimpleKey s).docStartLine = s.docStartLine := by
+  unfold saveSimpleKey
+  split <;> (try rfl)
+  split <;> rfl
+
+lemma consumeNewline_preserves_implicitValueLine (s : ScannerState) :
+    (consumeNewline s).implicitValueLine = s.implicitValueLine := by
+  unfold consumeNewline
+  split
+  · exact advance_preserves_implicitValueLine s
+  · dsimp only []
+    split
+    · exact advance_preserves_implicitValueLine s
+    · exact advance_preserves_implicitValueLine s
+  · rfl
+
+/-- `docStartLine` twin of `consumeNewline_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma consumeNewline_preserves_docStartLine (s : ScannerState) :
+    (consumeNewline s).docStartLine = s.docStartLine := by
+  unfold consumeNewline
+  split
+  · exact advance_preserves_docStartLine s
+  · dsimp only []
+    split
+    · exact advance_preserves_docStartLine s
+    · exact advance_preserves_docStartLine s
+  · rfl
+
+lemma skipSpaces_preserves_implicitValueLine (s : ScannerState) :
+    (skipSpaces s).implicitValueLine = s.implicitValueLine := by
+  unfold skipSpaces
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ fuel' IH =>
+    unfold skipSpacesLoop; split
+    · rw [IH, advance_preserves_implicitValueLine]
+    · rfl
+
+/-- `docStartLine` twin of `skipSpaces_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipSpaces_preserves_docStartLine (s : ScannerState) :
+    (skipSpaces s).docStartLine = s.docStartLine := by
+  unfold skipSpaces
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipSpacesLoop; rfl
+  | succ fuel' IH =>
+    unfold skipSpacesLoop; split
+    · rw [IH, advance_preserves_docStartLine]
+    · rfl
+
+lemma skipWhitespace_preserves_implicitValueLine (s : ScannerState) :
+    (skipWhitespace s).implicitValueLine = s.implicitValueLine := by
+  unfold skipWhitespace
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; rfl
+  | succ fuel' IH =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · rw [IH, advance_preserves_implicitValueLine]
+      · rfl
+    · rfl
+
+/-- `docStartLine` twin of `skipWhitespace_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipWhitespace_preserves_docStartLine (s : ScannerState) :
+    (skipWhitespace s).docStartLine = s.docStartLine := by
+  unfold skipWhitespace
+  generalize s.inputEnd - s.offset = fuel
+  induction fuel generalizing s with
+  | zero => unfold skipWhitespaceLoop; rfl
+  | succ fuel' IH =>
+    unfold skipWhitespaceLoop; split
+    · split
+      · rw [IH, advance_preserves_docStartLine]
+      · rfl
+    · rfl
+
+lemma collectCommentTextLoop_preserves_implicitValueLine (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_implicitValueLine]
+    · rfl
+
+/-- `docStartLine` twin of `collectCommentTextLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectCommentTextLoop_preserves_docStartLine (s : ScannerState)
+    (text : String) (fuel : Nat) :
+    (collectCommentTextLoop s text fuel).2.docStartLine = s.docStartLine := by
+  induction fuel generalizing s text with
+  | zero => unfold collectCommentTextLoop; rfl
+  | succ fuel' IH =>
+    unfold collectCommentTextLoop; split
+    · split
+      · rfl
+      · rw [IH, advance_preserves_docStartLine]
+    · rfl
+
+lemma skipToContentWs_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
+    (h : skipToContentWs s = .ok s') :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold skipToContentWs at h
+  split at h
+  · simp only [] at h
+    split at h
+    · split at h
+      · split at h
+        · simp at h; rw [← h, skipWhitespace_preserves_implicitValueLine,
+            skipSpaces_preserves_implicitValueLine]
+        · split at h
+          · simp at h; rw [← h, skipWhitespace_preserves_implicitValueLine,
+              skipSpaces_preserves_implicitValueLine]
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_implicitValueLine,
+                skipSpaces_preserves_implicitValueLine]
+            · simp at h
+        · simp at h; rw [← h, skipWhitespace_preserves_implicitValueLine,
+            skipSpaces_preserves_implicitValueLine]
+      · simp at h; rw [← h, skipSpaces_preserves_implicitValueLine]
+    · simp at h; rw [← h, skipWhitespace_preserves_implicitValueLine,
+        skipSpaces_preserves_implicitValueLine]
+  · simp at h; rw [← h, skipWhitespace_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `skipToContentWs_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipToContentWs_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
+    (h : skipToContentWs s = .ok s') :
+    s'.docStartLine = s.docStartLine := by
+  unfold skipToContentWs at h
+  split at h
+  · simp only [] at h
+    split at h
+    · split at h
+      · split at h
+        · simp at h; rw [← h, skipWhitespace_preserves_docStartLine,
+            skipSpaces_preserves_docStartLine]
+        · split at h
+          · simp at h; rw [← h, skipWhitespace_preserves_docStartLine,
+              skipSpaces_preserves_docStartLine]
+          · split at h
+            · simp at h; rw [← h, skipWhitespace_preserves_docStartLine,
+                skipSpaces_preserves_docStartLine]
+            · simp at h
+        · simp at h; rw [← h, skipWhitespace_preserves_docStartLine,
+            skipSpaces_preserves_docStartLine]
+      · simp at h; rw [← h, skipSpaces_preserves_docStartLine]
+    · simp at h; rw [← h, skipWhitespace_preserves_docStartLine,
+        skipSpaces_preserves_docStartLine]
+  · simp at h; rw [← h, skipWhitespace_preserves_docStartLine]
+
+lemma skipToContentComment_preserves_implicitValueLine (s : ScannerState) :
+    (skipToContentComment s).implicitValueLine = s.implicitValueLine := by
+  unfold skipToContentComment
+  split
+  · simp only []
+    split
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_implicitValueLine, advance_preserves_implicitValueLine]
+      · rfl
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_implicitValueLine, advance_preserves_implicitValueLine]
+      · rfl
+  · rfl
+
+/-- `docStartLine` twin of `skipToContentComment_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipToContentComment_preserves_docStartLine (s : ScannerState) :
+    (skipToContentComment s).docStartLine = s.docStartLine := by
+  unfold skipToContentComment
+  split
+  · simp only []
+    split
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_docStartLine, advance_preserves_docStartLine]
+      · rfl
+    · split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_docStartLine, advance_preserves_docStartLine]
+      · rfl
+  · rfl
+
+lemma skipToContentLoop_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
+    (fuel : Nat)
+    (h : skipToContentLoop s fuel = .ok s') :
+    s'.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipToContentLoop at h
+    simp at h; rw [← h]
+  | succ fuel' IH =>
+    unfold skipToContentLoop at h
+    split at h
+    · simp at h
+    · rename_i s1 hws
+      simp only [] at h
+      split at h
+      · rename_i c hpeek
+        split at h
+        · split at h
+          · have ih := IH _ h
+            rw [ih, consumeNewline_preserves_implicitValueLine,
+                skipToContentComment_preserves_implicitValueLine]
+            exact skipToContentWs_preserves_implicitValueLine s s1 hws
+          · have ih := IH _ h
+            rw [ih, consumeNewline_preserves_implicitValueLine,
+                skipToContentComment_preserves_implicitValueLine]
+            exact skipToContentWs_preserves_implicitValueLine s s1 hws
+        · simp at h; rw [← h, skipToContentComment_preserves_implicitValueLine]
+          exact skipToContentWs_preserves_implicitValueLine s s1 hws
+      · simp at h; rw [← h, skipToContentComment_preserves_implicitValueLine]
+        exact skipToContentWs_preserves_implicitValueLine s s1 hws
+
+/-- `docStartLine` twin of `skipToContentLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipToContentLoop_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
+    (fuel : Nat)
+    (h : skipToContentLoop s fuel = .ok s') :
+    s'.docStartLine = s.docStartLine := by
+  induction fuel generalizing s with
+  | zero =>
+    unfold skipToContentLoop at h
+    simp at h; rw [← h]
+  | succ fuel' IH =>
+    unfold skipToContentLoop at h
+    split at h
+    · simp at h
+    · rename_i s1 hws
+      simp only [] at h
+      split at h
+      · rename_i c hpeek
+        split at h
+        · split at h
+          · have ih := IH _ h
+            rw [ih, consumeNewline_preserves_docStartLine,
+                skipToContentComment_preserves_docStartLine]
+            exact skipToContentWs_preserves_docStartLine s s1 hws
+          · have ih := IH _ h
+            rw [ih, consumeNewline_preserves_docStartLine,
+                skipToContentComment_preserves_docStartLine]
+            exact skipToContentWs_preserves_docStartLine s s1 hws
+        · simp at h; rw [← h, skipToContentComment_preserves_docStartLine]
+          exact skipToContentWs_preserves_docStartLine s s1 hws
+      · simp at h; rw [← h, skipToContentComment_preserves_docStartLine]
+        exact skipToContentWs_preserves_docStartLine s s1 hws
+
+lemma skipToContent_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState) :
+    skipToContent s = .ok s' →
+    s'.implicitValueLine = s.implicitValueLine := by
+  intro h
+  unfold skipToContent at h
+  exact skipToContentLoop_preserves_implicitValueLine s s' _ h
+
+/-- `docStartLine` twin of `skipToContent_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipToContent_preserves_docStartLine (s : ScannerState) (s' : ScannerState) :
+    skipToContent s = .ok s' →
+    s'.docStartLine = s.docStartLine := by
+  intro h
+  unfold skipToContent at h
+  exact skipToContentLoop_preserves_docStartLine s s' _ h
+
+
 /-! ## Helper Lemmas for scan* Functions
 
 Each scan* function called by scanNextToken either emits tokens or adds them via
@@ -1087,7 +1513,7 @@ lemma processEscape_preserves_tokens (s : ScannerState) (ch : Char) (s' : Scanne
   simp only [] at h
   split at h <;> try contradiction
   -- Split on each character case
-  repeat (split at h)
+  repeat' (split at h)
   -- Handle all goals
   all_goals (
     first
@@ -1115,7 +1541,10 @@ lemma skipBlankLinesLoop_preserves_tokens (s : ScannerState) (cnt fuel inputEnd 
         simp []
         have h_sp := skipWhitespace_preserves_tokens s
         have h_cn := consumeNewline_preserves_tokens (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        -- item 100: the gate's arm keeps the state untouched
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 /-- Helper: foldQuotedNewlinesLoop preserves tokens. -/
 lemma foldQuotedNewlinesLoop_preserves_tokens (s : ScannerState) (emptyCount fuel : Nat) :
@@ -1134,7 +1563,9 @@ lemma foldQuotedNewlinesLoop_preserves_tokens (s : ScannerState) (emptyCount fue
         simp []
         have h_sp := skipWhitespace_preserves_tokens s
         have h_cn := consumeNewline_preserves_tokens (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 /-- Helper: foldQuotedNewlines preserves tokens. -/
 lemma foldQuotedNewlines_preserves_tokens (s : ScannerState) (s' : ScannerState) (content : String)
@@ -1190,6 +1621,9 @@ lemma collectPlainScalarLoop_preserves_tokens (s : ScannerState) (content lastLi
               split at h
               · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
               · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
                 dsimp only [] at h
                 generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
                 cases cont_result with
@@ -1270,11 +1704,18 @@ lemma collectDoubleQuotedLoop_preserves_tokens (s : ScannerState) (content : Str
       split at h <;> try contradiction
       -- some c after backslash
       split at h
-      · -- isLineBreak c (escaped line break)
-        have h_cn := consumeNewline_preserves_tokens s.advance
-        have h_sw := skipWhitespace_preserves_tokens (consumeNewline s.advance)
+      · -- isLineBreak c (escaped line break).  Item 53: the landing checks
+        -- split the branch — every throw arm contradicts, both recursing
+        -- arms share one chain (now through `skipSpaces` as well).
         have h_adv := advance_preserves_tokens s
-        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_tokens s.advance s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold, h_adv])
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -1497,6 +1938,8 @@ lemma scanTagDirective_monotonic (s : ScannerState) (s_after_ws : ScannerState) 
   dsimp only [] at h
   simp only [bind, Except.bind] at h
   split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at h
   · -- some '#'
     split at h
     · contradiction
@@ -1649,7 +2092,7 @@ lemma scanNamedTag_adds_one_token (s : ScannerState) (pos : YamlPos) (inputEnd :
   · let s_after := (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd
     have h_suffix := collectTagSuffixLoop_preserves_tokens s_after "" (inputEnd - s_after.offset)
     rw [emitAt_tokens_size, h_suffix, h_handle]
-  · rw [emitAt_tokens_size, h_handle]
+  · rw [emitAt_tokens_size, collectTagSuffixLoop_preserves_tokens, h_handle]
 
 /-- scanTag adds exactly one token (on success). -/
 lemma scanTag_adds_one_token (s : ScannerState)
@@ -1731,8 +2174,9 @@ lemma collectBlockScalarLoop_preserves_tokens (s : ScannerState) (rawContent : S
             · split
               · rw [ih, consumeNewline_preserves_tokens,
                     collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
-              · dsimp only []
-                rw [collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
+              · split
+                · rfl
+                · rw [collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
             · rw [collectLineContentLoop_preserves_tokens, consumeExactSpaces_preserves_tokens]
 
 /-! ### scanBlockScalar sub-function preservation lemmas -/
@@ -1880,7 +2324,7 @@ lemma scanFlowEntry_adds_one_token (s : ScannerState) (s' : ScannerState)
     s'.tokens.size ≥ s.tokens.size + 1 := by
   unfold scanFlowEntry at h
   simp only [bind, Except.bind] at h
-  repeat (split at h)
+  repeat' (split at h)
   all_goals (first
     | contradiction
     | (injection h with h_eq; subst h_eq
@@ -1893,7 +2337,7 @@ lemma scanBlockEntry_adds_tokens (s : ScannerState) (s' : ScannerState)
   unfold scanBlockEntry at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  repeat (split at h)
+  repeat' (split at h)
   all_goals (first
     | contradiction
     | (injection h with h_eq; subst h_eq
@@ -1924,6 +2368,7 @@ lemma dispatchFlowIndicators_tokens_mono (s : ScannerState) (c : Char) (s' : Sca
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
     s'.tokens.size ≥ s.tokens.size := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
@@ -1997,7 +2442,7 @@ lemma preprocess_tokens_mono (s : ScannerState) (s1 : ScannerState) (c : Char)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨h1, _⟩ := h
-            rw [← h1]
+            rw [← h1, closeStaleExplicitKey_tokens]
             have h_sk := saveSimpleKey_tokens_monotonic
               { unwindIndents v v.col with needIndentCheck := false }
             simp (config := { unfoldPartialApp := true }) at h_sk
@@ -2010,7 +2455,7 @@ lemma preprocess_tokens_mono (s : ScannerState) (s1 : ScannerState) (c : Char)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨h1, _⟩ := h
-            rw [← h1]
+            rw [← h1, closeStaleExplicitKey_tokens]
             have h_sk := saveSimpleKey_tokens_monotonic v
             have := congrArg Array.size h_skip; omega
 
@@ -2044,6 +2489,7 @@ lemma preprocess_preserves_prefix (s : ScannerState) (s1 : ScannerState) (c : Ch
             obtain ⟨rfl, _⟩ := h
             have h_uw_bound : i < (unwindIndents v v.col).tokens.size := by
               have := unwindIndents_adds_tokens v v.col; omega
+            simp only [closeStaleExplicitKey_tokens]
             rw [saveSimpleKey_preserves_prefix _ i
               (by exact h_uw_bound)]
             rw [unwindIndents_preserves_prefix v v.col i h_bound_v]
@@ -2055,6 +2501,7 @@ lemma preprocess_preserves_prefix (s : ScannerState) (s1 : ScannerState) (c : Ch
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
+            simp only [closeStaleExplicitKey_tokens]
             rw [saveSimpleKey_preserves_prefix v i h_bound_v]
             simp only [h_skip]
 
@@ -2064,8 +2511,8 @@ lemma preprocess_preserves_prefix (s : ScannerState) (s1 : ScannerState) (c : Ch
 lemma emitAt_preserves_tokens_at (s : ScannerState) (pos : YamlPos) (tok : YamlToken)
     (i : Nat) (h : i < s.tokens.size) :
     (s.emitAt pos tok).tokens[i]'(by rw [emitAt_tokens_size]; omega) = s.tokens[i] := by
-  unfold ScannerState.emitAt
-  simp only [Array.getElem_push]
+  -- Same shape as `emit_preserves_tokens_at`: unfold inside the simp pass.
+  simp only [ScannerState.emitAt, Array.getElem_push]
   split
   · rfl
   · omega
@@ -2077,7 +2524,7 @@ lemma pushMappingIndent_preserves_prefix (s : ScannerState) (col : Int)
       have := pushMappingIndent_tokens_monotonic s col; omega) = s.tokens[i] := by
   unfold pushMappingIndent
   split
-  · exact emit_preserves_tokens_at { s with indents := _ } .blockMappingStart i h
+  · exact emit_preserves_tokens_at { s with indents := _, pendingKeys := _ } .blockMappingStart i h
   · rfl
 
 /-- pushSequenceIndent preserves existing tokens. -/
@@ -2087,7 +2534,7 @@ lemma pushSequenceIndent_preserves_prefix (s : ScannerState) (col : Int)
       have := pushSequenceIndent_tokens_monotonic s col; omega) = s.tokens[i] := by
   unfold pushSequenceIndent
   split
-  · exact emit_preserves_tokens_at { s with indents := _ } .blockSequenceStart i h
+  · exact emit_preserves_tokens_at { s with indents := _, pendingKeys := _ } .blockSequenceStart i h
   · rfl
 
 /-! ### Composition helpers for prefix preservation -/
@@ -2124,8 +2571,8 @@ lemma emit_unwind_preserves_prefix (s : ScannerState) (n : Int)
       have h3 : { unwindIndents s n with simpleKey := sk }.tokens.size
                 = (unwindIndents s n).tokens.size := rfl
       omega) = s.tokens[i] := by
-  unfold ScannerState.emit
-  simp only [Array.getElem_push]
+  -- Same shape as `emit_preserves_tokens_at`: unfold inside the simp pass.
+  simp only [ScannerState.emit, Array.getElem_push]
   split
   · exact unwindIndents_preserves_prefix s n i h_i
   · have := unwindIndents_adds_tokens s n; omega
@@ -2182,6 +2629,8 @@ lemma scanTagDirective_preserves_prefix (s s_after_ws : ScannerState)
     = s.tokens[i] := by
   unfold scanTagDirective at h; dsimp only [] at h
   simp only [bind, Except.bind] at h
+  split at h
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
   split at h
   · -- some '#'
     split at h
@@ -2283,7 +2732,7 @@ lemma scanFlowEntry_preserves_prefix (s s' : ScannerState)
     (h : scanFlowEntry s = .ok s') (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := scanFlowEntry_adds_one_token s s' h; omega) = s.tokens[i] := by
   unfold scanFlowEntry at h; simp only [bind, Except.bind] at h
-  repeat (split at h)
+  repeat' (split at h)
   all_goals (first
     | contradiction
     | (injection h with h_eq; subst h_eq; dsimp only []
@@ -2297,7 +2746,7 @@ lemma scanBlockEntry_preserves_prefix (s s' : ScannerState)
   unfold scanBlockEntry at h
   dsimp only [] at h
   simp only [bind, Except.bind] at h
-  repeat (split at h)
+  repeat' (split at h)
   all_goals (first
     | contradiction
     | (injection h with h_eq; subst h_eq; dsimp only []
@@ -2314,9 +2763,10 @@ lemma scanKey_preserves_prefix (s s' : ScannerState)
     (h : scanKey s = .ok s') (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := scanKey_adds_one_token s s' h; omega) = s.tokens[i] := by
   unfold scanKey at h
-  simp only [] at h
+  simp only [bind, Except.bind] at h
   split at h
-  · -- !inFlow → pushMappingIndent called
+  · -- !inFlow → `scanKeyValidate` (item 131), then pushMappingIndent
+    split at h <;> try contradiction
     split at h
     · split at h
       · contradiction
@@ -2384,7 +2834,7 @@ lemma scanNamedTag_preserves_prefix (s : ScannerState) (pos : YamlPos) (inputEnd
   · apply emitAt_chain_preserves_prefix
     rw [collectTagSuffixLoop_preserves_tokens, h_handle]
   · apply emitAt_chain_preserves_prefix
-    rw [h_handle]
+    rw [collectTagSuffixLoop_preserves_tokens, h_handle]
 
 /-- scanTag preserves token prefix (on success). -/
 lemma scanTag_preserves_prefix (s : ScannerState)
@@ -2513,6 +2963,7 @@ lemma dispatchFlowIndicators_preserves_prefix (s : ScannerState) (c : Char) (s' 
     (i : Nat) (h_i : i < s.tokens.size) :
     s'.tokens[i]'(by have := dispatchFlowIndicators_tokens_mono s c s' h; omega) = s.tokens[i] := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
@@ -2659,25 +3110,27 @@ lemma scanValue_preserves_prefix (s s' : ScannerState)
   split at h
   · contradiction  -- scanValueValidate = .error
   · split at h
+    · contradiction  -- scanValueIndentTabCheck = .error (item 31)
+    split at h
     · contradiction  -- scanValueTabCheck = .error
-    · injection h with h_eq; subst h_eq; dsimp only []
-      have h_ck := scanValueClearKey_preserves_tokens s
-      have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
-          (scanValueClearKey s).simpleKey.tokenIndex ≥ n := by
-        unfold scanValueClearKey
-        split
+    injection h with h_eq; subst h_eq; dsimp only []
+    have h_ck := scanValueClearKey_preserves_tokens s
+    have h_inv' : (scanValueClearKey s).simpleKey.possible = true →
+        (scanValueClearKey s).simpleKey.tokenIndex ≥ n := by
+      unfold scanValueClearKey
+      split
+      · split
+        · simp
         · split
           · simp
-          · split
-            · simp
-            · exact h_inv
-        · exact h_inv
-      have h_prep := scanValuePrepare_preserves_prefix (scanValueClearKey s) n
-        (by rw [h_ck]; exact h_n) h_inv' i h_bound
-      have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
-        YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
-      have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
-      simp_all
+          · exact h_inv
+      · exact h_inv
+    have h_prep := scanValuePrepare_preserves_prefix (scanValueClearKey s) n
+      (by rw [h_ck]; exact h_n) h_inv' i h_bound
+    have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
+      YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
+    have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
+    simp_all
 
 set_option maxHeartbeats 400000 in
 /-- scanValue preserves `.pos` at ALL existing token positions.
@@ -2701,26 +3154,28 @@ lemma scanValue_preserves_all_pos (s s' : ScannerState)
   split at h
   · contradiction
   · split at h
+    · contradiction  -- scanValueIndentTabCheck = .error (item 31)
+    split at h
     · contradiction
-    · injection h with h_eq; subst h_eq; dsimp only []
-      have h_ck := scanValueClearKey_preserves_tokens s
-      have h_skv' : (scanValueClearKey s).simpleKey.possible = true →
-          (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
-          (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
-          (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
-            (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
-              (scanValueClearKey s).simpleKey.pos) ∧
-          (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
-            (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
-              (scanValueClearKey s).simpleKey.pos) := by
-        cases scanValueClearKey_identity_or_clear s with
-        | inl h_eq => rw [h_eq]; exact h_skv
-        | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
-      have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) h_skv' i (by rw [h_ck]; exact hi)
-      have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
-        YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
-      have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
-      simp only [h_adv, h_emit]; rw [h_prep]; simp [h_ck]
+    injection h with h_eq; subst h_eq; dsimp only []
+    have h_ck := scanValueClearKey_preserves_tokens s
+    have h_skv' : (scanValueClearKey s).simpleKey.possible = true →
+        (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size ∧
+        (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size ∧
+        (∀ (h1 : (scanValueClearKey s).simpleKey.tokenIndex < (scanValueClearKey s).tokens.size),
+          (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex].pos =
+            (scanValueClearKey s).simpleKey.pos) ∧
+        (∀ (h2 : (scanValueClearKey s).simpleKey.tokenIndex + 1 < (scanValueClearKey s).tokens.size),
+          (scanValueClearKey s).tokens[(scanValueClearKey s).simpleKey.tokenIndex + 1].pos =
+            (scanValueClearKey s).simpleKey.pos) := by
+      cases scanValueClearKey_identity_or_clear s with
+      | inl h_eq => rw [h_eq]; exact h_skv
+      | inr h_cl => intro h_poss; rw [h_cl.1] at h_poss; contradiction
+    have h_prep := scanValuePrepare_preserves_all_pos (scanValueClearKey s) h_skv' i (by rw [h_ck]; exact hi)
+    have h_emit := emit_preserves_tokens_at (scanValuePrepare (scanValueClearKey s))
+      YamlToken.value i (by have := scanValuePrepare_tokens_monotonic (scanValueClearKey s); rw [h_ck] at this; omega)
+    have h_adv := advance_preserves_tokens ((scanValuePrepare (scanValueClearKey s)).emit .value)
+    simp only [h_adv, h_emit]; rw [h_prep]; simp [h_ck]
 
 /-- Block indicator dispatch preserves prefix below n (needs simpleKey invariant for scanValue). -/
 lemma dispatchBlockIndicators_preserves_prefix (s : ScannerState) (c : Char) (s' : ScannerState)
@@ -2752,6 +3207,8 @@ lemma dispatchContent_preserves_prefix (s : ScannerState) (c : Char) (s' : Scann
   -- Handle anchor/alias/tag with explicit generalize to keep ok-equation
   split at h
   · -- '&': scanAnchorOrAlias bind
+    split at h   -- item 9e: the property-run guard
+    · simp at h
     generalize h_anch : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -2760,16 +3217,16 @@ lemma dispatchContent_preserves_prefix (s : ScannerState) (c : Char) (s' : Scann
       exact scanAnchorOrAlias_preserves_prefix s true s_a h_anch i h_i
   · split at h
     · -- '*': alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
       split at h
       · simp at h
-      · generalize h_anch : scanAnchorOrAlias s false = result at h
-        cases result with
-        | error e => simp at h
-        | ok s_a =>
-          simp only [Except.ok.injEq] at h; subst h
-          exact scanAnchorOrAlias_preserves_prefix s false s_a h_anch i h_i
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_preserves_prefix s false _ (aliasArm_scan_ok h) i h_i
     · split at h
       · -- '!': tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
         generalize h_tag : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -2854,6 +3311,10 @@ lemma advance_preserves_simpleKey (s : ScannerState) :
 lemma advance_preserves_simpleKeyAllowed (s : ScannerState) :
     s.advance.simpleKeyAllowed = s.simpleKeyAllowed := by
   unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
+
+lemma consumeBOM_preserves_simpleKey (s : ScannerState) :
+    s.consumeBOM.simpleKey = s.simpleKey := by
+  unfold ScannerState.consumeBOM; simpa using advance_preserves_simpleKey s
 
 lemma emit_preserves_simpleKey (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKey = s.simpleKey := by
@@ -3004,7 +3465,7 @@ lemma unwindIndentsLoop_preserves_simpleKey (s : ScannerState) (col : Int) (fuel
   | zero => unfold unwindIndentsLoop; rfl
   | succ _ ih =>
     unfold unwindIndentsLoop; split
-    · have := ih { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }
+    · have := ih { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }
       simp [emit_preserves_simpleKey] at this; exact this
     · rfl
 
@@ -3051,7 +3512,7 @@ lemma processEscape_preserves_simpleKey (s : ScannerState) (ch : Char) (s' : Sca
   simp only [] at h
   split at h <;> try contradiction
   -- Split on each character case
-  repeat (split at h)
+  repeat' (split at h)
   -- Handle all goals
   all_goals (
     first
@@ -3079,7 +3540,10 @@ lemma skipBlankLinesLoop_preserves_simpleKey (s : ScannerState) (cnt fuel inputE
         simp []
         have h_sp := skipWhitespace_preserves_simpleKey s
         have h_cn := consumeNewline_preserves_simpleKey (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        -- item 100: the gate's arm keeps the state untouched
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 
 lemma foldQuotedNewlinesLoop_preserves_simpleKey (s : ScannerState) (emptyCount fuel : Nat) :
@@ -3098,7 +3562,9 @@ lemma foldQuotedNewlinesLoop_preserves_simpleKey (s : ScannerState) (emptyCount 
         simp []
         have h_sp := skipWhitespace_preserves_simpleKey s
         have h_cn := consumeNewline_preserves_simpleKey (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 
 lemma foldQuotedNewlines_preserves_simpleKey (s : ScannerState) (s' : ScannerState) (content : String)
@@ -3154,6 +3620,9 @@ lemma collectPlainScalarLoop_preserves_simpleKey (s : ScannerState) (content las
               split at h
               · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
               · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
                 dsimp only [] at h
                 generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
                 cases cont_result with
@@ -3232,11 +3701,16 @@ lemma collectDoubleQuotedLoop_preserves_simpleKey (s : ScannerState) (content : 
       split at h <;> try contradiction
       -- some c after backslash
       split at h
-      · -- isLineBreak c (escaped line break)
-        have h_cn := consumeNewline_preserves_simpleKey s.advance
-        have h_sw := skipWhitespace_preserves_simpleKey (consumeNewline s.advance)
+      · -- isLineBreak c (escaped line break; item 53 splits the branch)
         have h_adv := advance_preserves_simpleKey s
-        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_simpleKey s.advance s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold, h_adv])
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -3341,6 +3815,1313 @@ lemma collectAnchorNameLoop_preserves_flowLevel (s : ScannerState) (acc : String
         rfl
     · -- none
       rfl
+
+/-! ## `implicitValueLine` through the CONTENT scans (item 101)
+
+Item 48 carried the stamp through the preprocessing chain, which is where a
+block dispatch reads it.  A CONTENT dispatch reads it one step further on: the
+`[189]` implicit value's own content parks a pending, and the `:` that meets
+that park is refused by `scanValueValidate` for the same reason the one at the
+value indicator was.  `scanValue` is still the field's only writer, so the four
+value-completing scans carry it unchanged — the ladder below mirrors the
+`simpleKey` one lemma-for-lemma, same functions, same branch structure. -/
+
+lemma collectHexDigitsLoop_preserves_implicitValueLine (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.implicitValueLine = s.implicitValueLine := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    cases h_peek : s.peek? with
+    | none => simp []
+    | some c =>
+      simp []
+      split
+      · have h_adv := advance_preserves_implicitValueLine s
+        rw [ih, h_adv]
+      · rfl
+
+/-- `docStartLine` twin of `collectHexDigitsLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectHexDigitsLoop_preserves_docStartLine (s : ScannerState) (hex : String) (n : Nat) :
+    (collectHexDigitsLoop s hex n).snd.docStartLine = s.docStartLine := by
+  induction n generalizing s hex with
+  | zero => unfold collectHexDigitsLoop; rfl
+  | succ n' ih =>
+    unfold collectHexDigitsLoop
+    cases h_peek : s.peek? with
+    | none => simp []
+    | some c =>
+      simp []
+      split
+      · have h_adv := advance_preserves_docStartLine s
+        rw [ih, h_adv]
+      · rfl
+
+
+lemma parseHexEscape_preserves_implicitValueLine (s : ScannerState) (n : Nat) (ch : Char) (s' : ScannerState)
+    (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  have h_collect := collectHexDigitsLoop_preserves_implicitValueLine s "" n
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  injection h with h_eq; cases h_eq
+  rw [h_collect]
+
+/-- `docStartLine` twin of `parseHexEscape_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma parseHexEscape_preserves_docStartLine (s : ScannerState) (n : Nat) (ch : Char) (s' : ScannerState)
+    (h : parseHexEscape s n = .ok (ch, s')) :
+    s'.docStartLine = s.docStartLine := by
+  unfold parseHexEscape at h
+  simp only [] at h
+  have h_collect := collectHexDigitsLoop_preserves_docStartLine s "" n
+  split at h <;> try contradiction
+  split at h <;> try contradiction
+  injection h with h_eq; cases h_eq
+  rw [h_collect]
+
+
+lemma processEscape_preserves_implicitValueLine (s : ScannerState) (ch : Char) (s' : ScannerState)
+    (h : processEscape s = .ok (ch, s')) :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold processEscape at h
+  simp only [] at h
+  split at h <;> try contradiction
+  -- Split on each character case
+  repeat' (split at h)
+  -- Handle all goals
+  all_goals (
+    first
+    | (injection h with h_eq; cases h_eq; exact advance_preserves_implicitValueLine s)
+    | (have h_adv := advance_preserves_implicitValueLine s
+       have h_hex := parseHexEscape_preserves_implicitValueLine s.advance _ ch s' h
+       rw [h_hex, h_adv])
+    | contradiction
+  )
+
+/-- `docStartLine` twin of `processEscape_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma processEscape_preserves_docStartLine (s : ScannerState) (ch : Char) (s' : ScannerState)
+    (h : processEscape s = .ok (ch, s')) :
+    s'.docStartLine = s.docStartLine := by
+  unfold processEscape at h
+  simp only [] at h
+  split at h <;> try contradiction
+  -- Split on each character case
+  repeat' (split at h)
+  -- Handle all goals
+  all_goals (
+    first
+    | (injection h with h_eq; cases h_eq; exact advance_preserves_docStartLine s)
+    | (have h_adv := advance_preserves_docStartLine s
+       have h_hex := parseHexEscape_preserves_docStartLine s.advance _ ch s' h
+       rw [h_hex, h_adv])
+    | contradiction
+  )
+
+
+lemma skipBlankLinesLoop_preserves_implicitValueLine (s : ScannerState) (cnt fuel inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop
+    cases h_peek : (skipWhitespace s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipWhitespace_preserves_implicitValueLine s
+        have h_cn := consumeNewline_preserves_implicitValueLine (skipWhitespace s)
+        -- item 100: the gate's arm keeps the state untouched
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
+
+/-- `docStartLine` twin of `skipBlankLinesLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma skipBlankLinesLoop_preserves_docStartLine (s : ScannerState) (cnt fuel inputEnd : Nat) :
+    (skipBlankLinesLoop s cnt fuel inputEnd).snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s cnt with
+  | zero => unfold skipBlankLinesLoop; rfl
+  | succ fuel' ih =>
+    unfold skipBlankLinesLoop
+    cases h_peek : (skipWhitespace s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipWhitespace_preserves_docStartLine s
+        have h_cn := consumeNewline_preserves_docStartLine (skipWhitespace s)
+        -- item 100: the gate's arm keeps the state untouched
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
+
+
+lemma foldQuotedNewlinesLoop_preserves_implicitValueLine (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    cases h_peek : (skipWhitespace s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipWhitespace_preserves_implicitValueLine s
+        have h_cn := consumeNewline_preserves_implicitValueLine (skipWhitespace s)
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
+
+/-- `docStartLine` twin of `foldQuotedNewlinesLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma foldQuotedNewlinesLoop_preserves_docStartLine (s : ScannerState) (emptyCount fuel : Nat) :
+    (foldQuotedNewlinesLoop s emptyCount fuel).fst.docStartLine = s.docStartLine := by
+  induction fuel generalizing s emptyCount with
+  | zero => unfold foldQuotedNewlinesLoop; rfl
+  | succ fuel' ih =>
+    unfold foldQuotedNewlinesLoop
+    cases h_peek : (skipWhitespace s).peek? with
+    | none => simp [h_peek]
+    | some c =>
+      simp [h_peek]
+      cases h_lb : isLineBreakBool c with
+      | false => simp []
+      | true =>
+        simp []
+        have h_sp := skipWhitespace_preserves_docStartLine s
+        have h_cn := consumeNewline_preserves_docStartLine (skipWhitespace s)
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
+
+
+lemma foldQuotedNewlines_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState) (content : String)
+    (h : foldQuotedNewlines s = .ok (content, s')) :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure] at h
+  have h_cn := consumeNewline_preserves_implicitValueLine s
+  let fuel := s.inputEnd - (consumeNewline s).offset + 1
+  have h_fold := foldQuotedNewlinesLoop_preserves_implicitValueLine (consumeNewline s) 0 fuel
+  have h_sp := skipSpaces_preserves_implicitValueLine (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
+  have h_sw := skipWhitespace_preserves_implicitValueLine (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
+  -- 4.32.0 reshaped the do-notation match tree; split fully, then close every
+  -- leaf uniformly (error leaves by contradiction, ok leaves by the fold chain).
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn])
+
+/-- `docStartLine` twin of `foldQuotedNewlines_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma foldQuotedNewlines_preserves_docStartLine (s : ScannerState) (s' : ScannerState) (content : String)
+    (h : foldQuotedNewlines s = .ok (content, s')) :
+    s'.docStartLine = s.docStartLine := by
+  unfold foldQuotedNewlines at h
+  simp only [bind, Except.bind, pure] at h
+  have h_cn := consumeNewline_preserves_docStartLine s
+  let fuel := s.inputEnd - (consumeNewline s).offset + 1
+  have h_fold := foldQuotedNewlinesLoop_preserves_docStartLine (consumeNewline s) 0 fuel
+  have h_sp := skipSpaces_preserves_docStartLine (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst
+  have h_sw := skipWhitespace_preserves_docStartLine (skipSpaces (foldQuotedNewlinesLoop (consumeNewline s) 0 fuel).fst)
+  -- 4.32.0 reshaped the do-notation match tree; split fully, then close every
+  -- leaf uniformly (error leaves by contradiction, ok leaves by the fold chain).
+  repeat' split at h
+  all_goals first
+    | contradiction
+    | (injection h with heq; cases heq; rw [h_sw, h_sp, h_fold, h_cn])
+
+
+lemma collectPlainScalarLoop_preserves_implicitValueLine (s : ScannerState) (content lastLine : String)
+    (fuel : Nat) (inFlow : Bool) (contentIndent inputEnd : Nat) :
+    ∀ result, collectPlainScalarLoop s content lastLine fuel inFlow contentIndent inputEnd = .ok result →
+    result.state.implicitValueLine = s.implicitValueLine := by
+  intro result h
+  induction fuel generalizing s content lastLine with
+  | zero =>
+    unfold collectPlainScalarLoop at h
+    injection h with h_eq; cases h_eq; rfl
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoop at h
+    split at h
+    · -- peek = none
+      injection h with h_eq; cases h_eq; rfl
+    · -- peek = some c
+      rename_i c
+      split at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        injection h with h_eq; cases h_eq
+        rw [ScanHelpers.collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
+          split at h
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk content_fold s_fold =>
+              have h_fold := foldQuotedNewlines_preserves_implicitValueLine s s_fold content_fold heq
+              split at h
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih s_fold (content ++ content_fold) "" h_loop, h_fold]
+                | error e => simp at h
+          · -- !inFlow: block line break
+            split at h
+            · -- _handleBlockLineBreak = none → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hprop : s'.implicitValueLine = s.implicitValueLine := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2, skipWhitespace_preserves_implicitValueLine, skipSpaces_preserves_implicitValueLine,
+                    skipBlankLinesLoop_preserves_implicitValueLine, consumeNewline_preserves_implicitValueLine]
+              split at h
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih _ _ _ h_loop, hprop]
+                | error e => simp at h
+        · split at h
+          · -- isWhiteSpace c
+            have h_adv := advance_preserves_implicitValueLine s
+            rw [ih s.advance content (lastLine.push _) h, h_adv]
+          · -- regular content
+            split at h
+            · -- !isPlainSafe → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- plainSafe → recurse
+              simp only [] at h
+              have h_adv := advance_preserves_implicitValueLine s
+              rw [ih s.advance _ "" h, h_adv]
+
+/-- `docStartLine` twin of `collectPlainScalarLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectPlainScalarLoop_preserves_docStartLine (s : ScannerState) (content lastLine : String)
+    (fuel : Nat) (inFlow : Bool) (contentIndent inputEnd : Nat) :
+    ∀ result, collectPlainScalarLoop s content lastLine fuel inFlow contentIndent inputEnd = .ok result →
+    result.state.docStartLine = s.docStartLine := by
+  intro result h
+  induction fuel generalizing s content lastLine with
+  | zero =>
+    unfold collectPlainScalarLoop at h
+    injection h with h_eq; cases h_eq; rfl
+  | succ fuel' ih =>
+    unfold collectPlainScalarLoop at h
+    split at h
+    · -- peek = none
+      injection h with h_eq; cases h_eq; rfl
+    · -- peek = some c
+      rename_i c
+      split at h
+      · -- collectPlainScalar_terminates? = some → state = s
+        rename_i hterm
+        injection h with h_eq; cases h_eq
+        rw [ScanHelpers.collectPlainScalar_terminates?_state _ _ _ _ _ _ hterm]
+      · -- collectPlainScalar_terminates? = none → continue
+        split at h
+        · -- isLineBreak c
+          split at h
+          · -- inFlow
+            simp only [bind, Except.bind] at h
+            split at h <;> try contradiction
+            rename_i fold_result heq
+            cases fold_result with
+            | mk content_fold s_fold =>
+              have h_fold := foldQuotedNewlines_preserves_docStartLine s s_fold content_fold heq
+              split at h
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
+                dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih s_fold (content ++ content_fold) "" h_loop, h_fold]
+                | error e => simp at h
+          · -- !inFlow: block line break
+            split at h
+            · -- _handleBlockLineBreak = none → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- _handleBlockLineBreak = some → recurse
+              rename_i content' s' hblk
+              have hprop : s'.docStartLine = s.docStartLine := by
+                unfold collectPlainScalar_handleBlockLineBreak at hblk
+                simp only [] at hblk
+                split at hblk <;> try contradiction
+                split at hblk <;> try contradiction
+                have := Prod.mk.inj (Option.some.inj hblk)
+                rw [← this.2, skipWhitespace_preserves_docStartLine, skipSpaces_preserves_docStartLine,
+                    skipBlankLinesLoop_preserves_docStartLine, consumeNewline_preserves_docStartLine]
+              split at h
+              · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
+              · dsimp only [] at h
+                generalize h_loop : collectPlainScalarLoop s' content' "" fuel' inFlow contentIndent inputEnd = cont_result at h
+                cases cont_result with
+                | ok inner_result =>
+                  dsimp only [] at h
+                  split at h
+                  · injection h with h_eq; cases h_eq; rfl
+                  · have h_eq := Except.ok.inj h; subst h_eq
+                    rw [ih _ _ _ h_loop, hprop]
+                | error e => simp at h
+        · split at h
+          · -- isWhiteSpace c
+            have h_adv := advance_preserves_docStartLine s
+            rw [ih s.advance content (lastLine.push _) h, h_adv]
+          · -- regular content
+            split at h
+            · -- !isPlainSafe → terminate
+              injection h with h_eq; cases h_eq; rfl
+            · -- plainSafe → recurse
+              simp only [] at h
+              have h_adv := advance_preserves_docStartLine s
+              rw [ih s.advance _ "" h, h_adv]
+
+
+lemma collectDoubleQuotedLoop_preserves_implicitValueLine (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.implicitValueLine = s.implicitValueLine := by
+  -- protectedLen (default 0) is generalised so the IH covers the fold
+  -- boundary the recursive call shifts (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String) (result : String × ScannerState),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.implicitValueLine = s.implicitValueLine by
+    intro result h; exact H 0 s content result h
+  intro p s content result h
+  induction fuel generalizing s content p with
+  | zero =>
+    unfold collectDoubleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '"' case (closing quote)
+      injection h with h_eq; cases h_eq
+      exact advance_preserves_implicitValueLine s
+    · -- some '\\' case (escape sequence)
+      simp only [] at h
+      split at h <;> try contradiction
+      -- some c after backslash
+      split at h
+      · -- isLineBreak c (escaped line break; item 53 splits the branch)
+        have h_adv := advance_preserves_implicitValueLine s
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_implicitValueLine s.advance s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold, h_adv])
+      · -- regular escape sequence
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i escape_result heq
+        cases escape_result with
+        | mk ch s_after_escape =>
+          have h_proc := processEscape_preserves_implicitValueLine s.advance ch s_after_escape heq
+          have h_adv := advance_preserves_implicitValueLine s
+          rw [ih _ _ _ h, h_proc, h_adv]
+    · -- some c case (regular character)
+      split at h
+      · -- isLineBreak c
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_implicitValueLine s s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold])
+      · -- regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
+        have h_adv := advance_preserves_implicitValueLine s
+        rw [ih _ _ _ h, h_adv]
+
+/-- `docStartLine` twin of `collectDoubleQuotedLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectDoubleQuotedLoop_preserves_docStartLine (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.docStartLine = s.docStartLine := by
+  -- protectedLen (default 0) is generalised so the IH covers the fold
+  -- boundary the recursive call shifts (B2).
+  suffices H : ∀ (p : Nat) (s : ScannerState) (content : String) (result : String × ScannerState),
+      collectDoubleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd p = .ok result →
+      result.snd.docStartLine = s.docStartLine by
+    intro result h; exact H 0 s content result h
+  intro p s content result h
+  induction fuel generalizing s content p with
+  | zero =>
+    unfold collectDoubleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectDoubleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '"' case (closing quote)
+      injection h with h_eq; cases h_eq
+      exact advance_preserves_docStartLine s
+    · -- some '\\' case (escape sequence)
+      simp only [] at h
+      split at h <;> try contradiction
+      -- some c after backslash
+      split at h
+      · -- isLineBreak c (escaped line break; item 53 splits the branch)
+        have h_adv := advance_preserves_docStartLine s
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_docStartLine s.advance s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold, h_adv])
+      · -- regular escape sequence
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i escape_result heq
+        cases escape_result with
+        | mk ch s_after_escape =>
+          have h_proc := processEscape_preserves_docStartLine s.advance ch s_after_escape heq
+          have h_adv := advance_preserves_docStartLine s
+          rw [ih _ _ _ h, h_proc, h_adv]
+    · -- some c case (regular character)
+      split at h
+      · -- isLineBreak c
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_docStartLine s s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold])
+      · -- regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
+        have h_adv := advance_preserves_docStartLine s
+        rw [ih _ _ _ h, h_adv]
+
+
+lemma collectSingleQuotedLoop_preserves_implicitValueLine (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.implicitValueLine = s.implicitValueLine := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectSingleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectSingleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '\'' case
+      simp only [] at h
+      split at h
+      · -- escaped quote: '\''\''
+        have h_adv1 := advance_preserves_implicitValueLine s
+        have h_adv2 := advance_preserves_implicitValueLine s.advance
+        rw [ih _ _ h, h_adv2, h_adv1]
+      · -- closing quote
+        injection h with h_eq; cases h_eq
+        exact advance_preserves_implicitValueLine s
+    · -- some c case (not quote)
+      split at h
+      · -- isLineBreak c = true
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_implicitValueLine s s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih s_fold _ h, h_fold])
+      · -- isLineBreak c = false, regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
+        have h_adv := advance_preserves_implicitValueLine s
+        rw [ih s.advance _ h, h_adv]
+
+/-- `docStartLine` twin of `collectSingleQuotedLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectSingleQuotedLoop_preserves_docStartLine (s : ScannerState) (content : String)
+    (fuel : Nat) (startPos : YamlPos) (inFlow : Bool) (currentIndent : Int) (inputEnd : Nat) :
+    ∀ result, collectSingleQuotedLoop s content fuel startPos inFlow currentIndent inputEnd = .ok result →
+    result.snd.docStartLine = s.docStartLine := by
+  intro result h
+  induction fuel generalizing s content with
+  | zero =>
+    unfold collectSingleQuotedLoop at h
+    contradiction
+  | succ fuel' ih =>
+    unfold collectSingleQuotedLoop at h
+    split at h
+    · -- none case
+      contradiction
+    · -- some '\'' case
+      simp only [] at h
+      split at h
+      · -- escaped quote: '\''\''
+        have h_adv1 := advance_preserves_docStartLine s
+        have h_adv2 := advance_preserves_docStartLine s.advance
+        rw [ih _ _ h, h_adv2, h_adv1]
+      · -- closing quote
+        injection h with h_eq; cases h_eq
+        exact advance_preserves_docStartLine s
+    · -- some c case (not quote)
+      split at h
+      · -- isLineBreak c = true
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_docStartLine s s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih s_fold _ h, h_fold])
+      · -- isLineBreak c = false, regular character
+        split at h <;> try contradiction  -- isNbJsonBool check
+        have h_adv := advance_preserves_docStartLine s
+        rw [ih s.advance _ h, h_adv]
+
+
+lemma collectAnchorNameLoop_preserves_implicitValueLine (s : ScannerState) (acc : String) (fuel : Nat) :
+    (collectAnchorNameLoop s acc fuel).snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s acc with
+  | zero =>
+    unfold collectAnchorNameLoop
+    rfl
+  | succ fuel' ih =>
+    unfold collectAnchorNameLoop
+    split
+    · -- some c
+      split
+      · -- condition true: recurse with advance
+        rw [ih]
+        exact advance_preserves_implicitValueLine s
+      · -- condition false: return
+        rfl
+    · -- none
+      rfl
+
+/-- `docStartLine` twin of `collectAnchorNameLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectAnchorNameLoop_preserves_docStartLine (s : ScannerState) (acc : String) (fuel : Nat) :
+    (collectAnchorNameLoop s acc fuel).snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s acc with
+  | zero =>
+    unfold collectAnchorNameLoop
+    rfl
+  | succ fuel' ih =>
+    unfold collectAnchorNameLoop
+    split
+    · -- some c
+      split
+      · -- condition true: recurse with advance
+        rw [ih]
+        exact advance_preserves_docStartLine s
+      · -- condition false: return
+        rfl
+    · -- none
+      rfl
+
+lemma emitAt_preserves_implicitValueLine (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).implicitValueLine = s.implicitValueLine := by
+  unfold ScannerState.emitAt; rfl
+
+/-- `docStartLine` twin of `emitAt_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma emitAt_preserves_docStartLine (s : ScannerState) (pos : YamlPos) (tok : YamlToken) :
+    (s.emitAt pos tok).docStartLine = s.docStartLine := by
+  unfold ScannerState.emitAt; rfl
+
+lemma scanAnchorOrAlias_preserves_implicitValueLine (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [emitAt_preserves_implicitValueLine, collectAnchorNameLoop_preserves_implicitValueLine,
+          advance_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanAnchorOrAlias_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanAnchorOrAlias_preserves_docStartLine (s : ScannerState) (isAnchor : Bool)
+    (s' : ScannerState) (hok : scanAnchorOrAlias s isAnchor = .ok s') :
+    s'.docStartLine = s.docStartLine := by
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [emitAt_preserves_docStartLine, collectAnchorNameLoop_preserves_docStartLine,
+          advance_preserves_docStartLine]
+
+lemma scanPlainScalar_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
+    (h : scanPlainScalar s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanPlainScalar at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  simp only [Except.ok.injEq] at h; subst h
+  simp [emitAt_preserves_implicitValueLine]
+  exact collectPlainScalarLoop_preserves_implicitValueLine s "" "" _ _ _ _ result heq
+
+/-- `docStartLine` twin of `scanPlainScalar_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanPlainScalar_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
+    (h : scanPlainScalar s = .ok s') : s'.docStartLine = s.docStartLine := by
+  unfold scanPlainScalar at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  simp only [Except.ok.injEq] at h; subst h
+  simp [emitAt_preserves_docStartLine]
+  exact collectPlainScalarLoop_preserves_docStartLine s "" "" _ _ _ _ result heq
+
+lemma scanDoubleQuoted_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
+    (h : scanDoubleQuoted s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  split at h
+  · split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_implicitValueLine]
+    have := collectDoubleQuotedLoop_preserves_implicitValueLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_implicitValueLine]
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_implicitValueLine]
+    have := collectDoubleQuotedLoop_preserves_implicitValueLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanDoubleQuoted_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanDoubleQuoted_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
+    (h : scanDoubleQuoted s = .ok s') : s'.docStartLine = s.docStartLine := by
+  unfold scanDoubleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  split at h
+  · split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_docStartLine]
+    have := collectDoubleQuotedLoop_preserves_docStartLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_docStartLine]
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_docStartLine]
+    have := collectDoubleQuotedLoop_preserves_docStartLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_docStartLine]
+
+lemma scanSingleQuoted_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
+    (h : scanSingleQuoted s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanSingleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  split at h
+  · split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_implicitValueLine]
+    have := collectSingleQuotedLoop_preserves_implicitValueLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_implicitValueLine]
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_implicitValueLine]
+    have := collectSingleQuotedLoop_preserves_implicitValueLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanSingleQuoted_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanSingleQuoted_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
+    (h : scanSingleQuoted s = .ok s') : s'.docStartLine = s.docStartLine := by
+  unfold scanSingleQuoted at h
+  simp only [bind, Except.bind] at h
+  split at h <;> try contradiction
+  rename_i result heq
+  split at h
+  · split at h <;> try contradiction
+    simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_docStartLine]
+    have := collectSingleQuotedLoop_preserves_docStartLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_docStartLine]
+  · simp only [Except.ok.injEq] at h; subst h
+    simp [emitAt_preserves_docStartLine]
+    have := collectSingleQuotedLoop_preserves_docStartLine s.advance "" _ _ _ _ _ result heq
+    rw [this, advance_preserves_docStartLine]
+
+/-! ### … and through the TAG scan (item 102)
+
+The props run's own head is `&`/`!`, which the content ladder above excludes:
+`dispatchContent_implicitValueLine` reads a value-completing character.  A
+`[96]` run parks before its content, so the stamp has to survive the property
+scan itself before the run's content can carry it — the anchor half is
+`scanAnchorOrAlias_preserves_implicitValueLine` above, and this is the tag
+half, mirroring the `simpleKey` ladder lemma-for-lemma. -/
+
+lemma collectVerbatimTagLoop_preserves_implicitValueLine (s : ScannerState) (uri : String) (fuel : Nat) :
+    (collectVerbatimTagLoop s uri fuel).snd.snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s uri with
+  | zero => unfold collectVerbatimTagLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVerbatimTagLoop
+    split
+    · simp only []; exact advance_preserves_implicitValueLine s  -- found '>', return (uri, s.advance)
+    · split  -- isUriCharBool
+      · rw [ih]; exact advance_preserves_implicitValueLine s  -- uri char, recurse
+      · rfl  -- not uri char, return (uri, s)
+    · simp only []  -- none, return (uri, s)
+
+/-- `docStartLine` twin of `collectVerbatimTagLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectVerbatimTagLoop_preserves_docStartLine (s : ScannerState) (uri : String) (fuel : Nat) :
+    (collectVerbatimTagLoop s uri fuel).snd.snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s uri with
+  | zero => unfold collectVerbatimTagLoop; rfl
+  | succ fuel' ih =>
+    unfold collectVerbatimTagLoop
+    split
+    · simp only []; exact advance_preserves_docStartLine s  -- found '>', return (uri, s.advance)
+    · split  -- isUriCharBool
+      · rw [ih]; exact advance_preserves_docStartLine s  -- uri char, recurse
+      · rfl  -- not uri char, return (uri, s)
+    · simp only []  -- none, return (uri, s)
+
+lemma collectTagSuffixLoop_preserves_implicitValueLine (s : ScannerState) (suffix : String) (fuel : Nat) :
+    (collectTagSuffixLoop s suffix fuel).snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s suffix with
+  | zero => unfold collectTagSuffixLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagSuffixLoop
+    split
+    · split
+      · rw [ih]; exact advance_preserves_implicitValueLine s  -- tag char, recurse
+      · simp only []  -- not tag char, return
+    · simp only []  -- none, return
+
+/-- `docStartLine` twin of `collectTagSuffixLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectTagSuffixLoop_preserves_docStartLine (s : ScannerState) (suffix : String) (fuel : Nat) :
+    (collectTagSuffixLoop s suffix fuel).snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s suffix with
+  | zero => unfold collectTagSuffixLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagSuffixLoop
+    split
+    · split
+      · rw [ih]; exact advance_preserves_docStartLine s  -- tag char, recurse
+      · simp only []  -- not tag char, return
+    · simp only []  -- none, return
+
+lemma collectTagHandleLoop_preserves_implicitValueLine (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).snd.snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop
+    split
+    · simp only []; exact advance_preserves_implicitValueLine s  -- found '!', return (chars, true, s.advance)
+    · split  -- split on the if condition
+      · rw [ih]; exact advance_preserves_implicitValueLine s  -- word char, recurse
+      · simp only []  -- not word char, return
+    · simp only []  -- none, return
+
+/-- `docStartLine` twin of `collectTagHandleLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectTagHandleLoop_preserves_docStartLine (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).snd.snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop
+    split
+    · simp only []; exact advance_preserves_docStartLine s  -- found '!', return (chars, true, s.advance)
+    · split  -- split on the if condition
+      · rw [ih]; exact advance_preserves_docStartLine s  -- word char, recurse
+      · simp only []  -- not word char, return
+    · simp only []  -- none, return
+
+lemma scanVerbatimTag_preserves_implicitValueLine (s : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s startPos = .ok s') :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp [emitAt_preserves_implicitValueLine, collectVerbatimTagLoop_preserves_implicitValueLine,
+            advance_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanVerbatimTag_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanVerbatimTag_preserves_docStartLine (s : ScannerState) (startPos : YamlPos)
+    (s' : ScannerState) (hok : scanVerbatimTag s startPos = .ok s') :
+    s'.docStartLine = s.docStartLine := by
+  unfold scanVerbatimTag at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      simp [emitAt_preserves_docStartLine, collectVerbatimTagLoop_preserves_docStartLine,
+            advance_preserves_docStartLine]
+
+lemma scanSecondaryTag_preserves_implicitValueLine (s : ScannerState) (startPos : YamlPos) :
+    (scanSecondaryTag s startPos).implicitValueLine = s.implicitValueLine := by
+  unfold scanSecondaryTag
+  simp [emitAt_preserves_implicitValueLine, collectTagSuffixLoop_preserves_implicitValueLine,
+        advance_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanSecondaryTag_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanSecondaryTag_preserves_docStartLine (s : ScannerState) (startPos : YamlPos) :
+    (scanSecondaryTag s startPos).docStartLine = s.docStartLine := by
+  unfold scanSecondaryTag
+  simp [emitAt_preserves_docStartLine, collectTagSuffixLoop_preserves_docStartLine,
+        advance_preserves_docStartLine]
+
+lemma scanNamedTag_preserves_implicitValueLine (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+    (scanNamedTag s startPos inputEnd).implicitValueLine = s.implicitValueLine := by
+  unfold scanNamedTag
+  simp only []
+  split
+  · simp [emitAt_preserves_implicitValueLine, collectTagSuffixLoop_preserves_implicitValueLine,
+          collectTagHandleLoop_preserves_implicitValueLine]
+  · simp [emitAt_preserves_implicitValueLine, collectTagSuffixLoop_preserves_implicitValueLine,
+          collectTagHandleLoop_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanNamedTag_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanNamedTag_preserves_docStartLine (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
+    (scanNamedTag s startPos inputEnd).docStartLine = s.docStartLine := by
+  unfold scanNamedTag
+  simp only []
+  split
+  · simp [emitAt_preserves_docStartLine, collectTagSuffixLoop_preserves_docStartLine,
+          collectTagHandleLoop_preserves_docStartLine]
+  · simp [emitAt_preserves_docStartLine, collectTagSuffixLoop_preserves_docStartLine,
+          collectTagHandleLoop_preserves_docStartLine]
+
+lemma scanTag_preserves_implicitValueLine (s : ScannerState)
+    (s' : ScannerState) (hok : scanTag s = .ok s') :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok; have h := Except.ok.inj hok; subst h; dsimp only []
+      simp [scanVerbatimTag_preserves_implicitValueLine s.advance s.currentPos s_verb hv,
+            advance_preserves_implicitValueLine]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanSecondaryTag_preserves_implicitValueLine, advance_preserves_implicitValueLine]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanNamedTag_preserves_implicitValueLine, advance_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `scanTag_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanTag_preserves_docStartLine (s : ScannerState)
+    (s' : ScannerState) (hok : scanTag s = .ok s') :
+    s'.docStartLine = s.docStartLine := by
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · simp only [bind, Except.bind] at hok
+    generalize hv : scanVerbatimTag s.advance s.currentPos = result at hok
+    cases result with
+    | error e => simp at hok
+    | ok s_verb =>
+      dsimp only [] at hok; have h := Except.ok.inj hok; subst h; dsimp only []
+      simp [scanVerbatimTag_preserves_docStartLine s.advance s.currentPos s_verb hv,
+            advance_preserves_docStartLine]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanSecondaryTag_preserves_docStartLine, advance_preserves_docStartLine]
+  · have h := Except.ok.inj hok; subst h; dsimp only []
+    simp [scanNamedTag_preserves_docStartLine, advance_preserves_docStartLine]
+
+
+/-! ### … and through the BLOCK SCALAR, which totalizes the walk (item 103)
+
+The stamp ladder above stops at the tag: items 101/102 needed the heads a
+content dispatch reads as a KEY, and `|`/`>` is not one.  The flow interior
+reads every head, so the last arm has to be walked too — and once it is, the
+dispatch lemma is TOTAL and the three head-restricted readings above collapse
+into it.  These are `ContentAllowDirectives.lean`'s walks with the field
+renamed, for the reason stated there: both proofs bottom out in
+`advance`/`emitAt`, which touch no field but their own. -/
+
+lemma consumeExactSpaces_preserves_implicitValueLine (s : ScannerState) (count : Nat) :
+    (consumeExactSpaces s count).snd.implicitValueLine = s.implicitValueLine := by
+  induction count generalizing s with
+  | zero => unfold consumeExactSpaces; rfl
+  | succ count' ih =>
+    unfold consumeExactSpaces; split
+    · simp only []; rw [ih]; exact advance_preserves_implicitValueLine s
+    · rfl
+
+/-- `docStartLine` twin of `consumeExactSpaces_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma consumeExactSpaces_preserves_docStartLine (s : ScannerState) (count : Nat) :
+    (consumeExactSpaces s count).snd.docStartLine = s.docStartLine := by
+  induction count generalizing s with
+  | zero => unfold consumeExactSpaces; rfl
+  | succ count' ih =>
+    unfold consumeExactSpaces; split
+    · simp only []; rw [ih]; exact advance_preserves_docStartLine s
+    · rfl
+
+lemma parseBlockHeaderLoop_preserves_implicitValueLine (s : ScannerState) (chomp : ChompStyle)
+    (offset : Option Nat) (fuel : Nat) :
+    (parseBlockHeaderLoop s chomp offset fuel).snd.snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s chomp offset with
+  | zero => unfold parseBlockHeaderLoop; rfl
+  | succ fuel' ih =>
+    unfold parseBlockHeaderLoop; split
+    · rw [ih]; exact advance_preserves_implicitValueLine s
+    · rw [ih]; exact advance_preserves_implicitValueLine s
+    · split
+      · rw [ih]; exact advance_preserves_implicitValueLine s
+      · rfl
+    · rfl
+
+/-- `docStartLine` twin of `parseBlockHeaderLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma parseBlockHeaderLoop_preserves_docStartLine (s : ScannerState) (chomp : ChompStyle)
+    (offset : Option Nat) (fuel : Nat) :
+    (parseBlockHeaderLoop s chomp offset fuel).snd.snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s chomp offset with
+  | zero => unfold parseBlockHeaderLoop; rfl
+  | succ fuel' ih =>
+    unfold parseBlockHeaderLoop; split
+    · rw [ih]; exact advance_preserves_docStartLine s
+    · rw [ih]; exact advance_preserves_docStartLine s
+    · split
+      · rw [ih]; exact advance_preserves_docStartLine s
+      · rfl
+    · rfl
+
+lemma collectLineContentLoop_preserves_implicitValueLine (s : ScannerState) (content : String) (fuel : Nat) :
+    (collectLineContentLoop s content fuel).snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s content with
+  | zero => unfold collectLineContentLoop; rfl
+  | succ fuel' ih =>
+    unfold collectLineContentLoop
+    split
+    · split
+      · rfl
+      · rw [ih]; exact advance_preserves_implicitValueLine s
+    · rfl
+
+/-- `docStartLine` twin of `collectLineContentLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectLineContentLoop_preserves_docStartLine (s : ScannerState) (content : String) (fuel : Nat) :
+    (collectLineContentLoop s content fuel).snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s content with
+  | zero => unfold collectLineContentLoop; rfl
+  | succ fuel' ih =>
+    unfold collectLineContentLoop
+    split
+    · split
+      · rfl
+      · rw [ih]; exact advance_preserves_docStartLine s
+    · rfl
+
+lemma collectBlockScalarLoop_preserves_implicitValueLine (s : ScannerState) (rawContent : String)
+    (fuel : Nat) (contentIndent : Nat) (inputEnd : Nat) :
+    (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.implicitValueLine = s.implicitValueLine := by
+  induction fuel generalizing s rawContent with
+  | zero => unfold collectBlockScalarLoop; rfl
+  | succ fuel' ih =>
+    unfold collectBlockScalarLoop
+    split
+    · rfl
+    · simp only []
+      split
+      · exact consumeExactSpaces_preserves_implicitValueLine s contentIndent
+      · split
+        · rw [ih, consumeNewline_preserves_implicitValueLine, consumeExactSpaces_preserves_implicitValueLine]
+        · split
+          · rfl
+          · split
+            · split
+              · rw [ih, consumeNewline_preserves_implicitValueLine,
+                    collectLineContentLoop_preserves_implicitValueLine, consumeExactSpaces_preserves_implicitValueLine]
+              · split
+                · rfl
+                · rw [collectLineContentLoop_preserves_implicitValueLine, consumeExactSpaces_preserves_implicitValueLine]
+            · rw [collectLineContentLoop_preserves_implicitValueLine, consumeExactSpaces_preserves_implicitValueLine]
+
+/-- `docStartLine` twin of `collectBlockScalarLoop_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma collectBlockScalarLoop_preserves_docStartLine (s : ScannerState) (rawContent : String)
+    (fuel : Nat) (contentIndent : Nat) (inputEnd : Nat) :
+    (collectBlockScalarLoop s rawContent fuel contentIndent inputEnd).snd.docStartLine = s.docStartLine := by
+  induction fuel generalizing s rawContent with
+  | zero => unfold collectBlockScalarLoop; rfl
+  | succ fuel' ih =>
+    unfold collectBlockScalarLoop
+    split
+    · rfl
+    · simp only []
+      split
+      · exact consumeExactSpaces_preserves_docStartLine s contentIndent
+      · split
+        · rw [ih, consumeNewline_preserves_docStartLine, consumeExactSpaces_preserves_docStartLine]
+        · split
+          · rfl
+          · split
+            · split
+              · rw [ih, consumeNewline_preserves_docStartLine,
+                    collectLineContentLoop_preserves_docStartLine, consumeExactSpaces_preserves_docStartLine]
+              · split
+                · rfl
+                · rw [collectLineContentLoop_preserves_docStartLine, consumeExactSpaces_preserves_docStartLine]
+            · rw [collectLineContentLoop_preserves_docStartLine, consumeExactSpaces_preserves_docStartLine]
+
+lemma scanBlockScalarSkipComment_preserves_implicitValueLine (s : ScannerState) :
+    (scanBlockScalarSkipComment s).implicitValueLine = s.implicitValueLine := by
+  unfold scanBlockScalarSkipComment
+  split
+  · -- some '#'
+    split
+    · -- peekBack? = some c
+      dsimp only []
+      split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_implicitValueLine, advance_preserves_implicitValueLine]
+      · rfl
+    · -- peekBack? = none
+      rfl
+  · rfl
+
+/-- `docStartLine` twin of `scanBlockScalarSkipComment_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanBlockScalarSkipComment_preserves_docStartLine (s : ScannerState) :
+    (scanBlockScalarSkipComment s).docStartLine = s.docStartLine := by
+  unfold scanBlockScalarSkipComment
+  split
+  · -- some '#'
+    split
+    · -- peekBack? = some c
+      dsimp only []
+      split
+      · simp only []
+        rw [collectCommentTextLoop_preserves_docStartLine, advance_preserves_docStartLine]
+      · rfl
+    · -- peekBack? = none
+      rfl
+  · rfl
+
+lemma scanBlockScalarConsumeNewline_preserves_implicitValueLine (s s' : ScannerState)
+    (h : scanBlockScalarConsumeNewline s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanBlockScalarConsumeNewline at h
+  split at h
+  · split at h
+    · injection h with h_eq; subst h_eq; exact consumeNewline_preserves_implicitValueLine s
+    · split at h
+      · injection h with h_eq; subst h_eq; rfl
+      · contradiction
+  · injection h with h_eq; subst h_eq; rfl
+
+/-- `docStartLine` twin of `scanBlockScalarConsumeNewline_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanBlockScalarConsumeNewline_preserves_docStartLine (s s' : ScannerState)
+    (h : scanBlockScalarConsumeNewline s = .ok s') : s'.docStartLine = s.docStartLine := by
+  unfold scanBlockScalarConsumeNewline at h
+  split at h
+  · split at h
+    · injection h with h_eq; subst h_eq; exact consumeNewline_preserves_docStartLine s
+    · split at h
+      · injection h with h_eq; subst h_eq; rfl
+      · contradiction
+  · injection h with h_eq; subst h_eq; rfl
+
+lemma scanBlockScalarBody_preserves_implicitValueLine (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos) (s' : ScannerState)
+    (h_fl : s_nl.implicitValueLine = s_orig.implicitValueLine)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
+    s'.implicitValueLine = s_orig.implicitValueLine := by
+  unfold scanBlockScalarBody at h
+  simp only [] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; dsimp only [])
+  all_goals rw [emitAt_preserves_implicitValueLine, collectBlockScalarLoop_preserves_implicitValueLine, h_fl]
+
+/-- `docStartLine` twin of `scanBlockScalarBody_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanBlockScalarBody_preserves_docStartLine (s_orig s_nl : ScannerState)
+    (chomp : ChompStyle) (expl : Option Nat) (isLit : Bool) (startPos : YamlPos) (s' : ScannerState)
+    (h_fl : s_nl.docStartLine = s_orig.docStartLine)
+    (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
+    s'.docStartLine = s_orig.docStartLine := by
+  unfold scanBlockScalarBody at h
+  simp only [] at h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals (simp only [Except.ok.injEq] at h; subst h; dsimp only [])
+  all_goals rw [emitAt_preserves_docStartLine, collectBlockScalarLoop_preserves_docStartLine, h_fl]
+
+lemma scanBlockScalar_preserves_implicitValueLine (s : ScannerState) (s' : ScannerState)
+    (h : scanBlockScalar s = .ok s') : s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanBlockScalar at h
+  simp only [] at h
+  split at h
+  · contradiction
+  · exact scanBlockScalarBody_preserves_implicitValueLine s _ _ _ _ _ s'
+      (by rw [scanBlockScalarConsumeNewline_preserves_implicitValueLine _ _ (by assumption),
+              scanBlockScalarSkipComment_preserves_implicitValueLine,
+              skipWhitespace_preserves_implicitValueLine,
+              parseBlockHeaderLoop_preserves_implicitValueLine,
+              advance_preserves_implicitValueLine]) h
+
+/-- `docStartLine` twin of `scanBlockScalar_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma scanBlockScalar_preserves_docStartLine (s : ScannerState) (s' : ScannerState)
+    (h : scanBlockScalar s = .ok s') : s'.docStartLine = s.docStartLine := by
+  unfold scanBlockScalar at h
+  simp only [] at h
+  split at h
+  · contradiction
+  · exact scanBlockScalarBody_preserves_docStartLine s _ _ _ _ _ s'
+      (by rw [scanBlockScalarConsumeNewline_preserves_docStartLine _ _ (by assumption),
+              scanBlockScalarSkipComment_preserves_docStartLine,
+              skipWhitespace_preserves_docStartLine,
+              parseBlockHeaderLoop_preserves_docStartLine,
+              advance_preserves_docStartLine]) h
+
+lemma dispatchContent_preserves_implicitValueLine (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    s'.implicitValueLine = s.implicitValueLine := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    split at h   -- item 9e: the property-run guard
+    · simp at h
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact scanAnchorOrAlias_preserves_implicitValueLine s true s_a h_fn
+  · split at h
+    · -- '*': alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
+      split at h
+      · simp at h
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_preserves_implicitValueLine s false _ (aliasArm_scan_ok h)
+    · split at h
+      · -- '!': tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_preserves_implicitValueLine s s_t h_fn
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        any_goals contradiction
+        all_goals (try simp only [Except.ok.injEq] at *)
+        all_goals (try contradiction)
+        all_goals (try subst_vars)
+        all_goals (try dsimp only [])
+        all_goals first
+          | exact scanBlockScalar_preserves_implicitValueLine _ _ (by assumption)
+          | exact scanDoubleQuoted_preserves_implicitValueLine _ _ (by assumption)
+          | exact scanSingleQuoted_preserves_implicitValueLine _ _ (by assumption)
+          | exact scanPlainScalar_preserves_implicitValueLine _ _ (by assumption)
+          | (simp_all; done)
+
+/-- `docStartLine` twin of `dispatchContent_preserves_implicitValueLine` (item 299): the field has one writer, `scanDocumentStart`. -/
+lemma dispatchContent_preserves_docStartLine (s : ScannerState) (c : Char) (s' : ScannerState)
+    (h : scanNextToken_dispatchContent s c = .ok s') :
+    s'.docStartLine = s.docStartLine := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, pure, Pure.pure, Except.pure] at h
+  simp only [Except.bind] at h
+  split at h
+  · -- '&': scanAnchorOrAlias bind
+    split at h   -- item 9e: the property-run guard
+    · simp at h
+    generalize h_fn : scanAnchorOrAlias s true = result at h
+    cases result with
+    | error e => simp at h
+    | ok s_a =>
+      simp only [Except.ok.injEq] at h; subst h; dsimp only []
+      exact scanAnchorOrAlias_preserves_docStartLine s true s_a h_fn
+  · split at h
+    · -- '*': alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
+      split at h
+      · simp at h
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_preserves_docStartLine s false _ (aliasArm_scan_ok h)
+    · split at h
+      · -- '!': tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
+        generalize h_fn : scanTag s = result at h
+        cases result with
+        | error e => simp at h
+        | ok s_t =>
+          simp only [Except.ok.injEq] at h; subst h
+          exact scanTag_preserves_docStartLine s s_t h_fn
+      · -- remaining: block scalar, quoted, plain
+        repeat (any_goals (split at h))
+        any_goals contradiction
+        all_goals (try simp only [Except.ok.injEq] at *)
+        all_goals (try contradiction)
+        all_goals (try subst_vars)
+        all_goals (try dsimp only [])
+        all_goals first
+          | exact scanBlockScalar_preserves_docStartLine _ _ (by assumption)
+          | exact scanDoubleQuoted_preserves_docStartLine _ _ (by assumption)
+          | exact scanSingleQuoted_preserves_docStartLine _ _ (by assumption)
+          | exact scanPlainScalar_preserves_docStartLine _ _ (by assumption)
+          | (simp_all; done)
+
+
+/-! ### The flow indicators and the flow `:` (item 103) — the stamp chain is gone (item 524)
+
+Item 103 walked the stamp (`implicitValueLine` / `docStartLine`) through the five flow indicators,
+the `?` and the flow `:` so a close could read the stamp a block-context `:` left outside the
+collection (`k: [1]: 2`).  Item 520 made the close DECIDE the stamp on its own state instead
+(`flowKeyPack_of_close`), the transport lost its consumer, and the 23 preservation lemmas that
+stood here were deleted on the owner's ruling (item 524).  Nothing in this module states the
+field's preservation across a flow step any more; the per-step preservation lemmas above (the
+content dispatcher's) remain for their own consumers. -/
 
 lemma collectDirectiveNameLoop_preserves_simpleKey (s : ScannerState) (name : String) (fuel : Nat) :
     (collectDirectiveNameLoop s name fuel).snd.simpleKey = s.simpleKey := by
@@ -3502,8 +5283,9 @@ lemma collectBlockScalarLoop_preserves_simpleKey (s : ScannerState) (rawContent 
             · split
               · rw [ih, consumeNewline_preserves_simpleKey,
                     collectLineContentLoop_preserves_simpleKey, consumeExactSpaces_preserves_simpleKey]
-              · dsimp only []
-                rw [collectLineContentLoop_preserves_simpleKey, consumeExactSpaces_preserves_simpleKey]
+              · split
+                · rfl
+                · rw [collectLineContentLoop_preserves_simpleKey, consumeExactSpaces_preserves_simpleKey]
             · rw [collectLineContentLoop_preserves_simpleKey, consumeExactSpaces_preserves_simpleKey]
 
 
@@ -3525,8 +5307,22 @@ lemma advance_preserves_simpleKeyStack (s : ScannerState) :
     s.advance.simpleKeyStack = s.simpleKeyStack := by
   unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
 
+lemma consumeBOM_preserves_simpleKeyStack (s : ScannerState) :
+    s.consumeBOM.simpleKeyStack = s.simpleKeyStack := by
+  unfold ScannerState.consumeBOM; simpa using advance_preserves_simpleKeyStack s
+
 lemma emit_preserves_simpleKeyStack (s : ScannerState) (tok : YamlToken) :
     (s.emit tok).simpleKeyStack = s.simpleKeyStack := by
+  unfold ScannerState.emit; rfl
+
+/-! ### explicitKeyStack Preservation Lemmas (item 98) -/
+
+lemma advance_preserves_explicitKeyStack (s : ScannerState) :
+    s.advance.explicitKeyStack = s.explicitKeyStack := by
+  unfold ScannerState.advance; dsimp only []; split <;> (try split) <;> (try split) <;> rfl
+
+lemma emit_preserves_explicitKeyStack (s : ScannerState) (tok : YamlToken) :
+    (s.emit tok).explicitKeyStack = s.explicitKeyStack := by
   unfold ScannerState.emit; rfl
 
 lemma skipSpacesLoop_preserves_simpleKeyStack (s : ScannerState) (fuel : Nat) :
@@ -3665,7 +5461,7 @@ lemma unwindIndentsLoop_preserves_simpleKeyStack (s : ScannerState) (col : Int) 
   | zero => unfold unwindIndentsLoop; rfl
   | succ _ ih =>
     unfold unwindIndentsLoop; split
-    · have := ih { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }
+    · have := ih { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }
       simp [emit_preserves_simpleKeyStack] at this; exact this
     · rfl
 
@@ -3718,7 +5514,7 @@ lemma processEscape_preserves_simpleKeyStack (s : ScannerState) (ch : Char) (s' 
   simp only [] at h
   split at h <;> try contradiction
   -- Split on each character case
-  repeat (split at h)
+  repeat' (split at h)
   -- Handle all goals
   all_goals (
     first
@@ -3746,7 +5542,10 @@ lemma skipBlankLinesLoop_preserves_simpleKeyStack (s : ScannerState) (cnt fuel i
         simp []
         have h_sp := skipWhitespace_preserves_simpleKeyStack s
         have h_cn := consumeNewline_preserves_simpleKeyStack (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        -- item 100: the gate's arm keeps the state untouched
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 
 lemma foldQuotedNewlinesLoop_preserves_simpleKeyStack (s : ScannerState) (emptyCount fuel : Nat) :
@@ -3765,7 +5564,9 @@ lemma foldQuotedNewlinesLoop_preserves_simpleKeyStack (s : ScannerState) (emptyC
         simp []
         have h_sp := skipWhitespace_preserves_simpleKeyStack s
         have h_cn := consumeNewline_preserves_simpleKeyStack (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 
 lemma foldQuotedNewlines_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState) (content : String)
@@ -3820,7 +5621,10 @@ lemma collectPlainScalarLoop_preserves_simpleKeyStack (s : ScannerState) (conten
               have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s s_fold content_fold heq
               split at h
               · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
-              · dsimp only [] at h
+              · -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
+                dsimp only [] at h
                 generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
                 cases cont_result with
                 | ok inner_result =>
@@ -3900,11 +5704,16 @@ lemma collectDoubleQuotedLoop_preserves_simpleKeyStack (s : ScannerState) (conte
       split at h <;> try contradiction
       -- some c after backslash
       split at h
-      · -- isLineBreak c (escaped line break)
-        have h_cn := consumeNewline_preserves_simpleKeyStack s.advance
-        have h_sw := skipWhitespace_preserves_simpleKeyStack (consumeNewline s.advance)
+      · -- isLineBreak c (escaped line break; item 53 splits the branch)
         have h_adv := advance_preserves_simpleKeyStack s
-        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_simpleKeyStack s.advance s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold, h_adv])
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -4152,8 +5961,9 @@ lemma collectBlockScalarLoop_preserves_simpleKeyStack (s : ScannerState) (rawCon
             · split
               · rw [ih, consumeNewline_preserves_simpleKeyStack,
                     collectLineContentLoop_preserves_simpleKeyStack, consumeExactSpaces_preserves_simpleKeyStack]
-              · dsimp only []
-                rw [collectLineContentLoop_preserves_simpleKeyStack, consumeExactSpaces_preserves_simpleKeyStack]
+              · split
+                · rfl
+                · rw [collectLineContentLoop_preserves_simpleKeyStack, consumeExactSpaces_preserves_simpleKeyStack]
             · rw [collectLineContentLoop_preserves_simpleKeyStack, consumeExactSpaces_preserves_simpleKeyStack]
 
 
@@ -4190,7 +6000,7 @@ lemma preprocess_preserves_simpleKeyStack (s : ScannerState) (s1 : ScannerState)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            rw [saveSimpleKey_preserves_simpleKeyStack]
+            rw [closeStaleExplicitKey_simpleKeyStack, saveSimpleKey_preserves_simpleKeyStack]
             show (unwindIndents s_skip s_skip.col).simpleKeyStack = s.simpleKeyStack
             rw [unwindIndents_preserves_simpleKeyStack]; exact h_stack_skip
       · split at h
@@ -4199,7 +6009,7 @@ lemma preprocess_preserves_simpleKeyStack (s : ScannerState) (s1 : ScannerState)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            rw [saveSimpleKey_preserves_simpleKeyStack]; exact h_stack_skip
+            rw [closeStaleExplicitKey_simpleKeyStack, saveSimpleKey_preserves_simpleKeyStack]; exact h_stack_skip
 
 /-- Preprocessing maintains the simpleKey part of the invariant.
 
@@ -4260,6 +6070,7 @@ lemma preprocess_simpleKey_inv (s : ScannerState) (s1 : ScannerState) (c : Char)
                 { unwindIndents s_skip s_skip.col with needIndentCheck := false }.simpleKey.tokenIndex ≥ n := by
               show (unwindIndents s_skip s_skip.col).simpleKey.possible = true → _
               simp only [h_sk_u, h_sk_skip]; exact h_inv
+            simp only [closeStaleExplicitKey_simpleKey] at h_poss ⊢
             exact h_save _ h_tok_pre h_sk_pre h_poss
       · -- no needIndentCheck path
         split at h
@@ -4272,6 +6083,7 @@ lemma preprocess_simpleKey_inv (s : ScannerState) (s1 : ScannerState) (c : Char)
               have := congrArg Array.size h_tok_skip; omega
             have h_sk_pre : s_skip.simpleKey.possible = true → s_skip.simpleKey.tokenIndex ≥ n := by
               simp only [h_sk_skip]; exact h_inv
+            simp only [closeStaleExplicitKey_simpleKey] at h_poss ⊢
             exact h_save s_skip h_tok_pre h_sk_pre h_poss
 
 lemma preprocess_maintains_simpleKeyAbove (s : ScannerState) (s1 : ScannerState) (c : Char)
@@ -4353,17 +6165,17 @@ lemma SimpleKeyAbove_of_flow_open (s_out s_in : ScannerState) (n : Nat)
   simp only [h_stack, Array.size_push] at hj
   by_cases hlt : j < s_in.simpleKeyStack.size
   · have hp' : s_in.simpleKeyStack[j].possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_pos hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_left hlt] at hp; exact hp
     have h_ge := h_inv.2 j hlt hp'
     show s_out.simpleKeyStack[j].tokenIndex ≥ n
-    simp only [h_stack, Array.getElem_push, dif_pos hlt]; exact h_ge
+    simp only [h_stack, Array.getElem_push, dite_eq_left hlt]; exact h_ge
   · have hj_eq : j = s_in.simpleKeyStack.size := by omega
     subst hj_eq
     have hp' : s_in.simpleKey.possible = true := by
-      simp only [h_stack, Array.getElem_push, dif_neg hlt] at hp; exact hp
+      simp only [h_stack, Array.getElem_push, dite_eq_right hlt] at hp; exact hp
     have h_ge := h_inv.1 hp'
     show s_out.simpleKeyStack[s_in.simpleKeyStack.size].tokenIndex ≥ n
-    simp only [h_stack, Array.getElem_push, dif_neg hlt]; exact h_ge
+    simp only [h_stack, Array.getElem_push, dite_eq_right hlt]; exact h_ge
 
 /-- Flow close: simpleKey restored from stack back, stack popped. -/
 lemma SimpleKeyAbove_of_flow_close (s_out s_in : ScannerState) (n : Nat)
@@ -4556,6 +6368,8 @@ lemma scanValue_clears_simpleKey (s : ScannerState) (s' : ScannerState)
     (h : scanValue s = .ok s') : s'.simpleKey.possible = false := by
   unfold scanValue at h
   simp only [bind, Except.bind] at h
+  -- Three guards since item 31: validate, indent-tab check, tab check
+  split at h <;> try contradiction
   split at h <;> try contradiction
   split at h <;> try contradiction
   simp only [Except.ok.injEq] at h; subst h
@@ -4566,6 +6380,8 @@ lemma scanValue_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanValue s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
   unfold scanValue at h
   simp only [bind, Except.bind] at h
+  -- Three guards since item 31: validate, indent-tab check, tab check
+  split at h <;> try contradiction
   split at h <;> try contradiction
   split at h <;> try contradiction
   simp only [Except.ok.injEq] at h; subst h
@@ -4581,6 +6397,8 @@ lemma scanValue_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
     (h : scanValue s = .ok s') : s'.flowLevel = s.flowLevel := by
   unfold scanValue at h
   simp only [bind, Except.bind] at h
+  -- Three guards since item 31: validate, indent-tab check, tab check
+  split at h <;> try contradiction
   split at h <;> try contradiction
   split at h <;> try contradiction
   simp only [Except.ok.injEq] at h; subst h
@@ -4700,6 +6518,8 @@ lemma scanDirective_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
@@ -4746,6 +6566,8 @@ lemma scanDirective_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerSta
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
@@ -4791,6 +6613,8 @@ lemma scanDirective_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
           unfold scanTagDirective at h_inner
           dsimp only [] at h_inner
           simp only [bind, Except.bind] at h_inner
+          split at h_inner
+          · contradiction  -- [89]: a malformed `%TAG` handle is refused
           split at h_inner <;> try (split at h_inner <;> try contradiction)
           all_goals (try contradiction)
           all_goals (simp only [Except.ok.injEq] at h_inner; subst h_inner)
@@ -4804,14 +6628,22 @@ lemma scanDirective_preserves_flowLevel (s : ScannerState) (s' : ScannerState)
         simp [skipToEndOfLine_preserves_flowLevel, skipWhitespace_preserves_flowLevel,
               collectDirectiveNameLoop_preserves_flowLevel, advance_preserves_flowLevel]
 
-lemma scanFlowEntry_preserves_simpleKey (s : ScannerState) (s' : ScannerState)
-    (h : scanFlowEntry s = .ok s') : s'.simpleKey = s.simpleKey := by
+/-- §7.4 (item 9q): the `,` CLEARS the pending simple key.
+
+    It used to preserve it, which was unobservable — the `,` re-enables
+    simple-key reservation, so preprocessing overwrites the field before any
+    dispatcher reads it — but left `possible = true` pointing at the previous
+    entry's reservation, i.e. BELOW the incoming token array's end.  That is
+    exactly the shape `SimpleKeyAboveFloor` forbids, so every consumer of the
+    old preservation lemma now goes through `*_of_cleared_preserved` instead. -/
+lemma scanFlowEntry_clears_simpleKey (s : ScannerState) (s' : ScannerState)
+    (h : scanFlowEntry s = .ok s') : s'.simpleKey.possible = false := by
   unfold scanFlowEntry at h
   simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
   all_goals (try contradiction)
   all_goals (simp only [Except.ok.injEq] at h; subst h)
-  all_goals simp [advance_preserves_simpleKey, emit_preserves_simpleKey]
+  all_goals rfl
 
 lemma scanFlowEntry_preserves_simpleKeyStack (s : ScannerState) (s' : ScannerState)
     (h : scanFlowEntry s = .ok s') : s'.simpleKeyStack = s.simpleKeyStack := by
@@ -4925,7 +6757,8 @@ lemma scanNamedTag_preserves_simpleKey (s : ScannerState) (startPos : YamlPos) (
   split
   · simp [emitAt_preserves_simpleKey, collectTagSuffixLoop_preserves_simpleKey,
           collectTagHandleLoop_preserves_simpleKey]
-  · simp [emitAt_preserves_simpleKey, collectTagHandleLoop_preserves_simpleKey]
+  · simp [emitAt_preserves_simpleKey, collectTagSuffixLoop_preserves_simpleKey,
+          collectTagHandleLoop_preserves_simpleKey]
 
 lemma scanNamedTag_preserves_simpleKeyStack (s : ScannerState) (startPos : YamlPos) (inputEnd : Nat) :
     (scanNamedTag s startPos inputEnd).simpleKeyStack = s.simpleKeyStack := by
@@ -4934,7 +6767,8 @@ lemma scanNamedTag_preserves_simpleKeyStack (s : ScannerState) (startPos : YamlP
   split
   · simp [emitAt_preserves_simpleKeyStack, collectTagSuffixLoop_preserves_simpleKeyStack,
           collectTagHandleLoop_preserves_simpleKeyStack]
-  · simp [emitAt_preserves_simpleKeyStack, collectTagHandleLoop_preserves_simpleKeyStack]
+  · simp [emitAt_preserves_simpleKeyStack, collectTagSuffixLoop_preserves_simpleKeyStack,
+          collectTagHandleLoop_preserves_simpleKeyStack]
 
 lemma scanTag_preserves_simpleKey (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s') :
@@ -5037,7 +6871,8 @@ lemma scanNamedTag_preserves_flowLevel (s : ScannerState) (startPos : YamlPos) (
   split
   · simp [emitAt_preserves_flowLevel, collectTagSuffixLoop_preserves_flowLevel,
           collectTagHandleLoop_preserves_flowLevel]
-  · simp [emitAt_preserves_flowLevel, collectTagHandleLoop_preserves_flowLevel]
+  · simp [emitAt_preserves_flowLevel, collectTagSuffixLoop_preserves_flowLevel,
+          collectTagHandleLoop_preserves_flowLevel]
 
 lemma scanTag_preserves_flowLevel (s : ScannerState)
     (s' : ScannerState) (hok : scanTag s = .ok s') :
@@ -5095,7 +6930,10 @@ lemma skipBlankLinesLoop_preserves_flowLevel (s : ScannerState) (cnt fuel inputE
         simp []
         have h_sp := skipWhitespace_preserves_flowLevel s
         have h_cn := consumeNewline_preserves_flowLevel (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        -- item 100: the gate's arm keeps the state untouched
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 lemma foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount fuel : Nat) :
     (foldQuotedNewlinesLoop s emptyCount fuel).fst.flowLevel = s.flowLevel := by
@@ -5113,7 +6951,9 @@ lemma foldQuotedNewlinesLoop_preserves_flowLevel (s : ScannerState) (emptyCount 
         simp []
         have h_sp := skipWhitespace_preserves_flowLevel s
         have h_cn := consumeNewline_preserves_flowLevel (skipWhitespace s)
-        rw [ih, h_cn, h_sp]
+        split
+        · rfl
+        · rw [ih, h_cn, h_sp]
 
 lemma foldQuotedNewlines_preserves_flowLevel (s : ScannerState) (s' : ScannerState) (content : String)
     (h : foldQuotedNewlines s = .ok (content, s')) :
@@ -5164,7 +7004,7 @@ lemma processEscape_preserves_flowLevel (s : ScannerState) (ch : Char) (s' : Sca
   unfold processEscape at h
   simp only [] at h
   split at h <;> try contradiction
-  repeat (split at h)
+  repeat' (split at h)
   all_goals (
     first
     | (injection h with h_eq; cases h_eq; exact advance_preserves_flowLevel s)
@@ -5209,6 +7049,9 @@ lemma collectPlainScalarLoop_preserves_flowLevel (s : ScannerState) (content las
               split at h
               · injection h with h_eq; cases h_eq; rfl  -- '#' → state = s
               · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
                 dsimp only [] at h
                 generalize h_loop : collectPlainScalarLoop s_fold (content ++ content_fold) "" fuel' inFlow contentIndent inputEnd = cont_result at h
                 cases cont_result with
@@ -5286,11 +7129,16 @@ lemma collectDoubleQuotedLoop_preserves_flowLevel (s : ScannerState) (content : 
       split at h <;> try contradiction
       -- some c after backslash
       split at h
-      · -- isLineBreak c (escaped line break)
-        have h_cn := consumeNewline_preserves_flowLevel s.advance
-        have h_sw := skipWhitespace_preserves_flowLevel (consumeNewline s.advance)
+      · -- isLineBreak c (escaped line break; item 53 splits the branch)
         have h_adv := advance_preserves_flowLevel s
-        rw [ih _ _ _ h, h_sw, h_cn, h_adv]
+        simp only [bind, Except.bind] at h
+        split at h <;> try contradiction
+        rename_i fold_result heq
+        cases fold_result with
+        | mk folded s_fold =>
+          have h_fold := foldQuotedNewlines_preserves_flowLevel s.advance s_fold folded heq
+          repeat' split at h
+          all_goals (first | contradiction | rw [ih _ _ _ h, h_fold, h_adv])
       · -- regular escape sequence
         simp only [bind, Except.bind] at h
         split at h <;> try contradiction
@@ -5413,8 +7261,9 @@ lemma collectBlockScalarLoop_preserves_flowLevel (s : ScannerState) (rawContent 
             · split
               · rw [ih, consumeNewline_preserves_flowLevel,
                     collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
-              · dsimp only []
-                rw [collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
+              · split
+                · rfl
+                · rw [collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
             · rw [collectLineContentLoop_preserves_flowLevel, consumeExactSpaces_preserves_flowLevel]
 
 lemma scanBlockScalarSkipComment_preserves_flowLevel (s : ScannerState) :
@@ -5663,6 +7512,8 @@ lemma dispatchContent_preserves_flowLevel (s : ScannerState) (c : Char) (s' : Sc
   simp only [Except.bind] at h
   split at h
   · -- '&': scanAnchorOrAlias bind
+    split at h   -- item 9e: the property-run guard
+    · simp at h
     generalize h_fn : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -5671,16 +7522,16 @@ lemma dispatchContent_preserves_flowLevel (s : ScannerState) (c : Char) (s' : Sc
       exact scanAnchorOrAlias_preserves_flowLevel s true s_a h_fn
   · split at h
     · -- '*': alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
       split at h
       · simp at h
-      · generalize h_fn : scanAnchorOrAlias s false = result at h
-        cases result with
-        | error e => simp at h
-        | ok s_a =>
-          simp only [Except.ok.injEq] at h; subst h
-          exact scanAnchorOrAlias_preserves_flowLevel s false s_a h_fn
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_preserves_flowLevel s false _ (aliasArm_scan_ok h)
     · split at h
       · -- '!': tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
         generalize h_fn : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -5709,6 +7560,8 @@ lemma dispatchContent_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s'
   simp only [Except.bind] at h
   split at h
   · -- '&': scanAnchorOrAlias bind
+    split at h   -- item 9e: the property-run guard
+    · simp at h
     generalize h_fn : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -5717,16 +7570,16 @@ lemma dispatchContent_preserves_simpleKeyStack (s : ScannerState) (c : Char) (s'
       exact scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_fn
   · split at h
     · -- '*': alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
       split at h
       · simp at h
-      · generalize h_fn : scanAnchorOrAlias s false = result at h
-        cases result with
-        | error e => simp at h
-        | ok s_a =>
-          simp only [Except.ok.injEq] at h; subst h
-          exact scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_fn
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_preserves_simpleKeyStack s false _ (aliasArm_scan_ok h)
     · split at h
       · -- '!': tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
         generalize h_fn : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -5790,6 +7643,49 @@ lemma scanFlowMappingEnd_stack_popped (s : ScannerState) :
     (scanFlowMappingEnd s).simpleKeyStack = s.simpleKeyStack.pop := by
   unfold scanFlowMappingEnd
   simp [advance_preserves_simpleKeyStack, emit_preserves_simpleKeyStack]
+
+-- Item 98: the explicit-key stamp rides the same open/close discipline —
+-- the open pushes the pair and clears it, the close restores and pops.
+
+lemma scanFlowSequenceStart_ek_pushed (s : ScannerState) :
+    (scanFlowSequenceStart s).explicitKeyStack
+      = s.explicitKeyStack.push (s.explicitKeyLine, s.explicitKeyCol) := by
+  unfold scanFlowSequenceStart
+  simp [advance_preserves_explicitKeyStack, emit_preserves_explicitKeyStack]
+
+lemma scanFlowMappingStart_ek_pushed (s : ScannerState) :
+    (scanFlowMappingStart s).explicitKeyStack
+      = s.explicitKeyStack.push (s.explicitKeyLine, s.explicitKeyCol) := by
+  unfold scanFlowMappingStart
+  simp [advance_preserves_explicitKeyStack, emit_preserves_explicitKeyStack]
+
+lemma scanFlowSequenceStart_ek_cleared (s : ScannerState) :
+    (scanFlowSequenceStart s).explicitKeyLine = none := rfl
+
+lemma scanFlowMappingStart_ek_cleared (s : ScannerState) :
+    (scanFlowMappingStart s).explicitKeyLine = none := rfl
+
+lemma scanFlowSequenceEnd_ek_restored (s : ScannerState) :
+    (scanFlowSequenceEnd s).explicitKeyLine
+      = (s.explicitKeyStack.back?.getD (none, -1)).1 := by
+  unfold scanFlowSequenceEnd
+  simp [emit_preserves_explicitKeyStack]
+
+lemma scanFlowMappingEnd_ek_restored (s : ScannerState) :
+    (scanFlowMappingEnd s).explicitKeyLine
+      = (s.explicitKeyStack.back?.getD (none, -1)).1 := by
+  unfold scanFlowMappingEnd
+  simp [emit_preserves_explicitKeyStack]
+
+lemma scanFlowSequenceEnd_ekstack_popped (s : ScannerState) :
+    (scanFlowSequenceEnd s).explicitKeyStack = s.explicitKeyStack.pop := by
+  unfold scanFlowSequenceEnd
+  simp [advance_preserves_explicitKeyStack, emit_preserves_explicitKeyStack]
+
+lemma scanFlowMappingEnd_ekstack_popped (s : ScannerState) :
+    (scanFlowMappingEnd s).explicitKeyStack = s.explicitKeyStack.pop := by
+  unfold scanFlowMappingEnd
+  simp [advance_preserves_explicitKeyStack, emit_preserves_explicitKeyStack]
 
 set_option maxHeartbeats 400000 in
 /-- scanNextToken preserves existing token prefix below `n`.
@@ -5884,6 +7780,7 @@ lemma dispatchFlowIndicators_maintains_simpleKeyAbove (s : ScannerState) (c : Ch
     (n : Nat) (_h_n : n ≤ s.tokens.size) (h_inv : SimpleKeyAbove s n) :
     SimpleKeyAbove s' n := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, pure, Pure.pure, Except.pure] at h
   simp only [Except.bind] at h
   repeat (any_goals (split at h))
@@ -5927,9 +7824,9 @@ lemma dispatchFlowIndicators_maintains_simpleKeyAbove (s : ScannerState) (c : Ch
            simp [Array.back?, h_empty] at hp
          · intro j hj hp; rw [h_st] at hj
            simp [Array.size_pop, h_empty] at hj)
-    | -- scanFlowEntry: preserves both
-      (rename_i h_eq; exact SimpleKeyAbove_of_preserved _ s n
-        (scanFlowEntry_preserves_simpleKey s _ h_eq)
+    | -- scanFlowEntry: clears the current key, preserves the stack (item 9q)
+      (rename_i h_eq; exact SimpleKeyAbove_of_cleared_preserved _ s n
+        (scanFlowEntry_clears_simpleKey s _ h_eq)
         (scanFlowEntry_preserves_simpleKeyStack s _ h_eq) h_inv)
     | (simp_all; done)
 
@@ -5971,6 +7868,8 @@ lemma dispatchContent_maintains_simpleKeyAbove (s : ScannerState) (c : Char) (s'
   -- Handle anchor/alias/tag explicitly (need generalize for ok-equation)
   split at h
   · -- '&': scanAnchorOrAlias bind
+    split at h   -- item 9e: the property-run guard
+    · simp at h
     generalize h_anch : scanAnchorOrAlias s true = result at h
     cases result with
     | error e => simp at h
@@ -5982,18 +7881,18 @@ lemma dispatchContent_maintains_simpleKeyAbove (s : ScannerState) (c : Char) (s'
           (scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch) h_inv)
   · split at h
     · -- '*': alias
+      split at h   -- item 9e: the property-run guard
+      · simp at h
       split at h
       · contradiction
-      · generalize h_anch : scanAnchorOrAlias s false = result at h
-        cases result with
-        | error e => simp at h
-        | ok s_a =>
-          simp only [Except.ok.injEq] at h; subst h
-          exact SimpleKeyAbove_of_preserved _ s n
-            (scanAnchorOrAlias_preserves_simpleKey s false s_a h_anch)
-            (scanAnchorOrAlias_preserves_simpleKeyStack s false s_a h_anch) h_inv
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact SimpleKeyAbove_of_preserved _ s n
+          (scanAnchorOrAlias_preserves_simpleKey s false _ (aliasArm_scan_ok h))
+          (scanAnchorOrAlias_preserves_simpleKeyStack s false _ (aliasArm_scan_ok h)) h_inv
     · split at h
       · -- '!': tag
+        split at h   -- item 9e: the property-run guard
+        · simp at h
         generalize h_tag : scanTag s = result at h
         cases result with
         | error e => simp at h
@@ -6139,6 +8038,10 @@ lemma scanLoop_preserves_tokens (s : ScannerState) (fuel : Nat) (tokens : Array 
       -- Handle if-then-else conditions
       split at h <;> try contradiction
       split at h <;> try contradiction
+      -- §9.2 dangling-node check (item 133): the `.error` arm contradicts
+      split at h <;> try contradiction
+      -- §8.1 flow-value floor (item 172): the `.error` arm contradicts
+      split at h <;> try contradiction
       -- Now h : .ok ((unwindIndents s (-1)).emit .streamEnd).tokens = .ok tokens
       injection h with h_eq
       let s_unwind := unwindIndents s (-1)
@@ -6190,6 +8093,10 @@ lemma scanLoop_increases_tokens (s : ScannerState) (fuel : Nat) (tokens : Array 
     · -- scanNextToken = none: final emit
       split at h <;> try contradiction
       split at h <;> try contradiction
+      -- §9.2 dangling-node check (item 133)
+      split at h <;> try contradiction
+      -- §8.1 flow-value floor (item 172)
+      split at h <;> try contradiction
       injection h with h_eq; rw [← h_eq]
       have h1 := unwindIndents_adds_tokens s (-1)
       have h2 := emit_tokens_size (unwindIndents s (-1)) .streamEnd
@@ -6235,7 +8142,7 @@ lemma scan_produces_at_least_two (input : String) (tokens : Array (Positioned Ya
     rw [emit_tokens_size, mk'_tokens_empty]; simp
   -- Split on h_loop to resolve the match expression
   split at h_loop
-  · rw [advance_preserves_tokens, h_init_size] at h_loop; omega
+  · rw [consumeBOM_preserves_tokens, h_init_size] at h_loop; omega
   · rw [h_init_size] at h_loop; omega
 
 /--
@@ -6270,15 +8177,15 @@ lemma scan_first_is_streamStart (input : String) (tokens : Array (Positioned Yam
 
   -- Step 2: BOM handling preserves tokens (advance_preserves_tokens)
   have h_bom_preserves : ∀ s : ScannerState,
-    (match s.peek? with | some '\uFEFF' => s.advance | _ => s).tokens = s.tokens := by
+    (match s.peek? with | some '\uFEFF' => s.consumeBOM | _ => s).tokens = s.tokens := by
     intro s
     split <;> try rfl
-    exact advance_preserves_tokens s
+    exact consumeBOM_preserves_tokens s
 
   -- Step 3: scanLoop preserves existing tokens
   -- The state after BOM handling
   let s_after_bom := match ((ScannerState.mk' input).emit .streamStart).peek? with
-    | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
+    | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).consumeBOM
     | _ => (ScannerState.mk' input).emit .streamStart
 
   -- BOM handling preserves tokens
@@ -6307,13 +8214,15 @@ lemma scan_first_is_streamStart (input : String) (tokens : Array (Positioned Yam
       intro h_poss
       exfalso
       revert h_poss; show ¬ _
-      dsimp only [s_after_bom, ScannerState.advance, ScannerState.emit, ScannerState.mk']
+      dsimp only [s_after_bom, ScannerState.consumeBOM, ScannerState.advance,
+        ScannerState.emit, ScannerState.mk']
       split <;> (try split) <;> (try split) <;> (try split) <;> simp
     · -- simpleKeyStack is empty
       intro j h_j
       exfalso
       revert h_j; show ¬ _
-      dsimp only [s_after_bom, ScannerState.advance, ScannerState.emit, ScannerState.mk']
+      dsimp only [s_after_bom, ScannerState.consumeBOM, ScannerState.advance,
+        ScannerState.emit, ScannerState.mk']
       split <;> (try split) <;> (try split) <;> (try split) <;> simp
   -- Apply scanLoop_preserves_tokens with n = 1
   have ⟨h_0_lt_tokens, h_preserved⟩ :=
@@ -6476,8 +8385,11 @@ lemma emit_preserves_ScanInv (s : ScannerState) (tok : YamlToken)
       exact h_bnd ⟨i, h_lt⟩
     · subst h_eq
       show ((s.emit tok).tokens[s.tokens.size]'hi).pos.offset ≤ s.offset
-      unfold ScannerState.emit
-      simp only [Array.getElem_push, dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+      -- 4.33: unfold `emit` inside the same simp call (an `unfold` first leaves the
+      -- getElem validity proof typed at `(s.emit tok).tokens.size`, making the goal
+      -- ill-typed at reducible transparency, so `Array.getElem_push` refuses to fire).
+      simp only [ScannerState.emit, Array.getElem_push,
+        dite_eq_right (by omega : ¬ s.tokens.size < s.tokens.size)]
       simp [ScannerState.currentPos]
 
 -- advance preserves ScanInv: offset increases, tokens unchanged.
@@ -6496,6 +8408,12 @@ lemma field_update_preserves_ScanInv (s s' : ScannerState)
     (h : ScanInv s) (h_tok : s'.tokens = s.tokens) (h_off : s'.offset = s.offset) :
     ScanInv s' := by
   unfold ScanInv ScanInv'; rw [h_tok, h_off]; exact h
+
+-- consumeBOM preserves ScanInv: it is `advance` with the column reset (item 35).
+lemma consumeBOM_preserves_ScanInv (s : ScannerState) (h : ScanInv s) :
+    ScanInv s.consumeBOM := by
+  unfold ScannerState.consumeBOM
+  exact field_update_preserves_ScanInv _ _ (advance_preserves_ScanInv s h) rfl rfl
 
 -- Field updates that only increase offset preserve ScanInv.
 lemma offset_ge_preserves_ScanInv (s s' : ScannerState)
@@ -6516,7 +8434,8 @@ lemma unwindIndentsLoop_preserves_ScanInv (s : ScannerState) (col : Int) (fuel :
     · -- Condition true: emit blockEnd, pop indents, recurse
       have h_emit : ScanInv (s.emit .blockEnd) := emit_preserves_ScanInv s .blockEnd h
       have h_pop : ScanInv ({ s.emit .blockEnd with
-          indents := (s.emit .blockEnd).indents.pop }) :=
+          indents := (s.emit .blockEnd).indents.pop,
+          pendingKeys := (s.emit .blockEnd).pendingKeys.pop }) :=
         field_update_preserves_ScanInv _ _ h_emit rfl rfl
       exact ih _ h_pop
     · exact h
@@ -6547,8 +8466,8 @@ lemma emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlTok
     intro ⟨i, hi⟩ ⟨j, hj⟩ hij
     show ((s.emitAt pos tok).tokens[i]'hi).pos.offset ≤
          ((s.emitAt pos tok).tokens[j]'hj).pos.offset
-    unfold ScannerState.emitAt
-    simp only [Array.getElem_push]
+    -- 4.33: unfold `emitAt` inside the same simp call — see emit_preserves_ScanInv.
+    simp only [ScannerState.emitAt, Array.getElem_push]
     split <;> rename_i hi_lt
     · -- i in original array
       split <;> rename_i hj_lt
@@ -6572,12 +8491,12 @@ lemma emitAt_preserves_ScanInv (s : ScannerState) (pos : YamlPos) (tok : YamlTok
       have := hi; simp [ScannerState.emitAt, Array.size_push] at this; omega
     rcases h_sz with h_lt | h_eq
     · -- Old token: use getElem_push with i < s.tokens.size
-      unfold ScannerState.emitAt
-      simp only [Array.getElem_push, show i < s.tokens.size from h_lt, dite_true]
+      simp only [ScannerState.emitAt, Array.getElem_push,
+        show i < s.tokens.size from h_lt, dite_true]
       exact h_bnd ⟨i, h_lt⟩
     · subst h_eq
-      unfold ScannerState.emitAt
-      simp only [Array.getElem_push, dif_neg (by omega : ¬ s.tokens.size < s.tokens.size)]
+      simp only [ScannerState.emitAt, Array.getElem_push,
+        dite_eq_right (by omega : ¬ s.tokens.size < s.tokens.size)]
       exact h_pos
 
 -- Simplified emitAt_preserves_ScanInv: when pos.offset = s.offset (common case).
@@ -6667,7 +8586,7 @@ lemma setIfInBounds_twice_preserves_ScanInv' (tokens : Array (Positioned YamlTok
   have h_eq : (tokens.setIfInBounds idx1 v1)[idx2]'h_idx2' =
       tokens[idx2]'h_idx2 := by
     rw [Array.getElem_setIfInBounds h_idx2]
-    exact if_neg h_ne
+    exact ite_eq_right h_ne
   simp only [h_eq]; exact h_off2
 
 -- scanValuePrepare preserves ScanInv, given that simpleKey placeholders
@@ -6719,7 +8638,7 @@ lemma scanValuePrepare_preserves_ScanInv (s : ScannerState) (h : ScanInv s)
         unfold pushMappingIndent
         split
         · -- indent check true: emit blockMappingStart + push indent
-          exact emit_preserves_ScanInv { s with indents := _ } .blockMappingStart
+          exact emit_preserves_ScanInv { s with indents := _, pendingKeys := _ } .blockMappingStart
             (field_update_preserves_ScanInv _ _ h rfl rfl)
         · -- indent check false: no-op
           exact h
@@ -6905,6 +8824,7 @@ lemma preprocess_preserves_ScanInv (s : ScannerState) (s' : ScannerState) (c : C
           · simp at h_ok
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
             obtain ⟨h_eq, _⟩ := h_ok; subst h_eq
+            apply field_update_preserves_ScanInv _ _ ?_ (closeStaleExplicitKey_tokens _) (closeStaleExplicitKey_offset _)
             apply saveSimpleKey_preserves_ScanInv
             exact field_update_preserves_ScanInv _ _
               (unwindIndents_preserves_ScanInv s_skip s_skip.col h_sinv) rfl rfl
@@ -6915,7 +8835,8 @@ lemma preprocess_preserves_ScanInv (s : ScannerState) (s' : ScannerState) (c : C
           · simp at h_ok
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_ok
             obtain ⟨h_eq, _⟩ := h_ok; subst h_eq
-            exact saveSimpleKey_preserves_ScanInv _ h_sinv
+            exact field_update_preserves_ScanInv _ _ (saveSimpleKey_preserves_ScanInv _ h_sinv)
+              (closeStaleExplicitKey_tokens _) (closeStaleExplicitKey_offset _)
 
 /-!
 ### Phase 2: Per-dispatcher ScanInv theorems
@@ -6972,6 +8893,7 @@ lemma dispatchFlowIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
     (h : ScanInv s) (s' : ScannerState)
     (h_ok : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) : ScanInv s' := by
   unfold scanNextToken_dispatchFlowIndicators at h_ok
+  replace h_ok := peel_flowAdj h_ok
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   -- c == '['
   split at h_ok
@@ -6983,8 +8905,10 @@ lemma dispatchFlowIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
       · simp at h_ok
       · split at h_ok
         · simp at h_ok
-        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-          exact scanFlowSequenceEnd_preserves_ScanInv s h
+        · split at h_ok
+          · simp at h_ok
+          · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+            exact scanFlowSequenceEnd_preserves_ScanInv s h
     -- c == '{'
     · split at h_ok
       · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
@@ -6995,8 +8919,10 @@ lemma dispatchFlowIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
           · simp at h_ok
           · split at h_ok
             · simp at h_ok
-            · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-              exact scanFlowMappingEnd_preserves_ScanInv s h
+            · split at h_ok
+              · simp at h_ok
+              · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
+                exact scanFlowMappingEnd_preserves_ScanInv s h
         -- c == ','
         · split at h_ok
           · split at h_ok
@@ -7369,7 +9295,10 @@ lemma foldQuotedNewlinesLoop_offset_ge (s : ScannerState) (emptyCount : Nat)
     unfold foldQuotedNewlinesLoop; simp only []
     split
     · split
-      · exact Nat.le_trans (Nat.le_trans (skipWhitespace_offset_ge s) (consumeNewline_offset_ge _)) (ih _ _)
+      · split
+        · exact Nat.le_refl _
+        · exact Nat.le_trans
+            (Nat.le_trans (skipWhitespace_offset_ge s) (consumeNewline_offset_ge _)) (ih _ _)
       · exact Nat.le_refl _
     · exact Nat.le_refl _
 
@@ -7382,9 +9311,12 @@ lemma skipBlankLinesLoop_offset_ge (s : ScannerState) (cnt : Nat) (fuel : Nat)
     unfold skipBlankLinesLoop; simp only []
     split
     · split
-      · exact Nat.le_trans
-          (Nat.le_trans (skipWhitespace_offset_ge s) (consumeNewline_offset_ge _))
-          (ih _ _)
+      · -- item 100: the gate stops the run where it started
+        split
+        · exact Nat.le_refl _
+        · exact Nat.le_trans
+            (Nat.le_trans (skipWhitespace_offset_ge s) (consumeNewline_offset_ge _))
+            (ih _ _)
       · exact Nat.le_refl _
     · exact Nat.le_refl _
 
@@ -7440,9 +9372,11 @@ lemma collectBlockScalarLoop_offset_ge (s : ScannerState) (rawContent : String)
                     (Nat.le_trans (collectLineContentLoop_offset_ge _ _ _)
                       (consumeNewline_offset_ge _)))
                   (ih _ _)
-              · -- not isLineBreak c': loop stops at s_after_line
-                exact Nat.le_trans (consumeExactSpaces_offset_ge s _)
-                  (collectLineContentLoop_offset_ge _ _ _)
+              · -- not isLineBreak c': empty run → `s`, else s_after_line
+                split
+                · exact Nat.le_refl _
+                · exact Nat.le_trans (consumeExactSpaces_offset_ge s _)
+                    (collectLineContentLoop_offset_ge _ _ _)
             · -- none: return s_after_line
               exact Nat.le_trans (consumeExactSpaces_offset_ge s _)
                 (collectLineContentLoop_offset_ge _ _ _)
@@ -7476,10 +9410,20 @@ lemma collectDoubleQuotedLoop_offset_ge (s : ScannerState) (content : String)
       split at h
       · -- some c after backslash
         split at h
-        · -- isLineBreak: consumeNewline → skipWhitespace → recurse
-          exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
-            (Nat.le_trans (consumeNewline_offset_ge s.advance)
-            (Nat.le_trans (skipWhitespace_offset_ge _) (ih _ _ _ h)))
+        · -- isLineBreak: the landing is a fold (item 87) — throws contradict,
+          -- both `folded` arms recurse from the fold's state.
+          simp only [bind, Except.bind] at h
+          split at h <;> try contradiction
+          rename_i fold_result heq
+          cases fold_result with
+          | mk folded s_fold =>
+            simp only [] at h
+            repeat' split at h
+            all_goals first
+              | contradiction
+              | exact Nat.le_trans (ScannerProgress.advance_offset_ge s)
+                  (Nat.le_trans (foldQuotedNewlines_offset_ge s.advance folded s_fold heq)
+                    (ih _ _ _ h))
         · -- regular escape: processEscape → recurse
           simp only [bind, Except.bind] at h
           split at h <;> try contradiction
@@ -7578,6 +9522,9 @@ lemma collectPlainScalarLoop_offset_ge (s : ScannerState) (content spaces : Stri
                 simp only [Except.ok.injEq] at h; subst h
                 exact Nat.le_refl _
               · -- recurse with content-length check
+                -- item 50: the flow floor's throw contradicts `.ok`
+                split at h
+                · contradiction
                 dsimp only [] at h
                 generalize h_loop : collectPlainScalarLoop s_fold (content ++ folded) "" n inFlow contentIndent inputEnd = cont_result at h
                 cases cont_result with
@@ -7780,6 +9727,8 @@ lemma scanTagDirective_preserves_ScanInv (s s_after_ws : ScannerState)
   dsimp only [] at h_ok
   simp only [bind, Except.bind] at h_ok
   split at h_ok
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at h_ok
   · -- some '#'
     split at h_ok
     · contradiction
@@ -7898,28 +9847,8 @@ lemma dispatchStructural_preserves_ScanInv (s : ScannerState) (c : Char)
   simp only [bind, Except.bind, pure, Except.pure] at h_ok
   -- Flow indentation check: if in_flow && indentation issue
   split at h_ok
-  · -- flow indentation check true
-    split at h_ok
-    · simp at h_ok  -- error
-    · -- past flow indentation → document marker in flow check
-      split at h_ok
-      · simp at h_ok
-      · split at h_ok
-        · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-          exact scanDocumentStart_preserves_ScanInv s h
-        · split at h_ok
-          · split at h_ok
-            · simp at h_ok
-            · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-              rename_i s_de h_de
-              exact scanDocumentEnd_preserves_ScanInv s s_de h h_de
-          · split at h_ok
-            · split at h_ok
-              · simp at h_ok
-              · simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
-                rename_i s_dir h_dir
-                exact scanDirective_preserves_ScanInv s s_dir h h_dir
-            · simp at h_ok
+  · -- item 50: the floor refuses outright (the `]`/`}` exemption is gone)
+    simp at h_ok
   · -- flow indentation check false
     split at h_ok
     · simp at h_ok
@@ -8008,7 +9937,11 @@ lemma scanBlockEntry_preserves_ScanInv (s s' : ScannerState)
     rename_i h_fl
     split at h_ok
     · contradiction
-    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    · split at h_ok  -- item 48 same-line check
+      · contradiction
+      split at h_ok  -- `scanBlockEntryValidate` (item 134)
+      · contradiction
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
       -- h_fl resolves if → pushSequenceIndent s s.col
       have h1 := pushSequenceIndent_preserves_ScanInv s s.col h
       have h2 := emit_preserves_ScanInv _ .blockEntry h1
@@ -8030,7 +9963,8 @@ lemma scanKey_preserves_ScanInv (s s' : ScannerState)
   -- Examine what split does:
   split at h_ok
   · rename_i h_cond1
-    -- h_cond1 tells us what was split on
+    -- `scanKeyValidate` (item 131), then the pushMappingIndent `if`
+    split at h_ok <;> try contradiction
     split at h_ok
     · rename_i h_cond2
       split at h_ok <;> (first | contradiction | skip)
@@ -8088,16 +10022,18 @@ lemma scanValue_preserves_ScanInv (s s' : ScannerState)
   -- Don't unfold them — just split on .error/.ok for each
   split at h_ok
   · simp at h_ok  -- scanValueValidate error → contradiction
-  · -- scanValueValidate ok; now scanValueTabCheck bind
+  · -- scanValueValidate ok; now the two tab-check binds
+    split at h_ok
+    · simp at h_ok  -- scanValueIndentTabCheck error (item 31) → contradiction
     split at h_ok
     · simp at h_ok  -- scanValueTabCheck error → contradiction
-    · -- Both checks passed
-      simp only [Except.ok.injEq] at h_ok; subst h_ok
-      apply field_update_preserves_ScanInv _ _ _ rfl rfl
-      apply advance_preserves_ScanInv
-      apply emit_preserves_ScanInv
-      exact scanValuePrepare_preserves_ScanInv (scanValueClearKey s)
-        (scanValueClearKey_preserves_ScanInv s h) h_sk
+    -- All three checks passed
+    simp only [Except.ok.injEq] at h_ok; subst h_ok
+    apply field_update_preserves_ScanInv _ _ _ rfl rfl
+    apply advance_preserves_ScanInv
+    apply emit_preserves_ScanInv
+    exact scanValuePrepare_preserves_ScanInv (scanValueClearKey s)
+      (scanValueClearKey_preserves_ScanInv s h) h_sk
 
 -- Phase 2d dispatcher: dispatchBlockIndicators preserves ScanInv.
 lemma dispatchBlockIndicators_preserves_ScanInv (s : ScannerState) (c : Char)
@@ -8233,15 +10169,24 @@ lemma scanNamedTag_preserves_ScanInv (s : ScannerState) (startPos : YamlPos)
         (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd "" (inputEnd - (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd.offset)
       simp only [h_tok2, h_tok1] at hi ⊢
       exact h_ge ⟨i, hi⟩
-  · -- foundBang = false: collectTagHandleLoop only → emitAt
+  · -- foundBang = false: collectTagHandleLoop → collectTagSuffixLoop (primary suffix) → emitAt
     apply emitAt_preserves_ScanInv
-    · exact ScanInv_mono h
-        (ScanHelpers.collectTagHandleLoop_preserves_tokens s "" _)
-        (collectTagHandleLoop_offset_ge s "" _)
-    · exact Nat.le_trans h_pos (collectTagHandleLoop_offset_ge s "" _)
+    · have h_handle_tok := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+      have h_handle_ge := collectTagHandleLoop_offset_ge s "" (inputEnd - s.offset)
+      have h_inv_handle : ScanInv (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd :=
+        ScanInv_mono h h_handle_tok h_handle_ge
+      exact ScanInv_mono h_inv_handle
+        (ScanHelpers.collectTagSuffixLoop_preserves_tokens _ _ _)
+        (collectTagSuffixLoop_offset_ge _ _ _)
+    · exact Nat.le_trans h_pos (Nat.le_trans (collectTagHandleLoop_offset_ge s "" _)
+        (collectTagSuffixLoop_offset_ge _ _ _))
     · intro ⟨i, hi⟩
-      have h_tok := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
-      simp only [h_tok] at hi ⊢
+      have h_tok1 := ScanHelpers.collectTagHandleLoop_preserves_tokens s "" (inputEnd - s.offset)
+      have h_tok2 := ScanHelpers.collectTagSuffixLoop_preserves_tokens
+        (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd
+        ("!", (collectTagHandleLoop s "" (inputEnd - s.offset)).fst).snd
+        (inputEnd - (collectTagHandleLoop s "" (inputEnd - s.offset)).snd.snd.offset)
+      simp only [h_tok2, h_tok1] at hi ⊢
       exact h_ge ⟨i, hi⟩
 
 -- scanTag preserves ScanInv (Except function).
@@ -8478,6 +10423,8 @@ lemma dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
   -- c == '&'
   split at h_ok
   · -- scanAnchorOrAlias bind
+    split at h_ok   -- item 9e: the property-run guard
+    · simp at h_ok
     generalize h_anch : scanAnchorOrAlias s true = result at h_ok
     cases result with
     | error e => simp at h_ok
@@ -8487,19 +10434,18 @@ lemma dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
         (scanAnchorOrAlias_preserves_ScanInv s true h s_a h_anch) rfl rfl
   · -- c == '*'
     split at h_ok
-    · -- inner split: alias validation check
+    · split at h_ok   -- item 9e: the property-run guard
+      · simp at h_ok
+      -- inner split: alias validation check
       split at h_ok
       · contradiction
-      · -- scanAnchorOrAlias bind
-        generalize h_anch : scanAnchorOrAlias s false = result at h_ok
-        cases result with
-        | error e => simp at h_ok
-        | ok s_a =>
-          simp only [Except.ok.injEq] at h_ok; subst h_ok
-          exact scanAnchorOrAlias_preserves_ScanInv s false h s_a h_anch
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_preserves_ScanInv s false h _ (aliasArm_scan_ok h_ok)
     · -- c == '!'
       split at h_ok
-      · -- scanTag bind
+      · split at h_ok   -- item 9e: the property-run guard
+        · simp at h_ok
+        -- scanTag bind
         generalize h_tag : scanTag s = result at h_ok
         cases result with
         | error e => simp at h_ok
@@ -8508,8 +10454,9 @@ lemma dispatchContent_preserves_ScanInv (s : ScannerState) (c : Char)
           exact scanTag_preserves_ScanInv s h s_t h_tag
       · -- c == '|' || c == '>'
         split at h_ok
-        · -- scanBlockScalar result is returned directly
-          exact scanBlockScalar_preserves_ScanInv s _ h h_ok
+        · -- scanBlockScalar result is returned directly, under the item-9c
+          -- `!inFlow` guard (peeled: `.error` cannot equal `.ok`)
+          exact scanBlockScalar_preserves_ScanInv s _ h (peel_blockScalarGuard h_ok)
         · -- c == '"'
           split at h_ok
           · split at h_ok <;> try contradiction
@@ -8563,6 +10510,12 @@ def SimpleKeyValid (s : ScannerState) : Prop :=
       s.tokens[s.simpleKey.tokenIndex].pos = s.simpleKey.pos) ∧
     (∀ (h2 : s.simpleKey.tokenIndex + 1 < s.tokens.size),
       s.tokens[s.simpleKey.tokenIndex + 1].pos = s.simpleKey.pos)
+
+/-- Item 333: the register reset after the key save touches neither `simpleKey`
+    nor `tokens`. -/
+lemma closeStaleExplicitKey_preserves_SimpleKeyValid (s : ScannerState)
+    (h : SimpleKeyValid s) : SimpleKeyValid (closeStaleExplicitKey s) := by
+  rcases closeStaleExplicitKey_cases s with h_eq | ⟨_, _, h_eq⟩ <;> rw [h_eq] <;> exact h
 
 -- SimpleKeyValid is vacuously true when possible = false.
 lemma SimpleKeyValid_of_not_possible (s : ScannerState)
@@ -8645,6 +10598,7 @@ lemma preprocess_preserves_SimpleKeyValid (s : ScannerState) (s' : ScannerState)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
+            apply closeStaleExplicitKey_preserves_SimpleKeyValid
             apply saveSimpleKey_preserves_SimpleKeyValid
             show SimpleKeyValid { unwindIndents s_skip s_skip.col with needIndentCheck := false }
             exact unwindIndents_preserves_SimpleKeyValid s_skip s_skip.col h_skv_skip
@@ -8655,7 +10609,7 @@ lemma preprocess_preserves_SimpleKeyValid (s : ScannerState) (s' : ScannerState)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            exact saveSimpleKey_preserves_SimpleKeyValid s_skip h_skv_skip
+            exact closeStaleExplicitKey_preserves_SimpleKeyValid _ (saveSimpleKey_preserves_SimpleKeyValid s_skip h_skv_skip)
 
 -- allowDirectives update preserves SimpleKeyValid.
 lemma allowDir_ite_preserves_SimpleKeyValid (s : ScannerState)
@@ -8711,6 +10665,11 @@ def SimpleKeyStackValid (s : ScannerState) : Prop :=
 /-- Combined simple key validity for both current and stacked keys. -/
 def AllKeysValid (s : ScannerState) : Prop :=
   SimpleKeyValid s ∧ SimpleKeyStackValid s
+
+/-- Item 333, the stack half. -/
+lemma closeStaleExplicitKey_preserves_SimpleKeyStackValid (s : ScannerState)
+    (h : SimpleKeyStackValid s) : SimpleKeyStackValid (closeStaleExplicitKey s) := by
+  rcases closeStaleExplicitKey_cases s with h_eq | ⟨_, _, h_eq⟩ <;> rw [h_eq] <;> exact h
 
 -- SimpleKeyStackValid is monotone: preserved when tokens grow and existing entries unchanged.
 lemma SimpleKeyStackValid_mono (s s' : ScannerState)
@@ -8827,6 +10786,7 @@ lemma preprocess_preserves_AllKeysValid (s s' : ScannerState) (c : Char)
               · simp at h
               · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
                 obtain ⟨rfl, _⟩ := h
+                apply closeStaleExplicitKey_preserves_SimpleKeyStackValid
                 apply saveSimpleKey_preserves_SimpleKeyStackValid
                 show SimpleKeyStackValid { unwindIndents s_skip s_skip.col with needIndentCheck := false }
                 exact unwindIndents_preserves_SimpleKeyStackValid s_skip s_skip.col h_ssv_skip
@@ -8836,7 +10796,7 @@ lemma preprocess_preserves_AllKeysValid (s s' : ScannerState) (c : Char)
               · simp at h
               · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
                 obtain ⟨rfl, _⟩ := h
-                exact saveSimpleKey_preserves_SimpleKeyStackValid s_skip h_ssv_skip⟩
+                exact closeStaleExplicitKey_preserves_SimpleKeyStackValid _ (saveSimpleKey_preserves_SimpleKeyStackValid s_skip h_ssv_skip)⟩
 
 -- allowDirectives update preserves AllKeysValid.
 lemma allowDir_ite_preserves_AllKeysValid (s : ScannerState)
@@ -8852,38 +10812,8 @@ lemma dispatchStructural_preserves_AllKeysValid (s : ScannerState) (c : Char)
   unfold scanNextToken_dispatchStructural at h
   simp only [bind, Except.bind, pure, Except.pure] at h
   split at h
-  · split at h
-    · simp at h
-    · split at h
-      · simp at h
-      · split at h
-        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-          exact AllKeysValid_of_cleared_current s _ (scanDocumentStart_clears_simpleKey s)
-            (SimpleKeyStackValid_mono s _ h_akv.2
-              (scanDocumentStart_preserves_simpleKeyStack s)
-              (by have := ScanHelpers.scanDocumentStart_adds_tokens s; omega)
-              (fun i hi => ScanHelpers.scanDocumentStart_preserves_prefix s i hi))
-        · split at h
-          · split at h
-            · simp at h
-            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-              rename_i s_de h_de
-              exact AllKeysValid_of_cleared_current s _ (scanDocumentEnd_clears_simpleKey s s_de h_de)
-                (SimpleKeyStackValid_mono s _ h_akv.2
-                  (scanDocumentEnd_preserves_simpleKeyStack s s_de h_de)
-                  (by have := ScanHelpers.scanDocumentEnd_adds_tokens s s_de h_de; omega)
-                  (fun i hi => ScanHelpers.scanDocumentEnd_preserves_prefix s s_de h_de i hi))
-          · split at h
-            · split at h
-              · simp at h
-              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                rename_i s_dir h_dir
-                exact AllKeysValid_mono s _ h_akv
-                  (scanDirective_preserves_simpleKey s s_dir h_dir)
-                  (scanDirective_preserves_simpleKeyStack s s_dir h_dir)
-                  (ScanHelpers.scanDirective_monotonic s s_dir h_dir)
-                  (fun i hi => ScanHelpers.scanDirective_preserves_prefix s s_dir h_dir i hi)
-            · simp at h
+  · -- item 50: the floor refuses outright (the `]`/`}` exemption is gone)
+    simp at h
   · split at h
     · simp at h
     · split at h
@@ -8988,6 +10918,7 @@ lemma dispatchFlowIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char
     (s' : ScannerState) (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
     (h_akv : AllKeysValid s) : AllKeysValid s' := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, Except.bind, pure, Except.pure] at h
   split at h
   · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
@@ -9001,12 +10932,14 @@ lemma dispatchFlowIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char
       · simp at h
       · split at h
         · simp at h
-        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-          exact flowEnd_preserves_AllKeysValid s _ h_akv
-            (scanFlowSequenceEnd_simpleKey_restored s)
-            (scanFlowSequenceEnd_stack_popped s)
-            (by have := scanFlowSequenceEnd_adds_one_token s; omega)
-            (fun i hi => ScanHelpers.scanFlowSequenceEnd_preserves_prefix s i hi)
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            exact flowEnd_preserves_AllKeysValid s _ h_akv
+              (scanFlowSequenceEnd_simpleKey_restored s)
+              (scanFlowSequenceEnd_stack_popped s)
+              (by have := scanFlowSequenceEnd_adds_one_token s; omega)
+              (fun i hi => ScanHelpers.scanFlowSequenceEnd_preserves_prefix s i hi)
     · split at h
       · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
         exact flowStart_preserves_AllKeysValid s _ h_akv
@@ -9019,12 +10952,14 @@ lemma dispatchFlowIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char
           · simp at h
           · split at h
             · simp at h
-            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-              exact flowEnd_preserves_AllKeysValid s _ h_akv
-                (scanFlowMappingEnd_simpleKey_restored s)
-                (scanFlowMappingEnd_stack_popped s)
-                (by have := scanFlowMappingEnd_adds_one_token s; omega)
-                (fun i hi => ScanHelpers.scanFlowMappingEnd_preserves_prefix s i hi)
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                exact flowEnd_preserves_AllKeysValid s _ h_akv
+                  (scanFlowMappingEnd_simpleKey_restored s)
+                  (scanFlowMappingEnd_stack_popped s)
+                  (by have := scanFlowMappingEnd_adds_one_token s; omega)
+                  (fun i hi => ScanHelpers.scanFlowMappingEnd_preserves_prefix s i hi)
         · split at h
           · split at h
             · simp at h
@@ -9032,11 +10967,13 @@ lemma dispatchFlowIndicators_preserves_AllKeysValid (s : ScannerState) (c : Char
               · simp at h
               · rename_i _ _ _ h_entry
                 simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                exact AllKeysValid_mono s _ h_akv
-                  (scanFlowEntry_preserves_simpleKey s _ h_entry)
-                  (scanFlowEntry_preserves_simpleKeyStack s _ h_entry)
-                  (by have := ScanHelpers.scanFlowEntry_adds_one_token s _ h_entry; omega)
-                  (fun i hi => ScanHelpers.scanFlowEntry_preserves_prefix s _ h_entry i hi)
+                -- item 9q: the `,` clears the current key; the stack is untouched
+                exact AllKeysValid_of_cleared_current s _
+                  (scanFlowEntry_clears_simpleKey s _ h_entry)
+                  (SimpleKeyStackValid_mono s _ h_akv.2
+                    (scanFlowEntry_preserves_simpleKeyStack s _ h_entry)
+                    (by have := ScanHelpers.scanFlowEntry_adds_one_token s _ h_entry; omega)
+                    (fun i hi => ScanHelpers.scanFlowEntry_preserves_prefix s _ h_entry i hi))
           · simp at h
 
 -- dispatchBlockIndicators: blockEntry preserves, key/value clear possible.
@@ -9088,6 +11025,8 @@ lemma dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
   simp only [bind, Except.bind, pure, Except.pure] at h
   split at h
   · -- c == '&': anchor with definedAnchors update
+    split at h   -- item 9e: the property-run guard
+    · simp at h
     split at h
     · contradiction
     · simp only [Except.ok.injEq] at h; subst h
@@ -9100,23 +11039,30 @@ lemma dispatchContent_preserves_AllKeysValid (s : ScannerState) (c : Char)
         (Nat.le_refl _) (fun i hi => rfl)
   · split at h
     · -- c == '*': alias (with alias validation check)
+      split at h   -- item 9e: the property-run guard
+      · simp at h
       split at h
       · contradiction
-      · -- scanAnchorOrAlias result returned directly
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        replace h := aliasArm_scan_ok h
         exact AllKeysValid_mono s _ h_akv
           (scanAnchorOrAlias_preserves_simpleKey s false _ h)
           (scanAnchorOrAlias_preserves_simpleKeyStack s false _ h)
           (by have := ScanHelpers.scanAnchorOrAlias_adds_one_token s false _ h; omega)
           (fun i hi => ScanHelpers.scanAnchorOrAlias_preserves_prefix s false _ h i hi)
     · split at h
-      · -- c == '!': tag result returned directly
+      · -- c == '!': tag result returned directly, under the item-9e guard
+        split at h   -- item 9e: the property-run guard
+        · simp at h
         exact AllKeysValid_mono s _ h_akv
           (scanTag_preserves_simpleKey s _ h)
           (scanTag_preserves_simpleKeyStack s _ h)
           (by have := ScanHelpers.scanTag_adds_one_token s _ h; omega)
           (fun i hi => ScanHelpers.scanTag_preserves_prefix s _ h i hi)
       · split at h
-        · -- c == '|' || c == '>': block scalar returns directly (clears key)
+        · -- c == '|' || c == '>': block scalar returns directly (clears key),
+          -- under the item-9c `!inFlow` guard
+          replace h := peel_blockScalarGuard h
           exact AllKeysValid_of_cleared_current s _ (scanBlockScalar_clears_simpleKey s _ h)
             (SimpleKeyStackValid_mono s _ h_akv.2
               (scanBlockScalar_preserves_simpleKeyStack s _ h)
@@ -9211,6 +11157,10 @@ lemma scanNextToken_preserves_AllKeysValid :
   split at h_ok <;> (try (simp at h_ok; done)) -- preprocess Option: none closes
   rename_i s2 c h_pre
   have h_akv2 := preprocess_preserves_AllKeysValid s s2 c h_pre h_akv
+  -- §9.2 dangling-node check (item 133)
+  split at h_ok <;> (try (simp at h_ok; done))
+  -- §8.1 flow-value floor (item 172)
+  split at h_ok <;> (try (simp at h_ok; done))
   split at h_ok <;> (try (simp at h_ok; done)) -- structural Except: .error closes
   split at h_ok
   · -- structural Option: some → structural succeeded (source order: some first)
@@ -9220,7 +11170,7 @@ lemma scanNextToken_preserves_AllKeysValid :
     have h_akv3 := allowDir_ite_preserves_AllKeysValid s2 h_akv2
     -- Pending-directives check (Fix B)
     split at h_ok <;> (try (simp at h_ok; done))
-    -- Block→flow underindent check
+    -- §9.2 bare-document check (item 132)
     split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Except split
     split at h_ok <;> (try (simp at h_ok; done))
@@ -9236,6 +11186,7 @@ lemma scanNextToken_preserves_AllKeysValid :
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchBlockIndicators_preserves_AllKeysValid _ c _ (by assumption) h_akv3
       · -- block none → content
+        split at h_ok <;> (try (simp at h_ok; done)) -- adjacent-value check (item 47)
         split at h_ok <;> (try (simp at h_ok; done)) -- content Except
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchContent_preserves_AllKeysValid _ c _ (by assumption) h_akv3
@@ -9294,6 +11245,10 @@ lemma scanNextToken_preserves_ScanInv :
   rename_i s2 c h_pre
   have h_inv2 := preprocess_preserves_ScanInv s s2 c h_inv h_pre
   have h_skv2 := preprocess_preserves_SimpleKeyValid s s2 c h_pre h_skv
+  -- §9.2 dangling-node check (item 133)
+  split at h_ok <;> (try (simp at h_ok; done))
+  -- §8.1 flow-value floor (item 172)
+  split at h_ok <;> (try (simp at h_ok; done))
   split at h_ok <;> (try (simp at h_ok; done)) -- structural Except
   split at h_ok
   · -- structural some (source order: some first)
@@ -9304,7 +11259,7 @@ lemma scanNextToken_preserves_ScanInv :
     have h_skv3 := allowDir_ite_preserves_SimpleKeyValid s2 h_skv2
     -- Pending-directives check (Fix B)
     split at h_ok <;> (try (simp at h_ok; done))
-    -- Block→flow underindent check
+    -- §9.2 bare-document check (item 132)
     split at h_ok <;> (try (simp at h_ok; done))
     -- Flow Except split
     split at h_ok <;> (try (simp at h_ok; done))
@@ -9321,6 +11276,7 @@ lemma scanNextToken_preserves_ScanInv :
         exact dispatchBlockIndicators_preserves_ScanInv _ c h_inv3
           (SimpleKeyValid_implies_scanValue_h_sk _ h_skv3) _ (by assumption)
       · -- block none → content
+        split at h_ok <;> (try (simp at h_ok; done)) -- adjacent-value check (item 47)
         split at h_ok <;> (try (simp at h_ok; done)) -- content Except
         simp only [Except.ok.injEq, Option.some.injEq] at h_ok; subst h_ok
         exact dispatchContent_preserves_ScanInv _ c h_inv3 _ (by assumption)
@@ -9345,6 +11301,12 @@ lemma scanLoop_ordered (s : ScannerState) (fuel : Nat)
       split at h_ok
       · simp at h_ok
       · split at h_ok
+        · simp at h_ok
+        -- §9.2 dangling-node check (item 133)
+        split at h_ok
+        · simp at h_ok
+        -- §8.1 flow-value floor (item 172)
+        split at h_ok
         · simp at h_ok
         · -- tokens = (unwindIndents s (-1)).emit(.streamEnd).tokens
           injection h_ok with h_eq
@@ -9377,10 +11339,10 @@ lemma scan_positions_ordered (input : String) (tokens : Array (Positioned YamlTo
       simp [ScannerState.emit, ScannerState.mk', ScannerState.currentPos]
   -- BOM handling preserves ScanInv
   have h_inv : ScanInv (match (ScannerState.mk' input).emit .streamStart |>.peek? with
-      | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
+      | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).consumeBOM
       | _ => (ScannerState.mk' input).emit .streamStart) := by
     split
-    · exact advance_preserves_ScanInv _ h_inv0
+    · exact consumeBOM_preserves_ScanInv _ h_inv0
     · exact h_inv0
   -- Initial AllKeysValid: simpleKey.possible = false, stack empty.
   have h_akv0 : AllKeysValid ((ScannerState.mk' input).emit .streamStart) := by
@@ -9388,13 +11350,13 @@ lemma scan_positions_ordered (input : String) (tokens : Array (Positioned YamlTo
     · intro h_poss; simp [ScannerState.mk', ScannerState.emit] at h_poss
     · intro j hj; simp [ScannerState.mk', ScannerState.emit] at hj
   have h_akv : AllKeysValid (match (ScannerState.mk' input).emit .streamStart |>.peek? with
-      | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).advance
+      | some '\uFEFF' => ((ScannerState.mk' input).emit .streamStart).consumeBOM
       | _ => (ScannerState.mk' input).emit .streamStart) := by
     split
-    · have h_tok := advance_preserves_tokens ((ScannerState.mk' input).emit .streamStart)
+    · have h_tok := consumeBOM_preserves_tokens ((ScannerState.mk' input).emit .streamStart)
       exact AllKeysValid_mono _ _ h_akv0
-        (advance_preserves_simpleKey _)
-        (advance_preserves_simpleKeyStack _)
+        (consumeBOM_preserves_simpleKey _)
+        (consumeBOM_preserves_simpleKeyStack _)
         (by simp [h_tok])
         (fun i hi => by simp [h_tok])
     · exact h_akv0
@@ -9781,7 +11743,7 @@ lemma preprocess_offset_ge (s s' : ScannerState) (c : Char)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            rw [ScannerProgress.saveSimpleKey_offset]
+            rw [closeStaleExplicitKey_offset, ScannerProgress.saveSimpleKey_offset]
             show ({ unwindIndents s_skip ↑s_skip.col with needIndentCheck := false }).offset ≥ s.offset
             show (unwindIndents s_skip ↑s_skip.col).offset ≥ s.offset
             rw [unwindIndents_offset_eq]; exact h_ge
@@ -9792,7 +11754,7 @@ lemma preprocess_offset_ge (s s' : ScannerState) (c : Char)
           · simp at h
           · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
             obtain ⟨rfl, _⟩ := h
-            rw [ScannerProgress.saveSimpleKey_offset]; exact h_ge
+            rw [closeStaleExplicitKey_offset, ScannerProgress.saveSimpleKey_offset]; exact h_ge
 
 lemma preprocess_hasMore (s s' : ScannerState) (c : Char)
     (h : scanNextToken_preprocess s = .ok (some (s', c))) :
@@ -9881,14 +11843,16 @@ lemma scanValue_offset_lt (s s' : ScannerState)
   split at h
   · cases h
   · split at h
+    · cases h  -- scanValueIndentTabCheck = .error (item 31)
+    split at h
     · cases h
-    · injection h with h_eq; subst h_eq
-      have hck := svck_offset s; have hcke := svck_inputEnd s
-      have hvp : (scanValuePrepare (scanValueClearKey s)).offset = s.offset := by rw [svp_offset, hck]
-      have hvpe : (scanValuePrepare (scanValueClearKey s)).inputEnd = s.inputEnd := by rw [svp_inputEnd, hcke]
-      have h1 := ScannerProgress.advance_offset_lt ((scanValuePrepare (scanValueClearKey s)).emit .value)
-        (by rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd, hvp, hvpe]; exact hlt)
-      rw [ScannerProgress.emit_offset, hvp] at h1; exact h1
+    injection h with h_eq; subst h_eq
+    have hck := svck_offset s; have hcke := svck_inputEnd s
+    have hvp : (scanValuePrepare (scanValueClearKey s)).offset = s.offset := by rw [svp_offset, hck]
+    have hvpe : (scanValuePrepare (scanValueClearKey s)).inputEnd = s.inputEnd := by rw [svp_inputEnd, hcke]
+    have h1 := ScannerProgress.advance_offset_lt ((scanValuePrepare (scanValueClearKey s)).emit .value)
+      (by rw [ScannerProgress.emit_offset, ScannerProgress.emit_inputEnd, hvp, hvpe]; exact hlt)
+    rw [ScannerProgress.emit_offset, hvp] at h1; exact h1
 
 set_option maxHeartbeats 800000 in
 /-- `scanDocumentStart` strictly advances offset when `offset < inputEnd`. -/
@@ -10034,7 +11998,8 @@ lemma scanNamedTag_offset_ge (s : ScannerState) (startPos : YamlPos) (inputEnd :
   split
   · exact Nat.le_trans (collectTagHandleLoop_offset_ge s "" _)
       (collectTagSuffixLoop_offset_ge _ _ _)
-  · exact collectTagHandleLoop_offset_ge s "" _
+  · exact Nat.le_trans (collectTagHandleLoop_offset_ge s "" _)
+      (collectTagSuffixLoop_offset_ge _ _ _)
 
 set_option maxHeartbeats 800000 in
 /-- `scanTag` strictly advances offset when `offset < inputEnd`. -/
@@ -10105,9 +12070,11 @@ lemma scanBlockScalarBody_offset_ge (s_orig s_nl : ScannerState)
     (h : scanBlockScalarBody s_orig s_nl chomp expl isLit startPos = .ok s') :
     s'.offset ≥ s_nl.offset := by
   unfold scanBlockScalarBody at h; dsimp only [] at h
-  split at h
-  · cases h
-  · simp only [Except.ok.injEq] at h; subst h
+  repeat (any_goals (split at h))
+  all_goals (try contradiction)
+  all_goals
+    simp only [Except.ok.injEq] at h
+    subst h
     exact collectBlockScalarLoop_offset_ge _ _ _ _ _
 
 /-- `scanBlockScalar` strictly advances offset when `offset < inputEnd`. -/
@@ -10190,14 +12157,14 @@ lemma canStart_terminates_none (c : Char) (s : ScannerState) (inFlow : Bool)
     split
     · rename_i n hn
       unfold canStartPlainScalarBool at hcan
-      rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
+      rw [ite_eq_left (Or.inr (Or.inr rfl)), hn] at hcan
       simp only [Bool.and_eq_true, Bool.not_eq_true'] at hcan
       obtain ⟨⟨⟨⟨hws, hlb⟩, hflow⟩, hpr⟩, hbom⟩ := hcan
       have hbom' : n ≠ '﻿' := bne_iff_ne.mp hbom
       simp [isBlankBool, hws, hlb, hflow, hpr, hbom']
     · rename_i hn
       unfold canStartPlainScalarBool at hcan
-      rw [if_pos (Or.inr (Or.inr rfl)), hn] at hcan
+      rw [ite_eq_left (Or.inr (Or.inr rfl)), hn] at hcan
       contradiction
 
 -- `scanPlainScalar` strictly advances offset when `offset < inputEnd`,
@@ -10241,24 +12208,8 @@ lemma dispatchStructural_offset_gt (s s' : ScannerState) (c : Char)
   unfold scanNextToken_dispatchStructural at h
   simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
   split at h  -- s.inFlow && indent check
-  · split at h  -- c != ']' && c != '}'
-    · cases h
-    · split at h  -- s.col == 0 && s.inFlow && (atDocumentStart || atDocumentEnd)
-      · cases h
-      · split at h  -- s.col == 0 && atDocumentStart
-        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-          exact scanDocumentStart_offset_lt s h_hm
-        · split at h  -- s.col == 0 && atDocumentEnd
-          · split at h
-            · cases h
-            · injection h with h; injection h with h; subst h
-              exact scanDocumentEnd_offset_lt s _ h_hm ‹_›
-          · split at h  -- c == '%' && s.col == 0
-            · split at h
-              · cases h
-              · injection h with h; injection h with h; subst h
-                exact scanDirective_offset_lt s _ h_hm ‹_›
-            · nomatch h
+  · -- item 50: the floor refuses outright (the `]`/`}` exemption is gone)
+    cases h
   · split at h  -- s.col == 0 && s.inFlow && (atDocumentStart || atDocumentEnd)
     · cases h
     · split at h  -- s.col == 0 && atDocumentStart
@@ -10281,6 +12232,7 @@ lemma dispatchFlowIndicators_offset_gt (s s' : ScannerState) (c : Char)
     (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s')) :
     s'.offset > s.offset := by
   unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
   simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
   split at h
   · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
@@ -10290,8 +12242,10 @@ lemma dispatchFlowIndicators_offset_gt (s s' : ScannerState) (c : Char)
       · cases h
       · split at h
         · cases h
-        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-          exact ScannerProgress.scanFlowSequenceEnd_offset_lt s h_hm
+        · split at h
+          · cases h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            exact ScannerProgress.scanFlowSequenceEnd_offset_lt s h_hm
     · split at h
       · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
         exact ScannerProgress.scanFlowMappingStart_offset_lt s h_hm
@@ -10300,8 +12254,10 @@ lemma dispatchFlowIndicators_offset_gt (s s' : ScannerState) (c : Char)
           · cases h
           · split at h
             · cases h
-            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-              exact ScannerProgress.scanFlowMappingEnd_offset_lt s h_hm
+            · split at h
+              · cases h
+              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                exact ScannerProgress.scanFlowMappingEnd_offset_lt s h_hm
         · split at h
           · split at h
             · cases h
@@ -10344,21 +12300,27 @@ lemma dispatchContent_offset_gt (s s' : ScannerState) (c : Char)
   unfold scanNextToken_dispatchContent at h
   simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
   split at h  -- c == '&'
-  · split at h
+  · split at h   -- item 9e: the property-run guard
+    · simp at h
+    split at h
     · cases h
     · simp only [Except.ok.injEq] at h; subst h; dsimp only []
       exact scanAnchorOrAlias_offset_lt s _ true h_hm ‹_›
   · split at h  -- c == '*'
-    · split at h
+    · split at h   -- item 9e: the property-run guard
+      · simp at h
+      split at h
       · cases h
-      · -- scanAnchorOrAlias result returned directly
-        exact scanAnchorOrAlias_offset_lt s _ false h_hm h
+      · -- item 9h: peel `validateAliasClose`; the alias facts are unchanged.
+        exact scanAnchorOrAlias_offset_lt s _ false h_hm (aliasArm_scan_ok h)
     · split at h  -- c == '!'
-      · -- scanTag result returned directly
+      · split at h   -- item 9e: the property-run guard
+        · simp at h
+        -- scanTag result returned directly
         exact scanTag_offset_lt s _ h_hm h
       · split at h  -- c == '|' || c == '>'
-        · -- scanBlockScalar result returned directly
-          exact scanBlockScalar_offset_lt s _ h_hm h
+        · -- scanBlockScalar result returned directly, under the item-9c guard
+          exact scanBlockScalar_offset_lt s _ h_hm (peel_blockScalarGuard h)
         · split at h  -- c == '"'
           · split at h
             · cases h
@@ -10454,6 +12416,12 @@ lemma scanNextToken_progress (s s' : ScannerState)
     · rename_i sp c h_pre
       have h_ge := preprocess_offset_ge s sp c h_pre
       have h_hm := preprocess_hasMore s sp c h_pre
+      -- §9.2 dangling-node check (item 133)
+      split at h
+      · cases h
+      -- §8.1 flow-value floor (item 172)
+      split at h
+      · cases h
       -- Split on dispatchStructural
       split at h
       · cases h
@@ -10468,68 +12436,571 @@ lemma scanNextToken_progress (s s' : ScannerState)
           -- Pending-directives check (Fix B)
           split at h
           · cases h
-          · -- Outermost match is checkBlockFlowIndent
+          -- §9.2 bare-document check (item 132)
+          split at h
+          · cases h
+          · -- Case-split on allowDirectives to resolve the if-expression
+            rcases h_ad : sp.allowDirectives with _ | _
+            <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
+            · -- false case: dispatchers use sp directly
+              generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  have := dispatchFlowIndicators_offset_gt sp _ c h_hm h_fi; omega
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      have := dispatchBlockIndicators_offset_gt sp _ c h_hm h_bi; omega
+                    | none =>
+                      -- item 47: adjacent-value check (pure, no state change)
+                      generalize h_av : scanNextToken_checkAdjacentValue sp c = av at h
+                      cases av with
+                      | error => cases h
+                      | ok _ =>
+                      generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
+                        have h1 := @dispatchContent_offset_gt sp s_dc c h_hm h_peek hnoDoc h_dc
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h; omega
+            · -- true case: dispatchers use { sp with ... }
+              generalize h_sp2 : (({ sp with allowDirectives := false, documentEverStarted := true } : ScannerState)) = sp2 at h
+              have h_hm2 : sp2.offset < sp2.inputEnd := by rw [← h_sp2]; exact h_hm
+              have h_peek2 : sp2.peek? = some c := by rw [← h_sp2]; exact h_peek
+              have hnoDoc2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
+                rw [← h_sp2]; exact hnoDoc
+              have h_sp2_off : sp2.offset = sp.offset := by rw [← h_sp2]
+              generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  have := dispatchFlowIndicators_offset_gt sp2 _ c h_hm2 h_fi; omega
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      have := dispatchBlockIndicators_offset_gt sp2 _ c h_hm2 h_bi; omega
+                    | none =>
+                      -- item 47: adjacent-value check (pure, no state change)
+                      generalize h_av : scanNextToken_checkAdjacentValue sp2 c = av at h
+                      cases av with
+                      | error => cases h
+                      | ok _ =>
+                      generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
+                        simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                        have := dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc
+                        omega
+
+/-! ### The saved keys sit strictly behind the cursor (DOCS item 81)
+
+`scanValueClearKey`'s phantom-key branch tests `simpleKey.pos.offset ==
+s.offset` — a key saved AT the `:` itself.  An INHERITED key can never satisfy
+it: every save is at the then-current cursor (`saveSimpleKey`), and the token
+scanned between the save and any later state strictly advanced the cursor.
+Stated as one scanner-wide invariant over the current key AND the stack (a
+flow close restores a stacked key), vacuous at `mk'` and preserved by every
+`scanNextToken` step: preprocessing may save AT the cursor (the `≤` form
+below), and the dispatch's own strict advance turns the `≤` back into `<`. -/
+
+/-- Every live saved key — current or stacked — is strictly behind the cursor. -/
+def KeysBehindCursor (s : ScannerState) : Prop :=
+  (s.simpleKey.possible = true → s.simpleKey.pos.offset < s.offset) ∧
+  (∀ j (h : j < s.simpleKeyStack.size),
+    s.simpleKeyStack[j].possible = true → s.simpleKeyStack[j].pos.offset < s.offset)
+
+/-- The mid-step weakening: after preprocessing a fresh save sits AT the
+    cursor, so the bound is `≤` until the dispatch advances. -/
+def KeysAtOrBehind (s : ScannerState) : Prop :=
+  (s.simpleKey.possible = true → s.simpleKey.pos.offset ≤ s.offset) ∧
+  (∀ j (h : j < s.simpleKeyStack.size),
+    s.simpleKeyStack[j].possible = true → s.simpleKeyStack[j].pos.offset ≤ s.offset)
+
+lemma KeysBehindCursor.initial (input : String) :
+    KeysBehindCursor (ScannerState.mk' input) := by
+  constructor
+  · intro h
+    exact absurd h (by unfold ScannerState.mk'; simp)
+  · intro j hj
+    exact absurd hj (by unfold ScannerState.mk'; simp)
+
+/-- The seed states the accumulator starts from: `emit`/`consumeBOM` on top of
+    `mk'` touch neither key nor stack liveness, so the invariant stays vacuous. -/
+lemma KeysBehindCursor_of_key_stack_eq {s s' : ScannerState}
+    (h : KeysBehindCursor s)
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_off : s.offset ≤ s'.offset) : KeysBehindCursor s' := by
+  constructor
+  · intro hp; rw [h_sk] at hp ⊢; exact Nat.lt_of_lt_of_le (h.1 hp) h_off
+  · intro j hj hp
+    simp only [h_stack] at hj hp ⊢
+    exact Nat.lt_of_lt_of_le (h.2 j hj hp) h_off
+
+/-! #### The four spine shapes a dispatch can leave -/
+
+/-- The dispatch kept the key's position (preserved, or an `endLine` touch)
+    and the stack, and strictly advanced. -/
+lemma KeysBehind_preserved {s s' : ScannerState}
+    (h_kab : KeysAtOrBehind s) (h_gt : s.offset < s'.offset)
+    (h_key : s'.simpleKey.possible = true →
+      s'.simpleKey.pos = s.simpleKey.pos ∧ s.simpleKey.possible = true)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack) : KeysBehindCursor s' := by
+  constructor
+  · intro hp
+    obtain ⟨hpos, hposs⟩ := h_key hp
+    rw [hpos]
+    exact Nat.lt_of_le_of_lt (h_kab.1 hposs) h_gt
+  · intro j hj hp
+    simp only [h_stack] at hj hp ⊢
+    exact Nat.lt_of_le_of_lt (h_kab.2 j hj hp) h_gt
+
+/-- The dispatch cleared the key and kept the stack. -/
+lemma KeysBehind_cleared {s s' : ScannerState}
+    (h_kab : KeysAtOrBehind s) (h_gt : s.offset < s'.offset)
+    (h_poss : s'.simpleKey.possible = false)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack) : KeysBehindCursor s' := by
+  constructor
+  · intro hp; rw [h_poss] at hp; cases hp
+  · intro j hj hp
+    simp only [h_stack] at hj hp ⊢
+    exact Nat.lt_of_le_of_lt (h_kab.2 j hj hp) h_gt
+
+/-- A flow open: the current key is pushed, the current slot cleared. -/
+lemma KeysBehind_push {s s' : ScannerState}
+    (h_kab : KeysAtOrBehind s) (h_gt : s.offset < s'.offset)
+    (h_poss : s'.simpleKey.possible = false)
+    (h_pushed : s'.simpleKeyStack = s.simpleKeyStack.push s.simpleKey) :
+    KeysBehindCursor s' := by
+  constructor
+  · intro hp; rw [h_poss] at hp; cases hp
+  · intro j hj hp
+    simp only [h_pushed] at hj hp ⊢
+    rw [Array.size_push] at hj
+    by_cases hlt : j < s.simpleKeyStack.size
+    · rw [Array.getElem_push_lt hlt] at hp ⊢
+      exact Nat.lt_of_le_of_lt (h_kab.2 j hlt hp) h_gt
+    · have hj_eq : j = s.simpleKeyStack.size := by omega
+      subst hj_eq
+      rw [Array.getElem_push_eq] at hp ⊢
+      exact Nat.lt_of_le_of_lt (h_kab.1 hp) h_gt
+
+/-- A flow close: the stack top is restored, the stack popped. -/
+lemma KeysBehind_pop {s s' : ScannerState}
+    (h_kab : KeysAtOrBehind s) (h_gt : s.offset < s'.offset)
+    (h_restored : s'.simpleKey = s.simpleKeyStack.back?.getD {})
+    (h_popped : s'.simpleKeyStack = s.simpleKeyStack.pop) : KeysBehindCursor s' := by
+  constructor
+  · intro hp
+    rw [h_restored] at hp ⊢
+    by_cases h_size : 0 < s.simpleKeyStack.size
+    · have h_bound : s.simpleKeyStack.size - 1 < s.simpleKeyStack.size := by omega
+      have h_get : s.simpleKeyStack.back?.getD {} =
+          s.simpleKeyStack[s.simpleKeyStack.size - 1]'h_bound := by
+        simp [Array.back?, h_bound]
+      rw [h_get] at hp ⊢
+      exact Nat.lt_of_le_of_lt (h_kab.2 _ h_bound hp) h_gt
+    · exfalso
+      have h0 : s.simpleKeyStack.size = 0 := by omega
+      have h_empty : s.simpleKeyStack.back? = none := by
+        simp [Array.back?, h0]
+      rw [h_empty] at hp
+      exact absurd hp (by simp [Option.getD])
+  · intro j hj hp
+    simp only [h_popped] at hj hp ⊢
+    rw [Array.size_pop] at hj
+    rw [Array.getElem_pop] at hp ⊢
+    exact Nat.lt_of_le_of_lt (h_kab.2 j (by omega) hp) h_gt
+
+/-! #### Preprocessing: the save is at the cursor, everything else inherits -/
+
+/-- `saveSimpleKey` either leaves the key alone or saves AT its own cursor. -/
+lemma saveSimpleKey_key_shape (st : ScannerState) :
+    (saveSimpleKey st).simpleKey = st.simpleKey ∨
+    ((saveSimpleKey st).simpleKey.possible = true ∧
+     (saveSimpleKey st).simpleKey.pos.offset = (saveSimpleKey st).offset) := by
+  unfold saveSimpleKey
+  split
+  · exact Or.inl rfl
+  · split
+    · exact Or.inr ⟨rfl, rfl⟩
+    · exact Or.inl rfl
+
+/-- The preprocessed key: inherited from the caller, or fresh at the cursor. -/
+lemma preprocess_key_shape (s s2 : ScannerState) (c : Char)
+    (h : scanNextToken_preprocess s = .ok (some (s2, c))) :
+    s2.simpleKey = s.simpleKey ∨
+    (s2.simpleKey.possible = true ∧ s2.simpleKey.pos.offset = s2.offset) := by
+  unfold scanNextToken_preprocess at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp at h
+  · rename_i s_skip h_skip
+    have h_key_skip := skipToContent_preserves_simpleKey s s_skip h_skip
+    split at h
+    · simp at h
+    · split at h
+      · -- armed unwind branch
+        split at h
+        · simp at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            simp only [closeStaleExplicitKey_simpleKey, closeStaleExplicitKey_offset]
+            rcases saveSimpleKey_key_shape
+                { unwindIndents s_skip ↑s_skip.col with needIndentCheck := false } with heq | hfresh
+            · refine Or.inl (heq.trans ?_)
+              show (unwindIndents s_skip ↑s_skip.col).simpleKey = s.simpleKey
+              rw [unwindIndents_preserves_simpleKey]
+              exact h_key_skip
+            · exact Or.inr hfresh
+      · -- no unwind
+        split at h
+        · simp at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h
+            obtain ⟨rfl, _⟩ := h
+            simp only [closeStaleExplicitKey_simpleKey, closeStaleExplicitKey_offset]
+            rcases saveSimpleKey_key_shape s_skip with heq | hfresh
+            · exact Or.inl (heq.trans h_key_skip)
+            · exact Or.inr hfresh
+
+/-- Preprocessing keeps every key at or behind the cursor. -/
+lemma preprocess_KeysAtOrBehind {s s2 : ScannerState} {c : Char}
+    (h : scanNextToken_preprocess s = .ok (some (s2, c)))
+    (h_kbc : KeysBehindCursor s) : KeysAtOrBehind s2 := by
+  have h_ge := preprocess_offset_ge s s2 c h
+  have h_stack := preprocess_preserves_simpleKeyStack s s2 c h
+  constructor
+  · intro hp
+    rcases preprocess_key_shape s s2 c h with heq | ⟨_, hfresh⟩
+    · rw [heq] at hp ⊢
+      exact Nat.le_trans (Nat.le_of_lt (h_kbc.1 hp)) h_ge
+    · exact Nat.le_of_eq hfresh
+  · intro j hj hp
+    simp only [h_stack] at hj hp ⊢
+    exact Nat.le_trans (Nat.le_of_lt (h_kbc.2 j hj hp)) h_ge
+
+/-! #### The four dispatch families -/
+
+lemma dispatchStructural_preserves_KeysBehind (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchStructural s c = .ok (some s'))
+    (h_gt : s.offset < s'.offset)
+    (h_kab : KeysAtOrBehind s) : KeysBehindCursor s' := by
+  unfold scanNextToken_dispatchStructural at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp at h
+  · split at h
+    · simp at h
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact KeysBehind_cleared h_kab h_gt (scanDocumentStart_clears_simpleKey s)
+          (scanDocumentStart_preserves_simpleKeyStack s)
+      · split at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            rename_i s_de h_de
+            exact KeysBehind_cleared h_kab h_gt
+              (scanDocumentEnd_clears_simpleKey s s_de h_de)
+              (scanDocumentEnd_preserves_simpleKeyStack s s_de h_de)
+        · split at h
+          · split at h
+            · simp at h
+            · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+              rename_i s_dir h_dir
+              exact KeysBehind_preserved h_kab h_gt
+                (fun hp => ⟨by rw [scanDirective_preserves_simpleKey s _ h_dir],
+                  by rw [← scanDirective_preserves_simpleKey s _ h_dir]; exact hp⟩)
+                (scanDirective_preserves_simpleKeyStack s _ h_dir)
+          · simp at h
+
+lemma dispatchFlowIndicators_preserves_KeysBehind (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchFlowIndicators s c = .ok (some s'))
+    (h_gt : s.offset < s'.offset)
+    (h_kab : KeysAtOrBehind s) : KeysBehindCursor s' := by
+  unfold scanNextToken_dispatchFlowIndicators at h
+  replace h := peel_flowAdj h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+    exact KeysBehind_push h_kab h_gt (scanFlowSequenceStart_simpleKey_cleared s)
+      (scanFlowSequenceStart_stack_pushed s)
+  · split at h
+    · split at h
+      · simp at h
+      · split at h
+        · simp at h
+        · split at h
+          · simp at h
+          · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+            exact KeysBehind_pop h_kab h_gt (scanFlowSequenceEnd_simpleKey_restored s)
+              (scanFlowSequenceEnd_stack_popped s)
+    · split at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        exact KeysBehind_push h_kab h_gt (scanFlowMappingStart_simpleKey_cleared s)
+          (scanFlowMappingStart_stack_pushed s)
+      · split at h
+        · split at h
+          · simp at h
+          · split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                exact KeysBehind_pop h_kab h_gt (scanFlowMappingEnd_simpleKey_restored s)
+                  (scanFlowMappingEnd_stack_popped s)
+        · split at h
+          · split at h
+            · simp at h
+            · split at h
+              · simp at h
+              · rename_i _ _ _ h_entry
+                simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                exact KeysBehind_cleared h_kab h_gt
+                  (scanFlowEntry_clears_simpleKey s _ h_entry)
+                  (scanFlowEntry_preserves_simpleKeyStack s _ h_entry)
+          · simp at h
+
+lemma dispatchBlockIndicators_preserves_KeysBehind (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchBlockIndicators s c = .ok (some s'))
+    (h_gt : s.offset < s'.offset)
+    (h_kab : KeysAtOrBehind s) : KeysBehindCursor s' := by
+  unfold scanNextToken_dispatchBlockIndicators at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · split at h
+    · simp at h
+    · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+      rename_i s_be h_be
+      exact KeysBehind_preserved h_kab h_gt
+        (fun hp => ⟨by rw [scanBlockEntry_preserves_simpleKey s _ h_be],
+          by rw [← scanBlockEntry_preserves_simpleKey s _ h_be]; exact hp⟩)
+        (scanBlockEntry_preserves_simpleKeyStack s _ h_be)
+  · split at h
+    · split at h
+      · simp at h
+      · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+        rename_i s_k h_k
+        exact KeysBehind_cleared h_kab h_gt (scanKey_clears_simpleKey s _ h_k)
+          (scanKey_preserves_simpleKeyStack s _ h_k)
+    · split at h
+      · split at h
+        · simp at h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          rename_i s_v h_v
+          exact KeysBehind_cleared h_kab h_gt (scanValue_clears_simpleKey s _ h_v)
+            (scanValue_preserves_simpleKeyStack s _ h_v)
+      · simp at h
+
+lemma dispatchContent_preserves_KeysBehind (s : ScannerState) (c : Char)
+    (s' : ScannerState) (h : scanNextToken_dispatchContent s c = .ok s')
+    (h_gt : s.offset < s'.offset)
+    (h_kab : KeysAtOrBehind s) : KeysBehindCursor s' := by
+  unfold scanNextToken_dispatchContent at h
+  simp only [bind, Except.bind, pure, Except.pure] at h
+  split at h
+  · -- '&': anchor, then the definedAnchors touch-up (key and stack untouched)
+    split at h
+    · simp at h
+    split at h
+    · simp at h
+    · rename_i s_a h_anch
+      simp only [Except.ok.injEq] at h; subst h
+      have h_sk := scanAnchorOrAlias_preserves_simpleKey s true s_a h_anch
+      have h_st := scanAnchorOrAlias_preserves_simpleKeyStack s true s_a h_anch
+      exact KeysBehind_preserved h_kab h_gt
+        (fun hp => ⟨by show s_a.simpleKey.pos = _; rw [h_sk],
+          by revert hp; show s_a.simpleKey.possible = true → _; rw [h_sk]; exact id⟩)
+        (by show s_a.simpleKeyStack = _; rw [h_st])
+  · split at h
+    · -- '*': alias
+      split at h
+      · simp at h
+      split at h
+      · simp at h
+      · replace h := aliasArm_scan_ok h
+        exact KeysBehind_preserved h_kab h_gt
+          (fun hp => ⟨by rw [scanAnchorOrAlias_preserves_simpleKey s false _ h],
+            by rw [← scanAnchorOrAlias_preserves_simpleKey s false _ h]; exact hp⟩)
+          (scanAnchorOrAlias_preserves_simpleKeyStack s false _ h)
+    · split at h
+      · -- '!': tag
+        split at h
+        · simp at h
+        exact KeysBehind_preserved h_kab h_gt
+          (fun hp => ⟨by rw [scanTag_preserves_simpleKey s _ h],
+            by rw [← scanTag_preserves_simpleKey s _ h]; exact hp⟩)
+          (scanTag_preserves_simpleKeyStack s _ h)
+      · split at h
+        · -- '|' or '>': the block scalar clears
+          replace h := peel_blockScalarGuard h
+          exact KeysBehind_cleared h_kab h_gt (scanBlockScalar_clears_simpleKey s _ h)
+            (scanBlockScalar_preserves_simpleKeyStack s _ h)
+        · split at h
+          · -- '"': double quoted + endLine touch-up (pos untouched)
             split at h
-            · cases h
-            · -- Case-split on allowDirectives to resolve the if-expression
-              rcases h_ad : sp.allowDirectives with _ | _
-              <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
-              · -- false case: dispatchers use sp directly
-                generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
-                cases fi with
-                | error => cases h
-                | ok fi_opt =>
-                  cases fi_opt with
-                  | some s_fi =>
-                    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                    have := dispatchFlowIndicators_offset_gt sp _ c h_hm h_fi; omega
-                  | none =>
-                    generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
-                    cases bi with
-                    | error => cases h
-                    | ok bi_opt =>
-                      cases bi_opt with
-                      | some s_bi =>
+            · simp at h
+            · rename_i s_dq h_dq
+              have h_sk := scanDoubleQuoted_preserves_simpleKey s s_dq h_dq
+              have h_st := scanDoubleQuoted_preserves_simpleKeyStack s s_dq h_dq
+              split at h <;>
+                (simp only [Except.ok.injEq] at h; subst h)
+              · exact KeysBehind_preserved h_kab h_gt
+                  (fun hp => ⟨by simp only [h_sk], by
+                    revert hp; simp only [h_sk]; exact id⟩) (by simp only [h_st])
+              · exact KeysBehind_preserved h_kab h_gt
+                  (fun hp => ⟨by rw [h_sk], by rw [← h_sk]; exact hp⟩) h_st
+          · split at h
+            · -- '\'': single quoted, same
+              split at h
+              · simp at h
+              · rename_i s_sq h_sq
+                have h_sk := scanSingleQuoted_preserves_simpleKey s s_sq h_sq
+                have h_st := scanSingleQuoted_preserves_simpleKeyStack s s_sq h_sq
+                split at h <;>
+                  (simp only [Except.ok.injEq] at h; subst h)
+                · exact KeysBehind_preserved h_kab h_gt
+                    (fun hp => ⟨by simp only [h_sk], by
+                      revert hp; simp only [h_sk]; exact id⟩) (by simp only [h_st])
+                · exact KeysBehind_preserved h_kab h_gt
+                    (fun hp => ⟨by rw [h_sk], by rw [← h_sk]; exact hp⟩) h_st
+            · split at h
+              · -- plain
+                exact KeysBehind_preserved h_kab h_gt
+                  (fun hp => ⟨by rw [scanPlainScalar_preserves_simpleKey s _ h],
+                    by rw [← scanPlainScalar_preserves_simpleKey s _ h]; exact hp⟩)
+                  (scanPlainScalar_preserves_simpleKeyStack s _ h)
+              · simp at h
+
+set_option maxHeartbeats 800000 in
+/-- **`scanNextToken` preserves the invariant.**  The skeleton is
+    `scanNextToken_progress`'s: preprocessing weakens `<` to `≤` (the fresh
+    save is AT the cursor), and every dispatch's strict advance restores it. -/
+lemma scanNextToken_preserves_KeysBehindCursor (s s' : ScannerState)
+    (h : scanNextToken s = .ok (some s'))
+    (h_kbc : KeysBehindCursor s) : KeysBehindCursor s' := by
+  unfold scanNextToken at h
+  simp only [bind, Except.bind, pure, Except.pure, Bind.bind, Pure.pure] at h
+  split at h
+  · cases h
+  · split at h
+    · simp at h
+    · rename_i sp c h_pre
+      have h_kab := preprocess_KeysAtOrBehind h_pre h_kbc
+      have h_hm := preprocess_hasMore s sp c h_pre
+      -- §9.2 dangling-node check (item 133)
+      split at h
+      · cases h
+      -- §8.1 flow-value floor (item 172)
+      split at h
+      · cases h
+      split at h
+      · cases h
+      · split at h
+        · simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+          exact dispatchStructural_preserves_KeysBehind sp c _ ‹_›
+            (dispatchStructural_offset_gt sp _ c h_hm ‹_›) h_kab
+        · rename_i h_struct
+          have hnoDoc := dispatchStructural_none_noDoc sp c h_struct
+          have h_peek := preprocess_peek_eq s sp c h_pre
+          split at h
+          · cases h
+          -- §9.2 bare-document check (item 132)
+          split at h
+          · cases h
+          · rcases h_ad : sp.allowDirectives with _ | _
+            <;> simp only [h_ad, Bool.false_eq_true, ↓reduceIte] at h
+            · generalize h_fi : scanNextToken_dispatchFlowIndicators sp c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  exact dispatchFlowIndicators_preserves_KeysBehind sp c _ h_fi
+                    (dispatchFlowIndicators_offset_gt sp _ c h_hm h_fi) h_kab
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      exact dispatchBlockIndicators_preserves_KeysBehind sp c _ h_bi
+                        (dispatchBlockIndicators_offset_gt sp _ c h_hm h_bi) h_kab
+                    | none =>
+                      generalize h_av : scanNextToken_checkAdjacentValue sp c = av at h
+                      cases av with
+                      | error => cases h
+                      | ok _ =>
+                      generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
                         simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                        have := dispatchBlockIndicators_offset_gt sp _ c h_hm h_bi; omega
-                      | none =>
-                        generalize h_dc : scanNextToken_dispatchContent sp c = dc at h
-                        cases dc with
-                        | error => cases h
-                        | ok s_dc =>
-                          have h1 := @dispatchContent_offset_gt sp s_dc c h_hm h_peek hnoDoc h_dc
-                          simp only [Except.ok.injEq, Option.some.injEq] at h; subst h; omega
-              · -- true case: dispatchers use { sp with ... }
-                generalize h_sp2 : (({ sp with allowDirectives := false, documentEverStarted := true } : ScannerState)) = sp2 at h
-                have h_hm2 : sp2.offset < sp2.inputEnd := by rw [← h_sp2]; exact h_hm
-                have h_peek2 : sp2.peek? = some c := by rw [← h_sp2]; exact h_peek
-                have hnoDoc2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
-                  rw [← h_sp2]; exact hnoDoc
-                have h_sp2_off : sp2.offset = sp.offset := by rw [← h_sp2]
-                generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
-                cases fi with
-                | error => cases h
-                | ok fi_opt =>
-                  cases fi_opt with
-                  | some s_fi =>
-                    simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                    have := dispatchFlowIndicators_offset_gt sp2 _ c h_hm2 h_fi; omega
-                  | none =>
-                    generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
-                    cases bi with
-                    | error => cases h
-                    | ok bi_opt =>
-                      cases bi_opt with
-                      | some s_bi =>
+                        exact dispatchContent_preserves_KeysBehind sp c _ h_dc
+                          (dispatchContent_offset_gt sp _ c h_hm h_peek hnoDoc h_dc) h_kab
+            · generalize h_sp2 : (({ sp with allowDirectives := false, documentEverStarted := true } : ScannerState)) = sp2 at h
+              have h_hm2 : sp2.offset < sp2.inputEnd := by rw [← h_sp2]; exact h_hm
+              have h_peek2 : sp2.peek? = some c := by rw [← h_sp2]; exact h_peek
+              have hnoDoc2 : (sp2.col == 0 && atDocumentBoundary sp2) = false := by
+                rw [← h_sp2]; exact hnoDoc
+              have h_kab2 : KeysAtOrBehind sp2 := by rw [← h_sp2]; exact h_kab
+              generalize h_fi : scanNextToken_dispatchFlowIndicators sp2 c = fi at h
+              cases fi with
+              | error => cases h
+              | ok fi_opt =>
+                cases fi_opt with
+                | some s_fi =>
+                  simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                  exact dispatchFlowIndicators_preserves_KeysBehind sp2 c _ h_fi
+                    (dispatchFlowIndicators_offset_gt sp2 _ c h_hm2 h_fi) h_kab2
+                | none =>
+                  generalize h_bi : scanNextToken_dispatchBlockIndicators sp2 c = bi at h
+                  cases bi with
+                  | error => cases h
+                  | ok bi_opt =>
+                    cases bi_opt with
+                    | some s_bi =>
+                      simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
+                      exact dispatchBlockIndicators_preserves_KeysBehind sp2 c _ h_bi
+                        (dispatchBlockIndicators_offset_gt sp2 _ c h_hm2 h_bi) h_kab2
+                    | none =>
+                      generalize h_av : scanNextToken_checkAdjacentValue sp2 c = av at h
+                      cases av with
+                      | error => cases h
+                      | ok _ =>
+                      generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
+                      cases dc with
+                      | error => cases h
+                      | ok s_dc =>
                         simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                        have := dispatchBlockIndicators_offset_gt sp2 _ c h_hm2 h_bi; omega
-                      | none =>
-                        generalize h_dc : scanNextToken_dispatchContent sp2 c = dc at h
-                        cases dc with
-                        | error => cases h
-                        | ok s_dc =>
-                          simp only [Except.ok.injEq, Option.some.injEq] at h; subst h
-                          have := dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc
-                          omega
+                        exact dispatchContent_preserves_KeysBehind sp2 c _ h_dc
+                          (dispatchContent_offset_gt sp2 _ c h_hm2 h_peek2 hnoDoc2 h_dc) h_kab2
 
 end L4YAML.Proofs.ScannerCorrectness
+
+end Blanket

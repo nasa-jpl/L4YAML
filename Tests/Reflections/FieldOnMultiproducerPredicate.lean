@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 426 — a carrier field on a MULTI-PRODUCER predicate is gated by the producer whose
   source is a STRUCTURE-DISCARDING inductive deliverable
@@ -92,3 +97,5 @@ theorem sepOk_of_scanned_wrap :
 #guard balanced [Tok.content] == true
 
 end Tests.Reflections.FieldOnMultiproducerPredicate
+
+end Blanket

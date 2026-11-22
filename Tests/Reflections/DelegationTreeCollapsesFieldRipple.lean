@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 437 — a shared-structure field refinement's ripple is bounded by constructor TOPOLOGY, not count
 
@@ -147,3 +152,5 @@ example : Box2 7 := delegate2a 7
 example : Box2 0 := empty2
 
 end Tests.Reflections.DelegationTreeCollapsesFieldRipple
+
+end Blanket

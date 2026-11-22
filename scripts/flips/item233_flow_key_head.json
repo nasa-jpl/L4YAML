@@ -1,0 +1,55 @@
+{
+ "item": 233,
+ "tag": "SUPPLY-FLIP",
+ "rev": "HEAD",
+ "target": "",
+ "log": "scratch/flip233_supply.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "HEAD_PROMISE_1",
+     "old": [
+      "(∀ sp_end, SFlowContent n .flowOut sp_br sp_end →",
+      "        ImplicitKeyHead sp_key sp_end ∨ True)"
+     ],
+     "new": [
+      "(∀ sp_end, SFlowContent n .flowOut sp_br sp_end →",
+      "        ¬ BreakBetween sp_br sp_end → ¬ L4YAML.Surface.atEnd sp_end →",
+      "        ImplicitKeyHead sp_key sp_end)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "HEAD_PROMISE_2",
+     "old": [
+      "(∀ sp_end, SFlowContent n .flowOut sp_br sp_end →",
+      "      ImplicitKeyHead sp_key sp_end ∨ True)"
+     ],
+     "new": [
+      "(∀ sp_end, SFlowContent n .flowOut sp_br sp_end →",
+      "      ¬ BreakBetween sp_br sp_end → ¬ L4YAML.Surface.atEnd sp_end →",
+      "      ImplicitKeyHead sp_key sp_end)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "HEAD_PROMISE_3",
+     "old": [
+      "(∀ sp_end, SFlowContent m .flowOut sp_prep sp_end →",
+      "        ImplicitKeyHead sp_key sp_end ∨ True)"
+     ],
+     "new": [
+      "(∀ sp_end, SFlowContent m .flowOut sp_prep sp_end →",
+      "        ¬ BreakBetween sp_prep sp_end → ¬ L4YAML.Surface.atEnd sp_end →",
+      "        ImplicitKeyHead sp_key sp_end)"
+     ],
+     "count": 2
+    }
+   ]
+  }
+ ]
+}

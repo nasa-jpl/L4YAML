@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 435 — probe the GOAL itself for falsity, not just the intermediate obligation
 
@@ -65,3 +70,5 @@ theorem goalFixed_holds_on_witness : GoalFixed witness := by
   · exact absurd h1 (by decide)
 
 end Tests.Reflections.ProbeTheGoal
+
+end Blanket

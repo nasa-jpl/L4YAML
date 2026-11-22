@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
+
+module
+
+public import L4YAML.Init
+
+@[expose] public section Blanket
 
 /-! # Token-stream Algebra  (Algebra Item 10)
 
@@ -145,3 +150,5 @@ lemma foldr_append (f : τ → α → α) (z : α) (a b : TokenList τ) :
 end TokenList
 
 end L4YAML.Algebra.TokenStream
+
+end Blanket

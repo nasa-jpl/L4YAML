@@ -1,5 +1,9 @@
-import LeanYaml
-import Std.Data.HashMap
+module
+
+public import LeanYaml
+public import Std.Data.HashMap
+
+@[expose] public section Blanket
 
 /-!
 # Serialization Example
@@ -197,3 +201,5 @@ def main : IO Unit := do
   example5
   example6
   IO.println "✅ All serialization examples complete!"
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection -- two FALSE-PROGRESS signals in proof engineering
 
@@ -60,3 +65,5 @@ theorem produce_Y (n : Nat) : Y n :=
   (fun _ => trivial) (produce_X n)
 
 end IllusorySorryFree
+
+end Blanket

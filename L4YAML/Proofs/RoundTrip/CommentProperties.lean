@@ -2,11 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Spec.Grammar
-import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
-import L4YAML.Output.Dump
+
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.Grammar
+public import L4YAML.Output.Emitter
+public import L4YAML.Parser.Composition
+public import L4YAML.Output.Dump
+
+@[expose] public section Blanket
 
 /-!
 # Comment Properties (Phase G3)
@@ -498,3 +503,5 @@ lemma dumpDocumentsWithComments_singleton (doc : YamlDocument)
   simp [dumpDocumentsWithComments]
 
 end L4YAML.Proofs.CommentProperties
+
+end Blanket

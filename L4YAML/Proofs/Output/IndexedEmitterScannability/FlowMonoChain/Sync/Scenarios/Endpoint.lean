@@ -2,14 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Sync.Scenarios.FlowClose
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Sync.Scenarios.FlowClose
+public import L4YAML.Proofs.Scanner.CloseStaleExplicitKeyIx
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Sync.Scenarios.Endpoint` — Phase 3 Step
 `6f.3b3.flowmono.sync.scenarios.endpoint`
 
 **Sub-session 3 of `.flowmono.sync.scenarios`** (final `.flowmono`
-sub-session; legacy `Proofs/Output/EmitterScannability.lean` lines
-3258–3329, 4910–5005, 5274–5326, 5445–5586).
+sub-session).
 
 Four scenarios closing out `.flowmono`:
 
@@ -44,8 +49,7 @@ Four scenarios closing out `.flowmono`:
   * **§5 `scanNextTokenIx_flow_open_mapping_init`** — `{` at the
     initial scanner state (no flow context, sentinel indents) for a
     top-level mapping. Composes §2 with `dispatchStructural_none_brace_
-    init` + `checkBlockFlowIndent_brace_init` + `dispatchFlowIndicators_
-    brace` + `scanFlowMappingStartIx_detail`. Consumed by
+    init` + `dispatchFlowIndicators_brace` + `scanFlowMappingStartIx_detail`. Consumed by
     `.emitscans.toplevel` for `emit_produces_valid_yamlIx` (top-level
     mapping body).
 
@@ -53,8 +57,7 @@ Four scenarios closing out `.flowmono`:
     scanner state for a top-level sequence. Direct sequence analog of §5
     (`'{' ↦ '['`, `scanFlowMappingStartIx ↦ scanFlowSequenceStartIx`,
     `dispatchStructural_none_brace_init ↦ dispatchStructural_none_
-    bracket_init`, `checkBlockFlowIndent_brace_init ↦ checkBlockFlow
-    Indent_bracket_init`, `dispatchFlowIndicators_brace ↦ dispatch
+    bracket_init`, `dispatchFlowIndicators_brace ↦ dispatch
     FlowIndicators_bracket`). Landed as part of `.emitscans.toplevel`
     SS1; the original `.flowmono` sub-session 3 did not need it (the
     chain lemmas of that family only consumed the `{` twin), so it
@@ -71,6 +74,8 @@ set_option autoImplicit false
 
 namespace L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
 
+open L4YAML.Proofs.CloseStaleExplicitKeyIx
+
 open L4YAML
 open L4YAML.CharPredicates
 open L4YAML.Indexed
@@ -81,6 +86,7 @@ open L4YAML.Proofs.Indexed.EmitterScannability.ScanChain
 open L4YAML.Proofs.Indexed.ScannerPlainScalarValid
 open L4YAML.Surface
 open L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.FlowAdjacencyIx
 
 variable {input : String}
 
@@ -125,7 +131,7 @@ at sentinel), trailing-content check, `saveSimpleKeyIx`, `peek?`.
     needIndentCheck := false }, c)`. The witness `s_pp` preserves
     every field needed by downstream init-state chains (flowLevel,
     indents, cursor position, allowDirectives, etc.).
-    Indexed twin of `scanNextToken_preprocess_init_state` (legacy 3258). -/
+    Indexed twin of `scanNextToken_preprocess_init_state`. -/
 lemma scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
     (rest : List Char)
     (h_toList : input.toList = c :: rest)
@@ -146,6 +152,7 @@ lemma scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
       ∧ s_pp.explicitKeyLine = none
       ∧ s_pp.cursor.pos.line = 0
       ∧ AllTokensOnLineIx s_pp s_pp.cursor.pos.line
+      ∧ scanNextTokenIx_checkBareDocument s_pp = .ok ()
       ∧ s_pp.tokens.tokens.filter (fun t => t.token != .placeholder)
           = ((ScannerStateIx.mk' input).emit YamlToken.streamStart).tokens.tokens.filter
               (fun t => t.token != .placeholder) := by
@@ -190,9 +197,17 @@ lemma scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
   -- Refine: introduce the witness state explicitly and use it to drive the conclusion
   refine ⟨saveSimpleKeyIx { (ScannerStateIx.mk' input).emit YamlToken.streamStart
                               with needIndentCheck := false },
-          ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+          ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · -- scanNextTokenIx_preprocess = .ok (some (witness, c))
     unfold scanNextTokenIx_preprocess
+    -- Item 7 strictness walker: `none` at a content character, so the
+    -- gate falls through.
+    rw [L4YAML.Scanner.Indexed.skipToContentErrIx_none_of_content
+          ((ScannerStateIx.mk' input).emit YamlToken.streamStart).cursor
+          ((ScannerStateIx.mk' input).emit YamlToken.streamStart).inFlow
+          ((ScannerStateIx.mk' input).emit YamlToken.streamStart).currentIndent
+          ((ScannerStateIx.mk' input).emit YamlToken.streamStart).needIndentCheck
+          h_pk₀ h_nws h_nlb h_nc]
     -- skipToContentS = self; hasMore = true
     simp only [h_stc, h_hm, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
     -- !inFlow ∧ needIndentCheck = true, so the unwindIndentsIx branch fires
@@ -209,7 +224,10 @@ lemma scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
                   from by
                   show ¬ ((1 : Nat) < 1); omega,
                decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-    -- Final peek? matches some c via saveSimpleKeyIx_peek?
+    -- Final peek? matches some c via saveSimpleKeyIx_peek? (item 333's hook
+    -- moves no cursor)
+    rw [closeStaleExplicitKeyIx_of_ek_none _
+      (by first | rfl | (unfold saveSimpleKeyIx; split <;> rfl) | simp [saveSimpleKeyIx])]
     rw [show (saveSimpleKeyIx { (ScannerStateIx.mk' input).emit YamlToken.streamStart
                                 with needIndentCheck := false }).peek?
             = some c by
@@ -270,6 +288,21 @@ lemma scanNextTokenIx_preprocess_init_state (input : String) (c : Char)
             needIndentCheck := false } : ScannerStateIx input).cursor.pos.line = 0 :=
       h_emit_line
     exact AllTokensOnLineIx_saveSimpleKeyIx _ 0 h_nic_atol h_nic_line
+  · -- §9.2 bare-document check (item 132): the only real token behind the
+    -- cursor is `streamStart`, which completes nothing.
+    refine scanNextTokenIx_checkBareDocument_ok_of_last _ ?_
+    intro t ht
+    have hlast : lastRealTokenValIx?
+        (saveSimpleKeyIx ({ (ScannerStateIx.mk' input).emit YamlToken.streamStart
+          with needIndentCheck := false } : ScannerStateIx input)).tokens
+        = some YamlToken.streamStart := by
+      unfold saveSimpleKeyIx
+      split
+      · rfl
+      · split <;> rfl
+    rw [hlast] at ht
+    cases ht
+    rfl
   · -- Filter preservation: saveSimpleKeyIx_filter_placeholder, then trivial for record update
     exact saveSimpleKeyIx_filter_placeholder _
 
@@ -282,18 +315,28 @@ differ: `flowLevel = 0` and `peek? = none`. -/
 
 /-- Full `scanNextTokenIx` for `']'` at outermost flow close
     (`flowLevel = 1`, EOF). Indexed twin of `scanNextToken_flow_close_
-    seq_outermost` (legacy 4947). -/
+    seq_outermost`. -/
 lemma scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
     (hcorr : ScannerSurfCorrIx s ⟨[']'], s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_fl : s.flowLevel = 1)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_kind : s.flowStack.back? = some true)
+    -- Item 159: a `]`/`}` no longer ends the stream in NO run — the run is read
+    -- back to the matching open — so the check is discharged by the indent
+    -- stack the emitter's output stands on, the sentinel alone.
+    (h_ids : s.indents = #[{ column := -1, isSequence := false }])
+    -- Item 180: …and the crossed-block clause reads the array, which an
+    -- emitted stream keeps property-free.
+    (h_np : ∀ j : Nat, s.tokens.tokens[j]!.token.isNodeProperty = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ s'.flowLevel = 0
       ∧ s'.directivesPresent = false
-      ∧ s'.peek? = none := by
+      ∧ s'.peek? = none
+      ∧ scanLoopIx_checkDanglingNode s' = .ok ()
+      ∧ scanLoopIx_checkFlowValueIndent s' = .ok () := by
   -- Step 1: preprocessing
   have h_pp : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s, ']')) :=
     scanNextTokenIx_preprocess_flow s ']' [] s.cursor.pos.col hcorr h_flow
@@ -312,9 +355,6 @@ lemma scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
       s_ad = if (saveSimpleKeyIx s).allowDirectives then
         { saveSimpleKeyIx s with allowDirectives := false, documentEverStarted := true }
       else saveSimpleKeyIx s := ⟨_, rfl⟩
-  -- Step 4: checkBlockFlowIndent for ']'
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad ']' = .ok () :=
-    checkBlockFlowIndent_ok_close_bracket s_ad
   -- Step 5: derive field equalities for s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_flowLevel s
@@ -326,13 +366,20 @@ lemma scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
     rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_cursor s
   -- Step 6: flow dispatch (shared with nested; no validateFlowClose)
   have h_fl_pos : s_ad.flowLevel > 0 := by rw [h_ad_fl, h_fl]; omega
+  have h_ad_kind : s_ad.flowStack.back? = some true := by
+    have h_ad_fs : s_ad.flowStack = s.flowStack := by
+      rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_flowStack s
+    rw [h_ad_fs]; exact h_kind
   have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad ']' =
       .ok (some (scanFlowSequenceEndIx s_ad)) :=
-    dispatchFlowIndicators_close_bracket s_ad h_fl_pos
+    dispatchFlowIndicators_close_bracket s_ad h_fl_pos h_ad_kind
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowSequenceEndIx s_ad) ']'
-    h_pp h_struct h_s_ad_def h_check h_flow_disp
+    h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_disp
     ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
+    (scanNextTokenIx_checkBareDocument_ok_of_inFlow _
+      ((saveSimpleKeyIx_inFlow s).trans h_flow))
+    (scanNextTokenIx_checkDanglingNode_ok_of_inFlow _ _ h_flow)
   -- Step 7: extract via scanFlowSequenceEndIx_detail (for s_ad at position [']']
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨[']'], s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
@@ -352,7 +399,22 @@ lemma scanNextTokenIx_flow_close_seq_outermost (s : ScannerStateIx input)
   -- EOF after the close: h_corr_f gives ScannerSurfCorrIx at ⟨[], col + 1⟩
   have h_s'_peek : (scanFlowSequenceEndIx s_ad).peek? = none :=
     peek_none_of_empty_surfIx (scanFlowSequenceEndIx s_ad) (s_ad.cursor.pos.col + 1) h_corr_f
-  exact ⟨scanFlowSequenceEndIx s_ad, h_snt, h_s'_fl, h_s'_dp, h_s'_peek⟩
+  have h_s'_ids : (scanFlowSequenceEndIx s_ad).indents
+      = #[{ column := -1, isSequence := false }] := by
+    rw [scanFlowSequenceEndIx_indents s_ad, h_ad_ids]
+    exact h_ids
+  -- Item 180: the result array is the input's plus reservations and the
+  -- close token — none of them a property.
+  have h_np_res : crossedPropsExcessIdxIx? (scanFlowSequenceEndIx s_ad).tokens = none := by
+    refine crossedPropsExcessIdxIx?_none_of_no_props ?_
+    have h_ad : ∀ j : Nat, s_ad.tokens.tokens[j]!.token.isNodeProperty = false := by
+      have h_sk := no_props_saveSimpleKeyIx h_np
+      rw [h_s_ad_def]
+      split <;> exact h_sk
+    exact no_props_emitIx h_ad rfl
+  exact ⟨scanFlowSequenceEndIx s_ad, h_snt, h_s'_fl, h_s'_dp, h_s'_peek,
+    scanLoopIx_checkDanglingNode_ok_of_sentinel_stack _ h_s'_ids h_np_res,
+    scanLoopIx_checkFlowValueIndent_ok_of_sentinel_stack _ h_s'_ids⟩
 
 /-! ## §4  `scanNextTokenIx_flow_close_mapping_outermost`
 
@@ -360,18 +422,27 @@ Mirror of §3 for `}` and `scanFlowMappingEndIx`. -/
 
 /-- Full `scanNextTokenIx` for `'}'` at outermost flow close
     (`flowLevel = 1`, EOF). Indexed twin of `scanNextToken_flow_close_
-    mapping_outermost` (legacy 5274). -/
+    mapping_outermost`. -/
 lemma scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
     (hcorr : ScannerSurfCorrIx s ⟨['}'], s.cursor.pos.col⟩)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.cursor.pos.col > 0)
     (h_fl : s.flowLevel = 1)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_kind : s.flowStack.back? = some false)
+    -- Item 159: a `]`/`}` no longer ends the stream in NO run — the run is read
+    -- back to the matching open — so the check is discharged by the indent
+    -- stack the emitter's output stands on, the sentinel alone.
+    (h_ids : s.indents = #[{ column := -1, isSequence := false }])
+    -- Item 180: as at the sequence close.
+    (h_np : ∀ j : Nat, s.tokens.tokens[j]!.token.isNodeProperty = false) :
     ∃ s', scanNextTokenIx s = .ok (some s')
       ∧ s'.flowLevel = 0
       ∧ s'.directivesPresent = false
-      ∧ s'.peek? = none := by
+      ∧ s'.peek? = none
+      ∧ scanLoopIx_checkDanglingNode s' = .ok ()
+      ∧ scanLoopIx_checkFlowValueIndent s' = .ok () := by
   have h_pp : scanNextTokenIx_preprocess s = .ok (some (saveSimpleKeyIx s, '}')) :=
     scanNextTokenIx_preprocess_flow s '}' [] s.cursor.pos.col hcorr h_flow
       (by decide) (by decide) (by decide)
@@ -387,8 +458,6 @@ lemma scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
       s_ad = if (saveSimpleKeyIx s).allowDirectives then
         { saveSimpleKeyIx s with allowDirectives := false, documentEverStarted := true }
       else saveSimpleKeyIx s := ⟨_, rfl⟩
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '}' = .ok () :=
-    checkBlockFlowIndent_ok_close_brace s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_flowLevel s
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
@@ -398,13 +467,20 @@ lemma scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
   have h_ad_cursor : s_ad.cursor = s.cursor := by
     rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_cursor s
   have h_fl_pos : s_ad.flowLevel > 0 := by rw [h_ad_fl, h_fl]; omega
+  have h_ad_kind : s_ad.flowStack.back? = some false := by
+    have h_ad_fs : s_ad.flowStack = s.flowStack := by
+      rw [h_s_ad_def]; split <;> exact saveSimpleKeyIx_flowStack s
+    rw [h_ad_fs]; exact h_kind
   have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad '}' =
       .ok (some (scanFlowMappingEndIx s_ad)) :=
-    dispatchFlowIndicators_close_brace s_ad h_fl_pos
+    dispatchFlowIndicators_close_brace s_ad h_fl_pos h_ad_kind
   have h_snt := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowMappingEndIx s_ad) '}'
-    h_pp h_struct h_s_ad_def h_check h_flow_disp
+    h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_disp
     ((saveSimpleKeyIx_directivesPresent s).trans h_dp)
+    (scanNextTokenIx_checkBareDocument_ok_of_inFlow _
+      ((saveSimpleKeyIx_inFlow s).trans h_flow))
+    (scanNextTokenIx_checkDanglingNode_ok_of_inFlow _ _ h_flow)
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨['}'], s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, rfl, ?_, ?_⟩
     · rw [h_ad_cursor]; exact hcorr.chars_from
@@ -421,19 +497,32 @@ lemma scanNextTokenIx_flow_close_mapping_outermost (s : ScannerStateIx input)
     rw [h_dp_f, h_ad_dp]; exact h_dp
   have h_s'_peek : (scanFlowMappingEndIx s_ad).peek? = none :=
     peek_none_of_empty_surfIx (scanFlowMappingEndIx s_ad) (s_ad.cursor.pos.col + 1) h_corr_f
-  exact ⟨scanFlowMappingEndIx s_ad, h_snt, h_s'_fl, h_s'_dp, h_s'_peek⟩
+  have h_s'_ids : (scanFlowMappingEndIx s_ad).indents
+      = #[{ column := -1, isSequence := false }] := by
+    rw [scanFlowMappingEndIx_indents s_ad, h_ad_ids]
+    exact h_ids
+  -- Item 180: as at the sequence close.
+  have h_np_res : crossedPropsExcessIdxIx? (scanFlowMappingEndIx s_ad).tokens = none := by
+    refine crossedPropsExcessIdxIx?_none_of_no_props ?_
+    have h_ad : ∀ j : Nat, s_ad.tokens.tokens[j]!.token.isNodeProperty = false := by
+      have h_sk := no_props_saveSimpleKeyIx h_np
+      rw [h_s_ad_def]
+      split <;> exact h_sk
+    exact no_props_emitIx h_ad rfl
+  exact ⟨scanFlowMappingEndIx s_ad, h_snt, h_s'_fl, h_s'_dp, h_s'_peek,
+    scanLoopIx_checkDanglingNode_ok_of_sentinel_stack _ h_s'_ids h_np_res,
+    scanLoopIx_checkFlowValueIndent_ok_of_sentinel_stack _ h_s'_ids⟩
 
 /-! ## §5  `scanNextTokenIx_flow_open_mapping_init`
 
 `{` at the initial scanner state for a top-level mapping. Threads
 the init-state preprocessing (§2) through the dispatcher chain
-(`dispatchStructural_none_brace_init` + `checkBlockFlowIndent_brace_
-init` + `dispatchFlowIndicators_brace`) and extracts the result via
+(`dispatchStructural_none_brace_init` + `dispatchFlowIndicators_brace`) and extracts the result via
 `scanFlowMappingStartIx_detail`. -/
 
 /-- `scanNextTokenIx` on the initial scanner state at `{` dispatches
     to `scanFlowMappingStartIx`, entering flow context.
-    Indexed twin of `scanNextToken_flow_open_mapping_init` (legacy 5445). -/
+    Indexed twin of `scanNextToken_flow_open_mapping_init`. -/
 lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
     (h_toList : input.toList = '{' :: rest) :
     let s₀ := (ScannerStateIx.mk' input).emit YamlToken.streamStart
@@ -450,14 +539,19 @@ lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
       ∧ AllTokensOnLineIx s' 0
       ∧ EndLineOnLineIx s'
       ∧ s'.simpleKey.possible = false
-      ∧ s'.simpleKeyStack.size = s'.flowLevel := by
+      ∧ s'.simpleKeyStack.size = s'.flowLevel
+      ∧ (∀ t, lastRealTokenValIx? s'.tokens = some t → t.completesFlowValue = false)
+      ∧ s'.flowStack.back? = some false
+      -- item 9r: the pair-start facts at the top-level `{`.
+      ∧ s'.simpleKeyAllowed = true
+      ∧ LastRawNotValueIx s' := by
   intro s₀
   -- Step 1: preprocessing (uses §2)
   have h_pp := scanNextTokenIx_preprocess_init_state input '{' rest h_toList
     (by decide) (by decide) (by decide)
   obtain ⟨s_pp, h_pp_eq, h_fl_pp, h_inflow_pp, h_ci_pp, h_col_pp,
           h_ad_pp, h_dp_pp, h_ids, h_off, h_ek_pp,
-          h_line_pp, h_atol_pp, _h_pp_filt⟩ := h_pp
+          h_line_pp, h_atol_pp, h_bd_pp, _h_pp_filt⟩ := h_pp
   -- Step 2: ScannerSurfCorrIx for s_pp at ⟨'{' :: rest, s_pp.col⟩
   have h_corr₀ : ScannerSurfCorrIx (input := input) (ScannerStateIx.mk' input)
       ⟨'{' :: rest, 0⟩ := by
@@ -536,17 +630,21 @@ lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
     rw [h_ad_ids]
     have : s_pp.indents = #[{ column := -1, isSequence := false }] := h_ids
     rw [this]; rfl
-  -- Step 7: checkBlockFlowIndent passes for `{` at init state
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '{' = .ok () :=
-    checkBlockFlowIndent_brace_init s_ad h_ad_fl h_ad_ci
+  -- Step 7: the flow-value floor (item 172) is vacuous at the sentinel stack
   -- Step 8: flow dispatch → some (scanFlowMappingStartIx s_ad)
   have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad '{' =
       .ok (some (scanFlowMappingStartIx s_ad)) :=
     dispatchFlowIndicators_brace s_ad
+      (checkFlowAdjacencyIx_ok_of_notInFlow
+        (by unfold ScannerStateIx.inFlow; simp [h_ad_fl]))
   -- Step 9: compose via scanNextTokenIx_via_flow_dispatch
   have h_snt := scanNextTokenIx_via_flow_dispatch s₀ s_pp s_ad
     (scanFlowMappingStartIx s_ad) '{'
-    h_pp_eq h_struct h_s_ad_def h_check h_flow_disp h_dp_pp
+    h_pp_eq h_struct h_s_ad_def
+    (scanNextTokenIx_checkFlowValueIndent_ok_of_sentinel_stack _ _
+      (initIx_indents_sentinel _)) h_flow_disp h_dp_pp h_bd_pp
+    (scanNextTokenIx_checkDanglingNode_ok_of_sentinel_stack _ _
+      (initIx_indents_sentinel _) (crossedPropsExcessIdxIx?_init _))
   -- Step 10: extract via scanFlowMappingStartIx_detail
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨'{' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, ?_, ?_, ?_⟩
@@ -576,8 +674,8 @@ lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
   have h_s'_corr : ScannerSurfCorrIx (scanFlowMappingStartIx s_ad)
       ⟨rest, (scanFlowMappingStartIx s_ad).cursor.pos.col⟩ := by
     rw [h_col_f]; exact h_corr_f
-  have h_s'_ek : (scanFlowMappingStartIx s_ad).explicitKeyLine = none := by
-    rw [scanFlowMappingStartIx_explicitKeyLine, h_ad_ek]; exact h_ek_pp
+  have h_s'_ek : (scanFlowMappingStartIx s_ad).explicitKeyLine = none :=
+    scanFlowMappingStartIx_explicitKeyLine s_ad
   have h_ad_pk : s_ad.cursor.peek? = some '{' := by
     show s_ad.peek? = some '{'
     rw [show s_ad.peek? = s_pp.peek? from by
@@ -633,10 +731,29 @@ lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
     -- s₀.simpleKeyStack = ((ScannerStateIx.mk' input).emit YamlToken.streamStart).simpleKeyStack = #[]
     have h_s0_stack_sz : s₀.simpleKeyStack.size = 0 := rfl
     rw [h_s0_stack_sz]
+  -- completesFlowValue: last token is `.flowMappingStart`, which does not complete a flow value
+  have h_s'_last : ∀ t, lastRealTokenValIx? (scanFlowMappingStartIx s_ad).tokens = some t →
+      t.completesFlowValue = false := by
+    intro t ht
+    rw [scanFlowMappingStartIx_lastRealTokenVal s_ad] at ht
+    simp only [Option.some.injEq] at ht; subst ht; rfl
+  -- flowStack top: '{' pushes `false` (9a kind tracking)
+  have h_s'_push : (scanFlowMappingStartIx s_ad).flowStack.back? = some false := by
+    rw [scanFlowMappingStartIx_flowStack]
+    exact Array.back?_push
+  -- item 9r exposures: the `{` re-enables saves and caps the raw array.
+  have h_s'_ska : (scanFlowMappingStartIx s_ad).simpleKeyAllowed = true := rfl
+  have h_s'_lrv : LastRawNotValueIx (scanFlowMappingStartIx s_ad) := by
+    refine lastRawNotValueIx_of_push ?_
+      (show (scanFlowMappingStartIx s_ad).tokens.tokens
+        = s_ad.tokens.tokens.push (IxToken.mk' (input := input) s_ad.cursor.pos
+            YamlToken.flowMappingStart s_ad.cursor.pos (Nat.le_refl _)
+            s_ad.cursor.posBound) from rfl)
+    nofun
   -- Combine
   refine ⟨scanFlowMappingStartIx s_ad, h_snt, h_s'_corr, h_s'_fl, h_s'_dp, h_s'_ids,
           h_s'_col, h_s'_inflow, h_s'_ci, h_s'_ek, h_s'_line, h_s'_atol, h_s'_endline,
-          h_s'_sk_poss, h_s'_stack_sz⟩
+          h_s'_sk_poss, h_s'_stack_sz, h_s'_last, h_s'_push, h_s'_ska, h_s'_lrv⟩
 
 /-! ## §6  `scanNextTokenIx_flow_open_seq_init`
 
@@ -644,14 +761,13 @@ lemma scanNextTokenIx_flow_open_mapping_init (input : String) (rest : List Char)
 sequence analog of §5 (`scanNextTokenIx_flow_open_mapping_init`);
 substitutions: `'{' ↦ '['`, `scanFlowMappingStartIx ↦
 scanFlowSequenceStartIx`, `dispatchStructural_none_brace_init ↦
-dispatchStructural_none_bracket_init`, `checkBlockFlowIndent_brace_
-init ↦ checkBlockFlowIndent_bracket_init`, `dispatchFlowIndicators_
+dispatchStructural_none_bracket_init`, `dispatchFlowIndicators_
 brace ↦ dispatchFlowIndicators_bracket`, `YamlToken.flowMappingStart ↦
 YamlToken.flowSequenceStart`. -/
 
 /-- `scanNextTokenIx` on the initial scanner state at `[` dispatches
     to `scanFlowSequenceStartIx`, entering flow context. Indexed twin
-    of `scanNextToken_flow_open_init` (legacy 4095). -/
+    of `scanNextToken_flow_open_init`. -/
 lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
     (h_toList : input.toList = '[' :: rest) :
     let s₀ := (ScannerStateIx.mk' input).emit YamlToken.streamStart
@@ -668,14 +784,16 @@ lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
       ∧ AllTokensOnLineIx s' 0
       ∧ EndLineOnLineIx s'
       ∧ s'.simpleKey.possible = false
-      ∧ s'.simpleKeyStack.size = s'.flowLevel := by
+      ∧ s'.simpleKeyStack.size = s'.flowLevel
+      ∧ (∀ t, lastRealTokenValIx? s'.tokens = some t → t.completesFlowValue = false)
+      ∧ s'.flowStack.back? = some true := by
   intro s₀
   -- Step 1: preprocessing (uses §2)
   have h_pp := scanNextTokenIx_preprocess_init_state input '[' rest h_toList
     (by decide) (by decide) (by decide)
   obtain ⟨s_pp, h_pp_eq, h_fl_pp, h_inflow_pp, h_ci_pp, h_col_pp,
           h_ad_pp, h_dp_pp, h_ids, h_off, h_ek_pp,
-          h_line_pp, h_atol_pp, _h_pp_filt⟩ := h_pp
+          h_line_pp, h_atol_pp, h_bd_pp, _h_pp_filt⟩ := h_pp
   -- Step 2: ScannerSurfCorrIx for s_pp at ⟨'[' :: rest, s_pp.col⟩
   have h_corr₀ : ScannerSurfCorrIx (input := input) (ScannerStateIx.mk' input)
       ⟨'[' :: rest, 0⟩ := by
@@ -749,17 +867,21 @@ lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
     rw [h_ad_ids]
     have : s_pp.indents = #[{ column := -1, isSequence := false }] := h_ids
     rw [this]; rfl
-  -- Step 7: checkBlockFlowIndent passes for `[` at init state
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '[' = .ok () :=
-    checkBlockFlowIndent_bracket_init s_ad h_ad_fl h_ad_ci
+  -- Step 7: the flow-value floor (item 172) is vacuous at the sentinel stack
   -- Step 8: flow dispatch → some (scanFlowSequenceStartIx s_ad)
   have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad '[' =
       .ok (some (scanFlowSequenceStartIx s_ad)) :=
     dispatchFlowIndicators_bracket s_ad
+      (checkFlowAdjacencyIx_ok_of_notInFlow
+        (by unfold ScannerStateIx.inFlow; simp [h_ad_fl]))
   -- Step 9: compose via scanNextTokenIx_via_flow_dispatch
   have h_snt := scanNextTokenIx_via_flow_dispatch s₀ s_pp s_ad
     (scanFlowSequenceStartIx s_ad) '['
-    h_pp_eq h_struct h_s_ad_def h_check h_flow_disp h_dp_pp
+    h_pp_eq h_struct h_s_ad_def
+    (scanNextTokenIx_checkFlowValueIndent_ok_of_sentinel_stack _ _
+      (initIx_indents_sentinel _)) h_flow_disp h_dp_pp h_bd_pp
+    (scanNextTokenIx_checkDanglingNode_ok_of_sentinel_stack _ _
+      (initIx_indents_sentinel _) (crossedPropsExcessIdxIx?_init _))
   -- Step 10: extract via scanFlowSequenceStartIx_detail
   have h_ad_corr : ScannerSurfCorrIx s_ad ⟨'[' :: rest, s_ad.cursor.pos.col⟩ := by
     refine ⟨?_, ?_, ?_, ?_⟩
@@ -789,8 +911,8 @@ lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
   have h_s'_corr : ScannerSurfCorrIx (scanFlowSequenceStartIx s_ad)
       ⟨rest, (scanFlowSequenceStartIx s_ad).cursor.pos.col⟩ := by
     rw [h_col_f]; exact h_corr_f
-  have h_s'_ek : (scanFlowSequenceStartIx s_ad).explicitKeyLine = none := by
-    rw [scanFlowSequenceStartIx_explicitKeyLine, h_ad_ek]; exact h_ek_pp
+  have h_s'_ek : (scanFlowSequenceStartIx s_ad).explicitKeyLine = none :=
+    scanFlowSequenceStartIx_explicitKeyLine s_ad
   have h_ad_pk : s_ad.cursor.peek? = some '[' := by
     show s_ad.peek? = some '['
     rw [show s_ad.peek? = s_pp.peek? from by
@@ -844,9 +966,21 @@ lemma scanNextTokenIx_flow_open_seq_init (input : String) (rest : List Char)
     rw [h_pre]
     have h_s0_stack_sz : s₀.simpleKeyStack.size = 0 := rfl
     rw [h_s0_stack_sz]
+  -- completesFlowValue: last token is `.flowSequenceStart`, which does not complete a flow value
+  have h_s'_last : ∀ t, lastRealTokenValIx? (scanFlowSequenceStartIx s_ad).tokens = some t →
+      t.completesFlowValue = false := by
+    intro t ht
+    rw [scanFlowSequenceStartIx_lastRealTokenVal s_ad] at ht
+    simp only [Option.some.injEq] at ht; subst ht; rfl
+  -- flowStack top: '[' pushes `true` (9a kind tracking)
+  have h_s'_push : (scanFlowSequenceStartIx s_ad).flowStack.back? = some true := by
+    rw [scanFlowSequenceStartIx_flowStack]
+    exact Array.back?_push
   -- Combine
   refine ⟨scanFlowSequenceStartIx s_ad, h_snt, h_s'_corr, h_s'_fl, h_s'_dp, h_s'_ids,
           h_s'_col, h_s'_inflow, h_s'_ci, h_s'_ek, h_s'_line, h_s'_atol, h_s'_endline,
-          h_s'_sk_poss, h_s'_stack_sz⟩
+          h_s'_sk_poss, h_s'_stack_sz, h_s'_last, h_s'_push⟩
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

@@ -36,6 +36,11 @@ predicates, and the per-collection providers as abstract hypotheses; it proves t
 assembly of the real lemma, then instantiates and runs both branches.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointContentPackFromCarrier
 
 set_option autoImplicit false
@@ -158,3 +163,5 @@ end JointContentPackFromCarrier
 /-- info: 'JointContentPackFromCarrier.demo' does not depend on any axioms -/
 #guard_msgs in
 #print axioms JointContentPackFromCarrier.demo
+
+end Blanket

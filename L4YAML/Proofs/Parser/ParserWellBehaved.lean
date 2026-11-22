@@ -1,9 +1,23 @@
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
-import L4YAML.Proofs.Production.ScannerPlainScalarValid
-import L4YAML.Proofs.Composition
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Parser.ParserGrammableBase
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+public import L4YAML.Proofs.Production.ScannerPlainScalarValid
+public import L4YAML.Proofs.Composition
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Parser.ParserGrammableBase
+
+-- `unfold Std.Legacy.Range.forIn'` needs that body, which core does not expose
+-- to a module consumer.  `import all` of its DECLARING module unseals it and
+-- is private in scope, so nothing reaches this module's own importers.
+import all Init.Data.Range.Basic
+-- This module's `elab` bodies are `meta` definitions, while the helpers they
+-- call are ordinary code that the library also uses at runtime.  A declaration
+-- carries one phase and the `meta` modifier cannot be dropped retroactively,
+-- so mixed references inside this module need to be permitted explicitly.
+set_option compiler.relaxedMetaCheck true
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -60,6 +74,10 @@ stood when this file was the frontier:
    `AllAliasesResolve` requires a scanner-level invariant that every
    `*name` token has a prior `&name` token (YAML §7.1), plus a parser
    invariant that `ps.addAnchor` accumulations cover all processed anchors.
+   (2026-10-18: both halves are what the chain carries today, and they had to
+   be separated to be true — the first is `AllAliasesDeclared`'s index, the
+   §7.1 occurrence set, and the second is `AG.declsBound`.  The parser's own
+   guard decides the first; only the second needs the document boundary.)
 
 3. **Cross-context semantic gap** (`parseStream_output_anchors_wellformed`):
    `WellFormedAnchors` requires `∀ inFlow, Grammable val.stripAnchors inFlow`.
@@ -372,9 +390,8 @@ lemma applyNodeFinalization_tokens
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.tokens = ps.tokens := by
-  simp only [applyNodeFinalization, ParseState.addAnchor]
-  split <;> simp_all
-  all_goals (split <;> simp_all)
+  simp only [applyNodeFinalization]
+  split <;> (try split) <;> simp_all [ParseState.addAnchor]
 
 /-- `applyNodeFinalization` preserves the parse position (`.pos`).
     Properties application, anchor registration, and G5c tracking never advance. -/
@@ -382,18 +399,16 @@ lemma applyNodeFinalization_pos
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.pos = ps.pos := by
-  simp only [applyNodeFinalization, ParseState.addAnchor]
-  split <;> simp_all
-  all_goals (split <;> simp_all)
+  simp only [applyNodeFinalization]
+  split <;> (try split) <;> simp_all [ParseState.addAnchor]
 
 /-- `applyNodeFinalization` preserves `trackPositions`. -/
 lemma applyNodeFinalization_trackPositions
     (val : YamlValue) (ps : ParseState) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.trackPositions = ps.trackPositions := by
-  simp only [applyNodeFinalization, ParseState.addAnchor]
-  split <;> simp_all
-  all_goals (split <;> simp_all)
+  simp only [applyNodeFinalization]
+  split <;> (try split) <;> simp_all [ParseState.addAnchor]
 
 /-! ### §5e′  parseNodeProperties preservation lemmas -/
 
@@ -1602,7 +1617,9 @@ lemma parseSinglePairMapping_wb (tokens : Array (Positioned YamlToken))
       advance_preserves_flowNesting tokens ps h_peek h_eq
         (by exact fun h => nomatch h) (by exact fun h => nomatch h)
         (by exact fun h => nomatch h) (by exact fun h => nomatch h)
-    simp only [emptyNode] at h_ok
+    -- 4.33: `emptyNode` must stay folded — unfolding it here rewrites ite
+    -- conditions but not their Decidable instances, so the later generalize/
+    -- split machinery refuses and emptyNode-key goals leak into the wrong case.
     -- Split on key match: emptyNode branches vs parseNode
     split at h_ok
     -- ---- Case 1-3: key = emptyNode (peek? = .value | .flowEntry | .flowSequenceEnd) ----
@@ -3082,7 +3099,8 @@ lemma parseStreamLoop_docs_from_parseDocument
               (h_eq ▸ h_fpsv) (h_eq ▸ h_matched) h_pd).trans h_eq
           -- Tokens preserved through struct update + tryConsume
           let ps_reset : ParseState :=
-            { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
+            { ps' with anchors := #[], anchorIndex := .empty, declaredAnchors := #[],
+                       declaredIndex := .empty, nodePositions := #[], currentPath := #[] }
           have h_next_tok : (ps_reset.tryConsume .documentEnd).2.tokens = tokens :=
             (tryConsume_tokens _ _).trans h_pd_tok
           -- The accumulator grows by one doc
@@ -3096,7 +3114,7 @@ lemma parseStreamLoop_docs_from_parseDocument
             · exact ⟨ps, ps', h_eq, h_pd⟩
           -- Stuck check: if stuck, result = docs.push doc_new
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · simp at h_ok  -- no progress → error, contradiction
           · -- Recurse
             exact ih _ _ _ h_next_tok h_acc' h_ok
 
@@ -3634,7 +3652,9 @@ lemma parseSinglePairMapping_pos_mono (fuel : Nat)
   · rename_i k
     have h_ih_k : ParseNodePosMono k := fun ps' m v ps'' h_le h_pn =>
       h_ih ps' m v ps'' (by omega) h_pn
-    simp only [emptyNode] at h_ok
+    -- 4.33: `emptyNode` must stay folded — unfolding it here rewrites ite
+    -- conditions but not their Decidable instances, so the later generalize/
+    -- split machinery refuses and emptyNode-key goals leak into the wrong case.
     -- Peel through key dispatch layers
     split at h_ok <;> first | contradiction | skip
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -4883,3 +4903,5 @@ structure LoopMapPreconditions
 
 
 end L4YAML.Proofs.ParserWellBehaved
+
+end Blanket

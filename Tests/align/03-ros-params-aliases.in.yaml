@@ -1,0 +1,90 @@
+_anchors:
+  use_sim_time: &use_sim_time true
+  world_frame: &world_frame world
+  baselink_frame: &baselink_frame base_link
+  global_frame: &global_frame map
+  sim_start_year: &sim_start_year 2000
+  sim_start_month: &sim_start_month 1
+  sim_start_day: &sim_start_day 1
+  sim_start_hour: &sim_start_hour 12
+  sim_start_minute: &sim_start_minute 0
+  sim_start_seconds: &sim_start_seconds 0.0
+  lamp_intensity: &lamp_intensity 1.0
+  map_image: &map_image "$(env ROS_WS)/maps/demo_map.tif"
+
+demo_localizer:
+  ros__parameters:
+    use_sim_time: *use_sim_time
+
+    # How long the localization activity runs (placeholder for the stub)
+    activity_duration: 31.0
+
+    # Probability of success (placeholder for the stub)
+    success_rate: 1.0
+
+    # Wait time before preparing for the activity
+    pre_activity_wait_duration: 3.0
+
+    # Wait time after activity cleanup
+    post_activity_wait_duration: 4.0
+
+    # Path to localization inputs
+    input_folder_path: "$(env ROS_LOG_DIR)/node_logs/demo_localizer"
+
+    # use the solver or a simulated wait
+    use_solver: true
+
+    # use odometry to query the a-priori position (else ground truth is used)
+    solver_odometry_input: true
+
+    # Path to the solver executable invoked as a subprocess
+    solver_binary_path: "$(env ROS_WS)/install/demo_solver/bin/demo_solver"
+
+    # Path to the solver settings / reference-map directory
+    settings_path: "$(env ROS_WS)/src/demo_solver/input_data/default_settings"
+    #settings_path: "$(env ROS_WS)/src/demo_solver/input_data/alternate_settings"
+
+    # Interval (s) between action feedback updates
+    feedback_interval: 0.5
+
+    # Feed the estimate back to the system (true) or ground truth (false)
+    closed_loop: true
+
+    # A-priori position uncertainty (m) written into the solver input file
+    input_current_pos_uncertainty: 30.0
+
+    # Odometry availability check tuning (used during cleanup)
+    odometry_wait_timeout: 30.0
+    odometry_check_interval: 5.0
+    odometry_max_msg_age: 2.0
+
+    # ############################
+    # #         Frame IDs        #
+    # ############################ 
+    world_frame_id: *world_frame
+    baselink_frame_id: *baselink_frame
+    map_frame_id: *global_frame
+
+    # simulation start time
+    sim_start_year: *sim_start_year
+    sim_start_month: *sim_start_month
+    sim_start_day: *sim_start_day
+    sim_start_hour: *sim_start_hour
+    sim_start_minute: *sim_start_minute
+    sim_start_seconds: *sim_start_seconds
+
+    # lamp intensity to use
+    lamp_intensity_on: *lamp_intensity
+    lamp_intensity_off: 1e-6
+
+# Debug/visualization node that overlays the traversed path on the map image
+# (launched only when the path_overlay node is enabled in the launch file)
+path_overlay:
+  ros__parameters:
+    use_sim_time: *use_sim_time
+
+    # map image the path is drawn on
+    map_image_path: *map_image
+
+    # Map resolution in meters/pixel
+    map_resolution: 0.5

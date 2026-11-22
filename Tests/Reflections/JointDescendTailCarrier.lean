@@ -24,6 +24,11 @@ This file models the descend edge and the content-pack provider as abstract hypo
 composition the real lemma performs, then instantiates at toy types and runs both close branches.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointDescendTailCarrier
 
 set_option autoImplicit false
@@ -197,3 +202,5 @@ end JointDescendTailCarrier
 /-- info: 'JointDescendTailCarrier.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointDescendTailCarrier.demo
+
+end Blanket

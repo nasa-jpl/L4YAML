@@ -1,5 +1,9 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 601 -- all-scalar flow-sequence loop value pin (R601)
@@ -108,3 +112,5 @@ theorem r601_two_elem_fires
 #print axioms parseFlowSeqLoop_allScalar_value_at
 
 end FlowSeqLoopValueAt
+
+end Blanket

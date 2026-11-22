@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 294 — a threaded guard PRUNES the case tree
 
@@ -97,3 +102,5 @@ theorem empty_reachable_without_guard :
 #guard (Shape.emptyBracket == Shape.nestedSeq) == false
 
 end Tests.Reflections.ThreadedGuardPrunesCaseTree
+
+end Blanket

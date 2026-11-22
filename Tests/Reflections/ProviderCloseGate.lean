@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+
+@[expose] public section Blanket
 
 /-!
 # Reflection — the R447 provider's gate is close-UNGATED and its statement REFUTABLE
@@ -183,3 +187,5 @@ profile is stable. -/
 /-- info: 'ProviderCloseGate.recseqbody_scalar_fe_false' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms ProviderCloseGate.recseqbody_scalar_fe_false
+
+end Blanket

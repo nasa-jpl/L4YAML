@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Token.Token
+
+module
+
+public import L4YAML.Token.Token
+
+@[expose] public section Blanket
 
 /-!
 # Parser Fuel
@@ -57,3 +62,5 @@ def initialFuel (tokens : Array (Positioned YamlToken)) : Nat :=
   4 * tokens.size + 4
 
 end L4YAML.TokenParser
+
+end Blanket

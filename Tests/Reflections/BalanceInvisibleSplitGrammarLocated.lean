@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 523 — a balance-invisible split point is grammar-located, and the "it precedes the
     boundary" proof bifurcates by head shape
 
@@ -182,3 +187,5 @@ end BalanceInvisibleSplitGrammarLocated
 /-- info: 'BalanceInvisibleSplitGrammarLocated.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms BalanceInvisibleSplitGrammarLocated.demo
+
+end Blanket

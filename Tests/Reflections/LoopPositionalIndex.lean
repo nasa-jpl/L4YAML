@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 590 -- `parseFlow{Sequence,Mapping}Loop` positional index (§5.10.3)
@@ -111,3 +115,5 @@ theorem map_step_index_applies
 #print axioms parseFlowMappingLoop_step_index
 
 end LoopPositionalIndex
+
+end Blanket

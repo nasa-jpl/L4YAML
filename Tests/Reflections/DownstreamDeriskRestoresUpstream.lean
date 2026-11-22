@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 311 — a downstream consumer's de-risk can FALSIFY a deliberately-narrowed UPSTREAM deliverable: when a minimal pair shows the dropped conjunct is the discriminator AND it is independent of the producer's other outputs, restore it in the PRODUCER, not the consumer
 
@@ -162,3 +167,5 @@ theorem strong_implies_weak (a b : Nat) (g : GuardStrong a b) : GuardWeak a b :=
   ⟨Nat.le_of_lt g.stAB⟩
 
 end Tests.Reflections.DownstreamDeriskRestoresUpstream
+
+end Blanket

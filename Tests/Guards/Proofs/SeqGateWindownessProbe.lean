@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Gate-underdetermines-windowness probe (de-risk for `(i'-b-B2c-provider-from-gate)`)
@@ -101,3 +105,5 @@ def T : Array (Positioned YamlToken) :=
 #guard decide (5 ≤ 5) && decide (7 ≤ 8)         -- loS ≤ a ∧ b ≤ hiS — SELECTED
 
 end L4YAML.Proofs.EmitterScannability.SeqGateWindownessProbe
+
+end Blanket

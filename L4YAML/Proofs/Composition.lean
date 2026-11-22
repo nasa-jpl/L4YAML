@@ -2,9 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.Composition
-import L4YAML.Scanner.Scanner
-import L4YAML.Spec.Grammar
+
+module
+
+public import L4YAML.Parser.Composition
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Spec.Grammar
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Composition Theorems
@@ -33,7 +39,7 @@ is about the **Scanner → TokenParser** pipeline.
 
 2. **Compose Layer** (§2): `parseYaml` applies `YamlDocument.compose`
    to each document from `parseYamlRaw`, resolving aliases and stripping
-   anchors.  The key theorem `parseYaml_ok_iff` (in `Completeness.lean`)
+   anchors.  The key theorem `parseYamlIx_ok_iff` (in `Completeness.lean`)
    is re-exported here for convenience.
 -/
 
@@ -105,7 +111,7 @@ lemma parseYamlRaw_parse_error (input : String) (e : ScanError)
 
 `parseYaml` extends `parseYamlRaw` by applying `YamlDocument.compose`
 to each raw document, resolving aliases and stripping anchor annotations.
-The primary decomposition theorem `parseYaml_ok_iff` is in `Completeness.lean`;
+The primary decomposition theorem `parseYamlIx_ok_iff` is in `Completeness.lean`;
 here we provide additional convenience forms.
 -/
 
@@ -139,3 +145,5 @@ theorem parseYaml_pipeline (input : String)
   parseYaml_of_parseYamlRaw_ok input docs (parseYamlRaw_pipeline input tokens docs h_scan h_parse)
 
 end L4YAML.Proofs.Composition
+
+end Blanket

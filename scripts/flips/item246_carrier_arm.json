@@ -1,0 +1,37 @@
+{
+ "item": 246,
+ "tag": "CARRIER-ARM",
+ "rev": "HEAD",
+ "target": "",
+ "log": "scratch/flip246_carrier_arm.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "ARM",
+     "old": [
+      "inductive BlockStack : SurfPos → SurfPos → Prop where",
+      "  /-- No active block collections. At document level or stream start. -/",
+      "  | nil (sp : SurfPos) : BlockStack sp sp",
+      ""
+     ],
+     "new": [
+      "inductive BlockStack : SurfPos → SurfPos → Prop where",
+      "  /-- No active block collections. At document level or stream start. -/",
+      "  | nil (sp : SurfPos) : BlockStack sp sp",
+      "  /-- FLIP (scripts/flip_carrier.py): a block sequence entry OPENED at",
+      "      indentation `n` — `s-indent(n)` and the `-` scanned,",
+      "      `s-l+block-indented` awaited. -/",
+      "  | seqEntryOpen (n : Nat) (sp sp_i sp' : SurfPos)",
+      "      (hind : SIndent n sp sp_i) (hdash : GLit '-' sp_i sp') : BlockStack sp sp'",
+      ""
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

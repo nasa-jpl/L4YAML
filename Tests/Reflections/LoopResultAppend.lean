@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 580 — INHABITATION PROBE for Front B's brick-3 link (b) scaffold (§5.10)
@@ -193,3 +197,5 @@ Sorry-free (no `sorryAx`); `Classical.choice` is inherited from the loop inducti
 #print axioms parseFlowMappingLoop_result_append
 
 end LoopResultAppend
+
+end Blanket

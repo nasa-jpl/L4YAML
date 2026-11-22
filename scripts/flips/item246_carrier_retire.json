@@ -1,0 +1,78 @@
+{
+ "item": 246,
+ "tag": "CARRIER-RETIRE",
+ "rev": "200b7454",
+ "target": "",
+ "log": "scratch/flip246_carrier_retire.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "ARM",
+     "old": [
+      "inductive BlockStack : SurfPos → SurfPos → Prop where",
+      "  /-- No active block collections. At document level or stream start. -/",
+      "  | nil (sp : SurfPos) : BlockStack sp sp",
+      ""
+     ],
+     "new": [
+      "inductive BlockStack : SurfPos → SurfPos → Prop where",
+      "  /-- No active block collections. At document level or stream start. -/",
+      "  | nil (sp : SurfPos) : BlockStack sp sp",
+      "  /-- FLIP (scripts/flip_carrier.py): a block sequence entry OPENED at",
+      "      indentation `n` — `s-indent(n)` and the `-` scanned,",
+      "      `s-l+block-indented` awaited. -/",
+      "  | seqEntryOpen (n : Nat) (sp sp_i sp' : SurfPos)",
+      "      (hind : SIndent n sp sp_i) (hdash : GLit '-' sp_i sp') : BlockStack sp sp'",
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "ABSORB",
+     "old": [
+      "/-- Absorb both markers into the stream: three coincident positions, so the",
+      "    incoming stream IS the outgoing one. -/",
+      "lemma absorb_stacks (sp_start sp_gram sp_block sp_flow : SurfPos)",
+      "    (h_stream : SLYamlStream sp_start sp_gram)",
+      "    (h_stack : BlockStack sp_gram sp_block)",
+      "    (h_flow : FlowStack sp_block sp_flow) : SLYamlStream sp_start sp_flow := by",
+      "  cases h_flow with",
+      "  | nil => cases h_stack with",
+      "    | nil => exact h_stream",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "ABSORB_B",
+     "old": [
+      "/-- Absorb the block marker + a CLOSED (`nil`, depth 0) `FlowStackB` into the",
+      "    stream.  The `open` case is vacuous at depth 0 (`FlowOpenStack` has positive",
+      "    depth). -/",
+      "lemma absorb_stacksB {g : Option ScannerState} (sp_start sp_gram sp_block sp_flow : SurfPos)",
+      "    (h_stream : SLYamlStream sp_start sp_gram)",
+      "    (h_stack : BlockStack sp_gram sp_block)",
+      "    {n : Nat} {ks km : Array Bool} {kc : Nat} {tl : FrameTail}",
+      "    (h_flow : FlowStackB sp_start n kc g 0 ks km tl sp_block sp_flow) : SLYamlStream sp_start sp_flow := by",
+      "  cases h_flow with",
+      "  | nil => cases h_stack with",
+      "    | nil => exact h_stream",
+      "  | «open» _ _ _ _ _ _ h => exact absurd (FlowOpenStack_depth_pos h) (by omega)",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

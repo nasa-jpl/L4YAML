@@ -3,8 +3,12 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Output.EmitterScannability.TokValsPin
-import L4YAML.Proofs.Output.EmitterScannability.StreamNodeWitness
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.TokValsPin
+public import L4YAML.Proofs.Output.EmitterScannability.StreamNodeWitness
+
+@[expose] public section Blanket
 
 /-!
 # The general locality walks
@@ -805,3 +809,5 @@ lemma parseFlowMapLoop_tokvals_pair_at {tokens : Array (Positioned YamlToken)}
     simpa using h_at'
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

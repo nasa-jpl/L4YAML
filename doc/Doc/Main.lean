@@ -18,10 +18,9 @@ def config : RenderConfig where
   emitHtmlSingle := .immediately
   emitHtmlMulti := .immediately
   htmlDepth := 2
-  extraFilesHtml := [
-    ("Doc/L4YAML/graphs", "Verification/Key-Theorems/graphs"),
-    ("Doc/L4YAML/graphs", "Verification/What-L4YAML-Proves/graphs"),
-    ("Doc/L4YAML/graphs", "Architecture/Import-Graph/graphs")
-  ]
+  -- One copy at the site root: every page's <base> tag points there, so the chapters'
+  -- page-relative `graphs/<name>.svg` references resolve on every multi-page page and
+  -- on the single page alike.
+  extraFilesHtml := [("Doc/L4YAML/graphs", "graphs")]
 
 def main (args : List String) := manualMain (%doc Doc.L4YAML) (options := args) (config := config)

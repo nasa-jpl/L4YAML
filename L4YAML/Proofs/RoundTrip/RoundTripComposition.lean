@@ -1,8 +1,16 @@
-import L4YAML.Schema.Schema
-import L4YAML.Schema.FromToYaml
-import L4YAML.Output.Dump
-import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
+module
+
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.FromToYaml
+public meta import L4YAML.Schema.FromToYaml
+public import L4YAML.Output.Dump
+public meta import L4YAML.Output.Dump
+public import L4YAML.Output.Emitter
+public import L4YAML.Parser.Composition
+
+public meta import L4YAML.Parser.Composition
+public meta import L4YAML.Spec.Types
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -77,7 +85,9 @@ Structure mirrors `contentEq` to ensure equational theorem generation. -/
 /-- Resolution-relevant equivalence: two values that resolve identically.
     This is a sufficient condition for `resolve v = resolve v'`. -/
 def resolveEq : YamlValue → YamlValue → Bool
-  | .scalar s₁, .scalar s₂ => s₁.content == s₂.content && s₁.tag == s₂.tag
+  | .scalar s₁, .scalar s₂ =>
+    s₁.content == s₂.content && s₁.tag == s₂.tag &&
+    (s₁.style == .plain) == (s₂.style == .plain)
   | .sequence _ items₁ .., .sequence _ items₂ .. =>
     items₁.size == items₂.size &&
     resolveEqList items₁.toList items₂.toList
@@ -146,10 +156,12 @@ lemma resolve_eq_of_resolveEq (v v' : YamlValue) (h : resolveEq v v' = true) :
     resolve v = resolve v' := by
   match v, v' with
   | .scalar s₁, .scalar s₂ =>
-    have hh : (s₁.content == s₂.content && s₁.tag == s₂.tag) = true := h
+    have hh : (s₁.content == s₂.content && s₁.tag == s₂.tag &&
+               (s₁.style == .plain) == (s₂.style == .plain)) = true := h
     simp only [Bool.and_eq_true, beq_iff_eq] at hh
-    show resolveScalar s₁.content s₁.tag = resolveScalar s₂.content s₂.tag
-    rw [hh.1, hh.2]
+    show scalarType s₁ = scalarType s₂
+    unfold scalarType
+    rw [hh.1.1, hh.1.2, hh.2]
   | .sequence _ items₁ .., .sequence _ items₂ .. =>
     have hh : (items₁.size == items₂.size &&
                resolveEq.resolveEqList items₁.toList items₂.toList) = true := h
@@ -187,53 +199,57 @@ decreasing_by
   · have := List.sizeOf_lt_of_mem hp
     cases pairs₁; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
 
-/-! ## §3: `contentEq` + No Tags → `resolve` Equality
+/-! ## §3: `contentEq` + Plain Untagged Scalars → `resolve` Equality
 
-For the common case of tag-free values, `contentEq` alone is sufficient
-to guarantee `resolve` equality. This covers all `toYaml` outputs
-(which produce `tag := none`) and most parser outputs.
+For values whose scalars are all plain and untagged, `contentEq` alone is
+sufficient to guarantee `resolve` equality: resolution then depends on the
+content only.  (A quoted scalar is a string whatever its content, so the
+style condition cannot be dropped: `42` and `"42"` are `contentEq` but
+resolve to `.int 42` and `.str "42"`.)
 
 Proved directly by structural induction without going through `resolveEq`. -/
 
-/-- A value is tag-free at the scalar level (all scalar tags are `none`). -/
-def noTags : YamlValue → Bool
-  | .scalar s => s.tag.isNone
-  | .sequence _ items .. => noTagsList items.toList
-  | .mapping _ pairs .. => noTagsPairList pairs.toList
+/-- Every scalar of the value is plain and untagged. -/
+def plainUntagged : YamlValue → Bool
+  | .scalar s => s.tag.isNone && s.style == .plain
+  | .sequence _ items .. => plainUntaggedList items.toList
+  | .mapping _ pairs .. => plainUntaggedPairList pairs.toList
   | .alias _ => true
 where
-  noTagsList : List YamlValue → Bool
+  plainUntaggedList : List YamlValue → Bool
     | [] => true
-    | v :: vs => noTags v && noTagsList vs
-  noTagsPairList : List (YamlValue × YamlValue) → Bool
+    | v :: vs => plainUntagged v && plainUntaggedList vs
+  plainUntaggedPairList : List (YamlValue × YamlValue) → Bool
     | [] => true
-    | (k, v) :: rest => noTags k && noTags v && noTagsPairList rest
+    | (k, v) :: rest => plainUntagged k && plainUntagged v && plainUntaggedPairList rest
 
-/-- **For tag-free values, content equivalence implies resolution equality.**
+/-- **For plain untagged values, content equivalence implies resolution equality.**
 
-    This covers all `toYaml` outputs (which produce `tag := none`),
-    most YAML files without explicit tags, and all `dump→parse` cycles
-    of tag-free values. -/
-lemma resolve_eq_of_contentEq_noTags (v v' : YamlValue)
-    (h_ceq : contentEq v v' = true) (h_nt : noTags v = true) (h_nt' : noTags v' = true) :
+    This covers YAML files without quoting or explicit tags, and the
+    `dump→parse` cycles of such values. -/
+lemma resolve_eq_of_contentEq_plainUntagged (v v' : YamlValue)
+    (h_ceq : contentEq v v' = true)
+    (h_nt : plainUntagged v = true) (h_nt' : plainUntagged v' = true) :
     resolve v = resolve v' := by
   match v, v' with
   | .scalar s₁, .scalar s₂ =>
     have hc : s₁.content = s₂.content := by
       have : (s₁.content == s₂.content) = true := h_ceq
       exact eq_of_beq this
+    have h1 : (s₁.tag.isNone && s₁.style == .plain) = true := h_nt
+    have h2 : (s₂.tag.isNone && s₂.style == .plain) = true := h_nt'
+    simp only [Bool.and_eq_true] at h1 h2
     have ht1 : s₁.tag = none := by
-      have hni : s₁.tag.isNone = true := h_nt
       match h : s₁.tag with
       | none => rfl
-      | some _ => rw [h] at hni; exact Bool.noConfusion hni
+      | some _ => rw [h] at h1; exact Bool.noConfusion h1.1
     have ht2 : s₂.tag = none := by
-      have hni : s₂.tag.isNone = true := h_nt'
       match h : s₂.tag with
       | none => rfl
-      | some _ => rw [h] at hni; exact Bool.noConfusion hni
-    show resolveScalar s₁.content s₁.tag = resolveScalar s₂.content s₂.tag
-    rw [hc, ht1, ht2]
+      | some _ => rw [h] at h2; exact Bool.noConfusion h2.1
+    show scalarType s₁ = scalarType s₂
+    unfold scalarType
+    rw [hc, ht1, ht2, h1.2, h2.2]
   | .sequence _ items₁ .., .sequence _ items₂ .. =>
     show YamlType.seq (resolve.resolveList items₁.toList).toArray =
          YamlType.seq (resolve.resolveList items₂.toList).toArray
@@ -241,8 +257,8 @@ lemma resolve_eq_of_contentEq_noTags (v v' : YamlValue)
       have : (items₁.size == items₂.size &&
               contentEq.contentEqList items₁.toList items₂.toList) = true := h_ceq
       simp only [Bool.and_eq_true] at this; exact this.2
-    have h_list := resolveList_eq_noTags items₁.toList items₂.toList
-      (fun v hv v' hc hnt hnt' => resolve_eq_of_contentEq_noTags v v' hc hnt hnt')
+    have h_list := resolveList_eq_plainUntagged items₁.toList items₂.toList
+      (fun v hv v' hc hnt hnt' => resolve_eq_of_contentEq_plainUntagged v v' hc hnt hnt')
       hceq h_nt h_nt'
     rw [h_list]
   | .mapping _ pairs₁ .., .mapping _ pairs₂ .. =>
@@ -252,10 +268,10 @@ lemma resolve_eq_of_contentEq_noTags (v v' : YamlValue)
       have : (pairs₁.size == pairs₂.size &&
               contentEq.contentEqPairList pairs₁.toList pairs₂.toList) = true := h_ceq
       simp only [Bool.and_eq_true] at this; exact this.2
-    have h_pairs := resolvePairList_eq_noTags pairs₁.toList pairs₂.toList
+    have h_pairs := resolvePairList_eq_plainUntagged pairs₁.toList pairs₂.toList
       (fun p hp =>
-        ⟨fun v' hc hnt hnt' => resolve_eq_of_contentEq_noTags p.1 v' hc hnt hnt',
-         fun v' hc hnt hnt' => resolve_eq_of_contentEq_noTags p.2 v' hc hnt hnt'⟩)
+        ⟨fun v' hc hnt hnt' => resolve_eq_of_contentEq_plainUntagged p.1 v' hc hnt hnt',
+         fun v' hc hnt hnt' => resolve_eq_of_contentEq_plainUntagged p.2 v' hc hnt hnt'⟩)
       hceq h_nt h_nt'
     rw [h_pairs]
   | .alias _, .alias _ => rfl
@@ -275,13 +291,13 @@ decreasing_by
   · have := List.sizeOf_lt_of_mem hp
     cases pairs₁; cases p; simp_all [Array.mk.sizeOf_spec, Prod.mk.sizeOf_spec]; omega
 where
-  /-- Helper: contentEqList + noTags → resolveList equality. -/
-  resolveList_eq_noTags (vs vs' : List YamlValue)
+  /-- Helper: contentEqList + plainUntagged → resolveList equality. -/
+  resolveList_eq_plainUntagged (vs vs' : List YamlValue)
       (ih : ∀ v, v ∈ vs → ∀ v', contentEq v v' = true →
-        noTags v = true → noTags v' = true → resolve v = resolve v')
+        plainUntagged v = true → plainUntagged v' = true → resolve v = resolve v')
       (h_ceq : contentEq.contentEqList vs vs' = true)
-      (h_nt : noTags.noTagsList vs = true)
-      (h_nt' : noTags.noTagsList vs' = true) :
+      (h_nt : plainUntagged.plainUntaggedList vs = true)
+      (h_nt' : plainUntagged.plainUntaggedList vs' = true) :
       resolve.resolveList vs = resolve.resolveList vs' := by
     match vs, vs' with
     | [], [] => rfl
@@ -290,24 +306,24 @@ where
     | v :: rest, v' :: rest' =>
       have hceq : (contentEq v v' && contentEq.contentEqList rest rest') = true := h_ceq
       simp only [Bool.and_eq_true] at hceq
-      have hnt : (noTags v && noTags.noTagsList rest) = true := h_nt
+      have hnt : (plainUntagged v && plainUntagged.plainUntaggedList rest) = true := h_nt
       simp only [Bool.and_eq_true] at hnt
-      have hnt' : (noTags v' && noTags.noTagsList rest') = true := h_nt'
+      have hnt' : (plainUntagged v' && plainUntagged.plainUntaggedList rest') = true := h_nt'
       simp only [Bool.and_eq_true] at hnt'
       show resolve v :: resolve.resolveList rest = resolve v' :: resolve.resolveList rest'
       rw [ih v (.head _) v' hceq.1 hnt.1 hnt'.1,
-          resolveList_eq_noTags rest rest' (fun w hw => ih w (.tail _ hw))
+          resolveList_eq_plainUntagged rest rest' (fun w hw => ih w (.tail _ hw))
             hceq.2 hnt.2 hnt'.2]
-  /-- Helper: contentEqPairList + noTags → resolvePairs equality. -/
-  resolvePairList_eq_noTags (ps ps' : List (YamlValue × YamlValue))
+  /-- Helper: contentEqPairList + plainUntagged → resolvePairs equality. -/
+  resolvePairList_eq_plainUntagged (ps ps' : List (YamlValue × YamlValue))
       (ih : ∀ p, p ∈ ps →
-        (∀ v', contentEq p.1 v' = true → noTags p.1 = true → noTags v' = true →
+        (∀ v', contentEq p.1 v' = true → plainUntagged p.1 = true → plainUntagged v' = true →
           resolve p.1 = resolve v') ∧
-        (∀ v', contentEq p.2 v' = true → noTags p.2 = true → noTags v' = true →
+        (∀ v', contentEq p.2 v' = true → plainUntagged p.2 = true → plainUntagged v' = true →
           resolve p.2 = resolve v'))
       (h_ceq : contentEq.contentEqPairList ps ps' = true)
-      (h_nt : noTags.noTagsPairList ps = true)
-      (h_nt' : noTags.noTagsPairList ps' = true) :
+      (h_nt : plainUntagged.plainUntaggedPairList ps = true)
+      (h_nt' : plainUntagged.plainUntaggedPairList ps' = true) :
       resolve.resolvePairs ps = resolve.resolvePairs ps' := by
     match ps, ps' with
     | [], [] => rfl
@@ -317,15 +333,15 @@ where
       have hceq : (contentEq k k' && contentEq v v' &&
                    contentEq.contentEqPairList rest rest') = true := h_ceq
       simp only [Bool.and_eq_true] at hceq
-      have hnt : (noTags k && noTags v && noTags.noTagsPairList rest) = true := h_nt
+      have hnt : (plainUntagged k && plainUntagged v && plainUntagged.plainUntaggedPairList rest) = true := h_nt
       simp only [Bool.and_eq_true] at hnt
-      have hnt' : (noTags k' && noTags v' && noTags.noTagsPairList rest') = true := h_nt'
+      have hnt' : (plainUntagged k' && plainUntagged v' && plainUntagged.plainUntaggedPairList rest') = true := h_nt'
       simp only [Bool.and_eq_true] at hnt'
       have ihm := ih (k, v) (.head _)
       show (resolve k, resolve v) :: resolve.resolvePairs rest =
            (resolve k', resolve v') :: resolve.resolvePairs rest'
       rw [ihm.1 k' hceq.1.1 hnt.1.1 hnt'.1.1, ihm.2 v' hceq.1.2 hnt.1.2 hnt'.1.2,
-          resolvePairList_eq_noTags rest rest' (fun p hp => ih p (.tail _ hp))
+          resolvePairList_eq_plainUntagged rest rest' (fun p hp => ih p (.tail _ hp))
             hceq.2 hnt.2 hnt'.2]
 
 /-! ## §4: End-to-End Round-Trip Checker
@@ -358,24 +374,45 @@ lemma roundtrip_plain_hello :
 lemma roundtrip_plain_world :
     resolveRoundTrips (.plainScalar "world") = true := by native_decide
 
-lemma roundtrip_plain_empty :
-    resolveRoundTrips (.plainScalar "") = true := by native_decide
+lemma roundtrip_quoted_empty :
+    resolveRoundTrips (.scalar ⟨"", .doubleQuoted, none, none, none⟩) = true := by
+  native_decide
 
--- Reserved words (dump auto-quotes, parser recovers content)
-lemma roundtrip_reserved_true :
-    resolveRoundTrips (.plainScalar "true") = true := by native_decide
+/-! Reserved words.  An *untagged* plain `true` is the boolean under the Core
+Schema, but `dump` reads it as a string that needs protecting and quotes it, so
+its type does not survive: this is the one shape that does not round-trip, and
+the reason `toYaml` tags its non-string primitives.  Tagged, or with
+`allowReservedPlain`, the type is preserved. -/
+lemma roundtrip_reserved_true_untagged_is_lost :
+    resolveRoundTrips (.plainScalar "true") = false := by native_decide
 
-lemma roundtrip_reserved_false :
-    resolveRoundTrips (.plainScalar "false") = true := by native_decide
+lemma roundtrip_reserved_true_tagged :
+    resolveRoundTrips (coreScalar "!!bool" "true") = true := by native_decide
 
-lemma roundtrip_reserved_null :
-    resolveRoundTrips (.plainScalar "null") = true := by native_decide
+lemma roundtrip_reserved_true_allowPlain :
+    resolveRoundTrips (.plainScalar "true") { allowReservedPlain := true } = true := by
+  native_decide
+
+lemma roundtrip_reserved_false_tagged :
+    resolveRoundTrips (coreScalar "!!bool" "false") = true := by native_decide
+
+lemma roundtrip_reserved_null_tagged :
+    resolveRoundTrips (coreScalar "!!null" "null") = true := by native_decide
+
+lemma roundtrip_reserved_null_allowPlain :
+    resolveRoundTrips (.plainScalar "null") { allowReservedPlain := true } = true := by
+  native_decide
 
 lemma roundtrip_reserved_42 :
     resolveRoundTrips (.plainScalar "42") = true := by native_decide
 
-lemma roundtrip_reserved_neg7 :
-    resolveRoundTrips (.plainScalar "-7") = true := by native_decide
+lemma roundtrip_reserved_neg7_tagged :
+    resolveRoundTrips (coreScalar "!!int" "-7") = true := by native_decide
+
+/-- Quoting is itself type-relevant: a quoted `42` is a string, and stays one. -/
+lemma roundtrip_quoted_42 :
+    resolveRoundTrips (.scalar ⟨"42", .doubleQuoted, none, none, none⟩) = true := by
+  native_decide
 
 -- Special characters (require quoting)
 lemma roundtrip_colon_space :
@@ -508,3 +545,5 @@ lemma roundtrip_typed_nested_arrays :
   native_decide
 
 end L4YAML.Proofs.RoundTripComposition
+
+end Blanket

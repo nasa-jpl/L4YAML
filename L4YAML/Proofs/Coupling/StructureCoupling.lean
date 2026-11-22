@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Coupling.ScalarCoupling
+
+module
+
+public import L4YAML.Proofs.Coupling.ScalarCoupling
+
+@[expose] public section Blanket
 
 /-!
 # Structure, Document & Directive Coupling
@@ -121,7 +126,7 @@ lemma unwindIndentsLoop_corr (sc : ScannerState) (sp : SurfPos)
   | succ fuel' ih =>
     unfold unwindIndentsLoop; split
     · have hcorr_emit := corr_of_emit .blockEnd hcorr
-      exact ih { (sc.emit .blockEnd) with indents := _ } sp
+      exact ih { (sc.emit .blockEnd) with indents := _, pendingKeys := _ } sp
         ⟨hcorr_emit.chars_from, hcorr_emit.col_eq, hcorr_emit.end_eq, hcorr_emit.input_prefix,
          fun i hi h0 => by
            simp only [ScannerState.emit] at hi ⊢
@@ -277,8 +282,10 @@ lemma scanNamedTag_corr (sc : ScannerState) (sp : SurfPos)
     obtain ⟨sp_sfx, hcorr_sfx⟩ :=
       collectTagSuffixLoop_corr _ sp_hdl hcorr_hdl "" _
     exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix, hcorr_sfx.indent_cols_nonneg⟩⟩
-  · -- foundBang = false
-    exact ⟨sp_hdl, ⟨hcorr_hdl.chars_from, hcorr_hdl.col_eq, hcorr_hdl.end_eq, hcorr_hdl.input_prefix, hcorr_hdl.indent_cols_nonneg⟩⟩
+  · -- foundBang = false: the primary suffix also runs collectTagSuffixLoop
+    obtain ⟨sp_sfx, hcorr_sfx⟩ :=
+      collectTagSuffixLoop_corr _ sp_hdl hcorr_hdl _ _
+    exact ⟨sp_sfx, ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix, hcorr_sfx.indent_cols_nonneg⟩⟩
 
 lemma scanTag_corr (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (s' : ScannerState)
@@ -366,12 +373,18 @@ lemma scanBlockEntry_corr (sc : ScannerState) (sp : SurfPos)
   · -- !inFlow
     split at hok
     · exact absurd hok (by simp)
-    · have h := Except.ok.inj hok; subst h
-      have hcorr_ind := pushSequenceIndent_corr sc sp hcorr (sc.col : Int) (Int.natCast_nonneg _)
-      obtain ⟨sp', hcorr'⟩ := advance_corr
-        ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry) sp
-        ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix, hcorr_ind.indent_cols_nonneg⟩
-      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+    · -- item 48 same-line check
+      split at hok
+      · exact absurd hok (by simp)
+      · -- `scanBlockEntryValidate` (item 134)
+        split at hok
+        · exact absurd hok (by simp)
+        have h := Except.ok.inj hok; subst h
+        have hcorr_ind := pushSequenceIndent_corr sc sp hcorr (sc.col : Int) (Int.natCast_nonneg _)
+        obtain ⟨sp', hcorr'⟩ := advance_corr
+          ((pushSequenceIndent sc (sc.col : Int)).emit .blockEntry) sp
+          ⟨hcorr_ind.chars_from, hcorr_ind.col_eq, hcorr_ind.end_eq, hcorr_ind.input_prefix, hcorr_ind.indent_cols_nonneg⟩
+        exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
   · -- inFlow
     have h := Except.ok.inj hok; subst h
     obtain ⟨sp', hcorr'⟩ := advance_corr (sc.emit .blockEntry) sp
@@ -387,7 +400,9 @@ lemma scanKey_corr (sc : ScannerState) (sp : SurfPos)
   -- The first let: s_with_indent := if !s.inFlow then pushMappingIndent ...
   -- After bind/Except.bind simplification, we split on !inFlow
   split at hok
-  · -- !inFlow: pushMappingIndent
+  · -- !inFlow: `scanKeyValidate` (item 131), then pushMappingIndent
+    split at hok
+    · exact absurd hok (by simp)
     have hcorr_ind := pushMappingIndent_corr sc sp hcorr (sc.col : Int) (Int.natCast_nonneg _)
     obtain ⟨sp_adv, hcorr_adv⟩ := advance_corr
       ((pushMappingIndent sc (sc.col : Int)).emit .key) sp
@@ -420,16 +435,19 @@ lemma scanValue_corr (sc : ScannerState) (sp : SurfPos)
   -- scanValueValidate returns Except ScanError Unit
   split at hok
   · exact absurd hok (by simp) -- validate error
-  · -- scanValueTabCheck returns Except ScanError Unit
-    split at hok
-    · exact absurd hok (by simp) -- tabCheck error
-    · have h := Except.ok.inj hok; subst h
-      have hcorr_ck := scanValueClearKey_corr sc sp hcorr
-      have hcorr_prep := scanValuePrepare_corr (scanValueClearKey sc) sp hcorr_ck
-      obtain ⟨sp', hcorr'⟩ := advance_corr
-        ((scanValuePrepare (scanValueClearKey sc)).emit .value) sp
-        ⟨hcorr_prep.chars_from, hcorr_prep.col_eq, hcorr_prep.end_eq, hcorr_prep.input_prefix, hcorr_prep.indent_cols_nonneg⟩
-      exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
+  -- scanValueIndentTabCheck (item 31), then scanValueTabCheck — both
+  -- `Except ScanError Unit`, both error branches contradict `.ok`
+  split at hok
+  · exact absurd hok (by simp) -- indent tab check error
+  split at hok
+  · exact absurd hok (by simp) -- tabCheck error
+  have h := Except.ok.inj hok; subst h
+  have hcorr_ck := scanValueClearKey_corr sc sp hcorr
+  have hcorr_prep := scanValuePrepare_corr (scanValueClearKey sc) sp hcorr_ck
+  obtain ⟨sp', hcorr'⟩ := advance_corr
+    ((scanValuePrepare (scanValueClearKey sc)).emit .value) sp
+    ⟨hcorr_prep.chars_from, hcorr_prep.col_eq, hcorr_prep.end_eq, hcorr_prep.input_prefix, hcorr_prep.indent_cols_nonneg⟩
+  exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
 /-! ## §7 Document Boundaries -/
 
@@ -608,6 +626,8 @@ lemma scanTagDirective_corr (sc : ScannerState) (sp : SurfPos)
   obtain ⟨sp_val, _, hcorr_val⟩ :=
     skipWhitespace_corr _ sp_pfx hcorr_pfx
   split at hok
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at hok
   · split at hok
     · exact absurd hok (by simp)
     · have h := Except.ok.inj hok; subst h
@@ -656,3 +676,5 @@ lemma scanDirective_corr (sc : ScannerState) (sp : SurfPos)
         exact ⟨sp', ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩⟩
 
 end L4YAML.Proofs.StructureCoupling
+
+end Blanket

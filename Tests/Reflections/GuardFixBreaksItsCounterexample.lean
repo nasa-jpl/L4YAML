@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 439 — adding a GUARD (antecedent) to a shared field is the DUAL of adding a conclusion
 # conjunct: it ripples to CONSUMERS, not producers — and a guard that FIXES an over-strong contract
@@ -152,3 +157,5 @@ example : (¬ (∀ w, Balanced w → Body w)) ∧ (∀ w, Balanced w → Floor w
 example : Balanced 5 ∧ ¬ Floor 5 := floorRejectsBadWindow
 
 end Tests.Reflections.GuardFixBreaksItsCounterexample
+
+end Blanket

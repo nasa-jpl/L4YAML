@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 396 — dual-bracket a global contract: the produce-side joint reduces it to
 boundary-from-sibling + one interior field, whose shape confirms the substrate.
@@ -135,3 +140,5 @@ theorem windowField_insufficient :
 #guard badStructure[2]! == Tok.send        -- ... successor not content-start (and ≠ cls): violated
 
 end Tests.Reflections.ProduceJointBracketsGlobalContract
+
+end Blanket

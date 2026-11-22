@@ -1,6 +1,11 @@
-import Lean.Data.Json
-import Tests.SuiteRunner.Meta
-import Tests.VerifiedResult
+module
+
+public import Lean.Data.Json
+public import Tests.SuiteRunner.Meta
+public import Tests.VerifiedResult
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # HTML Coverage Report Generator
@@ -77,7 +82,7 @@ def CoverageStats.successRate (s : CoverageStats) : Float :=
   else (s.correctCount.toFloat / s.applicable.toFloat) * 100.0
 
 /-- Format a percentage to 1 decimal place.  Returns e.g. "75.4" or "100.0". -/
-private def formatPct (pct : Float) : String :=
+def formatPct (pct : Float) : String :=
   -- Multiply by 10, round, then format as "integer.digit"
   let scaled := (pct * 10.0 + 0.5).floor.toUInt64.toNat
   let whole := scaled / 10
@@ -110,7 +115,7 @@ instance : ToJson Stage where
 /-- Convert a ratio to a `JsonNumber` with fixed decimal precision.
     `ratioPercent num denom scale` computes `(num / denom) × 100`
     with `scale` decimal digits (default 6). -/
-private def ratioPercent (num denom : Nat) (scale : Nat := 1) : Lean.JsonNumber :=
+def ratioPercent (num denom : Nat) (scale : Nat := 1) : Lean.JsonNumber :=
   if denom == 0 then { mantissa := 0, exponent := scale }
   else { mantissa := (num * 100 * (10 ^ scale) / denom : Nat), exponent := scale }
 
@@ -204,7 +209,7 @@ structure JsonVerifiedSection where
     Lean's built-in `Json.pretty` uses `Format` (width-based line breaking)
     which produces non-standard indentation.  This gives conventional output
     suitable for `jq`, `python -m json.tool`, etc. -/
-private partial def jsonPretty (j : Lean.Json) (indent : Nat := 0) : String :=
+partial def jsonPretty (j : Lean.Json) (indent : Nat := 0) : String :=
   let pad  := "".pushn ' ' (indent * 2)
   let pad1 := "".pushn ' ' ((indent + 1) * 2)
   match j with
@@ -278,14 +283,14 @@ def generateJsonSummary (results : Array ReportResult) (dateStamp : String)
 
 /-! ## HTML Helpers -/
 
-private def escapeHtml (s : String) : String :=
+def escapeHtml (s : String) : String :=
   s.replace "&" "&amp;"
    |>.replace "<" "&lt;"
    |>.replace ">" "&gt;"
    |>.replace "\"" "&quot;"
    |>.replace "'" "&#39;"
 
-private def outcomeClass : TestOutcome → String
+def outcomeClass : TestOutcome → String
   | .pass => "pass"
   | .fail => "fail"
   | .expectedFail => "expected-fail"
@@ -293,7 +298,7 @@ private def outcomeClass : TestOutcome → String
   | .skip _ => "skip"
   | .timeout => "timeout"
 
-private def outcomeBadge : TestOutcome → String
+def outcomeBadge : TestOutcome → String
   | .pass => "<span class=\"badge badge-pass\">Pass</span>"
   | .fail => "<span class=\"badge badge-fail\">Fail</span>"
   | .expectedFail => "<span class=\"badge badge-expected-fail\">Expected Fail</span>"
@@ -303,7 +308,7 @@ private def outcomeBadge : TestOutcome → String
 
 /-! ## CSS -/
 
-private def reportCss : String :=
+def reportCss : String :=
   "    :root {
       --color-pass: #4CAF50;
       --color-fail: #f44336;
@@ -470,7 +475,7 @@ private def reportCss : String :=
 
 /-! ## JavaScript -/
 
-private def reportJs : String :=
+def reportJs : String :=
   "
     // State
     let currentOutcomeFilter = 'all';
@@ -565,7 +570,7 @@ private def reportJs : String :=
 /-! ## Report Generation -/
 
 /-- Generate the stats boxes HTML. -/
-private def generateStatsHtml (stats : CoverageStats) : String :=
+def generateStatsHtml (stats : CoverageStats) : String :=
   let pctStr := formatPct stats.successRate
   String.join [
     "  <div class=\"stats\">\n",
@@ -583,7 +588,7 @@ private def generateStatsHtml (stats : CoverageStats) : String :=
 /-- Generate a multi-segment bar for a stage, one segment per non-zero category.
     Each segment uses `flex: count 0 0px` for proportional sizing with `min-width: 4px`
     guaranteeing visibility even for count=1 categories. -/
-private def generateStageBarSegments (stats : CoverageStats) : String :=
+def generateStageBarSegments (stats : CoverageStats) : String :=
   -- Display order: pass (green), expected-fail (blue), fail (red),
   --   unexpected-pass (orange), skip (gray), timeout (purple)
   let categories : Array (String × String × Nat) := #[
@@ -600,7 +605,7 @@ private def generateStageBarSegments (stats : CoverageStats) : String :=
   String.join html.toList
 
 /-- Generate stage breakdown cards. -/
-private def generateStageCardsHtml (results : Array ReportResult) : String :=
+def generateStageCardsHtml (results : Array ReportResult) : String :=
   let stages : Array Stage := #[.scalar, .flow, .block, .document, .advanced, .error]
   let cards := stages.map fun stage =>
     let stageResults := results.filter (fun r => r.testCase.stage == stage)
@@ -623,7 +628,7 @@ private def generateStageCardsHtml (results : Array ReportResult) : String :=
   ]
 
 /-- Generate the filter bar. -/
-private def generateFiltersHtml (totalCount : Nat) : String :=
+def generateFiltersHtml (totalCount : Nat) : String :=
   String.join [
     "  <div class=\"filters\">\n",
     "    <div class=\"filter-group filter-outcome\">\n",
@@ -657,7 +662,7 @@ private def generateFiltersHtml (totalCount : Nat) : String :=
   ]
 
 /-- Generate a single test row. -/
-private def generateTestRow (r : ReportResult) : String :=
+def generateTestRow (r : ReportResult) : String :=
   let tc := r.testCase
   let oc := outcomeClass r.outcome
   let badge := outcomeBadge r.outcome
@@ -679,7 +684,7 @@ private def generateTestRow (r : ReportResult) : String :=
   s!"      </tr>\n"
 
 /-- Generate the full test table. -/
-private def generateTableHtml (results : Array ReportResult) : String :=
+def generateTableHtml (results : Array ReportResult) : String :=
   let rows := String.join (results.toList.map generateTestRow)
   String.join [
     "  <table id=\"testTable\">\n",
@@ -742,7 +747,7 @@ def generateStageReport (results : Array ReportResult) (stage : Stage) : String 
     - pass = runTest returned .pass (output matched expected)
     - fail = runTest returned .fail (mismatch, timeout, unexpected parse success)
     - skip = test was not run -/
-private def consoleStats (results : Array ReportResult) : Nat × Nat × Nat :=
+def consoleStats (results : Array ReportResult) : Nat × Nat × Nat :=
   results.foldl (fun (p, f, s) r =>
     match r.outcome with
     | .pass => (p + 1, f, s)
@@ -1196,3 +1201,5 @@ def writeJsonOnly (results : Array ReportResult) (outDir : String)
   IO.println s!"  wrote {fileName}"
 
 end Tests.SuiteRunner
+
+end Blanket

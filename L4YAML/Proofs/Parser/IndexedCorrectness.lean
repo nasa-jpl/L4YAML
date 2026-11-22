@@ -2,17 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.Composition
-import L4YAML.Parser.TokenParserIx
-import L4YAML.Spec.Grammar
-import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Scanner.ScannerCorrectness
 
-/-! # `IndexedCorrectness` — Phase 3 Step 6d.3 indexed correctness (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 Step 6f cutover commit.
+public import L4YAML.Parser.Composition
+public import L4YAML.Parser.TokenParserIx
+public import L4YAML.Spec.Grammar
+public import L4YAML.Proofs.Soundness
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Scanner.ScannerCorrectness
+
+@[expose] public section Blanket
+
+/-! # `IndexedCorrectness` — Phase 3 Step 6d.3 indexed correctness
 
 ## Role
 
@@ -186,3 +188,5 @@ lemma parseStreamIx_respects_grammar
   exact parseStreamIx_values_have_witnesses tokens docs h_parse h_grammable
 
 end L4YAML.Proofs.Indexed.Correctness
+
+end Blanket

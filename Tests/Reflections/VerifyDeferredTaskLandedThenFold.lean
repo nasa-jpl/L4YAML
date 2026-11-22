@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 341 — verify a deferred sub-brick is LANDED, then author the FOLD that consumes it
 
@@ -101,3 +106,5 @@ theorem fold_misguarded_stuck (s : Stream) (a : Nat) (h_gate : gate s a)
   exact assemble s a p h_op (h_sup_direct p h_op)
 
 end Tests.Reflections.VerifyDeferredTaskLandedThenFold
+
+end Blanket

@@ -23,6 +23,11 @@ verbatim through BOTH constructing arms (`descend` AND `advance`), confirming "w
 every constructing arm".
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.AdditiveFieldCostByKeying
 
 set_option autoImplicit false
@@ -83,3 +88,5 @@ theorem walk_not_passed_through : ∃ off H : Nat, (off + 2 ≤ H) ∧ ¬ (off +
 #guard decide (1 ≤ 4)
 
 end Tests.Reflections.AdditiveFieldCostByKeying
+
+end Blanket

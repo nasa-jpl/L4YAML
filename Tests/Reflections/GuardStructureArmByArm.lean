@@ -8,6 +8,11 @@ guard is your own type).  No project deps — a `Nat`-only toy of `SeqLocateGuar
 `nestedSeq_recseqentry_locate_step_leaf` (`SeqInteriorSeparators.lean`, R367).
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.GuardStructureArmByArm
 
 set_option autoImplicit false
@@ -80,3 +85,5 @@ theorem guessed_unsat_at_base (t : Nat) : ¬ GuardGuessed t 0 := by
 #guard decide ((0 : Nat) ≤ 5)           -- yet the real base fact f_lo DOES hold there
 
 end Tests.Reflections.GuardStructureArmByArm
+
+end Blanket

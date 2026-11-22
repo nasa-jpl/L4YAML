@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 444 — a "trivial parametric generalization" of a recursive producer can hide a DESCEND-EDGE
 # interface obstruction: the new bound re-establishes free at the recursion's monotone (advance) edge but
@@ -117,3 +122,5 @@ theorem r444_finding :
   ⟨descend_obstruction, fun _ _ _ _ _ _ h h_lo h_hi => covers_descend_with_containment h h_lo h_hi⟩
 
 end Tests.Reflections.GeneralizationHidesDescendObstruction
+
+end Blanket

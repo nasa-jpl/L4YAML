@@ -1,4 +1,8 @@
-import L4YAML.Spec.Grammar
+module
+
+public import L4YAML.Spec.Grammar
+
+@[expose] public section Blanket
 
 /-!
 # R451 de-risk probe — the producer citation cycle (#1 value ↔ #2 saved-key) that R450 surfaced is
@@ -108,3 +112,5 @@ theorem grammable_gives_savedkey (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : ESkey v := (grammable_gives_both v hg).2
 
 end L4YAML.Proofs.EmitterScannability.MapProducerMutualResolutionProbe
+
+end Blanket

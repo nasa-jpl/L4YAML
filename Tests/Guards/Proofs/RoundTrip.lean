@@ -1,4 +1,10 @@
-import L4YAML.Proofs.RoundTrip.RoundTrip
+module
+
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+
+
+public meta import L4YAML.Parser.Composition
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.RoundTrip
 
@@ -230,3 +236,5 @@ private def roundTrips (v : YamlValue) : Bool :=
 #guard roundTrips (.scalar ⟨"multi  spaces", .plain, none, none, none⟩)
 
 end L4YAML.Proofs.RoundTrip
+
+end Blanket

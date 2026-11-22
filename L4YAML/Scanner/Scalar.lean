@@ -2,9 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.State
-import L4YAML.Scanner.Whitespace
-import L4YAML.Scanner.Document
+
+module
+
+public import L4YAML.Scanner.State
+public import L4YAML.Scanner.Whitespace
+public import L4YAML.Scanner.Document
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Scanner — Scalars and Escapes
@@ -64,7 +70,8 @@ def collectHexDigitsLoop (s : ScannerState) (hex : String) (n : Nat) : String ×
     **Pre**: Scanner positioned after `\x`, `\u`, or `\U`.
     **Post**: Advances past `n` hex digits, returns the decoded character.
     **Error**: `invalidHexEscape` (fewer than `n` hex digits available),
-    `unicodeOutOfRange` (value ≥ U+110000). -/
+    `unicodeOutOfRange` (value not a Unicode scalar value — either
+    ≥ U+110000 or a lone surrogate U+D800–U+DFFF). -/
 @[yaml_spec "5.7" 59 "ns-esc-8-bit",
   yaml_spec "5.7" 60 "ns-esc-16-bit",
   yaml_spec "5.7" 61 "ns-esc-32-bit"]
@@ -77,7 +84,17 @@ def parseHexEscape (s : ScannerState) (n : Nat) : Except ScanError (Char × Scan
       acc * 16 + if c.isDigit then c.toNat - '0'.toNat
                  else if c >= 'a' then c.toNat - 'a'.toNat + 10
                  else c.toNat - 'A'.toNat + 10) 0
-    if val < 0x110000 then
+    -- The guard is *exactly* `Char.ofNat`'s own validity condition
+    -- (`Nat.isValidChar n = n < 0xD800 ∨ 0xDFFF < n < 0x110000`), so the
+    -- `'\0'` fallback in its `dite` is unreachable from here. Guarding only
+    -- `val < 0x110000` admitted lone surrogates, which fail `isValidChar`
+    -- and were therefore decoded to NUL with no diagnostic — silent
+    -- corruption on accepted input. A surrogate is not a Unicode scalar
+    -- value and has no UTF-8 encoding, so it cannot be a character of any
+    -- scalar in the representation graph (§5.1); rejecting is the only
+    -- option the surrounding requirements leave, even though `[60]`/`[61]`
+    -- themselves constrain the decoded value not at all.
+    if val.isValidChar then
       .ok (Char.ofNat val, s')
     else
       .error (.unicodeOutOfRange s'.line)
@@ -143,6 +160,25 @@ def processEscape (s : ScannerState) : Except ScanError (Char × ScannerState) :
 def trimTrailingWS (s : String) : String :=
   String.ofList ((s.toList.reverse.dropWhile (fun c => c == ' ' || c == '\t')).reverse)
 
+/-- Is this blank line's own white run one that `[70] l-empty(n,c)` has no
+    arm for — fewer than `n` spaces, and then a TAB?
+
+    `l-empty(n,c)` opens with `s-line-prefix(n,c)` or `[64] s-indent-lt(n)`.
+    Both begin in `[63] s-indent`, which is *spaces* (§6.1); a tab is admitted
+    only by `[69] s-flow-line-prefix(n)`'s trailing `s-separate-in-line?`,
+    i.e. only once the `n` spaces are already there, and `s-indent-lt(n)`
+    takes the break immediately after its short run.  So a run that reaches a
+    tab before clearing the floor matches neither arm.
+
+    The floor is the block indent the continuation line must clear: `n` and
+    `currentIndent + 1` coincide at a fold (`foldQuotedNewlines` below gates
+    the content line on the same column), so the test is the *content* line's
+    §6.1 test read one line earlier. -/
+@[yaml_spec "6.1" 63 "s-indent(n)", yaml_spec "6.4" 70 "l-empty(n,c)"]
+def blankLineTabUnderFloor (s : ScannerState) : Bool :=
+  let s_sp := skipSpaces s
+  (s_sp.peek? == some '\t') && ((s_sp.col : Int) ≤ s_sp.currentIndent)
+
 /-- Helper for foldQuotedNewlines: count consecutive empty lines using structural recursion.
 
     Skips blank lines (spaces followed by line break), counting them.
@@ -165,7 +201,12 @@ def foldQuotedNewlinesLoop (s : ScannerState) (emptyCount : Nat) (fuel : Nat) :
     match s_skipped.peek? with
     | some c =>
       if isLineBreakBool c then
-        foldQuotedNewlinesLoop (consumeNewline s_skipped) (emptyCount + 1) fuel'
+        -- Item 62: a blank line whose run hits a TAB before the floor is not
+        -- an `l-empty(n,c)` line at all.  Stop the run *at* it and hand it to
+        -- `foldQuotedNewlines`'s §6.1 gate below, which reads the same
+        -- position and throws `tabInIndentation` there.
+        if blankLineTabUnderFloor s then (saved, emptyCount)
+        else foldQuotedNewlinesLoop (consumeNewline s_skipped) (emptyCount + 1) fuel'
       else (saved, emptyCount)
     | none => (s, emptyCount)
 
@@ -199,7 +240,9 @@ def foldQuotedNewlines (s : ScannerState) : Except ScanError (String × ScannerS
   -- line, check for tab-as-indentation.  If we haven't advanced past the
   -- current block indent level, a tab here is in the indentation zone.
   let s' := skipSpaces s'
-  if !s'.inFlow && (s'.col : Int) ≤ s'.currentIndent then
+  -- Item 50: the gate applies in FLOW too — `[69] s-flow-line-prefix(n)`
+  -- starts with `[63] s-indent(n)`, which is spaces in either context.
+  if (s'.col : Int) ≤ s'.currentIndent then
     if let some '\t' := s'.peek? then
       throw (.tabInIndentation s'.line s'.col)
   let s' := skipWhitespace s'
@@ -258,10 +301,26 @@ def collectDoubleQuotedLoop (s : ScannerState) (content : String) (fuel : Nat)
       match s_after_backslash.peek? with
       | some c =>
         if isLineBreakBool c then do
-          -- Escaped line break: consume and skip whitespace
-          let s_after_newline := consumeNewline s_after_backslash
-          let s_after_ws := skipWhitespace s_after_newline
-          collectDoubleQuotedLoop s_after_ws content fuel' startPos inFlow currentIndent inputEnd protectedLen
+          -- Escaped line break — `[112] s-double-escaped(n)` is `s-white*
+          -- c-escape b-non-content l-empty(n,FLOW-IN)* s-flow-line-prefix(n)`.
+          -- The escaped break itself is excluded from content and the
+          -- `s-white*` before it is preserved, but each blank line the landing
+          -- opens IS content — `[70] l-empty` folds to a line feed — and its
+          -- white run owes the same §6.1 floor as the fold's blank lines.  So
+          -- the landing runs through `foldQuotedNewlines` itself (blank-line
+          -- loop, tab gate, `s-flow-line-prefix(n)`), with `b-as-space` mapped
+          -- to nothing: a lone escaped break folds to the empty string.
+          let (folded, s_land) ← foldQuotedNewlines s_after_backslash
+          if atDocumentStart s_land || atDocumentEnd s_land then
+            throw (.documentMarkerInScalar .doubleQuoted startPos.line)
+          if (s_land.col : Int) ≤ currentIndent then
+            throw (.underIndentedScalar .doubleQuoted s_land.line)
+          -- The line feeds are content (`b-as-line-feed`), protected from a
+          -- later fold's trim; a landing with no blank lines adds nothing and
+          -- leaves the protected prefix where it was.
+          let content' := if folded == " " then content else content ++ folded
+          let protectedLen' := if folded == " " then protectedLen else content'.length
+          collectDoubleQuotedLoop s_land content' fuel' startPos inFlow currentIndent inputEnd protectedLen'
         else do
           -- Regular escape sequence
           let (ch, s_after_escape) ← processEscape s_after_backslash
@@ -327,7 +386,9 @@ def scanDoubleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   if !s.inFlow then
     validateTrailingContent s_after_close s.inputEnd
   let s_with_token := s_after_close.emitAt startPos (.scalar content .doubleQuoted)
-  .ok { s_with_token with simpleKeyAllowed := false }
+  -- Item 47: the scalar's interior breaks are the token's own, not structure —
+  -- see `scanFlowSequenceEnd`.
+  .ok { s_with_token with simpleKeyAllowed := false, needIndentCheck := false }
 
 -- Helper: Collect single-quoted content using structural recursion
 @[yaml_spec "7.3.2" 117 "c-quoted-quote",
@@ -404,7 +465,9 @@ def scanSingleQuoted (s : ScannerState) : Except ScanError ScannerState := do
   if !s.inFlow then
     validateTrailingContent s_after_close s.inputEnd
   let s_with_token := s_after_close.emitAt startPos (.scalar content .singleQuoted)
-  .ok { s_with_token with simpleKeyAllowed := false }
+  -- Item 47: the scalar's interior breaks are the token's own, not structure —
+  -- see `scanFlowSequenceEnd`.
+  .ok { s_with_token with simpleKeyAllowed := false, needIndentCheck := false }
 
 /-! ### Plain Scalar Character Predicates
 
@@ -428,8 +491,16 @@ def skipBlankLinesLoop (s : ScannerState) (cnt : Nat) (fuel : Nat) (inputEnd : N
     match s_after_spaces.peek? with
     | some c =>
       if isLineBreakBool c then
-        let s_after_newline := consumeNewline s_after_spaces
-        skipBlankLinesLoop s_after_newline (cnt + 1) fuel' inputEnd
+        -- Item 100: the quoted fold's gate (`foldQuotedNewlinesLoop`, item 62)
+        -- at the PLAIN walk.  A blank line whose white run reaches a TAB before
+        -- clearing the floor is not an `[70] l-empty(n,c)` line at all — both
+        -- of its arms open in `[63] s-indent`, which is spaces (§6.1) — so the
+        -- run stops *at* it.  The caller's own under-indent test then ends the
+        -- scalar there rather than folding a line no grammar admits.
+        if blankLineTabUnderFloor s then (cnt, saved)
+        else
+          let s_after_newline := consumeNewline s_after_spaces
+          skipBlankLinesLoop s_after_newline (cnt + 1) fuel' inputEnd
       else
         (cnt, saved)
     | none => (cnt, s)
@@ -529,7 +600,12 @@ def collectPlainScalarLoop (s : ScannerState) (content : String) (spaces : Strin
             match s_after_fold.peek? with
             | some '#' =>
               .ok { content, spaces, state := s, terminated := true }
-            | _ =>
+            | _ => do
+              -- Item 50 §8.1: a flow plain continuation line must clear the
+              -- enclosing block floor (`[69] s-flow-line-prefix(n)`).
+              if s_after_fold.currentIndent ≥ 0
+                  && (s_after_fold.col : Int) ≤ s_after_fold.currentIndent then
+                throw (.underIndentedScalar .plain s_after_fold.line)
               let content' := content ++ folded
               let prevLen := content'.length
               match collectPlainScalarLoop s_after_fold content' "" fuel' inFlow contentIndent inputEnd with
@@ -597,7 +673,9 @@ def scanPlainScalar (s : ScannerState) : Except ScanError ScannerState := do
   -- Trim trailing whitespace: plain scalars never have trailing WS per §7.3.3
   let content_trimmed := trimTrailingWS result.content
   let s_with_token := result.state.emitAt startPos (.scalar content_trimmed .plain)
-  .ok { s_with_token with simpleKeyAllowed := false }
+  -- Item 47: the scalar's interior breaks are the token's own, not structure —
+  -- see `scanFlowSequenceEnd`.
+  .ok { s_with_token with simpleKeyAllowed := false, needIndentCheck := false }
 
 /-- States for folded block scalar newline processing (YAML 1.2.2 §8.1.3).
 
@@ -844,8 +922,10 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
               collectBlockScalarLoop s' rawContent'' fuel' contentIndent inputEnd
             else
               -- Line stopped at a non-printable/BOM char (not nb-char [27]):
-              -- end the block scalar here; dispatch rejects the char.
-              (rawContent', s_after_line)
+              -- end the block scalar here; dispatch rejects the char.  An empty
+              -- line run leaves the line's indent to the enclosing collection
+              -- (`[173]`'s partial-indent tail is EOF-only).
+              if lineContent.isEmpty then (rawContent, s) else (rawContent', s_after_line)
           -- Line terminated by end-of-input.  Add the implicit final b-break
           -- only for a trailing *whitespace-only* line (e.g. `   ` beyond the
           -- indent → a lone space, as in L24T/01): a real content line at EOF
@@ -858,10 +938,40 @@ def collectBlockScalarLoop (s : ScannerState) (rawContent : String) (fuel : Nat)
               then rawContent'.push '\n' else rawContent'
             (rawContent'', s_after_line)
 
+/-- Did `collectBlockScalarLoop` stop at a line of spaces headed by a TAB?
+
+    The loop's non-empty stop is a line of fewer than `contentIndent` spaces
+    and then a non-space non-break character, read from the line's start.  A
+    TAB there sits where `[166] l-chomped-empty(n,t)` requires `[63] s-indent`
+    — `[167]`/`[168]`'s `s-indent(≤n)` and `[169] l-trail-comments`' head are
+    all spaces-only — so no arm of the scalar's trailing production derives
+    the line, and nothing after the scalar can reach it either (a following
+    token's own indent is `[63]` too): `scanBlockScalarBody` refuses at the
+    tab (§6.1).  Every other exit of the loop leaves the scanner at end of
+    input, at a document boundary, or peeking a non-tab character, where this
+    test is false. -/
+@[yaml_spec "8.1.1" 166 "l-chomped-empty(n,t)", yaml_spec "6.1" 63 "s-indent(n)"]
+def blockScalarTabStop (s : ScannerState) : Bool :=
+  (skipSpaces s).peek? == some '\t'
+
+/-- The next header character, or `none` once its indicator kind has already been read:
+    `-`/`+` is hidden when `chomp ≠ .clip`, a digit when `explicitOffset` is set. -/
+@[yaml_spec "8.1.1" 163 "c-indentation-indicator",
+  yaml_spec "8.1.1" 164 "c-chomping-indicator"]
+def peekBlockHeaderIndicator? (s : ScannerState) (chomp : ChompStyle)
+    (explicitOffset : Option Nat) : Option Char :=
+  match s.peek? with
+  | some c =>
+    if (c = '-' ∨ c = '+') ∧ chomp ≠ .clip then none
+    else if c.isDigit ∧ explicitOffset ≠ none then none
+    else some c
+  | none => none
+
 /-- Helper for scanBlockScalar header parsing using structural recursion.
 
-    Parses up to `fuel` header characters: chomp indicator (`-`/`+`) and
-    indentation indicator (digit 1-9) in either order per YAML §8.1 [162].
+    Parses up to `fuel` header characters: at most one chomp indicator (`-`/`+`) and
+    at most one indentation indicator (digit 1-9), in either order, per YAML §8.1 [162].
+    A repeated indicator kind is left unconsumed for `scanBlockScalarConsumeNewline` to refuse.
 
     **Termination**: Structurally recursive on `fuel`. -/
 @[yaml_spec "8.1" 162 "c-b-block-header"]
@@ -870,7 +980,7 @@ def parseBlockHeaderLoop (s : ScannerState) (chomp : ChompStyle) (explicitOffset
   match fuel with
   | 0 => (chomp, explicitOffset, s)
   | fuel' + 1 =>
-    match s.peek? with
+    match peekBlockHeaderIndicator? s chomp explicitOffset with
     | some '-' => parseBlockHeaderLoop s.advance .strip explicitOffset fuel'
     | some '+' => parseBlockHeaderLoop s.advance .keep explicitOffset fuel'
     | some c =>
@@ -959,6 +1069,12 @@ def scanBlockScalarBody (s_orig : ScannerState) (s_after_newline : ScannerState)
   | none =>
     let fuel := s_orig.inputEnd - s_after_newline.offset + 1
     let (rawContent, s_after_content) := collectBlockScalarLoop s_after_newline "" fuel contentIndent s_orig.inputEnd
+    if blockScalarTabStop s_after_content then
+      -- The collection loop stopped at a spaces-then-TAB line: no arm of
+      -- `[166] l-chomped-empty(n,t)` derives it (see `blockScalarTabStop`).
+      .error (.tabInIndentation (skipSpaces s_after_content).line
+        (skipSpaces s_after_content).col)
+    else
     let stripTrailingNewlines (str : String) : String :=
       String.ofList (str.toList.reverse.dropWhile (· == '\n') |>.reverse)
     let content := match chomp with
@@ -1010,3 +1126,5 @@ def scanBlockScalar (s : ScannerState) : Except ScanError ScannerState :=
     scanBlockScalarBody s s_after_newline header.1 header.2.1 (s.peek? == some '|') s.currentPos
 
 end L4YAML.Scanner
+
+end Blanket

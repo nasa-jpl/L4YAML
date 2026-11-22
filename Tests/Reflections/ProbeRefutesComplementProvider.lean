@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 339 — a probe of a would-be COMPLEMENT provider REFUTES its necessity
 
@@ -110,3 +115,5 @@ example : ¬ StrongPath probeStack ∧ Enclosed probeStack :=
   ⟨probe_not_strongPath, enclosed_of_gate probeGate⟩
 
 end Tests.Reflections.ProbeRefutesComplementProvider
+
+end Blanket

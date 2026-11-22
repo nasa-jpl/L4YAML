@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 309 — a backward locator mirrored from a forward one needs NO standalone backward-matching-open primitive, and its DELIVERABLE is sized to the consumer's reads (drop the floor)
 
@@ -111,3 +116,5 @@ def floorOK (d : Nat → Int) (loS a : Nat) : Bool :=
 #guard floorOK dd 1 3 == false                   -- spurious loS = 1: balance dips to -1 at i = 2
 
 end Tests.Reflections.BackwardLocatorMirrorsForward
+
+end Blanket

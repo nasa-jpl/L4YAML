@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 603 -- resolveAliases on empty anchors is identity (R603)
@@ -61,10 +65,17 @@ theorem map_roundtrips : v_map.resolveAliases #[] = v_map := resolveAliases_empt
 theorem r603_fires (v : YamlValue) : v.resolveAliases #[] = v :=
   resolveAliases_empty v
 
-/-! ## Axiom audit -/
+/-! ## Axiom audit
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.resolveAliases_empty' depends on axioms: [propext, Quot.sound] -/
+2026-11-22, Lean v4.36.0: `Classical.choice` joins the profile and the proof did not change.
+`BEq String` now resolves to `String.instLinearOrderPackage.toBEq` instead of `instBEqOfDecidableEq`;
+the package carries the axiom, and it enters through `YamlValue.resolveAliases`'s own `==` on
+anchor names. -/
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.resolveAliases_empty' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs (whitespace := lax) in
 #print axioms resolveAliases_empty
 
 end ResolveAliasesEmpty
+
+end Blanket

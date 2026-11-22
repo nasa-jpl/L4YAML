@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 582 — BIRTH PROBE for Front B's brick-3 producer first sub-link (§5.12)
@@ -157,3 +161,5 @@ theorem emitPairList_retype_shape (l : List (YamlValue × YamlValue)) :
 #print axioms emit_mapping_eq_bracket_intercalate
 
 end EmissionIntercalate
+
+end Blanket

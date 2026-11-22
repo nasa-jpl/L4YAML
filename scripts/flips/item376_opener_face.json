@@ -1,0 +1,100 @@
+{
+ "item": 376,
+ "tag": "OPENER-FACE",
+ "rev": "6eb2e731",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/376-flip-opener-face.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (h_alt_step : PackAlt sc → PackAlt s') :",
+    "    ∃ sp_gram' sp_block' sp_flow' sp_scan',",
+    "      SLYamlStream sp_start sp_gram' ∧",
+    "      BlockStack sp_gram' sp_block' ∧",
+    "      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧",
+    "      PendingNode s' false sp_start sp_flow' sp_scan' ∧",
+    "      ScannerSurfCorr s' sp_scan' := by"
+   ],
+   "new": [
+    "    (h_alt_step : PackAlt sc → PackAlt s') :",
+    "    (∃ sp_gram' sp_block' sp_flow' sp_scan',",
+    "      SLYamlStream sp_start sp_gram' ∧",
+    "      BlockStack sp_gram' sp_block' ∧",
+    "      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧",
+    "      PendingNode s' false sp_start sp_flow' sp_scan' ∧",
+    "      ScannerSurfCorr s' sp_scan') ∨ PackAlt s' := by"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    (h_top_in : s'.currentIndent ≤ (k : Int))",
+    "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)",
+    "    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →",
+    "      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :",
+    "    ∃ sp_gram' sp_block' sp_flow' sp_scan',",
+    "      SLYamlStream sp_start sp_gram' ∧",
+    "      BlockStack sp_gram' sp_block' ∧",
+    "      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧",
+    "      PendingNode s' false sp_start sp_flow' sp_scan' ∧",
+    "      ScannerSurfCorr s' sp_scan' := by"
+   ],
+   "new": [
+    "    (h_top_in : s'.currentIndent ≤ (k : Int))",
+    "    (h_explUp_chainD : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+    "      ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →",
+    "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →",
+    "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+    "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)",
+    "    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →",
+    "      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :",
+    "    (∃ sp_gram' sp_block' sp_flow' sp_scan',",
+    "      SLYamlStream sp_start sp_gram' ∧",
+    "      BlockStack sp_gram' sp_block' ∧",
+    "      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧",
+    "      PendingNode s' false sp_start sp_flow' sp_scan' ∧",
+    "      ScannerSurfCorr s' sp_scan') ∨ PackAlt s' := by"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))",
+    "    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →",
+    "      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))",
+    "    -- Item 366: the park state's soundness, for the K7 pay at the landed `:` (decided in this lemma).",
+    "    (h_sound : PendingKeySound.Sound sc) :",
+    "    ∃ sp_gram' sp_block' sp_flow' sp_scan',",
+    "      SLYamlStream sp_start sp_gram' ∧",
+    "      BlockStack sp_gram' sp_block' ∧",
+    "      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧",
+    "      PendingNode s' false sp_start sp_flow' sp_scan' ∧",
+    "      ScannerSurfCorr s' sp_scan' := by"
+   ],
+   "new": [
+    "    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))",
+    "    (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →",
+    "      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))",
+    "    -- Item 366: the park state's soundness, for the K7 pay at the landed `:` (decided in this lemma).",
+    "    (h_sound : PendingKeySound.Sound sc) :",
+    "    (∃ sp_gram' sp_block' sp_flow' sp_scan',",
+    "      SLYamlStream sp_start sp_gram' ∧",
+    "      BlockStack sp_gram' sp_block' ∧",
+    "      FlowStackB sp_start 0 0 none 0 #[] #[] .sep sp_block' sp_flow' ∧",
+    "      PendingNode s' false sp_start sp_flow' sp_scan' ∧",
+    "      ScannerSurfCorr s' sp_scan') ∨ PackAlt s' := by"
+   ],
+   "count": 1
+  }
+ ]
+}

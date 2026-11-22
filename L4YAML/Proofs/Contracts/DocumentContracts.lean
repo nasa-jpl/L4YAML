@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Spec.Types
+
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Spec.Types
+
+@[expose] public section Blanket
 
 /-!
 # Document Parser Assume/Guarantee Contracts (Layer 1f)
@@ -182,3 +187,5 @@ lemma atMostOneYaml_tag (h p : String) :
   simp [Array.filter, Array.size]
 
 end L4YAML.Proofs.DocumentContracts
+
+end Blanket

@@ -1,4 +1,8 @@
-import L4YAML.Output.Json
+module
+
+public import L4YAML.Output.Json
+
+@[expose] public section Blanket
 
 /-!
 # l4yaml-json — Core-Schema JSON emitter
@@ -17,3 +21,5 @@ def main : IO UInt32 := do
   | .error e =>
     IO.eprintln (toString e)
     return 1
+
+end Blanket

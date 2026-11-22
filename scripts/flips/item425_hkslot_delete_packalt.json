@@ -1,0 +1,28 @@
+{
+  "item": 425,
+  "tag": "HKSLOT-DELETE-PACKALT",
+  "rev": "47c4326a",
+  "target": "L4YAML",
+  "log": "scratch/hkslot_delete_packalt.log",
+  "msgWidth": 110,
+  "rounds": 4,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "pendingMapValue.h_kslot.delete-PackAlt-arm",
+          "line": 3346,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

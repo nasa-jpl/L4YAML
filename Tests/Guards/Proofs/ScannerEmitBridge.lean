@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Output.ScannerEmitBridge
+module
+
+public import L4YAML.Proofs.Output.ScannerEmitBridge
+
+
+
+public meta import L4YAML.Parser.Composition
+public meta import L4YAML.Proofs.Output.ScannerEmitBridge
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerEmitBridge
 
@@ -230,3 +238,5 @@ private def emitParseSucceeds (n : ValidNode) : Bool :=
     == emit (.sequence .flow #[.scalar ⟨"x", .doubleQuoted, some "!str", none, none⟩] (some "!seq"))
 
 end L4YAML.Proofs.ScannerEmitBridge
+
+end Blanket

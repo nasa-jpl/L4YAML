@@ -1,4 +1,14 @@
-import L4YAML.Proofs.Scanner.ScannerIndentStack
+module
+
+public import L4YAML.Proofs.Scanner.ScannerIndentStack
+
+
+
+
+public meta import L4YAML.Proofs.Scanner.ScannerIndentStack
+public meta import L4YAML.Scanner.Indent
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerIndentStack
 
@@ -194,3 +204,5 @@ private def fullUnwind3 : ScannerState :=
 #guard (unwindIndents threeLevels 3).currentIndent == 2
 
 end L4YAML.Proofs.ScannerIndentStack
+
+end Blanket

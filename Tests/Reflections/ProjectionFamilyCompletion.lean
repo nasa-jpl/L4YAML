@@ -3,6 +3,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 244 — complete a new deliverable type's projection family before walking it
 
@@ -107,13 +112,13 @@ theorem ubStep_frame (t : Tok) (d m k : Nat) (h : ubStep t d = some m) :
     by_cases hd : d = 0
     · rw [hd] at h; simp at h
     · have hk : ¬ (d + k = 0) := by omega
-      rw [if_neg hd] at h; rw [if_neg hk]; injection h with h; congr 1; omega
+      rw [ite_eq_right hd] at h; rw [ite_eq_right hk]; injection h with h; congr 1; omega
   | cc =>
     simp only [ubStep] at h ⊢
     by_cases hd : d = 0
     · rw [hd] at h; simp at h
     · have hk : ¬ (d + k = 0) := by omega
-      rw [if_neg hd] at h; rw [if_neg hk]; injection h with h; congr 1; omega
+      rw [ite_eq_right hd] at h; rw [ite_eq_right hk]; injection h with h; congr 1; omega
 
 /-- **Stack-frame for a fold.**  A `WellBr` body folded over any starting depth `d` returns to `d`:
     it never underflows its base.  The inductive engine of the mirror wrap. -/
@@ -245,3 +250,5 @@ theorem mapEmpty_wellBr_typed : WellBr [.oc, .cc] ∧ Typed [.oc, .cc] := by dec
 #guard decide (Typed [.oc, .cc]) = true
 
 end ProjectionFamilyCompletion
+
+end Blanket

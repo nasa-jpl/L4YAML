@@ -1,5 +1,9 @@
-import L4YAML.Parser.Composition
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Parser.Composition
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -151,8 +155,14 @@ def testBlockMappingTab (state : IO.Ref TestCollector) : IO Unit := do
   mustReject state "a:\\n\\tb: 1 (tab indent nested)" "a:\n\tb: 1"
   -- Tab at col 0 then space: col ≤ currentIndent → correctly rejected
   mustReject state "a:\\n\\t b: 1 (tab+space nested)" "a:\n\t b: 1"
-  -- Space meets indent (col 1 > currentIndent 0), tab is separation → valid per spec (DK95:0)
-  mustParse state "a:\\n \\tb: 1 (space+tab = separation)" "a:\n \tb: 1"
+  -- Item 31: DK95:00 (`foo:⏎␣→bar`) is the PLAIN-SCALAR value — `[196]
+  -- s-l+flow-in-block` reaches it through `s-separate-lines`, whose
+  -- `[69] s-flow-line-prefix(n)` IS `s-indent(n) s-separate-in-line?`, so the
+  -- tab after the space is legal separation.  A block MAPPING entry has no such
+  -- slot: `[187] l+block-mapping(n+m)` is `s-indent(n+m) ns-l-block-map-entry`,
+  -- spaces only.  So the scalar stands and the entry does not.
+  mustParse state "a:\\n \\tb (space+tab, DK95:00 plain value)" "a:\n \tb"
+  mustReject state "a:\\n \\tb: 1 (space+tab before a block entry)" "a:\n \tb: 1"
   -- Tab as VALUE separation is okay per §6.2 [66]
   mustParse state "a:\\tb (tab as value sep)" "a:\tb"
 
@@ -406,8 +416,15 @@ def testTabInjection (state : IO.Ref TestCollector) : IO Unit := do
   mustReject state "\\t\\ta: 1 (double tab at doc start)" "\t\ta: 1"
   -- Tab as nested indent: col ≤ currentIndent → correctly rejected
   mustReject state "a:\\n\\tb: 1" "a:\n\tb: 1"
-  -- Space meets indent, tab is separation → valid per spec (DK95:0)
-  mustParse state "a:\\n \\tb: 1 (separation)" "a:\n \tb: 1"
+  -- Item 31: the separation reading is DK95:00's, and it belongs to the plain
+  -- SCALAR value, not to a block-mapping entry — see §2 above.
+  mustParse state "a:\\n \\tb (separation, plain value)" "a:\n \tb"
+  mustReject state "a:\\n \\tb: 1 (block entry, not separation)" "a:\n \tb: 1"
+  mustReject state "a:\\n \\t? b (explicit key after a tab)" "a:\n \t? b"
+  mustReject state "a:\\n \\t: b (empty key after a tab)" "a:\n \t: b"
+  -- …and the flow node in the same slot still stands, for the same reason the
+  -- plain scalar does.
+  mustParse state "a:\\n \\t[1, 2] (flow node after a tab)" "a:\n \t[1, 2]"
   -- Tab at col 0 then space: col ≤ currentIndent → correctly rejected
   mustReject state "a:\\n\\t b: 1" "a:\n\t b: 1"
   -- Tab before dash: hasTabInPrecedingWhitespace catches it
@@ -487,3 +504,5 @@ def collectTests : IO VerifiedSuiteResult := do
            tests := results }
 
 end Tests.AdversarialGrammar
+
+end Blanket

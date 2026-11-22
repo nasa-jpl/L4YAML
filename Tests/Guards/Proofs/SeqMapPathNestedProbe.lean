@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `rec_seq_body_nested_project` DOMAIN-COVERAGE probe — the map-PATH-nested seq window
@@ -111,3 +115,5 @@ def D : Array (Positioned YamlToken) :=
 #guard D[2]!.val == .flowSequenceStart        -- all-seq path: head IS a seq ⇒ `h_rec` readable
 
 end L4YAML.Proofs.EmitterScannability.SeqMapPathNestedProbe
+
+end Blanket

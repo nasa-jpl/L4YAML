@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 345 — a bracket-typed invariant is SEPARATOR-BLIND, so a separator-placement fact is provably not a projection of it; refute the de-front-by-reconstruction at the SUBSTRATE level
 
@@ -127,3 +132,5 @@ theorem minimal_pair :
 #guard firstSucc withSep = true                       -- POSITIVE: bodySucc holds once emission adds a comma
 
 end Tests.Reflections.SeparatorBlindTypedInvariant
+
+end Blanket

@@ -97,10 +97,30 @@ pub fn dump_configured(value: &YamlValue, config_yaml: &str) -> Result<String> {
         )
     };
     if ptr.is_null() {
-        return Err(Error::NullHandle);
+        return Err(dump_config_error(value, config_yaml));
     }
     let cstr = unsafe { CStr::from_ptr(ptr) };
     Ok(cstr.to_str()?.to_string())
+}
+
+/// `l4yaml_dump_configured` returns NULL only when `config_yaml` does not
+/// parse into a `DumpConfig`; fetch that config error.
+fn dump_config_error(value: &YamlValue, config_yaml: &str) -> Error {
+    let err_ptr = unsafe {
+        l4yaml_dump_configured_error(
+            value.as_raw(),
+            config_yaml.as_ptr().cast(),
+            config_yaml.len(),
+        )
+    };
+    if err_ptr.is_null() {
+        return Error::Config("unknown config error".to_string());
+    }
+    let msg = unsafe { CStr::from_ptr(err_ptr) }
+        .to_str()
+        .unwrap_or("non-utf8 error")
+        .to_string();
+    Error::Config(msg)
 }
 
 /// Parse a YAML string with custom limits specified as a YAML config string.

@@ -30,6 +30,11 @@ is the real one verbatim (re-base each tail prefix to the outer origin, then clo
     (`not_bodyWin_empty`); and the ADVANCE edge strictly narrows the window (`#guard`).
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.GuardThreadingSkeleton
 
 /-! ## The guard — collection-free, hence shared across axes
@@ -104,3 +109,5 @@ theorem not_bodyWin_empty (bal : Nat → Nat → Int) (wt : Nat → Nat → Prop
 #guard (6 - (3 + 1)) < (6 - 2)
 
 end Tests.Reflections.GuardThreadingSkeleton
+
+end Blanket

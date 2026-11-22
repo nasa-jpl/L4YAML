@@ -1,4 +1,10 @@
-import L4YAML.Output.Events
+module
+
+public import L4YAML.Output.Events
+
+
+public meta import L4YAML.Output.Events
+@[expose] public section Blanket
 
 /-!
 # Reflection — INHABITATION / BOUNDARY probe for the empty-node seq-entry fix (matrix defect C2)
@@ -33,7 +39,7 @@ namespace EmptyNodePropsSeqEntry
 open L4YAML.Events
 
 /-- The full event stream `streamToEvents` emits for `input`, or a fixed error marker. -/
-private def run (input : String) : String :=
+def run (input : String) : String :=
   match streamToEvents input with | .ok s => s | .error _ => "«parse-error»"
 
 /-! ## Rule 5 (positive) — the two inputs C2 fixes, grounded on real bytes
@@ -97,3 +103,5 @@ theorem ske5_seq_not_scalar : run inSKE5 = outSKE5 := by native_decide
 #print axioms fh7j_correct
 
 end EmptyNodePropsSeqEntry
+
+end Blanket

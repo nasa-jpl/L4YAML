@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 333 — the COMPLEMENT of a sufficient dispatch guard need not be a sufficient guard
 
@@ -114,3 +119,5 @@ example (p : Nat) (h_floor : ∀ i, 0 < i → i ≤ p → bal 0 i ≥ 1) : p < 1
   floor_implies_in_head (bal 0) 0 1 p (by decide) (by decide) h_floor
 
 end Tests.Reflections.ComplementGuardNotSufficient
+
+end Blanket

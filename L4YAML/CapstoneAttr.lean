@@ -2,7 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean
+
+module
+
+public import Lean
+public meta import Lean
+
+-- This module's `elab` bodies are `meta` definitions, while the helpers they
+-- call are ordinary code that the library also uses at runtime.  A declaration
+-- carries one phase and the `meta` modifier cannot be dropped retroactively,
+-- so mixed references inside this module need to be permitted explicitly.
+set_option compiler.relaxedMetaCheck true
+
+@[expose] public section Blanket
 
 /-!
 # Capstone registry: `@[capstone]`, `#capstones`, `#assert_capstone_axioms`
@@ -10,7 +22,7 @@ import Lean
 In-repo, declaration-site registry of the blueprint capstones
 (`Blueprint/04-capstones.md`). The `theorem` keyword is reserved for
 `@[capstone]`-tagged declarations; every other proof uses `lemma`
-(see `L4YAML/Init.lean`; enforced by `scripts/check-theorem-keyword.sh`).
+(see `L4YAML/Init.lean`; enforced by `lake run check-theorem-keyword`).
 
 - `#capstones` prints the tagged set, one fully-qualified name per line
   (pinned by `#guard_msgs` in `L4YAML/Capstones.lean`, so silently
@@ -48,13 +60,13 @@ def capstoneDecls (env : Environment) : Array Name := Id.run do
     out := out.push n
   return out.qsort Name.quickLt
 
-/-- Kernel axioms a capstone proof may depend on. `Lean.ofReduceBool` /
-    `Lean.ofReduceNat` / `Lean.trustCompiler` back `native_decide`;
-    per-call-site `…_native.native_decide.ax_*` leaves are
-    `Name.isInternalDetail` and filtered before this check. -/
+/-- Kernel axioms a capstone proof may depend on.  `native_decide` adds no
+    named axiom: it emits one per-call-site `…_native.native_decide.ax_*`
+    leaf, which is `Name.isInternalDetail` and so is filtered out before
+    this check — `#assert_capstone_axioms` reads that leaf, not a name
+    here, to classify a capstone `native`. -/
 def allowedCapstoneAxioms : List Name :=
-  [``propext, ``Classical.choice, ``Quot.sound,
-   ``Lean.ofReduceBool, ``Lean.ofReduceNat, ``Lean.trustCompiler]
+  [``propext, ``Classical.choice, ``Quot.sound]
 
 open Elab Command in
 /-- `#capstones` — list all `@[capstone]`-tagged declarations. -/
@@ -80,9 +92,7 @@ elab "#assert_capstone_axioms" : command => do
     let bad := visible.filter (fun a => !allowedCapstoneAxioms.contains a)
     unless bad.isEmpty do
       throwError "capstone {n} depends on non-allowed axioms: {bad}"
-    let native := visible.contains ``Lean.ofReduceBool ||
-                  visible.contains ``Lean.ofReduceNat ||
-                  axs.any (·.isInternalDetail)
+    let native := axs.any (·.isInternalDetail)
     lines := lines.push s!"{n}: {if native then "native" else "pure"}"
   if lines.isEmpty then
     logInfo "No @[capstone] declarations."
@@ -90,3 +100,5 @@ elab "#assert_capstone_axioms" : command => do
     logInfo <| String.intercalate "\n" lines.toList
 
 end L4YAML
+
+end Blanket

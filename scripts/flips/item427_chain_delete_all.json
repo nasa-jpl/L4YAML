@@ -1,0 +1,490 @@
+{
+  "item": 427,
+  "tag": "CHAIN-DELETE-ALL",
+  "rev": "8fdc991b",
+  "target": "L4YAML",
+  "log": "scratch/chain_delete_all.log",
+  "msgWidth": 110,
+  "rounds": 5,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "L1218.anon",
+          "line": 1218,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L1898.anon",
+          "line": 1898,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L2177.pendingContent_h_vpack",
+          "line": 2177,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L2427.h_kslot",
+          "line": 2427,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L2470.h_kslotE",
+          "line": 2470,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L2806.h_kslot",
+          "line": 2806,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L2887.h_kslotUp",
+          "line": 2887,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L3028.h_kslot",
+          "line": 3028,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L3091.h_kslotUp",
+          "line": 3091,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L3266.h_expl",
+          "line": 3266,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))) ∨ NotQuestionPark sc)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L3346.h_kslot",
+          "line": 3346,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L3469.h_explUp",
+          "line": 3469,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ NotQuestionPark sc ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ NotQuestionPark sc)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L12615.h_compact_pair",
+          "line": 12615,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L24608.h_explUp_chainD",
+          "line": 24608,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L24895.h_explUp_chain",
+          "line": 24895,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L24919.h_explUp_chainD",
+          "line": 24919,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L25431.h_chainUp",
+          "line": 25431,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L25823.h_explUp_chain",
+          "line": 25823,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L25848.h_explUp_chainD",
+          "line": 25848,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L26026.h_kslotD_alt",
+          "line": 26026,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ alt)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L26249.h_kslotD",
+          "line": 26249,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L27560.h_vpack",
+          "line": 27560,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L27598.h_vslot_hkv",
+          "line": 27598,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L27605.anon",
+          "line": 27605,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nvU] sp_v) ∨ PackAlt sc)) ∨"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nvU] sp_v))) ∨"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L29257.h_vpack_pendingContent",
+          "line": 29257,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L29443.h_kslot",
+          "line": 29443,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L29502.h_kslotUp",
+          "line": 29502,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L30037.h_kslot",
+          "line": 30037,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L30085.h_kslotUp",
+          "line": 30085,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34591.h_nodeV",
+          "line": 34591,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34611.nested_chain",
+          "line": 34611,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34632.nested_chain",
+          "line": 34632,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35160.anon",
+          "line": 35160,
+          "old": [
+            "              ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨"
+          ],
+          "new": [
+            "              ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35302.h_nodeV",
+          "line": 35302,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35315.nested_chain",
+          "line": 35315,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35403.nested_chain",
+          "line": 35403,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35684.anon",
+          "line": 35684,
+          "old": [
+            "            ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨"
+          ],
+          "new": [
+            "            ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L37155.h_kslot_old",
+          "line": 37155,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L37224.h_kslotUp_old",
+          "line": 37224,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L38035.h_expl",
+          "line": 38035,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))) ∨ NotQuestionPark sc)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L38047.h_kslot",
+          "line": 38047,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L38177.anon",
+          "line": 38177,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) :="
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) :="
+          ],
+          "count": 1
+        },
+        {
+          "name": "L38210.anon",
+          "line": 38210,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True :="
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True :="
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

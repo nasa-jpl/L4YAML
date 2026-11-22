@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Parametric assembler extraction — runnable demonstration
 
@@ -174,3 +179,5 @@ def spanReport (lo hi : Nat) : String :=
 #eval [(3, 9), (3, 8), (1, 5), (2, 7)].map (fun p => spanReport p.1 p.2)
 
 end ParametricAssemblerExtraction
+
+end Blanket

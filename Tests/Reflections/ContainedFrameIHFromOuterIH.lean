@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 475 — a width-gated IH over an inner CONTAINED frame is dischargeable from the
 # OUTER joint width IH, and the per-step ASSEMBLE that does it ISOLATES the locator while
@@ -100,3 +105,5 @@ example :
     (fun _ _ _ _ _ _ => trivial)
 
 end ContainedFrameIHFromOuterIH
+
+end Blanket

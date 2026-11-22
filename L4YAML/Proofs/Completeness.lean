@@ -2,9 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.IndexedComposition
-import L4YAML.Proofs.Parser.IndexedComposition
-import L4YAML.Spec.Grammar
+
+module
+
+public import L4YAML.Parser.IndexedComposition
+public import L4YAML.Proofs.Parser.IndexedComposition
+public import L4YAML.Spec.Grammar
+
+@[expose] public section Blanket
 
 /-!
 # Completeness Proofs  (Step 5.4 — Tokenized Parser)
@@ -34,7 +39,7 @@ parse_complete : ValidYamlProp input docs → parseYaml input = .ok docs
 - Enables `native_decide` on propositional equality of parse results
 
 ### §2  Parse Bridge
-- `parseYaml_ok_iff` — structural decomposition into raw parse + compose
+- `parseYamlIx_ok_iff` — structural decomposition into raw parse + compose
 
 ### §3  Concrete Completeness
 - Propositional equality theorems for specific inputs via `native_decide`
@@ -460,3 +465,5 @@ and composed with `parseStream` totality. Proof-status SSOT:
 -/
 
 end L4YAML.Proofs.Completeness
+
+end Blanket

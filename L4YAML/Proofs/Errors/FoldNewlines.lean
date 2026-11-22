@@ -2,8 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.Composition
+
+module
+
+public import L4YAML.Spec.Grammar
+
+public meta import L4YAML.Spec.Grammar
+public import L4YAML.Parser.Composition
+
+@[expose] public section Blanket
 
 /-!
 # Fold Newlines & c-forbidden Properties (Layer 2a)
@@ -250,3 +257,5 @@ lemma not_markerFollower_digit : isMarkerFollower ['0'] = false := by native_dec
 lemma not_markerFollower_dash : isMarkerFollower ['-'] = false := by native_decide
 
 end L4YAML.Proofs.FoldNewlines
+
+end Blanket

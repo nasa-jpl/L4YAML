@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 454 — adding a constructor whose FIELD TYPE lives in a downstream, originally
 # NON-mutual group of the same recursive family silently FORCES the two groups to MERGE into one
@@ -149,3 +154,5 @@ theorem cycle_field_forces_safe_merge :
   ⟨fun interior h hr => A.mapRec interior h hr, fun _ h => B.toFlat h, cross_cycle_inhabited⟩
 
 end Tests.Reflections.ConstructorFieldForcesMutualGroupMerge
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflections 253 + 254 — a maintained invariant that is a conjunct of a projected property is a *free field*; and the one invariant with no local projection is recovered *non-locally* from the outer span
 
@@ -222,3 +227,5 @@ theorem located_window_via_outer : Located [Tok.om, Tok.a, Tok.cm] :=
 #guard wtAux [Tok.om, Tok.a, Tok.cm] [] = true                  -- recovered inner { a } is WT
 
 end Tests.Reflections.FreeProjectionInvariant
+
+end Blanket

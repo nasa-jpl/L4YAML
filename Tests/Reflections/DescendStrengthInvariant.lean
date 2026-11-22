@@ -31,6 +31,12 @@ sub-window, so the DESCEND edge falls out as triviality.
     restricted.  `deep_descend_good` fires it concretely on `[ a a ]`, yielding the interior guard on
     `[1, 3)` with head `scal`.
 -/
+
+module
+
+
+@[expose] public section Blanket
+
 set_option autoImplicit false
 
 namespace Tests.Reflections.DescendStrengthInvariant
@@ -171,3 +177,5 @@ theorem not_deep : ¬ Deep hdBad 0 4 := by
   exact interior_head_not_contentstart (h_op 0 (by omega) (by omega) (by decide))
 
 end Tests.Reflections.DescendStrengthInvariant
+
+end Blanket

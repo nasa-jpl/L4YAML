@@ -3,8 +3,12 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Schema.Schema
-import L4YAML.Schema.FromToYaml
+module
+
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.FromToYaml
+
+@[expose] public section Blanket
 
 /-! # Schema Algebra  (Algebra Items 15 + 16)
 
@@ -86,7 +90,7 @@ lemma resolveImplicit_of_isBool {s : String} {b : Bool}
     resolveImplicit s = .bool b := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool]
+  simp only [Bool.false_eq_true, ite_false, h_bool]
 
 /-- **Int arm**: when `isNull` and `isBool` both fail and `isInt`
     produces `some i`, `resolveImplicit` produces `.int i`. -/
@@ -96,7 +100,7 @@ lemma resolveImplicit_of_isInt {s : String} {i : Int}
     resolveImplicit s = .int i := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool, h_int]
+  simp only [Bool.false_eq_true, ite_false, h_bool, h_int]
 
 /-- **Float arm**: when `isNull`/`isBool`/`isInt` all fail and
     `isFloat` produces `some f`, `resolveImplicit` produces `.float f`. -/
@@ -106,7 +110,7 @@ lemma resolveImplicit_of_isFloat {s : String} {f : FloatValue}
     resolveImplicit s = .float f := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool, h_int, h_float]
+  simp only [Bool.false_eq_true, ite_false, h_bool, h_int, h_float]
 
 /-- **Str fallback**: when every classifier fails, `resolveImplicit`
     falls through to `.str s`. -/
@@ -116,7 +120,7 @@ lemma resolveImplicit_str {s : String}
     resolveImplicit s = .str s := by
   unfold resolveImplicit
   rw [h_null]
-  simp only [Bool.false_eq_true, if_false, h_bool, h_int, h_float]
+  simp only [Bool.false_eq_true, ite_false, h_bool, h_int, h_float]
 
 /-! ## Item 16(b) — `resolveScalar` tag precedence
 
@@ -200,7 +204,7 @@ standard `nil` / `cons` unfoldings shown below.
 -/
 
 @[simp] lemma resolve_scalar (s : Scalar) :
-    resolve (.scalar s) = resolveScalar s.content s.tag := rfl
+    resolve (.scalar s) = scalarType s := rfl
 
 @[simp] lemma resolve_alias (name : String) :
     resolve (.alias name) = .null := rfl
@@ -263,3 +267,5 @@ lemma fromYaml_via_resolve {α : Type u} [FromYamlType α] (v : YamlValue) :
     @fromYaml? α (instFromYamlOfFromYamlType) v = fromYamlType? (resolve v) := rfl
 
 end L4YAML.Algebra.Schema
+
+end Blanket

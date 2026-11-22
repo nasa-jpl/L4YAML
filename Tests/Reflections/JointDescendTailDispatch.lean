@@ -31,6 +31,11 @@ This file models the discriminator as a two-valued close token and the guards as
 proves the exact dual-branch dispatch of the real edge, then instantiates and runs both branches.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointDescendTailDispatch
 
 set_option autoImplicit false
@@ -160,3 +165,5 @@ end JointDescendTailDispatch
 /-- info: 'JointDescendTailDispatch.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointDescendTailDispatch.demo
+
+end Blanket

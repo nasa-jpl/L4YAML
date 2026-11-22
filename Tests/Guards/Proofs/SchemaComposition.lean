@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Schema.SchemaComposition
+module
+
+public import L4YAML.Proofs.Schema.SchemaComposition
+
+
+
+public meta import L4YAML.Schema.FromToYaml
+public meta import L4YAML.Proofs.Schema.SchemaComposition
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.SchemaComposition
 
@@ -20,7 +28,9 @@ open L4YAML.Schema
 #guard resolvesTo "hello" (.str "hello")
 #guard resolvesTo "world" (.str "world")
 #guard resolvesTo "foo bar" (.str "foo bar")
-#guard resolvesTo "" .null  -- empty string is null per §10.3.2
+#guard resolvesTo "" (.str "")  -- quoted on output, so a string, not null
+#guard resolvesTo "true" (.str "true")
+#guard resolvesTo "42" (.str "42")
 
 -- resolve ∘ toYaml option composition
 #guard resolvesTo (some true : Option Bool) (.bool true)
@@ -47,3 +57,5 @@ open L4YAML.Schema
 #guard schemaRoundTrips (some true : Option Bool)
 
 end L4YAML.Proofs.SchemaComposition
+
+end Blanket

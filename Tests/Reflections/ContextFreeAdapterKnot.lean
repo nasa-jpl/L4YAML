@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 343 — a context-free IH adapter cannot thread a context-dependent carrier fact; the carrier-free knot
 
@@ -149,3 +154,5 @@ example : ContentT 7 := content_resolved RecT ContentT contentT_of_recT dispatch
 #guard (3 < 5)                    -- the width metric the IH strictly decreases
 
 end Tests.Reflections.ContextFreeAdapterKnot
+
+end Blanket

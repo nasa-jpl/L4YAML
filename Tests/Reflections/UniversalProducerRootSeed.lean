@@ -32,6 +32,11 @@ seed recovers it by `drop 1`. Negative: `empty = []` has no `Rec` (via the `Rec 
 the recursive deliverable can never produce an empty block), so the seed never fires there.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.UniversalProducerRootSeed
 
 inductive Tok | A | OB | CB
@@ -189,3 +194,5 @@ theorem not_recmap_empty : ¬ RecMap empty := by
   intro h; exact (recmap_to_flat h) rfl
 
 end Tests.Reflections.UniversalProducerRootSeed
+
+end Blanket

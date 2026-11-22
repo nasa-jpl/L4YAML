@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 511 — the navigator's `descend_tail` edge consumes a depth-witness + a content fact,
         NOT the bare separator marker
 
@@ -128,3 +133,5 @@ theorem demo :
   ⟨marker_not_depth0, depth0_marker_can_be_trailing, witnessed_flat, run_tail⟩
 
 end SeqDescendTailWitness
+
+end Blanket

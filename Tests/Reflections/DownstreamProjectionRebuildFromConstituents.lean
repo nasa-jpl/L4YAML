@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 457 — a projection method you proved for a deliverable (for a DOWNSTREAM consumer) is a
 # FORWARD REFERENCE at an UPSTREAM producer that BUILDS the deliverable: the producer cannot call its
@@ -111,3 +116,5 @@ theorem downstream_projection_rebuild_from_constituents :
   ⟨fun front v hv => producer_lastA front v hv, fun _ h => Deliv.lastA h⟩
 
 end Tests.Reflections.DownstreamProjectionRebuildFromConstituents
+
+end Blanket

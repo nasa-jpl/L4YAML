@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 470 — an INTERIOR-only producer cannot be COERCED UP to a BOUNDARY-INCLUSIVE window:
 # author the OPENER-INCLUSIVE sibling instead (same machinery, and it SHEDS the empty-case guard).
@@ -106,3 +111,5 @@ example : closeAtEnd (boundaryWindow ([] : List Tok)) := by
   unfold closeAtEnd; decide
 
 end BoundaryInclusiveNeedsSiblingNotCoercion
+
+end Blanket

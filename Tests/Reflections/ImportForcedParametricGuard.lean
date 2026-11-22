@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 322 — import-forced parametricity: thread an UPSTREAM lemma's IH over an ABSTRACT guard `Q`, bind the concrete guard only at the downstream fixpoint
 
@@ -120,3 +125,5 @@ example : Enc 3 := enc_descend 2 (by unfold Enc; omega)
 end Downstream
 
 end Tests.Reflections.ImportForcedParametricGuard
+
+end Blanket

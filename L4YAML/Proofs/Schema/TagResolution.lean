@@ -2,7 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.Composition
+
+module
+
+public import L4YAML.Parser.Composition
+
+
+public meta import L4YAML.Parser.State
+@[expose] public section Blanket
 
 /-!
 # %TAG Directive Resolution Proofs (§6.8.2)
@@ -100,3 +107,5 @@ lemma resolveTag_primary_override :
     resolveTag #[("!", "!foo")] "!" "bar" = "!foobar" := by native_decide
 
 end L4YAML.Proofs.TagResolution
+
+end Blanket

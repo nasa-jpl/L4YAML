@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Consumer-joint-before-producer — runnable demonstration
 
@@ -226,3 +231,5 @@ theorem Dyck_not_entail_NoAtomB : ∃ ts, Dyck ts ∧ ¬ NoAtomB ts :=
 theorem good_GoalPlus : GoalPlus good := jointFaithful good_Dyck (by decide)
 
 end ConsumerJointBeforeProducer
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 310 — a feared "bridge between two parallel metrics" is often ALREADY a theorem: a STRUCTURAL count and a NUMERIC count that share a substrate are equated by composition, not by a new per-step induction
 
@@ -166,3 +171,5 @@ def diverge : List Tok := [.op false, .op true]
 #guard ((fold (some []) [.op false]).bind (·.head?) == some false)  -- map opener at top
 
 end Tests.Reflections.MetricBridgeIsComposition
+
+end Blanket

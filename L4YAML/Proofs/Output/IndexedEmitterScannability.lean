@@ -2,14 +2,19 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.Basic
-import L4YAML.Proofs.Output.IndexedEmitterScannability.ScanChain
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth
-import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScans
-import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScansStrong
-import L4YAML.Proofs.Output.IndexedEmitterScannability.ParseStream
-import L4YAML.Proofs.Output.IndexedEmitterScannability.RoundTrip
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.Basic
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.ScanChain
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScans
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScansStrong
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.ParseStream
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.RoundTrip
+
+@[expose] public section Blanket
 
 /-! # `IndexedEmitterScannability` — parallel indexed track (kept built)
 
@@ -20,7 +25,7 @@ parallel universe (Reflection 157: no transport between
 `ScannerStateIx`/`ParseStateIx` and `ScannerState`/`ParseState`), so it is
 not a drop-in for the legacy chain; it is now **wired into the library
 build** (including `EmitScansStrong`, formerly orphaned) so it cannot rot,
-per the import-closure gate (`scripts/check-import-closure.sh`).
+per the import-closure gate (`lake run check-import-closure`).
 
 Historical context (2026-05-31 parking rationale): this was originally a
 staging aggregator for a "6f.3c cutover" that would rename these
@@ -67,3 +72,5 @@ file), the sub-directory is renamed
 `Proofs/Output/EmitterScannability/`, and namespaces lose the
 `Indexed` qualifier.
 -/
+
+end Blanket

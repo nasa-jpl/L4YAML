@@ -2,10 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Token.Token
-import L4YAML.Spec.YamlSpec
-import L4YAML.Parser.State
-import L4YAML.Parser.Fuel
+
+module
+
+public import L4YAML.Token.Token
+public import L4YAML.Spec.YamlSpec
+public meta import L4YAML.Spec.YamlSpec
+public import L4YAML.Parser.State
+public import L4YAML.Parser.Fuel
+
+@[expose] public section Blanket
 
 /-!
 # YAML Grammar Parser (Token → AST) — Mutual Block
@@ -146,7 +152,7 @@ def parseNode (ps : ParseState) (fuel : Nat) : Except ScanError (YamlValue × Pa
   match ps.peek? with
   | some (.alias name) =>
     -- §7.1: Reject undefined aliases — every alias must have a preceding anchor
-    if !ps.anchors.any (fun (n, _) => n == name) then
+    if !ps.declaredIndex.contains name then
       throw (.undefinedAlias name nodeStartPos.line nodeStartPos.col)
     let ps := ps.advance
     -- G5c: record alias position (only if tracking enabled)
@@ -579,7 +585,7 @@ def parseSinglePairMapping (ps : ParseState) (fuel : Nat) : Except ScanError (Ya
       .ok (emptyNode, ps)
     | _ => parseNode ps fuel
   -- G5c: set path for value node
-  let keyContent := match key with | .scalar s => s.content | _ => "0"
+  let keyContent := keyPathSegment key
   let savedPath := ps.currentPath
   let ps := { ps with currentPath := savedPath.push (.key keyContent) }
   let (consumed, ps) := ps.tryConsume .value
@@ -773,9 +779,10 @@ def parseDocument (ps : ParseState) : Except ScanError (YamlDocument × ParseSta
     **Invariant**: `ps.tokens` is preserved across iterations (only `.pos`,
     `.anchors`, `.nodePositions`, `.currentPath`, `.tagHandles` change).
 
-    **Termination**: `fuel` decreases by 1 each iteration. Additionally,
-    a stuck-detection check breaks if `parseDocument` + `tryConsume` didn't
-    advance `ps.pos`. -/
+    **Termination**: `fuel` decreases by 1 each iteration.  A no-progress
+    iteration (`parseDocument` + `tryConsume` did not advance `ps.pos`: the
+    stream state admitted a token no document can start with) is refused as
+    `trailingContent` rather than returned as a truncated success. -/
 def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
     (streamState : StreamState) (fuel : Nat) :
     Except ScanError (Array YamlDocument) :=
@@ -803,10 +810,15 @@ def parseStreamLoop (ps : ParseState) (docs : Array YamlDocument)
         | .error e => .error e
         | .ok (doc, ps') =>
           let docs := docs.push doc
-          let ps := { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
+          let ps := { ps' with anchors := #[], anchorIndex := .empty, declaredAnchors := #[], declaredIndex := .empty,
+                               nodePositions := #[], currentPath := #[] }
           let (consumed, ps) := ps.tryConsume .documentEnd
           let streamState := if consumed then .afterDocumentEnd else .afterDocument
-          if ps.pos == savedPos then .ok docs
+          if ps.pos == savedPos then
+            -- No progress: the document parser consumed nothing at a token the stream state
+            -- admitted.  Refuse (trailing content) instead of silently dropping the rest.
+            let pos := ps.peekPos?.getD { offset := 0, line := 0, col := 0 }
+            .error (.trailingContent pos.line pos.col)
           else parseStreamLoop ps docs streamState fuel
 
 /-- Parse a complete YAML stream (multiple documents).
@@ -832,3 +844,5 @@ def parseStream (tokens : Array (Positioned YamlToken))
   parseStreamLoop ps #[] .initial tokens.size
 
 end L4YAML.TokenParser
+
+end Blanket

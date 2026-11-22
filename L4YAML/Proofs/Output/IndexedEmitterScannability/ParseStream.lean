@@ -2,23 +2,27 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScans
-import L4YAML.Proofs.Parser.IndexedComposition
-import L4YAML.Proofs.Parser.IndexedGrammable
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.EmitScans
+public import L4YAML.Proofs.Parser.IndexedComposition
+public import L4YAML.Proofs.Parser.IndexedGrammable
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+
+@[expose] public section Blanket
 
 /-! # `IndexedEmitterScannability.ParseStream` — Phase 3 Step 6f.3b3.parsestream
 
 **Status**: LANDED 2026-05-28 — §4 Full Pipeline + §5.2 Scanner content
-preservation. Indexed twins of legacy `EmitterScannability.lean` lines
-8400–8489 (§4) and 8531–8874 (§5.2).
+preservation. Indexed twins of legacy `EmitterScannability.lean` §4 and §5.2.
 
 ## Scope (mapping to legacy `EmitterScannability.lean`)
 
-  - **§4 Full Pipeline: Emit → Scan → Parse** (legacy lines 8400–8489):
-    `parseStreamLoop_single_docIx`, `emit_parsed_grammableIx`.
+  - **§4 Full Pipeline: Emit → Scan → Parse**:
+    `parseStreamLoop_single_docIx`, `emit_parsed_scannableIx`.
 
-  - **§5.2 Scanner content preservation** (legacy lines 8531–8874):
+  - **§5.2 Scanner content preservation**:
     `scanFilteredIx_emitScalar_content`, `scanFilteredIx_emitScalar_vals`,
     `parseDirectives_skipIx`, `parseNodeProperties_skipIx`,
     `parseStream_three_tokens_scalarIx`, `parseYamlRawIx_emitScalar_value`.
@@ -79,13 +83,13 @@ that `parseStreamIx` also succeeds on those tokens. The key argument:
 /-- **`parseStreamLoop` state machine — single implicit document**: if the
     parser sees content (not `streamEnd`), `parseDocument` succeeds and
     leaves `peek?` at `streamEnd`; then `parseStreamLoop` produces exactly
-    one document. Indexed twin of legacy `parseStreamLoop_single_doc`
-    (line 8433). -/
+    one document. Indexed twin of legacy `parseStreamLoop_single_doc`. -/
 lemma parseStreamLoop_single_docIx {input : String}
     (ps : ParseStateIx input) (fuel : Nat) (h_fuel : fuel ≥ 2)
     (tok : YamlToken) (h_peek : ps.peek? = some tok) (h_not_se : tok ≠ .streamEnd)
+    (h_not_de : tok ≠ .documentEnd)
     (doc : YamlDocument) (ps' : ParseStateIx input)
-    (h_doc : parseDocument ps = .ok (doc, ps'))
+    (h_doc : parseDocument ps = .ok (doc, ps')) (h_tok : ps'.tokens = ps.tokens)
     (h_peek' : ps'.peek? = some .streamEnd) :
     parseStreamLoop ps #[] .initial fuel = .ok #[doc] := by
   -- Two iterations: first parses document, second sees streamEnd and returns.
@@ -98,9 +102,11 @@ lemma parseStreamLoop_single_docIx {input : String}
       unfold parseStreamLoop; dsimp only []
       rw [h_peek]
       -- Case-split by YamlToken constructor to resolve the compiled match.
-      -- .streamEnd is impossible (contradicts h_not_se); all others take catch-all.
+      -- .streamEnd / .documentEnd are impossible (contradict h_not_se / h_not_de,
+      -- and the C1 fix routes `.documentEnd` to a distinct suffix-skip arm anyway);
+      -- all others take the content catch-all.
       cases tok
-      <;> first | exact absurd rfl h_not_se | skip
+      <;> first | exact absurd rfl h_not_se | exact absurd rfl h_not_de | skip
       -- All remaining content goals: identical proof structure.
       all_goals (
         dsimp only []
@@ -108,7 +114,9 @@ lemma parseStreamLoop_single_docIx {input : String}
         rw [h_doc]; dsimp only []
         -- Post-document state: clear anchors/nodePositions/currentPath. The
         -- `peek?` projection depends only on `tokens` and `pos`, both unchanged.
-        have h_peek'_r : ({ ps' with anchors := #[], nodePositions := #[],
+        have h_peek'_r : ({ ps' with anchors := #[], anchorIndex := .empty,
+                                     declaredAnchors := #[], declaredIndex := .empty,
+                                     nodePositions := #[],
                                      currentPath := #[] } : ParseStateIx input).peek?
             = some .streamEnd := h_peek'
         simp only [ParseStateIx.tryConsume, h_peek'_r,
@@ -116,17 +124,24 @@ lemma parseStreamLoop_single_docIx {input : String}
                      from by decide]
         simp only [Bool.false_eq_true, ↓reduceIte]
         simp only [parseStreamLoop, h_peek'_r]
-        -- Both if-branches collapse to the same `.ok #[doc]` result.
-        split <;> rfl)
+        -- The no-progress branch is an error; it is excluded because the peeks differ.
+        split
+        · rename_i hstuck
+          exfalso
+          have hpos : ps'.pos = ps.pos := by simpa using hstuck
+          have h1 : ps'.peek? = ps.peek? := by unfold ParseStateIx.peek? ParseStateIx.peekIx?; rw [h_tok, hpos]
+          rw [h_peek', h_peek] at h1
+          exact h_not_se (Option.some.inj h1).symm
+        · rfl)
 
 /-- **Grammability preservation**: the parsed output of emitter output is
-    grammable. Follows from `parseStreamIx_output_grammable` applied to
-    the scan+parse decomposition. Indexed twin of legacy
-    `emit_parsed_grammable` (line 8472). -/
-lemma emit_parsed_grammableIx (v : YamlValue)
+    scannable. Follows from `parseStreamIx_output_scannable_composed` applied
+    to the scan+parse decomposition. Indexed twin of
+    `emit_parsed_scannable`. -/
+lemma emit_parsed_scannableIx (v : YamlValue)
     (docs : Array YamlDocument)
     (h : parseYamlIx (emit v) = .ok docs) :
-    ∀ doc ∈ docs.toList, Grammable doc.value false := by
+    ∀ doc ∈ docs.toList, Scannable doc.value false := by
   simp only [parseYamlIx] at h
   split at h
   · rename_i raw_docs h_raw
@@ -134,7 +149,7 @@ lemma emit_parsed_grammableIx (v : YamlValue)
     have ⟨tokens, h_scan, h_parse⟩ := parseYamlRawIx_ok_decompose (emit v) raw_docs h_raw
     have h_fpsv := scanFilteredIx_FlowAwarePSVIx (emit v) tokens h_scan
     have h_matched := scanFilteredIx_FlowBracketsMatchedIx (emit v) tokens h_scan
-    have h_gram := parseStreamIx_output_grammable tokens raw_docs h_fpsv h_matched h_parse
+    have h_gram := parseStreamIx_output_scannable_composed tokens raw_docs h_fpsv h_matched h_parse
     intro doc hdoc
     rw [← h_eq] at hdoc
     simp only [Array.toList_map] at hdoc
@@ -159,7 +174,7 @@ canonical roundtrip `parseYamlIx ∘ emit = id` (modulo stripping) follows.
 /-- When `parseDirectives` sees a non-directive token, it returns immediately
     with empty directives and unchanged state. The `for _ in [:fuel] do`
     loop breaks on the first iteration. Indexed twin of legacy
-    `parseDirectives_skip` (line 8677). -/
+    `parseDirectives_skip`. -/
 lemma parseDirectives_skipIx {input : String} (ps : ParseStateIx input)
     (h : match ps.peek? with
         | some (.versionDirective _ _) | some (.tagDirective _ _) => False
@@ -221,7 +236,7 @@ SS2-wrapper `scan_accepts_emitScalarIx` (§3.3) + `scanFilteredIx_of_chain_eq`
     `emitScalar` input. Bundles three IxToken witnesses (with their
     `.token` projections fixed) and the explicit `scanFilteredIx`
     equality. Indexed analog of the equality embedded in legacy
-    `scanFiltered_emitScalar_vals`'s `h_filt_full` step (line 8647). -/
+    `scanFiltered_emitScalar_vals`'s `h_filt_full` step. -/
 lemma scanFilteredIx_emitScalar_eq (content : String) :
     ∃ (ss_ix : Indexed.IxToken (emitScalar content))
       (tok_scalar : Indexed.IxToken (emitScalar content))
@@ -234,6 +249,19 @@ lemma scanFilteredIx_emitScalar_eq (content : String) :
   -- Pull the full SS2/SS3 chain into focus.
   obtain ⟨s₁, h_snt1, h_peek1, h_flow1, h_dp1, h_ids1, tok_scalar,
           h_tok_val, h_filt1⟩ := scanNextTokenIx_emitScalar_init content
+  -- Item 180: the pinned run is property-free.
+  have h_np1 : crossedPropsExcessIdxIx? s₁.tokens = none :=
+    crossedPropsExcessIdxIx?_none_of_no_props
+      (no_props_of_filtered_pushIx h_filt1
+        (by
+          intro t ht
+          have h1 := (Array.mem_filter.mp ht).1
+          rcases Array.mem_push.mp h1 with h_in | rfl
+          · exact absurd h_in (by
+              show ¬ t ∈ (Indexed.TokenStream.empty (emitScalar content)).tokens
+              simp [Indexed.TokenStream.empty])
+          · rfl)
+        (by rw [h_tok_val]; rfl))
   have h_size := emitScalar_utf8ByteSize_ge content
   have h_fuel : ((emitScalar content).utf8ByteSize + 1) * 4 ≥ 2 := by omega
   -- BOM check: first char is '"', not '﻿'.
@@ -272,7 +300,9 @@ lemma scanFilteredIx_emitScalar_eq (content : String) :
     rfl
   -- Apply scanFilteredIx_of_chain_eq for the explicit filtered token equality.
   have h_eq := scanFilteredIx_of_chain_eq (emitScalar content)
-    _ s₁ 1 rfl h_no_bom h_chain h_snt2 h_flow1 h_dp1 (by omega)
+    _ s₁ 1 rfl h_no_bom h_chain h_snt2 h_flow1 h_dp1
+    (scanLoopIx_checkDanglingNode_ok_of_sentinel_stack _ h_ids1 h_np1)
+    (scanLoopIx_checkFlowValueIndent_ok_of_sentinel_stack _ h_ids1) (by omega)
   -- Compute the filtered array step by step.
   -- Step 1: substitute unwindIndentsIx s₁ (-1) = s₁ in h_eq.
   rw [h_uwi] at h_eq
@@ -284,7 +314,7 @@ lemma scanFilteredIx_emitScalar_eq (content : String) :
       = s₁.tokens.tokens.push se_ix := rfl
   rw [h_se_eq, Array.filter_push] at h_eq
   have h_se_keep : (se_ix.token != YamlToken.placeholder) = true := rfl
-  rw [if_pos h_se_keep] at h_eq
+  rw [ite_eq_left h_se_keep] at h_eq
   -- Step 3: substitute h_filt1 (s₁.tokens.filter = ((mk' input).emit ss).tokens.filter.push tok_scalar).
   rw [h_filt1] at h_eq
   -- Step 4: explicit streamStart IxToken; (mk' input).tokens.tokens = #[], filter empty = empty.
@@ -306,8 +336,7 @@ lemma scanFilteredIx_emitScalar_eq (content : String) :
 
 /-- **Scanner content preservation**: scanning `emitScalar content` produces
     a token stream where the scalar token's value equals the original
-    content. Indexed twin of legacy `scanFiltered_emitScalar_content`
-    (line 8545). -/
+    content. Indexed twin of legacy `scanFiltered_emitScalar_content`. -/
 lemma scanFilteredIx_emitScalar_content (content : String)
     (tokens : Indexed.TokenStream (emitScalar content))
     (h_scan : scanFilteredIx (emitScalar content) = .ok tokens) :
@@ -329,7 +358,7 @@ lemma scanFilteredIx_emitScalar_content (content : String)
 /-- **Token structure characterization**: the filtered scan of `emitScalar
     content` produces exactly 3 tokens: `streamStart`,
     `scalar content .doubleQuoted`, `streamEnd`. Indexed twin of legacy
-    `scanFiltered_emitScalar_vals` (line 8607). -/
+    `scanFiltered_emitScalar_vals`. -/
 lemma scanFilteredIx_emitScalar_vals (content : String)
     (tokens : Indexed.TokenStream (emitScalar content))
     (h_scan : scanFilteredIx (emitScalar content) = .ok tokens) :
@@ -356,7 +385,7 @@ set_option maxHeartbeats 6400000 in
     with values `[streamStart, scalar content .doubleQuoted, streamEnd]`,
     `parseStreamIx` produces exactly one document whose value is
     `YamlValue.scalar { content := content, style := .doubleQuoted }`.
-    Indexed twin of legacy `parseStream_three_tokens_scalar` (line 8710). -/
+    Indexed twin of legacy `parseStream_three_tokens_scalar`. -/
 lemma parseStream_three_tokens_scalarIx {input : String} (content : String)
     (tokens : Indexed.TokenStream input)
     (h_sz : tokens.size = 3)
@@ -415,10 +444,12 @@ lemma parseStream_three_tokens_scalarIx {input : String} (content : String)
   have h_pd : parseDirectives ps1 = (#[], ps1) := parseDirectives_skipIx ps1 h_peek_not_dir
   have h_pds : prepareDocumentState ps1 = .ok (#[], ps1) := by
     unfold prepareDocumentState
-    simp only [bind, Except.bind, h_pd, Array.filterMap_empty]
+    rw [h_pd]
+    simp only [bind, Except.bind, Array.filterMap_empty]
     have h_th : { ps1 with tagHandles := #[] } = ps1 := by
       simp [ps1, ParseStateIx.advance]
-    rw [h_th, h_peek1]
+    simp only [h_th]
+    rw [h_peek1]
     unfold ParseStateIx.tryConsume
     rw [h_peek1]; simp
   -- parseNodeProperties skip
@@ -469,17 +500,18 @@ lemma parseStream_three_tokens_scalarIx {input : String} (content : String)
   have h_fuel_ge : tokens.size ≥ 2 := by omega
   have h_loop := parseStreamLoop_single_docIx ps1 tokens.size h_fuel_ge
     (YamlToken.scalar content .doubleQuoted) h_peek1 (by intro h; cases h)
+    (by intro h; cases h)
     { value := YamlValue.scalar
         { content, style := .doubleQuoted, tag := none, anchor := none },
       directives := #[], anchors := ps1.advance.anchors,
       nodePositions := ps1.advance.nodePositions }
-    ps1.advance h_doc_val h_peek2
+    ps1.advance h_doc_val rfl h_peek2
   exact ⟨_, h_loop, rfl, by simp [getElem!_pos]⟩
 
 /-- **`parseYamlRawIx` on `emitScalar` produces a scalar value**: when
     `parseYamlRawIx` succeeds on emitter scalar output, the first
     document's value is a scalar with the original content. Indexed twin
-    of legacy `parseYamlRaw_emitScalar_value` (line 8812). -/
+    of legacy `parseYamlRaw_emitScalar_value`. -/
 lemma parseYamlRawIx_emitScalar_value (content : String)
     (raw_docs : Array YamlDocument)
     (h_raw : parseYamlRawIx (emitScalar content) = .ok raw_docs) :
@@ -494,3 +526,5 @@ lemma parseYamlRawIx_emitScalar_value (content : String)
   exact ⟨Scalar.mk content .doubleQuoted none none none, h_dv, rfl⟩
 
 end L4YAML.Proofs.Indexed.EmitterScannability.ParseStream
+
+end Blanket

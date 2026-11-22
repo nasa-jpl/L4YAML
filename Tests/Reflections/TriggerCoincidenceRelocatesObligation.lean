@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 421 — trigger-coincidence RELOCATES the obligation (and restricts the tail-bridge domain)
 
@@ -221,3 +226,5 @@ theorem seamNonTrailing_last_ne_trigger :
 #guard wSeamNonTrailing.length == 3       -- rest ≠ [] ⇒ a content token is last
 
 end Tests.Reflections.TriggerCoincidenceRelocatesObligation
+
+end Blanket

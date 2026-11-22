@@ -1,4 +1,8 @@
-import L4YAML
+module
+
+public import L4YAML
+
+@[expose] public section Blanket
 
 /-!
 # TryDump — parse YAML then dump with configurable style
@@ -71,3 +75,5 @@ def main (args : List String) : IO UInt32 := do
   | _ =>
     IO.eprintln "Usage: trydump <input.yaml> <config.json>"
     return 3
+
+end Blanket

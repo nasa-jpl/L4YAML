@@ -3,10 +3,14 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Spec.Types
-import L4YAML.Token.Token
-import L4YAML.Scanner.Scanner
-import L4YAML.Parser.IndexedComposition
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Token.Token
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Parser.IndexedComposition
+
+@[expose] public section Blanket
 
 /-!
 # Parser Security: Limits and Tag Validation
@@ -56,6 +60,12 @@ structure AliasLimits where
       Default: 100,000 -/
   maxResolvedNodes : Nat := 100_000
   /-- Detect and reject cyclic aliases (`a: &a [*a]`).
+      This is a policy of ours, not a spec requirement: YAML 1.2.2 §3.2.1
+      explicitly permits cycles in the representation graph ("Note that the
+      YAML graph may include cycles"). What forces a *presented* graph to be
+      acyclic is §7.1, which resolves an alias to the "most recent preceding
+      node" — so a cycle is unreachable from a stream, but not from the graph
+      a program builds and asks us to serialize.
       Default: true -/
   rejectCycles : Bool := true
   deriving Repr, BEq, Inhabited
@@ -309,11 +319,15 @@ instance : ToString LimitError where toString := LimitError.toString
 inductive ParseError where
   | scanError (err : ScanError)
   | limitError (err : LimitError)
+  /-- The YAML describing the `ParserLimits` themselves failed to parse
+      (`parseConfigYaml`); the message is the config reader's. -/
+  | configError (msg : String)
   deriving Repr, BEq, Inhabited
 
 def ParseError.toString : ParseError → String
   | .scanError err => s!"{err}"
   | .limitError err => s!"{err}"
+  | .configError msg => s!"config error: {msg}"
 
 instance : ToString ParseError where toString := ParseError.toString
 
@@ -521,6 +535,22 @@ partial def countNodes (v : YamlValue) : Nat :=
     1 + pairs.foldl (fun acc (k, v) => acc + countNodes k + countNodes v) 0
   | .alias _ => 1
 
+/-- `countNodes` with a budget: adds the nodes of `v` to `acc`, stopping as soon
+    as the running total exceeds `limit`.  The result is the exact total when
+    that total is `≤ limit`, and some total `> limit` otherwise.  Anchor values
+    share substituted subtrees as a DAG whose tree size can be exponential in
+    the input, so the unbudgeted walk must not run on them. -/
+partial def countNodesBounded (limit : Nat) (v : YamlValue) (acc : Nat := 0) : Nat :=
+  if acc > limit then acc else
+  match v with
+  | .scalar _ => acc + 1
+  | .alias _ => acc + 1
+  | .sequence _ items _ _ =>
+    items.foldl (fun acc item => countNodesBounded limit item acc) (acc + 1)
+  | .mapping _ pairs _ _ =>
+    pairs.foldl (fun acc (k, v) => countNodesBounded limit v (countNodesBounded limit k acc))
+      (acc + 1)
+
 /-- Validate structural limits on a resolved value tree. -/
 partial def validateStructure (v : YamlValue) (limits : StructuralLimits) (path : YamlPath := #[])
     (depth : Nat := 0) : Except StructuralLimitError Unit := do
@@ -569,9 +599,12 @@ def composeLimited (doc : YamlDocument) (limits : ParserLimits) (docIndex : Nat 
   -- Anchor count
   if limits.enabled && doc.anchors.size > limits.document.maxAnchors then
     throw (.documentLimit (.tooManyAnchors doc.anchors.size limits.document.maxAnchors docIndex))
-  -- Anchor value node count (catches billion-laugh expanded during parsing)
+  -- Anchor value node count (catches billion-laugh expanded during parsing).
+  -- Budgeted: the anchor table is a shared DAG, so the count stops as soon as
+  -- it passes the limit instead of walking the full expansion.
   if limits.enabled then
-    let anchorNodes := doc.anchors.foldl (fun acc (_, v) => acc + countNodes v) 0
+    let anchorNodes := doc.anchors.foldl
+      (fun acc (_, v) => countNodesBounded limits.alias.maxResolvedNodes v acc) 0
     if anchorNodes > limits.alias.maxResolvedNodes then
       throw (.aliasLimit (.nodeCountExceeded anchorNodes limits.alias.maxResolvedNodes))
   -- Directive validation (tag handles)
@@ -666,3 +699,5 @@ def parseYamlSingleRawSafe (input : String) (limits : ParserLimits := {})
   else throw (.scanError (.multipleDocuments docs.size))
 
 end L4YAML
+
+end Blanket

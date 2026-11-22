@@ -1,5 +1,9 @@
-import L4YAML.Parser.Composition
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Parser.Composition
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -267,8 +271,10 @@ def testDeleteNewlineLeniencies (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "LENIENT: delete-newline"
 
   -- Source: 2JQS:0 `: a\n: b\n` (empty key mapping)
-  -- Mutation: join lines 0 and 1
-  mustParse state "2JQS:0 join empty-key lines (LENIENT: libyaml rejects)"
+  -- Mutation: join lines 0 and 1.  Refused at the scanner since the
+  -- `[194]` same-line check: an implicit value admits no same-line
+  -- mapping (`nestedMappingOnLine`), agreeing with libyaml.
+  mustReject state "2JQS:0 join empty-key lines (rejected, like libyaml)"
     ": a: b\n"
 
   -- Source: 4ABK:0 (multi-doc with implicit keys)
@@ -351,8 +357,13 @@ def testColonNospaceLeniencies (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "LENIENT: colon-nospace"
 
   -- Source: 6KGN:0 `---\na: &anchor\nb: *anchor\n`
-  -- Mutation: remove space after `:` on line 2
-  mustParse state "6KGN:0 b:*anchor no space (LENIENT: libyaml rejects)"
+  -- Mutation: remove space after `:` on line 2.
+  -- The leniency CLOSED at item 182: without the space, `b:*anchor` is one
+  -- plain scalar rather than a key, so it is the `&anchor` run's own CONTENT
+  -- landing at the mapping's column — §9.2's break-crossing reading, which
+  -- refuses it at `2,0`.  libyaml and PyYAML both reject it there too, so
+  -- this row moves from LENIENT to agreement.
+  mustReject state "6KGN:0 b:*anchor no space (BOTH_REJECT)"
     "---\na: &anchor\nb:*anchor\n"
 
   -- Source: 7Z25:0 multi-doc with key:value
@@ -442,3 +453,5 @@ def collectTests : IO VerifiedSuiteResult := do
            tests := results }
 
 end Tests.MutationSuite
+
+end Blanket

@@ -1,0 +1,59 @@
+# Operator panel buttons. $ROBOT_HOST is substituted at launch time.
+# TODO: move the host name into a shared anchor.
+
+# TODO: add a button that restarts the telemetry bridge on the ground station.
+buttons:
+  - name:         deploy config
+    cmd:          >
+         rsync -avh --progress --delete
+         ~/demo_ws/config 
+         operator@robot:~/demo_ws
+    icon:         :/icons/cloud_sync.png
+    row:          5
+    column:       0
+    use_terminal: true
+
+  - name:         deploy install
+    cmd:          >
+         rsync -avh --progress --delete
+         ~/demo_ws/install 
+         operator@robot:~/demo_ws/
+    icon:         :/icons/cloud_sync.png
+    row:          5
+    column:       1
+    use_terminal: true
+
+  - name:         check time sync
+    cmd:          >
+         gnome-terminal . --working-directory demo_ws -- tmux -2 new-session -A -s TIME_SYNC
+         && tmux send-keys -t TIME_SYNC.0 "ssh -t operator@robot chronyc tracking" Enter  
+         #cmd: >
+         #     ssh -t operator@robot chronyc tracking  
+    icon:         :/icons/cloud_sync.png
+    row:          6
+    column:       0
+    use_terminal: true
+
+  - name:         plot
+    cmd:          ros2 run plotjuggler plotjuggler --layout $ROS_WS/src/demo/visualization/plot_layout.xml
+    icon:         :/icons/plot.png
+    row:          6
+    column:       1
+    use_terminal: true
+
+      #- name: deploy maps
+      #  cmd: >
+      #       rsync -avh --progress --delete
+      #       ~/demo_ws/shared/maps  
+      #       operator@robot:~/demo_ws/shared/
+      #  icon: :/icons/map.png
+      #  row: 7
+      #  column: 0
+      #  use_terminal: true
+
+      #- name: deploy plan
+      #  cmd: $ROS_WS/src/demo/scripts/deploy_plan.py operator@robot
+      #  icon: :/icons/line.png
+      #  row: 7
+      #  column: 1
+      #  use_terminal: true

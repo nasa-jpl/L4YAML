@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 358 — a sub-fact flagged as "the analytically-hard residual" may already be PROVEN inside a SIBLING lemma that derives it internally and CONSUMES it for a different deliverable; the residual is an EXTRACTION, not a derivation
 
@@ -96,3 +101,5 @@ example : ([10, 20, 30] : List Nat).drop (2 + 1) = [] :=
   sibling_consumer 2 3 ⟨by decide, by decide⟩ [10, 20, 30] (by decide)
 
 end Tests.Reflections.ResidualAlreadyProvenInSibling
+
+end Blanket

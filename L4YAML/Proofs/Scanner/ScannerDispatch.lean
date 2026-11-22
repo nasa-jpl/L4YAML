@@ -1,9 +1,13 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
-import L4YAML.Proofs.Scanner.ScannerContracts
-import L4YAML.Proofs.Scanner.ScannerIndentStack
-import L4YAML.Proofs.Scanner.ScannerScalar
-import L4YAML.Proofs.Scanner.ScannerDocument
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+public import L4YAML.Proofs.Scanner.ScannerContracts
+public import L4YAML.Proofs.Scanner.ScannerIndentStack
+public import L4YAML.Proofs.Scanner.ScannerScalar
+public import L4YAML.Proofs.Scanner.ScannerDocument
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -127,7 +131,12 @@ lemma scanFlowSequenceStart_preserves_indents (s : ScannerState)
     (h : s.indents.size ≥ 1) :
     (scanFlowSequenceStart s).indents.size ≥ 1 := by
   unfold scanFlowSequenceStart
-  simp only [ScannerState.emit, ScannerState.advance]
+  -- 4.33: unfold `emit` in its own simp pass before `advance`, so the `advance`
+  -- equation instantiates at an explicit structure literal. In a combined pass the
+  -- ite's Decidable instance keeps the un-unfolded `s.emit …` (simp skips instance
+  -- args), and the goal becomes ill-typed at reducible transparency — `split` refuses.
+  simp only [ScannerState.emit]
+  simp only [ScannerState.advance]
   split
   · split
     · exact h
@@ -139,7 +148,9 @@ lemma scanFlowMappingStart_preserves_indents (s : ScannerState)
     (h : s.indents.size ≥ 1) :
     (scanFlowMappingStart s).indents.size ≥ 1 := by
   unfold scanFlowMappingStart
-  simp only [ScannerState.emit, ScannerState.advance]
+  -- 4.33: sequential unfolding for the same reason as scanFlowSequenceStart above.
+  simp only [ScannerState.emit]
+  simp only [ScannerState.advance]
   split
   · split
     · exact h
@@ -254,3 +265,5 @@ that the composed dispatch preserves WellFormed through all transitions.
 
 
 end L4YAML.Proofs.ScannerDispatch
+
+end Blanket

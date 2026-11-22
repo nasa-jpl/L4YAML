@@ -3,7 +3,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.EmitterScannability
 
@@ -54,11 +58,14 @@ lemma scanFiltered_tokens_eq_of_chain_short_stack
     (h_eof : scanNextToken s_final = .ok none)
     (h_fl : s_final.flowLevel = 0)
     (h_dp : s_final.directivesPresent = false)
+    (h_dn : scanLoop_checkDanglingNode s_final = .ok ())
+    (h_fv : scanLoop_checkFlowValueIndent s_final = .ok ())
     (h_fuel : n + 1 ≤ (input.utf8ByteSize + 1) * 4)
     (h_stack : s_final.indents.size ≤ 1) :
     Scanner.scanFiltered input =
       .ok ((s_final.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) := by
-  have h_eq := scanFiltered_of_chain_eq input s₀ s_final n h_s0 h_no_bom h_chain h_eof h_fl h_dp h_fuel
+  have h_eq := scanFiltered_of_chain_eq input s₀ s_final n h_s0 h_no_bom h_chain h_eof h_fl h_dp
+    h_dn h_fv h_fuel
   rwa [unwindIndents_noop_short_stack s_final h_stack] at h_eq
 
 /-- `ScanChain` token array monotonicity: tokens array size grows (non-strictly)
@@ -117,8 +124,8 @@ lemma ScanChain_preserves_raw_prefix {s s' : ScannerState} {k : Nat}
 
 /-! #### Filtered growth through a scan chain — see the strict-variant track
 
-The unconditional per-step lemma `scanNextToken_filtered_grows` (and its `ScanChain`
-corollary `ScanChain_filtered_grows`) were **removed**: they are *false as stated*.  A
+There is no unconditional per-step filtered-growth lemma, and there is no `ScanChain`
+corollary of one, because the claim is **false as stated**.  A
 YAML 1.2.2 §6.8.3 reserved directive (`%FOO …`, not `%YAML`/`%TAG`) is scanned by
 `scanDirective` into `skipToEndOfLine` and emits **no** token, so that `scanNextToken`
 step returns `some s'` while adding zero filtered tokens — the `≥ +1` bound cannot hold
@@ -200,7 +207,8 @@ lemma scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
     (h_fl : s.flowLevel = 1)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_kind : s.flowStack.back? = some true) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ∃ s', scanNextToken s = .ok (some s')
       ∧ s'.flowLevel = 0
@@ -222,7 +230,6 @@ lemma scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
   let s_ad := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
-  have h_check := checkBlockFlowIndent_ok_close_bracket s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
@@ -235,10 +242,18 @@ lemma scanNextToken_flow_close_seq_outermost_ext (s : ScannerState)
       (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
       h_ad_col
       (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
+  have h_ad_kind : s_ad.flowStack.back? = some true := by
+    have h_ad_fs : s_ad.flowStack = s.flowStack := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowStack s
+    rw [h_ad_fs]; exact h_kind
   have h_flow_disp := dispatchFlowIndicators_close_bracket_outermost s_ad
-    (h_ad_fl ▸ h_fl) h_ad_corr
-  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    (h_ad_fl ▸ h_fl) h_ad_corr h_ad_kind
+  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl
+    (scanNextToken_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_disp
     ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
+    (scanNextToken_checkBareDocument_ok_of_inFlow _
+      ((saveSimpleKey_preserves_inFlow s).trans h_flow))
+    (scanNextToken_checkDanglingNode_ok_of_inFlow _ _ h_flow)
   -- s' = scanFlowSequenceEnd s_ad
   let s' := scanFlowSequenceEnd s_ad
   have h_result_fl : s'.flowLevel = 0 := by
@@ -291,7 +306,8 @@ lemma scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
     (h_indent : s.currentIndent < 0)
     (h_col_pos : s.col > 0)
     (h_fl : s.flowLevel = 1)
-    (h_dp : s.directivesPresent = false) :
+    (h_dp : s.directivesPresent = false)
+    (h_kind : s.flowStack.back? = some false) :
     let p := fun (t : Positioned YamlToken) => t.val != .placeholder
     ∃ s', scanNextToken s = .ok (some s')
       ∧ s'.flowLevel = 0
@@ -313,7 +329,6 @@ lemma scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
   let s_ad := if (saveSimpleKey s).allowDirectives then
     { saveSimpleKey s with allowDirectives := false, documentEverStarted := true }
   else saveSimpleKey s
-  have h_check := checkBlockFlowIndent_ok_close_brace s_ad
   have h_ad_fl : s_ad.flowLevel = s.flowLevel := by
     simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowLevel s
   have h_ad_dp : s_ad.directivesPresent = s.directivesPresent := by
@@ -326,10 +341,18 @@ lemma scanNextToken_flow_close_mapping_outermost_ext (s : ScannerState)
       (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_inputEnd s)
       h_ad_col
       (by simp only [s_ad]; split <;> exact saveSimpleKey_preserves_indents s)
+  have h_ad_kind : s_ad.flowStack.back? = some false := by
+    have h_ad_fs : s_ad.flowStack = s.flowStack := by
+      simp only [s_ad]; split <;> exact saveSimpleKey_preserves_flowStack s
+    rw [h_ad_fs]; exact h_kind
   have h_flow_disp := dispatchFlowIndicators_close_brace_outermost s_ad
-    (h_ad_fl ▸ h_fl) h_ad_corr
-  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl h_check h_flow_disp
+    (h_ad_fl ▸ h_fl) h_ad_corr h_ad_kind
+  have h_snt := scanNextToken_via_flow_dispatch _ _ _ _ _ h_pp h_struct rfl
+    (scanNextToken_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_disp
     ((saveSimpleKey_preserves_directivesPresent s).trans h_dp)
+    (scanNextToken_checkBareDocument_ok_of_inFlow _
+      ((saveSimpleKey_preserves_inFlow s).trans h_flow))
+    (scanNextToken_checkDanglingNode_ok_of_inFlow _ _ h_flow)
   -- s' = scanFlowMappingEnd s_ad
   let s' := scanFlowMappingEnd s_ad
   have h_result_fl : s'.flowLevel = 0 := by
@@ -487,3 +510,5 @@ open L4YAML.Proofs.ParserGrammable (flowBracketDelta flowBracketBalance
 
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

@@ -2,8 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Spec.Grammar
+
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.Grammar
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Soundness Proofs
@@ -119,6 +125,7 @@ lemma toYamlValue_nodeToValue : (n : ValidNode) → NodeToValue n (toYamlValue n
   | .literalScalar content indent chomp => .literalScalar content indent chomp
   | .foldedScalar content indent chomp => .foldedScalar content indent chomp
   | .emptyNode => .emptyNode
+  | .aliasNode name => .aliasNode name
   | .blockSeq indent items => by
       simp [toYamlValue, toYamlValueList_eq_map]
       exact .blockSeq indent items (items.map toYamlValue) (by simp) (fun i hi => by
@@ -197,6 +204,7 @@ lemma nodeToValue_implies_toYamlValue {n : ValidNode} {v : YamlValue}
   | literalScalar _ _ _ => rfl
   | foldedScalar _ _ _ => rfl
   | emptyNode => rfl
+  | aliasNode _ => rfl
   | blockSeq indent nodes vals hlen hcorr ih =>
     simp [toYamlValue, toYamlValueList_eq_map]
     exact vals_eq_map_of_ih nodes vals hlen ih
@@ -436,3 +444,5 @@ lemma validYaml_collection_kind (vy : ValidYaml) :
   rw [heq] <;> exact ⟨_, _, _, rfl⟩
 
 end L4YAML.Proofs.Soundness
+
+end Blanket

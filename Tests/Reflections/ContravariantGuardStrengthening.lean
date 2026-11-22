@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 434 — a refutation-driven guard-strengthening threads contravariantly: producer-first
 
@@ -58,3 +63,5 @@ theorem consumer_floored (hyp : ∀ x, G x → H x → Deliv x) : Deliv 3 :=
 theorem consumer_obligations : G 3 ∧ H 3 := ⟨by decide, by decide⟩
 
 end Tests.Reflections.ContravariantGuardStrengthening
+
+end Blanket

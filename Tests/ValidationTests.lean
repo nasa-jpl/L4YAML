@@ -1,6 +1,10 @@
-import L4YAML
-import L4YAML.Spec.Grammar
-import Tests.VerifiedResult
+module
+
+public import L4YAML
+public import L4YAML.Spec.Grammar
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -35,7 +39,7 @@ namespace Tests.Validation
 /-! ## §2  Indentation Properties -/
 
 /-- Build a list with `n` leading spaces followed by `rest`. -/
-private def mkIndented : (n : Nat) → (rest : List Char) → List Char
+def mkIndented : (n : Nat) → (rest : List Char) → List Char
   | 0, cs => cs
   | n + 1, cs => ' ' :: mkIndented n cs
 
@@ -300,3 +304,5 @@ def collectTests : IO VerifiedSuiteResult := do
            sourceFile := "Tests/ValidationTests.lean", tests := results }
 
 end Tests.Validation
+
+end Blanket

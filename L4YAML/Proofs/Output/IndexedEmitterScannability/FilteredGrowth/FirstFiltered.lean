@@ -2,13 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain
+
+@[expose] public section Blanket
 
 /-! # `FilteredGrowth.FirstFiltered` — Phase 3 Step
 `6f.3b3.filteredgrowth.firstfiltered`
 
-**Sub-session 1 of `.filteredgrowth`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 5587–5899, ~313 LOC).
+**Sub-session 1 of `.filteredgrowth`** (~313 legacy LOC).
 
 First-filtered-token lemmas for flow-content scanners (Tier-2-Turn-1).
 When `scanNextTokenIx` runs in flow context with a leading content
@@ -30,12 +34,12 @@ Plus emitter-shape helpers and a generic array prefix lemma reused by
 later filtered-growth bodies:
   * `emit_first_char` / `emitList_first_char` / `emitList_toList_ne_nil`
     — pure `String`-level shape lemmas about `L4YAML.Emit.emit`. No
-    indexed-scanner content; ported verbatim from legacy 5833–5871.
-  * `emit_tokens_pushIx` — indexed twin of `emit_tokens_push` (legacy
-    5877). Identifies the single-token push performed by
+    indexed-scanner content; ported verbatim from legacy.
+  * `emit_tokens_pushIx` — indexed twin of `emit_tokens_push`.
+    Identifies the single-token push performed by
     `ScannerStateIx.emit`.
-  * `Array_filter_prefix_of_raw_prefix` — generic `Array α` lemma
-    (legacy 5883). Used downstream by `.perdispatch` / `.turn3`.
+  * `Array_filter_prefix_of_raw_prefix` — generic `Array α` lemma.
+    Used downstream by `.perdispatch` / `.turn3`.
 
 ## Indexed simplification
 
@@ -45,8 +49,8 @@ legacy `scanDoubleQuoted` was responsible for emitting the scalar
 token. The indexed `scanDoubleQuotedIx` is **cursor-level only**:
 `IxCursor input → Option (String × IxCursor input)`. The actual
 `emitAt` for the scalar token happens inside
-`scanNextTokenIx_dispatchContent` itself (see `Scanner/IndexedDispatch.lean`
-lines 1002–1014). So this port reduces the dispatch branch directly,
+`scanNextTokenIx_dispatchContent` itself (see `Scanner/IndexedDispatch.lean`).
+So this port reduces the dispatch branch directly,
 extracting `(content, cAfter)` from the `scanDoubleQuotedIx` case
 analysis and reading the `emitAt` shape off the dispatch body — no
 separate `_tokens_push` lemma needed.
@@ -72,7 +76,7 @@ variable {input : String}
 
 /-- After `scanNextTokenIx` with leading `[` in flow context, the
     first new filtered token is `.flowSequenceStart`. Indexed twin of
-    `scanFlowSequenceStart_first_filtered_token` (legacy 5598). -/
+    `scanFlowSequenceStart_first_filtered_token`. -/
 lemma scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'[' :: rest, s.cursor.pos.col⟩)
@@ -106,15 +110,17 @@ lemma scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
       else saveSimpleKeyIx s := ⟨_, rfl⟩
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     rw [h_s_ad_def]; split <;> exact h_sk_flow
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '[' = .ok () :=
-    checkBlockFlowIndent_ok_flow s_ad '[' (h_ad_flow ▸ h_flow)
   have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad '[' =
       .ok (some (scanFlowSequenceStartIx s_ad)) :=
     dispatchFlowIndicators_bracket s_ad
+      (checkFlowAdjacencyIx_ok_of_scanNextTokenIx_ok h_pp h_struct h_s_ad_def
+        (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_snt_eq := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowSequenceStartIx s_ad) '['
-    h_pp h_struct h_s_ad_def h_check h_flow_disp
+    h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_disp
     (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt)
+    (scanNextTokenIx_ok_checkBareDocument h_pp h_struct h_snt)
+    (scanNextTokenIx_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowSequenceStartIx s_ad :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   -- s_ad's filtered tokens equal s's filtered tokens
@@ -131,7 +137,8 @@ lemma scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
               s_ad.cursor.pos (Nat.le_refl _) s_ad.cursor.posBound) := by
     show (({(s_ad.emit YamlToken.flowSequenceStart).advance with
               flowLevel := _, flowStack := _, simpleKeyStack := _,
-              simpleKey := _, simpleKeyAllowed := _ } : ScannerStateIx input).tokens).tokens = _
+              simpleKey := _, simpleKeyAllowed := _, explicitKeyStack := _,
+              explicitKeyLine := _, explicitKeyCol := _ } : ScannerStateIx input).tokens).tokens = _
     rfl
   rw [h_s', h_fss_tokens, Array.filter_push]
   simp only [show ((IxToken.mk' (input := input) s_ad.cursor.pos YamlToken.flowSequenceStart
@@ -146,7 +153,7 @@ lemma scanFlowSequenceStartIx_first_filtered_token (s : ScannerStateIx input)
 
 /-- After `scanNextTokenIx` with leading `{` in flow context, the
     first new filtered token is `.flowMappingStart`. Indexed twin of
-    `scanFlowMappingStart_first_filtered_token` (legacy 5657). -/
+    `scanFlowMappingStart_first_filtered_token`. -/
 lemma scanFlowMappingStartIx_first_filtered_token (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'{' :: rest, s.cursor.pos.col⟩)
@@ -179,15 +186,17 @@ lemma scanFlowMappingStartIx_first_filtered_token (s : ScannerStateIx input)
       else saveSimpleKeyIx s := ⟨_, rfl⟩
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     rw [h_s_ad_def]; split <;> exact h_sk_flow
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '{' = .ok () :=
-    checkBlockFlowIndent_ok_flow s_ad '{' (h_ad_flow ▸ h_flow)
   have h_flow_disp : scanNextTokenIx_dispatchFlowIndicators s_ad '{' =
       .ok (some (scanFlowMappingStartIx s_ad)) :=
     dispatchFlowIndicators_brace s_ad
+      (checkFlowAdjacencyIx_ok_of_scanNextTokenIx_ok h_pp h_struct h_s_ad_def
+        (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_snt_eq := scanNextTokenIx_via_flow_dispatch s (saveSimpleKeyIx s) s_ad
     (scanFlowMappingStartIx s_ad) '{'
-    h_pp h_struct h_s_ad_def h_check h_flow_disp
+    h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_disp
     (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt)
+    (scanNextTokenIx_ok_checkBareDocument h_pp h_struct h_snt)
+    (scanNextTokenIx_ok_checkDanglingNode h_pp h_snt)
   have h_s' : s' = scanFlowMappingStartIx s_ad :=
     Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
   have h_ad_tokens_filter :
@@ -201,7 +210,8 @@ lemma scanFlowMappingStartIx_first_filtered_token (s : ScannerStateIx input)
               s_ad.cursor.pos (Nat.le_refl _) s_ad.cursor.posBound) := by
     show (({(s_ad.emit YamlToken.flowMappingStart).advance with
               flowLevel := _, flowStack := _, simpleKeyStack := _,
-              simpleKey := _, simpleKeyAllowed := _ } : ScannerStateIx input).tokens).tokens = _
+              simpleKey := _, simpleKeyAllowed := _, explicitKeyStack := _,
+              explicitKeyLine := _, explicitKeyCol := _ } : ScannerStateIx input).tokens).tokens = _
     rfl
   rw [h_s', h_fms_tokens, Array.filter_push]
   simp only [show ((IxToken.mk' (input := input) s_ad.cursor.pos YamlToken.flowMappingStart
@@ -223,7 +233,7 @@ the token-push shape off the `emitAt`-then-record-update body. -/
     new filtered token is some `.scalar _ .doubleQuoted`. Content and
     subType are existentially quantified — the lemma's purpose is
     dispatch identification. Indexed twin of
-    `scanDoubleQuoted_first_filtered_token` (legacy 5746). -/
+    `scanDoubleQuoted_first_filtered_token`. -/
 lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
     (rest : List Char)
     (hcorr : ScannerSurfCorrIx s ⟨'"' :: rest, s.cursor.pos.col⟩)
@@ -257,11 +267,11 @@ lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
   have h_ad_flow : s_ad.inFlow = s.inFlow := by
     rw [h_s_ad_def]; split <;> exact h_sk_flow
   have h_ad_flow_true : s_ad.inFlow = true := h_ad_flow ▸ h_flow
-  have h_check : scanNextTokenIx_checkBlockFlowIndent s_ad '"' = .ok () :=
-    checkBlockFlowIndent_ok_flow s_ad '"' h_ad_flow_true
   have h_flow_none : scanNextTokenIx_dispatchFlowIndicators s_ad '"' = .ok none :=
     dispatchFlowIndicators_none _ _
       (by decide) (by decide) (by decide) (by decide) (by decide)
+      (checkFlowAdjacencyIx_ok_of_scanNextTokenIx_ok h_pp h_struct h_s_ad_def
+        (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt) h_snt)
   have h_block_none : scanNextTokenIx_dispatchBlockIndicators s_ad '"' = .ok none :=
     dispatchBlockIndicators_none_quote _
   -- From h_snt + dispatch composition, dispatchContent succeeds and yields s'
@@ -271,17 +281,44 @@ lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
       exfalso
       have h_snt_err := scanNextTokenIx_via_content_dispatch_error
         s (saveSimpleKeyIx s) s_ad '"' e
-        h_pp h_struct h_s_ad_def h_check h_flow_none h_block_none h_dc_eq
+        h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_none h_block_none
+        (scanNextTokenIx_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
         (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextTokenIx_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextTokenIx_ok_checkDanglingNode h_pp h_snt)
       rw [h_snt_err] at h_snt; exact absurd h_snt (by simp)
     | ok s_dc =>
       have h_snt_eq := scanNextTokenIx_via_content_dispatch
         s (saveSimpleKeyIx s) s_ad s_dc '"'
-        h_pp h_struct h_s_ad_def h_check h_flow_none h_block_none h_dc_eq
+        h_pp h_struct h_s_ad_def (scanNextTokenIx_checkFlowValueIndent_ok_of_inFlow _ _ h_flow) h_flow_none h_block_none
+        (scanNextTokenIx_checkAdjacentValue_ok_of_ne_colon _ (by decide)) h_dc_eq
         (scanNextTokenIx_ok_directivesPresent_false h_pp h_struct h_snt)
+        (scanNextTokenIx_ok_checkBareDocument h_pp h_struct h_snt)
+        (scanNextTokenIx_ok_checkDanglingNode h_pp h_snt)
       have h_eq2 : s' = s_dc :=
         Option.some.inj (Except.ok.inj (h_snt.symm.trans h_snt_eq))
       subst h_eq2; rfl
+  -- Item 7 strictness walker: `.ok` forces the guard to have fallen
+  -- through — a `some e` walker result would make dispatchContent throw.
+  have h_walk : L4YAML.Scanner.Indexed.quotedScalarErrIx s_ad.cursor true
+      s_ad.inFlow s_ad.currentIndent = none := by
+    cases h_w : L4YAML.Scanner.Indexed.quotedScalarErrIx s_ad.cursor true
+        s_ad.inFlow s_ad.currentIndent with
+    | none => rfl
+    | some e =>
+      exfalso
+      have h_thrown : scanNextTokenIx_dispatchContent s_ad '"' = .error e := by
+        unfold scanNextTokenIx_dispatchContent
+        simp only [bind, Except.bind,
+          throw, throwThe, MonadExceptOf.throw,
+          show ('"' == '&') = false from by decide,
+          show ('"' == '*') = false from by decide,
+          show ('"' == '!') = false from by decide,
+          show ('"' == '|') = false from by decide,
+          show ('"' == '>') = false from by decide,
+          show ('"' == '"') = true from by decide,
+          Bool.or_self, Bool.false_eq_true, ↓reduceIte, h_w]
+      rw [h_thrown] at h_dc; exact absurd h_dc (by simp)
   -- Reduce dispatchContent body to identify s' precisely. Case-split on
   -- scanDoubleQuotedIx; the `none` branch contradicts h_dc; the `some` branch
   -- yields s' as the record-update-then-emitAt-then-record-update structure.
@@ -298,7 +335,7 @@ lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
         show ('"' == '|') = false from by decide,
         show ('"' == '>') = false from by decide,
         show ('"' == '"') = true from by decide,
-        Bool.or_self, Bool.false_eq_true, ↓reduceIte]
+        Bool.or_self, Bool.false_eq_true, ↓reduceIte, h_walk]
       split
       · rename_i r heq; rw [h_dq] at heq; exact absurd heq (by simp)
       · rfl
@@ -318,7 +355,7 @@ lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
         show ('"' == '|') = false from by decide,
         show ('"' == '>') = false from by decide,
         show ('"' == '"') = true from by decide,
-        Bool.or_self, Bool.false_eq_true, ↓reduceIte]
+        Bool.or_self, Bool.false_eq_true, ↓reduceIte, h_walk]
       split
       · rename_i r heq
         rw [h_dq] at heq
@@ -367,7 +404,7 @@ lemma scanDoubleQuotedIx_first_filtered_token (s : ScannerStateIx input)
 /-! ## §4  Emitter shape helpers
 
 These three lemmas are about the **string** produced by `L4YAML.Emit.emit`.
-No indexed-scanner content; ported verbatim from legacy 5833–5871.
+No indexed-scanner content; ported verbatim from legacy.
 
 `Emit.emit` is referenced fully-qualified here to avoid ambiguity with
 `ScannerStateIx.emit` (both are in scope via the broader `open L4YAML`
@@ -436,7 +473,7 @@ lemma emit_tokens_pushIx (s : ScannerStateIx input) (tok : YamlToken) :
 /-! ## §6  `Array_filter_prefix_of_raw_prefix`
 
 Generic `Array α` lemma: if `b` extends `a`, then `b.filter p` has
-`a.filter p` as a prefix. Ported verbatim from legacy 5883. -/
+`a.filter p` as a prefix. Ported verbatim from legacy. -/
 
 /-- If `b` extends `a` (same elements at all positions `i < a.size`),
     then `b.filter p` has `a.filter p` as a prefix. -/
@@ -458,3 +495,5 @@ lemma Array_filter_prefix_of_raw_prefix {α : Type}
   exact ⟨(b.toList.drop a.size).filter p, rfl⟩
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
+
+end Blanket

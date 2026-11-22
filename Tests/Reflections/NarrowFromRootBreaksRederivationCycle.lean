@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 318 — re-deriving a subset-restriction carrier per recursion-window is CIRCULAR; seed it once at the root from the FLAT producer and narrow down
 
@@ -86,3 +91,5 @@ def pCirc : Nat → Nat → Nat
 #guard !(pCirc 100 3 == pFromFlat 3)   -- circular ≠ genuine: re-derivation reconstructs nothing real
 
 end Tests.Reflections.NarrowFromRootBreaksRederivationCycle
+
+end Blanket

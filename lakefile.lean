@@ -15,7 +15,7 @@ def leanCopilotLinkArgs : Array String :=
     #[]
 
 package L4YAML where
-  version := v!"0.6.0"
+  version := v!"0.7.0"
   leanOptions := #[
     ⟨`autoImplicit, false⟩
   ]
@@ -34,21 +34,55 @@ package L4YAML where
 -- config, so toggling it takes `lake -R` / a server restart to re-read.
 meta if (unsafeBaseIO (IO.getEnv "L4YAML_LEANCOPILOT")).isSome then
 require LeanCopilot from git
-  "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.32.0"
+  "https://github.com/lean-dojo/LeanCopilot.git" @ "v4.36.0"
 
 require importGraph from git
-  "https://github.com/leanprover-community/import-graph" @ "v4.32.0"
+  "https://github.com/leanprover-community/import-graph" @ "v4.36.0"
 
 require DocGen4 from git
-  "https://github.com/leanprover/doc-gen4.git" @ "v4.32.0"
+  "https://github.com/leanprover/doc-gen4.git" @ "v4.36.0"
 
 
 @[default_target]
-lean_lib L4YAML
+lean_lib L4YAML where
+  -- Ratchet: every file of this library carries a `module` header (242/242), and
+  -- this makes Lake refuse a new one that does not.  It reports on the IMPORTER
+  -- side too, so the test libraries that still hold legacy census files opt out
+  -- with `allowNonModules` below -- see TODO/l4yaml-module-system.md for why those
+  -- 48 files stay legacy.
+  requiresModuleSystem := true
 
 @[default_target]
 lean_lib «Tests.Guards» where
   roots := #[`Tests.Guards]
+  -- Importer-side opt-out, scoped to the libraries that still hold legacy census
+  -- files on purpose: a body-reading census cannot take a `module` header without
+  -- `import all` of every module it walks (TODO/l4yaml-module-system.md).  Set per
+  -- library, NOT on the package: on the package it also exempts `lean_lib L4YAML`
+  -- from its own `requiresModuleSystem`, which a positive control caught --
+  -- a genuine legacy library file then built with no complaint at all.
+  allowNonModules := true
+
+-- Item 219's census module, made a library of its own at item 220 so that
+-- later censuses can IMPORT its predicates and its walk.  Its runnable entry
+-- point is `Tests.DeclineReachMain`; a module carrying a root-level `main`
+-- cannot be imported.
+@[default_target]
+lean_lib «Tests.DeclineReachCensus» where
+  roots := #[`Tests.DeclineReachCensus]
+  allowNonModules := true
+
+-- Item 220's census, likewise a library: `Tests.Guards.Proofs.DeclineArmLattice`
+-- imports it, and its entry point is `Tests.DeclineArmMain`.
+@[default_target]
+lean_lib «Tests.DeclineArmCensus» where
+  roots := #[`Tests.DeclineArmCensus]
+
+-- Item 221's census, likewise a library: `Tests.Guards.Proofs.DeclineArmInvariants`
+-- imports it, and its entry point is `Tests.DeclineCornerMain`.
+@[default_target]
+lean_lib «Tests.DeclineCornerCensus» where
+  roots := #[`Tests.DeclineCornerCensus]
 
 -- Runnable proof-engineering demonstrations (one per Blueprint Reflection) — kept
 -- as a single library, separate from the behavioural L4YAML test suites. See
@@ -68,6 +102,9 @@ lean_lib «Tests.SuiteRunner.HtmlReport» where
 
 lean_lib «Tests.Main» where
   roots := #[`Tests.Main]
+lean_lib «Tests.SuiteRunner.Reports» where
+  roots := #[`Tests.SuiteRunner.Reports]
+
 
 lean_lib Demo
 
@@ -94,12 +131,51 @@ lean_exe «l4yaml-json» where
   root := `Tests.EmitJson
 
 @[default_target]
+lean_exe «l4yaml-event-ix» where
+  root := `Tests.EmitEventsIx
+
+@[default_target]
+lean_exe «l4yaml-json-ix» where
+  root := `Tests.EmitJsonIx
+
+@[default_target]
 lean_exe eventscore where
   root := `Tests.SuiteRunner.EventScore
 
 @[default_target]
 lean_exe tryscan where
   root := `Tests.TryScan
+
+-- l4yaml-fmt: whitespace-only column aligner for block-mapping values
+-- (see L4YAML/Output/Align.lean).
+@[default_target]
+lean_exe «l4yaml-fmt» where
+  root := `Tests.L4YamlFmt
+
+-- aligntest: golden/idempotence/token-shape tests for l4yaml-fmt (Tests/align).
+@[default_target]
+lean_exe aligntest where
+  root := `Tests.AlignTest
+
+-- Item 219: the DECLINE-REACH census (controls + enumerated domain always; the
+-- 402-leaf corpus half when the yaml-test-suite data directory is passed).
+@[default_target]
+lean_exe declinereach where
+  root := `Tests.DeclineReachMain
+
+-- Item 220: the ARM census (the row x park matrix, the synthetic-state
+-- lattice, and one alphabet per residual zero; the corpus when a data
+-- directory is passed).
+@[default_target]
+lean_exe declinearm where
+  root := `Tests.DeclineArmMain
+
+-- Item 221: the MINIMAL-ZERO search — the six-atom histogram over the walk,
+-- and for each of item 220's five residual containments the smallest
+-- sub-conjunction of its separator profile that still reads zero.
+@[default_target]
+lean_exe declinecorner where
+  root := `Tests.DeclineCornerMain
 
 @[default_target]
 lean_exe tryroundtrip where
@@ -230,6 +306,15 @@ lean_lib «Tests.SchemaDump» where
 lean_exe schemadump where
   root := `Tests.SchemaDump.Runner
 
+-- A `module` consumer of the library that derives `FromYaml`/`ToYaml` on
+-- private-named types through a plain `public import L4YAML`.
+lean_lib «Tests.DerivingConsumer» where
+  roots := #[`Tests.DerivingConsumer]
+
+@[default_target]
+lean_exe derivingconsumer where
+  root := `Tests.DerivingConsumer.Runner
+
 
 lean_lib «Tests.ScannerTests» where
   roots := #[`Tests.ScannerTests]
@@ -253,3 +338,398 @@ lean_lib «Tests.ProductionCoverage» where
 @[default_target]
 lean_exe productioncoverage where
   root := `Tests.ProductionCoverage.Runner
+
+
+-- Rule 9 (Blueprint/06-discipline.md): scripts are Lean.  `Scripts` holds the
+-- pure halves (parsers, checks, with their `#guard` rows); each `lean_exe
+-- scripts-*` is one `Scripts/Main/*.lean` driver that scripts/*.sh wraps.
+-- Plan and ledger: Blueprint/09-scripts-in-lean.md, scripts/scripts-ledger.txt.
+@[default_target]
+lean_lib Scripts where
+  requiresModuleSystem := true
+
+-- Phase 0: the ledger gate behind `lake run check-scripts-lean`.
+@[default_target]
+lean_exe «scripts-check-ledger» where
+  root := `Scripts.Main.CheckScriptsLedger
+
+-- Phase 2.1: flip_census.py and repin.py.
+@[default_target]
+lean_exe «scripts-flip-census» where
+  root := `Scripts.Main.FlipCensus
+
+@[default_target]
+lean_exe «scripts-repin» where
+  root := `Scripts.Main.Repin
+
+-- Phase 3.1: the shared flip library behind the flip_*.py scripts.
+@[default_target]
+lean_exe «scripts-flip» where
+  root := `Scripts.Main.Flip
+
+-- Phase 1: the class-G gates (`lake run check-…`).
+@[default_target]
+lean_exe «scripts-theorem-keyword» where
+  root := `Scripts.Main.TheoremKeyword
+
+@[default_target]
+lean_exe «scripts-check-import-closure» where
+  root := `Scripts.Main.CheckImportClosure
+  supportInterpreter := true
+
+@[default_target]
+lean_exe «scripts-check-reflection-index» where
+  root := `Scripts.Main.CheckReflectionIndex
+
+@[default_target]
+lean_exe «scripts-check-closure-log» where
+  root := `Scripts.Main.CheckClosureLog
+
+-- Phase 1 (rows 5–6): the two remaining class-G gates.
+@[default_target]
+lean_exe «scripts-check-serialization-proofs» where
+  root := `Scripts.Main.CheckSerializationProofs
+
+@[default_target]
+lean_exe «scripts-gate-vocab» where
+  root := `Scripts.Main.GateVocab
+
+@[default_target]
+lean_exe «scripts-capstone-path» where
+  root := `Scripts.Main.CapstonePath
+  supportInterpreter := true
+
+lean_exe «scripts-dead-census» where
+  root := `Scripts.Main.DeadCensus
+  supportInterpreter := true
+
+@[default_target]
+lean_exe «scripts-docs-nav» where
+  root := `Scripts.Main.DocsNav
+
+-- Item 514: the census dashboard — every directed pin's reading, goal, distance and what moves it.
+@[default_target]
+lean_exe «scripts-census-dashboard» where
+  root := `Scripts.Main.CensusDashboard
+
+@[default_target]
+lean_exe «scripts-pack-census» where
+  root := `Scripts.Main.PackCensus
+
+@[default_target]
+lean_exe «scripts-drop-sweep» where
+  root := `Scripts.Main.DropSweep
+
+@[default_target]
+lean_exe «scripts-ledger-diff» where
+  root := `Scripts.Main.LedgerDiff
+
+@[default_target]
+lean_exe «scripts-gen-traceof» where
+  root := `Scripts.Main.GenTraceOf
+  supportInterpreter := true   -- it imports Surface/Node.lean's header to parse the block
+
+@[default_target]
+lean_exe «scripts-punt-price» where
+  root := `Scripts.Main.PuntPrice
+
+-- Phase 3.3: the six `*_price.py` of items 205–210 as `lake run price -- SCRIPT [MODE…]`.
+@[default_target]
+lean_exe «scripts-price» where
+  root := `Scripts.Main.Price
+
+@[default_target]
+lean_exe «scripts-beta5» where
+  root := `Scripts.Main.Beta5
+
+@[default_target]
+lean_exe «scripts-matrix-score» where
+  root := `Scripts.Main.MatrixScore
+
+@[default_target]
+lean_exe «scripts-check-hygiene» where
+  root := `Scripts.Main.CheckHygiene
+
+@[default_target]
+lean_exe «scripts-release-asset» where
+  root := `Scripts.Main.ReleaseAsset
+
+-- The doc's `graphs/*.svg` image references resolve in the tree (`lake run check-doc-graphs`).
+@[default_target]
+lean_exe «scripts-check-doc-graphs» where
+  root := `Scripts.Main.CheckDocGraphs
+
+-- Phase 4 (row 4): the publishing row — the HTML rewriting of svg-objects.py and
+-- html-to-pdf.py; WeasyPrint stays an external CLI (Q3).
+@[default_target]
+lean_exe «scripts-html-pdf» where
+  root := `Scripts.Main.HtmlPdf
+
+-- Phase 3.3 (last rows): the StreamAccum restate trio of items 226–228.
+@[default_target]
+lean_exe «scripts-restate» where
+  root := `Scripts.Main.Restate
+
+-- Rule 9's last row: the @[yaml_spec] annotations against yaml-spec-1.2.yaml.
+@[default_target]
+lean_exe «scripts-verify-spec-annotations» where
+  root := `Scripts.Main.VerifySpecAnnotations
+
+/-! Phase 4.5 (Rule 9, Q7): portable entry points — `lake run <name>` replaces the
+bash wrappers that only run a `lean_exe`; same on Linux, macOS and Windows. -/
+
+/-- A gate behind `lake run <name> [-- ARGS]`: `lake build <exe> <prereqs>`, then run
+`.lake/build/bin/<exe>` with `-C <repo root>` (unless the caller passes
+`-C`/`--root`), `fixed` first, then ARGS; the exit status is the exe's (2 when
+the build fails).  `lake run name -- ARGS` forwards the `--`, dropped here. -/
+def runGateExe (root : System.FilePath) (exe : String) (fixed : Array String)
+    (args : List String) (prereqs : Array String := #[])
+    (env : Array (String × Option String) := #[]) : IO UInt32 := do
+  let build ← IO.Process.output { cmd := "lake", args := #["build", exe] ++ prereqs, cwd := some root }
+  if build.exitCode != 0 then
+    IO.eprintln build.stdout; IO.eprintln build.stderr
+    IO.eprintln s!"lake run: lake build {exe} {" ".intercalate prereqs.toList} failed"
+    return 2
+  let args := if args.headD "" == "--" then args.drop 1 else args
+  let hasRoot := args.any fun a => a == "-C" || a == "--root"
+  let argv := (if hasRoot then #[] else #["-C", root.toString]) ++ fixed ++ args.toArray
+  let child ← IO.Process.spawn { cmd := (root / ".lake" / "build" / "bin" / exe).toString, args := argv, env }
+  child.wait
+
+/-- The Rule 9 ledger gate: `lake run check-scripts-lean [-- ARGS]`
+(`scripts/check-scripts-lean.sh` before 4.5). -/
+script «check-scripts-lean» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-ledger" #[] args
+
+/-- Rule 7: `theorem` only on `scripts/capstones.txt` entries
+(`scripts/check-theorem-keyword.sh` before phase 1). -/
+script «check-theorem-keyword» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-theorem-keyword" #["--check", "L4YAML"] args
+
+/-- No orphan `L4YAML/**` module, every `Tests/Reflections/*` indexed
+(`scripts/check-import-closure.sh` before phase 1).  Reads `.olean` headers,
+so the default-target roots are built first (a no-op when up to date). -/
+script «check-import-closure» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-import-closure" #[] args
+    #["L4YAML", "l4yaml-event", "l4yaml-json", "l4yaml-event-ix", "l4yaml-json-ix"]
+
+/-- The Reflections index's narrative half matches its bullets
+(`scripts/check-reflection-index.sh` before phase 1). -/
+script «check-reflection-index» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-reflection-index" #[] args
+
+/-- Every `graphs/<path>.svg` the Verso doc embeds exists under `doc/Doc/L4YAML/graphs/`
+(`--strict` also requires the CI-rendered import graph). -/
+script «check-doc-graphs» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-doc-graphs" #[] args
+
+/-- DOCS.md closure-log items ascend, dated, gaps declared
+(`scripts/check-closure-log.sh` before phase 1). -/
+script «check-closure-log» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-closure-log" #[] args
+
+/-- Serialization proof hygiene: kernel axiom profiles of every `#print axioms`
+site under `L4YAML/Proofs/Serialization`, sorry negative control, exact headline
+sets (`scripts/check-serialization-proofs.sh` + `check-serialization-axioms.py`
+before phase 1).  The exe runs `lake build` / `lake env lean` itself. -/
+script «check-serialization-proofs» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-serialization-proofs" #[] args
+
+/-- Every gate / refutation name the prose cites resolves in the environment
+(`python3 scripts/gate_vocab.py` before phase 1); the exe reads `.olean`
+headers through `LEAN_PATH`, which this script sets from the workspace. -/
+-- `lake run docs-nav -- <cmd> [options]`: navigate DOCS.md (toc, items, item N, next,
+-- remaining, steps, grep REGEX, section PREFIX) without paging it.
+script «docs-nav» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
+
+/-- `lake run census-dashboard [-- --check | --md FILE | --diff REF]`: every directed census (a pinned count driven
+    to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs` pin literals, its
+    goal, the distance left and what moves it; then the pinned readings with no target (item 514).
+    Reads source text only — no build of the library needed. -/
+script «census-dashboard» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-census-dashboard" #[] args
+
+-- `lake run pack-census -- flip|residue|classes [options]`: the PACK flip census (edits
+-- StreamAccum.lean in place, restores it; never beside another lake build) and the residue's classes.
+script «pack-census» (args) do
+  -- `births` reads StreamAccum.olean's declaration ranges, so the module is built first (as the
+  -- gate does); `flip`/`residue` edit the source in place and must NOT be built beside.
+  let prereqs := if args.contains "births" then #["L4YAML.Proofs.Production.StreamAccum"] else #[]
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #[] args prereqs
+
+/-- `lake run drop-sweep [-- -q]`: the WIDE `scannerDrop` dependents sweep (item 238). -/
+script «drop-sweep» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-drop-sweep" #[] args
+
+/-- `lake run ledger-diff -- OLD NEW | --latest [--out FILE]`: diff two parse_iff_grammar
+    ledger snapshots. -/
+script «ledger-diff» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-ledger-diff" #[] args
+
+/-- `lake run gen-traceof [-- -o FILE | --check | --report]`: regenerate TraceOf/Node.lean from
+    Surface/Node.lean's mutual block (read off the syntax tree; needs its imports built). -/
+script «gen-traceof» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-gen-traceof" #[] args
+    (prereqs := #["L4YAML.Surface.Node"])
+
+/-- `lake run punt-price -- all|<reason>|split|phantom|reaches`: the price of `KeyPackPunt`'s
+    reasons off `lake env lean`'s error locations (item 211). Never beside a `lake build`. -/
+script «punt-price» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-punt-price" #[] args
+
+/-- `lake run price -- park-top|vslot-top|mv-slot-top|open-map|park-nic0|landing-nic0 [MODE…]`:
+    the six `*_price.py` of items 205–210 (a probe patched into `StreamAccum.lean`,
+    `lake env lean`, the errors anchored on applications). Never beside a `lake build`. -/
+script «price» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-price" #[] args
+
+/-- Rule 9 phase 3.3 (last rows): `lake run restate -- decline-all-optional | pay-chain-optional
+| narrow-conclusion MODULE NAME… [--all] [--deep]` — the StreamAccum restate trio of items
+226–228 (`decline_all_optional.py`, `pay_chain_optional.py`, `narrow_conclusion.py`): a
+source transform behind a backup copy, `lake build` as the price, the bytes restored and the
+module rebuilt. Never beside a `lake build`. -/
+script «restate» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-restate" #[] args
+
+/-- Rule 9's last row: `lake run verify-spec-annotations [-- --spec-file PATH | --spec-url URL]
+[--lean-root DIR] [--no-build]` checks every `@[yaml_spec "section" NNN "name"]` reference the
+build registered (the `yamlSpecExt` entries of the `.olean`s, after a `lake build`; not the
+source text) against yaml/yaml-grammar's `yaml-spec-1.2.yaml` (fetched by `curl` from the
+pinned upstream commit unless a local file is given; the file is not vendored — the upstream
+repository carries no licence); was `scripts/verify_yaml_spec_annotations.py`. PATH and DIR
+are the caller's (relative to the working directory). Exit 1 on a name mismatch or an unknown rule. -/
+script «verify-spec-annotations» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-verify-spec-annotations" #[] args
+
+/-- Rule 9 phase 4 row 1: `lake run cross-lang-compare -- DIR` runs suiterunner's
+four backends under the five presets and writes `DIR/cross-lang-results.json`
+(was `scripts/cross-lang-compare.py`); `lake run test-reports -- DIR` renders
+`cross-lang-comparison.html` and `python-ffi-tests.html` from that JSON and the
+pytest JUnit files (was `scripts/generate-test-reports.py`). -/
+script «cross-lang-compare» (args) do
+  runGateExe (← getWorkspace).root.dir "suiterunner" #["--compare"] args
+
+script «test-reports» (args) do
+  runGateExe (← getWorkspace).root.dir "suiterunner" #["--reports"] args
+
+/-- Rule 9 phase 4 row 2: `lake run matrix-score -- --data DIR [--l4yaml-event CMD --l4yaml-json CMD
+--axis both --out FILE …]` scores every processor over the yaml-test-suite data form the way
+matrix.yaml.info does (was `scripts/matrix_score.py`); builds the two L4YAML testers first. -/
+script «matrix-score» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-matrix-score" #[] args
+    (prereqs := #["l4yaml-event", "l4yaml-json"])
+
+/-- Rule 9 phase 4 row 3: `lake run check-hygiene -- [STATS]` — zero theorems with a sorry,
+zero custom axioms in the compiled environment, read off `collect-stats`'s `stats.json`
+(was the `python3 - <<'EOF'` heredoc in CI and `generate-all.sh`). -/
+script «check-hygiene» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-check-hygiene" #[] args
+
+/-- Rule 9 phase 4 row 4 (Q3, the CLI route): `lake run svg-objects -- DIR` rewrites the
+multi-page site's `<img src="*.svg">` as `<object>` in place (was `scripts/svg-objects.py`);
+`lake run html-to-pdf -- HTML_INPUT OUTPUT_PDF` merges the page(s) into one PDF-ready
+document beside the source and renders it with the `weasyprint` CLI (`$WEASYPRINT`, else
+on PATH; was `scripts/html-to-pdf.py`); `lake run html-merge -- HTML_INPUT OUT.html` is
+the merge alone, for a shell that drives weasyprint itself. -/
+script «svg-objects» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-html-pdf" #["svg-objects"] args
+
+script «html-merge» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-html-pdf" #["merge"] args
+
+script «html-to-pdf» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-html-pdf" #["pdf"] args
+
+/-- `lake run flip-beta5 -- [--max-rounds N] [--log-dir DIR] [--probe LEAN]`: β.5's edit driven
+    to a sorry-fixpoint over `lake build`, FIXLINE / FIX-PIN (item 263).  Up to 25 full
+    builds; never beside a `lake build`. -/
+script «flip-beta5» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-beta5" #["fixpoint"] args
+
+/-- `lake run beta5-arms -- [--end control|arms]... [--log-dir DIR]`: β.5's edit alone and with
+    the dead arms deleted, `lake build L4YAML` each, ARMLINE / ARM-PIN (item 264). -/
+script «beta5-arms» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-beta5" #["arms"] args
+
+/-- `lake run beta5-map -- LOG`: the declarations enclosing a build log's error locations
+    (item 230's mapper). -/
+script «beta5-map» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-beta5" #["map"] args
+
+script «check-gate-vocab» (args) do
+  let ws ← getWorkspace
+  runGateExe ws.root.dir "scripts-gate-vocab" #[] args #[] ws.augmentedEnvVars
+
+/-- `lake run capstone-path [-- --check]`: the `∨ True` audit's positions ON / OFF the capstone's
+    path (item 439; pin: `Tests/Guards/Proofs/CapstonePathAudit.lean`); loads the built
+    `DocumentProduction` environment, so the library is built first. -/
+script «capstone-path» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-capstone-path" #[] args
+    #["L4YAML.Proofs.Production.DocumentProduction"]
+
+/-- `lake run dead-census [-- --check | --write]`: the dead-declaration census (items 476 / 477) —
+    every user-named library declaration no `@[capstone]` / `@[export]` / Rule 2 root reaches, in
+    four classes; pins: `Tests/Guards/Proofs/DeadDeclarationCensus.lean` (summary) and
+    `DeadDeclarationRoster.lean` (class (B) as a set).  Loads the built environment of the library
+    and the three Rule 2 modules, so those are built first. -/
+script «dead-census» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-dead-census" #[] args
+    #["L4YAML", "Tests.Guards", "Tests.AdversarialInstantiation", "Tests.Reflections"]
+
+/-- `lake run check-pack-births`: the pack producers' `PackAlt` writes (item 431, the pack lane's
+    recorded residue) against `expectedPackBirths`; reads `StreamAccum.olean`'s declaration ranges,
+    so the library must be built first. -/
+script «check-pack-births» (args) do
+  runGateExe (← getWorkspace).root.dir "scripts-pack-census" #["births"] args
+    #["L4YAML.Proofs.Production.StreamAccum"]
+
+/-- Every test exe, output captured under OUT (default `docs`), failures
+collected: `lake run run-all-tests [-- OUT]` (`scripts/run-all-tests.sh`
+before 4.5). Exit 1 when any suite or the suiterunner HTML report failed. -/
+script «run-all-tests» (args) do
+  let ws ← getWorkspace
+  let root := ws.root.dir
+  let args := if args.headD "" == "--" then args.drop 1 else args
+  let outArg : System.FilePath := args.headD "docs"
+  let out := if outArg.isAbsolute then outArg else root / outArg
+  IO.FS.createDirAll out
+  let bin := root / ".lake" / "build" / "bin"
+  let suites : Array (String × String) := #[
+    ("unit-tests", "tests"), ("demo", "demo"), ("explicitkeytests", "explicitkeytests"),
+    ("flowtests", "flowtests"), ("validationtests", "validationtests"), ("dumproundtrip", "dumproundtrip"),
+    ("rawparsetests", "rawparsetests"), ("specexamples", "specexamples"), ("schemadump", "schemadump"),
+    ("derivingconsumer", "derivingconsumer"), ("scannertests", "scannertests"),
+    ("scannerspecexamples", "scannerspecexamples"), ("adversarialtests", "adversarialtests"),
+    ("mutationtests", "mutationtests"), ("propertytests", "propertytests"),
+    ("productioncoverage", "productioncoverage"), ("limittests", "limittests"),
+    ("flowregressioncheck", "flowregressioncheck"), ("errorstagediag", "errorstagediag"),
+    ("scalarstagediag", "scalarstagediag"), ("aligntest", "aligntest")]
+  let mut failed : Array String := #[]
+  for (name, exe) in suites do
+    IO.println s!"=== Running: {name} ==="
+    let r ← try
+        IO.Process.output { cmd := (bin / exe).toString, cwd := some root }
+      catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
+    let text := r.stdout ++ r.stderr
+    IO.print text
+    IO.FS.writeFile (out / s!"{name}.txt") (s!"=== {name} ===\n" ++ text)
+    if r.exitCode != 0 then failed := failed.push name
+    IO.println ""
+  IO.println "=== Generating HTML coverage reports ==="
+  let h ← try
+      IO.Process.output { cmd := (bin / "suiterunner").toString, args := #["--html", out.toString ++ "/"], cwd := some root }
+    catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
+  IO.print h.stdout; IO.eprint h.stderr
+  IO.FS.writeFile (out / "coverage-console.txt") h.stdout
+  if h.exitCode != 0 then failed := failed.push "suiterunner-html"
+  let verified := suites.extract 0 17   -- the 17 verified suites, unit-tests … limittests
+  let mut all := ""
+  for (name, _) in verified do
+    all := all ++ (← IO.FS.readFile (out / s!"{name}.txt"))
+  IO.FS.writeFile (out / "all-verified-tests.txt") all
+  if !failed.isEmpty then
+    IO.eprintln s!"=== FAILED suites ({failed.size}): {" ".intercalate failed.toList} ==="
+    return 1
+  IO.println s!"=== All Lean test suites complete. Results in {out}/ ==="
+  return 0

@@ -3,9 +3,13 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Algebra.AnchorMap
-import L4YAML.Algebra.LawfulBEq
-import L4YAML.Config.LoadConfig
+module
+
+public import L4YAML.Algebra.AnchorMap
+public import L4YAML.Algebra.LawfulBEq
+public import L4YAML.Config.LoadConfig
+
+@[expose] public section Blanket
 
 /-! # Equivalence + Collection Laws  (Algebra Items 1, 2, 3, 5, 6)
 
@@ -350,3 +354,5 @@ class Bisimulation (α : Type u) where
     anchorReachable m name v ↔ m.find? name = some v := Iff.rfl
 
 end L4YAML.Algebra.Equivalence
+
+end Blanket

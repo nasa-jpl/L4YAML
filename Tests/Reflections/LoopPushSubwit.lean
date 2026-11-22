@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 591 -- `parseFlow{Sequence,Mapping}Loop` fuel bound + indexed sub-call witness (§5.10.4)
@@ -136,3 +140,5 @@ theorem map_subwit_j0_applies
 #print axioms parseFlowMappingLoop_push_subwit
 
 end LoopPushSubwit
+
+end Blanket

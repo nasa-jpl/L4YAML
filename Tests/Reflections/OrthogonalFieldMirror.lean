@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 429 — a new orthogonal per-window field costs only its discriminator
 
@@ -96,3 +101,5 @@ def GlobalAdjRebased (toks : List Nat) (lo : Nat) : Prop :=
 #guard (5 - 0) != (5 - 2)
 
 end Tests.Reflections.OrthogonalFieldMirror
+
+end Blanket

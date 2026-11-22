@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 377 — one position-DELTA discriminator refutes a FAMILY of adjacent boundaries; the
 standalone boundary-exclusion brick is the sibling arm's INLINE refutation lifted and made delta-generic
@@ -102,3 +107,5 @@ theorem discriminator_still_sound (a : Nat) (h_op : dW (a - 1) = 1) : a ≠ 6 :=
 #guard !decide (dW 5 == 1)    -- the discriminator survives the geometry correction
 
 end Tests.Reflections.DeltaGenericBoundaryFamily
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 393 — FIX a root-false all-depth guard by ADDING the window-absolute excluding premise.
 
@@ -93,3 +98,5 @@ theorem consumer_supplies_premise : content 1 = true :=
 #guard content 1 == true       -- ... so the NEW guard's conclusion fires (non-vacuous)
 
 end Tests.Reflections.RescopeByExcludingPremise
+
+end Blanket

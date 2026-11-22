@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 578 — INHABITATION PROBE for Front B's brick-3 RESIDUAL (after consuming §5.8)
@@ -119,3 +123,5 @@ theorem mapContentFidelityHolds_fires : mapContentFidelityHolds = true := by nat
 -- file's job is purely the inhabitation evidence above that that residual is TRUE on real data.
 
 end ValueRecoveryContentResidual
+
+end Blanket

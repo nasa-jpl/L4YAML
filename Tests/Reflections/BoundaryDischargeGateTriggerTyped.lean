@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 418 — a gated-global-adjacency PRODUCER mirror clones its `k`-split SKELETON, but the
 PRE-CLOSE boundary cell does NOT: its discharge strategy is TYPED by two axes the trigger token alone
@@ -205,3 +210,5 @@ theorem boundary_cell3_false_without_no_trailing :
 #guard (decide (delta Tok.sep = 0)) == true     -- separator trigger is neutral ⇒ floor UNAVAILABLE (cell 3)
 
 end Tests.Reflections.BoundaryDischargeGateTriggerTyped
+
+end Blanket

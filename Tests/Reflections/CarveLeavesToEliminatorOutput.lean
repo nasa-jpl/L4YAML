@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 384 — CARVE the leaf lemmas of a dispatch to the ELIMINATOR's output shape, so the
 assembler is a GLUE-FREE fan-out (no `rw`/`simp`/reorder/`.symm`)
@@ -96,3 +101,5 @@ theorem assemble_with_glue (l : List Nat) (h : Body l) : l ≠ [] := by
     | wrap interior => exact leaf_wrap_cons l r interior h_r h_eq
 
 end Tests.Reflections.CarveLeavesToEliminatorOutput
+
+end Blanket

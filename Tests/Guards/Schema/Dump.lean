@@ -1,4 +1,14 @@
-import L4YAML.Schema.Dump
+module
+
+public import L4YAML.Schema.Dump
+
+
+
+
+public meta import L4YAML.Spec.Types
+public meta import L4YAML.Schema.Dump
+public meta import L4YAML.Schema.FromToYaml
+@[expose] public section Blanket
 
 namespace L4YAML.Schema.Dump
 
@@ -9,21 +19,23 @@ open L4YAML.TokenParser
 open L4YAML.Schema
 open L4YAML.Schema.Dump
 
-#guard dumpTyped true == "\"true\""
-#guard dumpTyped false == "\"false\""
+#guard dumpTyped true == "true"
+#guard dumpTyped false == "false"
 #guard dumpTyped (42 : Nat) == "42"
 #guard dumpTyped (0 : Nat) == "0"
-#guard dumpTyped (-7 : Int) == "\"-7\""
+#guard dumpTyped (-7 : Int) == "-7"
 #guard dumpTyped (100 : Int) == "100"
 #guard dumpTyped "hello" == "hello"
 #guard dumpTyped "world" == "world"
-#guard dumpTyped () == "\"null\""
--- Bool → "true"/"false" → dump auto-quotes reserved words
-#guard dumpAs true == "\"true\""
-#guard dumpAs false == "\"false\""
+#guard dumpTyped () == "null"
+-- Bool → tagged `!!bool` scalar → dumped bare; a *string* "true" is quoted
+#guard dumpAs true == "true"
+#guard dumpAs false == "false"
+#guard dumpAs "true" == "\"true\""
 
--- Unit → "null" → dump auto-quotes
-#guard dumpAs () == "\"null\""
+-- Unit / none → tagged `!!null` scalar → dumped bare; the string "null" is quoted
+#guard dumpAs () == "null"
+#guard dumpAs "null" == "\"null\""
 #guard dumpTyped "key: value" == "\"key: value\""
 #guard dumpTyped "" == "\"\""
 #guard dumpTyped "simple" == "simple"
@@ -34,7 +46,8 @@ open L4YAML.Schema.Dump
 #guard dumpTyped (#[#["a", "b"], #["c"]] : Array (Array String)) ==
   "-\n  - a\n  - b\n-\n  - c"
 #guard dumpTyped (some "hello" : Option String) == "hello"
-#guard dumpTyped (none : Option String) == "\"null\""
+#guard dumpTyped (none : Option String) == "null"
+#guard dumpTyped "42" == "\"42\""
 #guard dumpTyped (some (42 : Nat) : Option Nat) == "42"
 #guard dumpTyped "hello" flowConfig == "[hello]" ∨
       dumpTyped "hello" flowConfig == "hello"
@@ -75,3 +88,5 @@ open L4YAML.Schema.Dump
 #guard dumpTypedDocuments [(1 : Nat), 2] == "1\n---\n2\n..."
 
 end L4YAML.Schema.Dump
+
+end Blanket

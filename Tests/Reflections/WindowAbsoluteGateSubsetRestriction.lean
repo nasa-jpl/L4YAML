@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 298 — a window-absolute gate makes the carrier a subset restriction
 
@@ -84,3 +89,5 @@ theorem rel_breaks_under_narrowing : carrierRelB 0 4 = true ∧ carrierRelB 1 4 
 #guard ((2 - 1) % 2 == 1)         -- origin 1: SAME position 2 now has odd offset — the re-basing flip
 
 end Tests.Reflections.WindowAbsoluteGateSubsetRestriction
+
+end Blanket

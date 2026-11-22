@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 522 — threading form vs assemble form (the map `after_fe` carrier asymmetry)
 
 The L4YAML carrier-free recursion threads a per-window *content guard* and, separately, an *assembler*
@@ -116,3 +121,5 @@ end ThreadingFormVsAssembleForm
 /-- info: 'ThreadingFormVsAssembleForm.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms ThreadingFormVsAssembleForm.demo
+
+end Blanket

@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Indexed.Range
-import L4YAML.Spec.Types
+
+module
+
+public import L4YAML.Indexed.Range
+public import L4YAML.Spec.Types
+
+@[expose] public section Blanket
 
 /-! # `RepGraph input range` — indexed L1 representation graph
 
@@ -122,3 +127,5 @@ namespace RepGraph
 end RepGraph
 
 end L4YAML.Indexed
+
+end Blanket

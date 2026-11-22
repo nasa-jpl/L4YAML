@@ -29,6 +29,11 @@ general and bundles them into a locator that returns BOTH the position `kv` AND 
 kv = 0`, on concrete scalar-key and bracket-key pairs.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace DispatchPinsLocatedDepth
 
 set_option autoImplicit false
@@ -133,3 +138,5 @@ end DispatchPinsLocatedDepth
 /-- info: 'DispatchPinsLocatedDepth.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms DispatchPinsLocatedDepth.demo
+
+end Blanket

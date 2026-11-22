@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `SeqPathAllSeq` gate probe — `(i'-b-B2c-(d) — STEP D: the within-window circularity `h_safe` source)`
@@ -102,3 +106,5 @@ def M : Array (Positioned YamlToken) :=
         ≠ ((btFold (some []) (M.toList.take 6)).map (·.all (· == true)))) -- but whole-stack differs
 
 end L4YAML.Proofs.EmitterScannability.SeqPathAllSeqGateProbe
+
+end Blanket

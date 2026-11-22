@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 521 — delegated nesting sheds guard fields (the map body content guard)
 
 The L4YAML carrier-free recursion threads a per-window *content-navigation guard* through its width
@@ -128,3 +133,5 @@ end DelegatedNestingShedsGuardFields
 /-- info: 'DelegatedNestingShedsGuardFields.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms DelegatedNestingShedsGuardFields.demo
+
+end Blanket

@@ -1,4 +1,10 @@
-import L4YAML.Proofs.EndToEndCorrectness
+module
+
+public import L4YAML.Proofs.EndToEndCorrectness
+
+
+public meta import L4YAML.Parser.Composition
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.EndToEndCorrectness
 
@@ -41,3 +47,5 @@ private def checkValidYaml (input : String) : Bool :=
 #guard checkValidYaml "map:\n  key1: val1\n  key2: val2\nlist:\n  - item1\n  - item2"
 
 end L4YAML.Proofs.EndToEndCorrectness
+
+end Blanket

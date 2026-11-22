@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 463 — before threading a recursive-deliverable PRODUCER to emit a STRONGER (deep)
 # structure, land the producer's DELIVERABLE CONTRACT first: the additive parallel deliverable
@@ -150,3 +155,5 @@ theorem deliverable_contract_before_producer_body :
    fun _v h => consumer_fires_on_deep h⟩
 
 end Tests.Reflections.DeliverableContractBeforeProducerBody
+
+end Blanket

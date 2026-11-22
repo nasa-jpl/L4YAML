@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 510 — fold the width-recursion combinator + assemble selector into a driver
         whose residual is exactly two named obligations (`locate` + `descend_tail`)
 
@@ -179,3 +184,5 @@ theorem demo :
   ⟨run, good_locate, good_descend_tail⟩
 
 end NavigatorDriverFold
+
+end Blanket

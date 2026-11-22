@@ -2,7 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Surface.Document
+
+module
+
+public import L4YAML.Surface.Document
+
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Surface Syntax Coupling Proofs
@@ -205,3 +212,5 @@ lemma empty_node (s : SurfPos) : SENode s s :=
   GEps.mk s
 
 end L4YAML.Proofs.SurfaceCoupling
+
+end Blanket

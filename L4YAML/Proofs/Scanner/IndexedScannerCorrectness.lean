@@ -2,12 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.Basic
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.StreamStart
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedDefs
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedPrims
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedDispatch
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedLoop
+
+module
+
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.Basic
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.StreamStart
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedDefs
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedPrims
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedDispatch
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedLoop
+
+@[expose] public section Blanket
 
 /-! # `IndexedScannerCorrectness` — Phase 3 Step 6f.3b3 staging aggregator
 
@@ -41,3 +46,5 @@ At cutover, this aggregator is renamed
 file), the sub-directory is renamed
 `Proofs/Scanner/ScannerCorrectness/`, and namespaces lose the
 `Indexed` qualifier. -/
+
+end Blanket

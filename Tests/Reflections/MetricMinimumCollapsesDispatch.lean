@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 380 — a metric-keyed dispatch DEGENERATES at the metric's minimum; the boundary brick
 that guards exhaustiveness in the generic case is the lever that LINEARIZES the degenerate one
@@ -71,3 +76,5 @@ def reachableArms (L : Nat) : Nat := if L = 1 then 1 else if L = 2 then 2 else 3
 #guard !decide (reachableArms 1 == 3)    -- the minimum is NOT the generic arm-count
 
 end Tests.Reflections.MetricMinimumCollapsesDispatch
+
+end Blanket

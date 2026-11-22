@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 314 — a located matching-close's containment bound is a TWO-FLOOR RELAY: a single underflow witness at `close+1`, refuted by whichever of two ADJACENT-domain floors tiles it
 
@@ -93,3 +98,5 @@ def W : List Tok := [.op, .op, .ct, .cl, .op, .ct, .cl, .cl]
 #guard decide (6 > 3)            -- so `b ≤ j` would be FALSE — the gate floor is what excludes it
 
 end Tests.Reflections.TwoFloorRelayCloseBound
+
+end Blanket

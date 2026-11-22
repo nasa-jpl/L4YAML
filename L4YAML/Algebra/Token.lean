@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Token.Token
+
+module
+
+public import L4YAML.Token.Token
+
+@[expose] public section Blanket
 
 /-! # Token Discriminator Algebra  (Algebra Item 17)
 
@@ -309,3 +314,5 @@ lemma exists_isFlowIndicator : ∃ t : YamlToken, t.isFlowIndicator = true :=
 end YamlToken
 
 end L4YAML.Algebra.Token
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 302 — the root seed of a recursive-deliverable producer reuses the FLAT derivation's slice/decomposition verbatim and swaps only the body producer; the slice bridge is producer-agnostic
 
@@ -109,3 +114,5 @@ theorem fold_endpoints :
   ⟨probe_recRoot, probe_recRoot.toFlat⟩
 
 end Tests.Reflections.RootSeedRecursiveProducerSwap
+
+end Blanket

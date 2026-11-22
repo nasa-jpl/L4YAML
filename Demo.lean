@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML
-import Tests.VerifiedResult
+
+module
+
+public import L4YAML
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-!
 # Demo: Verified YAML Parser
@@ -64,3 +69,5 @@ def collectTests : IO VerifiedSuiteResult := do
   return { name := "demo", label := "Demo", sourceFile := "Demo.lean", tests := results }
 
 end Demo
+
+end Blanket

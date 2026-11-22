@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 478 — RE-EXPORT, don't re-derive: a downstream consumer that ERASES a fact its OWN
 # dependency already computed forces a parallel wrapper that RE-RUNS the dependency keeping the
@@ -87,3 +92,5 @@ example : ∃ w, w < 5 ∧ w = 2 ∧ w ≤ 4 :=
   reexport_concrete (P := fun w => w < 5) ⟨2, by omega, rfl⟩
 
 end ReexportErasedDependencyFact
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 336 — the dispatch is the un-aggregated STRUCTURED STATE, not a numeric aggregate of it
 
@@ -87,3 +92,5 @@ example :
   ⟨rfl, rfl, by decide⟩
 
 end Tests.Reflections.AggregateCollapsesStructuredSeparates
+
+end Blanket

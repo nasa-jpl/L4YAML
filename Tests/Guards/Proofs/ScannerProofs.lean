@@ -1,4 +1,18 @@
-import L4YAML.Proofs.Scanner.ScannerProofs
+module
+
+public import L4YAML.Proofs.Scanner.ScannerProofs
+
+
+
+
+
+
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Token.Token
+public meta import L4YAML.Scanner.Indent
+public meta import L4YAML.Scanner.State
+public meta import L4YAML.Proofs.Scanner.ScannerProofs
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerProofs
 
@@ -97,3 +111,5 @@ private def scanSize (input : String) : Option Nat :=
 #guard match scanSize "- a\n- b" with | some n => n > 4 | none => false
 
 end L4YAML.Proofs.ScannerProofs
+
+end Blanket

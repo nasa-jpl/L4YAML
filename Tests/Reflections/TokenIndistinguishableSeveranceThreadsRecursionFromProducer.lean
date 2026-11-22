@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 459 — a flat-severance constructor that is TOKEN-INDISTINGUISHABLE from its recursive
 # sibling blocks `cases`-recovery of the recursion: the body must be THREADED from the producer, not
@@ -205,3 +210,5 @@ theorem seq_map_descent_asymmetry :
    severance_gap_is_real⟩
 
 end Tests.Reflections.TokenIndistinguishableSeveranceThreadsRecursionFromProducer
+
+end Blanket

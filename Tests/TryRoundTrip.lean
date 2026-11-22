@@ -1,4 +1,8 @@
-import L4YAML
+module
+
+public import L4YAML
+
+@[expose] public section Blanket
 
 /-!
 # TryRoundTrip — YAML parse → emit → re-parse round-trip test
@@ -27,7 +31,7 @@ Each document is wrapped in `---` / `...` markers and emitted in
 canonical flow form.  Single-document streams omit the markers for
 cleanliness.
 -/
-private def emitDocuments (docs : Array YamlDocument) : String :=
+def emitDocuments (docs : Array YamlDocument) : String :=
   if docs.size == 1 then
     Emit.emit docs[0]!.value ++ "\n"
   else
@@ -42,7 +46,7 @@ Compares document-by-document using `Emit.contentEq`.
 Returns `true` iff both arrays have the same length and every
 pair of corresponding document values is content-equivalent.
 -/
-private def documentsContentEq
+def documentsContentEq
     (ds₁ ds₂ : Array YamlDocument) : Bool :=
   ds₁.size == ds₂.size &&
     (List.zip ds₁.toList ds₂.toList).all fun (d₁, d₂) =>
@@ -82,3 +86,5 @@ def main (args : List String) : IO UInt32 := do
   | _ =>
     IO.eprintln "Usage: tryroundtrip <input.yaml> <output.yaml>"
     return 4
+
+end Blanket

@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Scanner.ScannerProgress
+module
+
+public import L4YAML.Proofs.Scanner.ScannerProgress
+
+
+
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerProgress
 
@@ -337,3 +345,5 @@ private def tokenPositionsMonotone (input : String) : Bool :=
 #guard tokenPositionsMonotone "%YAML 1.2\n---\n- &a value\n- *a\n...\n---\nkey: !!str tagged\n..."
 
 end L4YAML.Proofs.ScannerProgress
+
+end Blanket

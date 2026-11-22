@@ -1,0 +1,90 @@
+{
+ "item": 384,
+ "tag": "COMPLETED-TAIL-S2",
+ "rev": "b641e57a",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/384-flip-completed-tail_stage2.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (h_tail : CompletedTail sc ∨ True) :"
+   ],
+   "new": [
+    "    (h_tail : CompletedTail sc) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    (h_tail143 : CompletedTail sc ∨ True)"
+   ],
+   "new": [
+    "    (h_tail143 : CompletedTail sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "      (CompletedTail sc ∨ True) →"
+   ],
+   "new": [
+    "      (CompletedTail sc) →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "lemma bareNodeRoute_or_refused_content {sc s_prep s' : ScannerState} {c : Char}",
+    "    {sp_start sp_anchor : SurfPos}",
+    "    (h_stream : SLYamlStream sp_start sp_anchor)",
+    "    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())",
+    "    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))",
+    "    (h_noflow : s_prep.inFlow = false)",
+    "    (h_ska : s_prep.simpleKeyAllowed = true)",
+    "    (h_base : IndentStackBase.SentinelBase sc)",
+    "    (h_tail : CompletedTail sc ∨ True)"
+   ],
+   "new": [
+    "lemma bareNodeRoute_or_refused_content {sc s_prep s' : ScannerState} {c : Char}",
+    "    {sp_start sp_anchor : SurfPos}",
+    "    (h_stream : SLYamlStream sp_start sp_anchor)",
+    "    (h_bare : scanNextToken_checkBareDocument s_prep = .ok ())",
+    "    (h_pre : scanNextToken_preprocess sc = .ok (some (s_prep, c)))",
+    "    (h_noflow : s_prep.inFlow = false)",
+    "    (h_ska : s_prep.simpleKeyAllowed = true)",
+    "    (h_base : IndentStackBase.SentinelBase sc)",
+    "    (h_tail : CompletedTail sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "    (h_mono : IndentStackMono.Mono sc)",
+    "    (h_tail139 : CompletedTail sc ∨ True)"
+   ],
+   "new": [
+    "    (h_mono : IndentStackMono.Mono sc)",
+    "    (h_tail139 : CompletedTail sc)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "        (h_tail139 : CompletedTail sc ∨ True)"
+   ],
+   "new": [
+    "        (h_tail139 : CompletedTail sc)"
+   ],
+   "count": 1
+  }
+ ]
+}

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 480 — the depth-`0` premise belongs to the LOCATING SCAN, not to any family member;
 # take the located close as INPUT and EVERY child-window constructor is DEPTH-AGNOSTIC.
@@ -131,3 +136,5 @@ theorem floor_is_load_bearing : ¬ Win Bbad 1 3 := by
   simp [childBal, Bbad] at hd
 
 end ScanOwnsTheDepthDebt
+
+end Blanket

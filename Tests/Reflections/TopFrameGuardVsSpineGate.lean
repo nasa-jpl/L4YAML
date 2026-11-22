@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 447 — a producer reused to break a circularity that routes through a SPINE-walking
 # navigator inherits the spine's WHOLE-PATH invariant as a gate.  That gate constrains the ANCESTOR
@@ -133,3 +138,5 @@ theorem r447_finding :
    root_fails_gate_seeds_thread⟩
 
 end Tests.Reflections.TopFrameGuardVsSpineGate
+
+end Blanket

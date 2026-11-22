@@ -58,8 +58,12 @@ Every function in the core library is a total `def` — **no `partial def`, no
   previously defined anchor ([Proofs/Parser/ParserAnchorProofs.lean](L4YAML/Proofs/Parser/ParserAnchorProofs.lean),
   [Proofs/Parser/ParserNodeProofs.lean](L4YAML/Proofs/Parser/ParserNodeProofs.lean)).
 - **Acceptance strictness** — accepted inputs lie in the formalized YAML
-  surface language `InYamlLanguage`
+  surface language `InYamlLanguage`. **`InYamlLanguage` holds of every
+  string**, so this property is proved and not yet restrictive: the
+  `SLYamlStream.scannerDrop` over-approximation of `[211] l-yaml-stream` is
+  what it waits on
   ([Proofs/Scanner/ScannerCorrectness.lean](L4YAML/Proofs/Scanner/ScannerCorrectness.lean);
+  census in [Tests/Guards/Proofs/FreeSurfaceCensus.lean](Tests/Guards/Proofs/FreeSurfaceCensus.lean);
   design note in [DOCS.md § Surface syntax formalization](DOCS.md#surface-syntax-formalization)).
 - **Schema resolution** — the Core Schema resolver respects the §10.3
   precedence (null → bool → int → float → str)
@@ -92,8 +96,8 @@ library — roughly 4,975 of them — is spelled `lemma` (macro in
 [L4YAML/Init.lean](L4YAML/Init.lean)). The tagged set and each capstone's
 axiom profile (18 pure, 7 `native_decide`-backed) are pinned at build time by
 `#guard_msgs` in [L4YAML/Capstones.lean](L4YAML/Capstones.lean), and CI
-enforces the discipline with `scripts/check-theorem-keyword.sh`,
-`scripts/check-import-closure.sh`, and a kernel-accurate
+enforces the discipline with `lake run check-theorem-keyword`,
+`lake run check-import-closure`, and a kernel-accurate
 zero-`sorry`/zero-custom-axiom assertion in
 [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml).
 The rulebook is [Blueprint/06-discipline.md](Blueprint/06-discipline.md); the
@@ -110,33 +114,27 @@ theorem parse_iff_grammar (input : String) :
     (∃ docs, parseYaml input = .ok docs) ↔ InYamlLanguage input
 ```
 
-The forward direction (every accepted input lies in `InYamlLanguage`) is already
-proven, and is not yet restrictive:
-`SLYamlStream.scannerDrop` ([L4YAML/Surface/Document.lean](L4YAML/Surface/Document.lean))
-over-approximates `[211] l-yaml-stream` far enough that `InYamlLanguage` holds of
-every string, so the forward theorem is true independently of its hypothesis.
-Retiring that constructor is what gives it content, and it is a prerequisite for
-the converse.
+The forward direction (every accepted input lies in `InYamlLanguage`) is proven
+and is not yet restrictive: `SLYamlStream.scannerDrop` over-approximates
+`[211] l-yaml-stream` far enough that `InYamlLanguage` holds of every string, so
+the forward theorem is true independently of its hypothesis. Retiring that
+constructor is what gives it content, and it is a prerequisite for the converse.
 
-~~The converse is future work. It carries no placeholder `sorry` in the source —
-it is simply not yet attempted.~~ **Corrected 2026-09-27: the converse is false
-as stated, and retiring the over-approximations does not make it true.**
-`parseYaml` enforces per-document conditions that are not syntactic — it rejects
-`*x` with `undefinedAlias` and `!h!x` with `undeclaredTagHandle` — while the
-surface grammar derives both strings. Every surface relation has type
+~~The converse carries no placeholder `sorry` in the source — it is simply not
+yet attempted.~~ **Corrected 2026-09-27: the converse is false as stated, and
+retiring the over-approximations does not make it true.** `parseYaml` enforces
+per-document conditions that are not syntactic — it rejects `*x` with
+`undefinedAlias` and `!h!x` with `undeclaredTagHandle` — while the surface
+grammar derives both strings. Every surface relation has type
 `SurfPos → SurfPos → Prop` and carries no environment, so `InYamlLanguage`
 cannot state "this alias has a preceding anchor" at any tightness, and no
 narrowing of a production reaches these inputs. Closing the biconditional
 therefore means changing its right-hand side: an exact surface language
 conjoined with an explicit serialization-well-formedness predicate carrying the
-stateful conditions YAML 1.2.2 imposes on anchors, aliases and tag handles. That
-predicate is not yet specified. The over-approximations, the counterexamples and
-the revised shape are tracked in
+stateful conditions the pipeline enforces operationally. That predicate is not
+yet specified. The over-approximations, the counterexamples and the revised
+shape are tracked in
 [DOCS.md § Grammar completeness plan](DOCS.md#grammar-completeness-plan).
-
-The refutation is due to an independent audit of `main` at `16562a7` by Heath
-Sanchez of [Metalogic Labs](https://metalogiclabs.xyz/), who Lean-checked four
-counterexamples whose surface derivations avoid `scannerDrop`.
 
 Compile-time `#guard` tests in [Tests/](Tests/) — including auto-generated
 guards from the yaml-test-suite — back every proof with a kernel-evaluable
@@ -216,6 +214,36 @@ per-document comments) back into YAML text, with control over:
 
 Every dump configuration is deterministic and participates in the round-trip
 proofs.
+
+### 6. Column-aligning formatter (`l4yaml-fmt`)
+
+[`L4YAML.Align.format`](L4YAML/Output/Align.lean) and its CLI `l4yaml-fmt`
+line up the values of `key: value` entries inside each block mapping — and,
+as a second column, the nodes of `key: &anchor value` / `key: !tag value`
+entries — by rewriting only the blanks after `:` and after node properties.
+Comments, blank lines, block-scalar bodies, flow collections and quoting are
+copied byte for byte, and the result is re-scanned: unless it yields the same
+tokens and comments the tool refuses and leaves the input alone.
+
+```bash
+lake build l4yaml-fmt
+.lake/build/bin/l4yaml-fmt < params.yaml              # stdin → stdout
+.lake/build/bin/l4yaml-fmt -w -r 8 config/*.yaml      # in place, cells padded to multiples of 8
+.lake/build/bin/l4yaml-fmt --check config/*.yaml      # exit 1 if anything would change
+```
+
+Options: `-g run` splits a mapping into groups at blank lines (default: the
+whole mapping is one group); `-c N` caps the key cell at `N` columns so one
+very long key does not push the rest of the group right (default 40); `-r N`
+rounds cells up to a multiple of `N`; `-s N` sets the minimum gap. Aliases
+must be defined in the same input, since the scanner rejects undefined ones.
+
+[`AlignProofs`](L4YAML/Proofs/Output/AlignProofs.lean) proves that edit
+application preserves every non-blank character in order (hence the line
+structure), that a successful `format` has the same token values and comments
+as its input, and that aligned cells never fall below the minimum gap.
+`lake exe aligntest` checks the fixtures under `Tests/align/` for golden
+output, idempotence and token-shape equality.
 
 ## Quick start
 
@@ -450,9 +478,79 @@ lake exe scannerspecexamples     # same examples via tokenized pipeline
 lake exe validationtests         # structural validation
 lake exe dumproundtrip           # dump round-trip
 lake exe schemadump              # Schema ↔ Dump integration
+lake exe derivingconsumer        # deriving FromYaml/ToYaml from a module consumer
 ```
 
 The full list of executables is in [lakefile.lean](lakefile.lean).
+
+### Everything at once
+
+The suites above are one phase of a longer pipeline. Building the library,
+running every suite, regenerating the documentation and scoring L4YAML against
+the other YAML processors happens in one pass in
+[.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml), and
+[`scripts/generate-all.sh`](scripts/generate-all.sh) runs that same pipeline on
+your machine:
+
+```sh
+./scripts/generate-all.sh                 # phases 1-5 (build, test, report, docs, PDF)
+./scripts/generate-all.sh --list          # the phases, options, and what each needs
+./scripts/generate-all.sh 4 5             # just the documentation and the PDF
+./scripts/generate-all.sh --with-matrix   # also the YAML Test Matrix (needs Docker)
+./scripts/generate-all.sh --publish       # also write the local gh-pages branch
+```
+
+| Phase | What it produces |
+|---|---|
+| 1 build | the library and the test executables, then the serialization axiom gate |
+| 2 test | Lean suites, the C shared library and `tryparse_c`, the Rust `tryparse`, the Python FFI and package suites, and the four-backend cross-language comparison |
+| 3 report | the test-result HTML, the `collect-stats` payload, and the four proof-hygiene gates plus the kernel-accurate sorry/axiom assertion over the compiled environment |
+| 4 docs | the `doc/` build, the import graph, the theorem graphs, the Verso render, the SVG `<object>` rewrite, the swap into `docs/`, and the doc-gen4 API tree |
+| 5 pdf | `docs/L4YAML.pdf` and its landing-page link |
+| 6 matrix | `docs/matrix/` — `--with-matrix` only |
+| 7 publish | the local `gh-pages` branch — `--publish` only |
+
+Each phase prints the log it wrote (under `.ci-local/logs/`), and the run ends
+with a table of the numbers a reader would otherwise have to grep for — job
+count, `Verified: n/n`, observed axiom profiles, page count. A failing step is
+reported in that table and sets a non-zero exit status rather than stopping the
+site from being assembled from whatever did succeed.
+
+Four differences from CI, all deliberate: it installs no toolchain (it asserts
+the [lean-toolchain](lean-toolchain) one is present), installs no system
+packages, uploads no artifact and posts no comment, and never pushes —
+`--publish` writes the local `gh-pages` branch and leaves
+`PAGES_PUSH=1 ./scripts/publish-pages.sh` as a separate, deliberate act. What
+it *does* handle for you is the setup a fresh checkout or worktree needs: it
+initializes the `yaml-test-suite` submodule, builds the test executables (they
+are not default targets, so a bare `lake build` leaves them absent), and
+regenerates the import graph the Verso render requires.
+
+Two side effects worth knowing. Phase 4 rebuilds `docs/` from scratch, carrying
+`docs/reports/` across the swap exactly as CI does — that directory is
+generated and gitignored, but a local `docs/` you were keeping is not safe.
+And phase 4 runs `lake update` in `doc/`, which CI can do freely because its
+checkout is disposable; here it can move the committed
+[doc/lake-manifest.json](doc/lake-manifest.json), so check `git status` after a
+run if you intend to commit.
+
+One thing it deliberately undoes. `collect-stats --emit-lean` writes the stats
+payload into [doc/Doc/L4YAML/StatsData.lean](doc/Doc/L4YAML/StatsData.lean), a
+*tracked* file, because Verso's `:::statsTable` reads it when the chapter
+elaborates; the committed state is a placeholder that renders every cell as
+`?`. Phase 3 parks the generated payload under `.ci-local/`, phase 4 installs
+it for the render, and the placeholder goes back afterwards — so a run leaves
+that file unmodified, and a numbered table in `docs/` is not something you can
+commit by accident. The consequence is that phase 4 needs phase 3 to have run
+at some point: `./scripts/generate-all.sh 4` on its own warns and renders the
+`?` cells. If you have your own edits to that file, the script says so and
+leaves it alone in both directions.
+
+Missing optional tools degrade rather than fail: without `cmake` or `cargo` the
+C and Rust backends drop out of phase 2, without Graphviz `dot` the import
+graph is not regenerated, without `weasyprint` phase 5 is skipped, and without
+a reachable Docker daemon phase 6 is skipped with a warning — the same way the
+workflow's own matrix step skips itself.
 
 ### Querying test results
 
@@ -480,6 +578,10 @@ lake exe queryresults diff before.json after.json
 ```
 
 ### L4YAML and the YAML Test Matrix
+
+To generate the matrix locally rather than on a release tag, run
+`./scripts/generate-all.sh --with-matrix` (it needs a reachable Docker daemon;
+see the phase table above).
 
 Submitted [yaml-runtimes PR #39](https://github.com/yaml/yaml-runtimes/pull/39) to
 add L4YAML to the official YAML Test Matrix, which was last updated in [v2022-01-17](https://matrix.yaml.info/). At that time, there were 20 processors; this PR would make L4YAML the 21st processor, and the first verified one. The PR is still open as of 2026-07-05.
@@ -609,6 +711,21 @@ references [L4YAML/Output/Events.lean](L4YAML/Output/Events.lean), whose
 `parseStreamMarkedLoop` is an unverified mirror of the verified
 `TokenParser.parseStreamLoop` (~13 duplicated decision points, plus
 `explicitStartAt` re-implementing the directive skip of `parseDirectives`).
+
+The gap is wider than the event axis, and wider than the legacy pipeline. A
+scan of all 144 files under `L4YAML/Proofs/` (2026-08-11) finds **zero**
+references to any of the four emitters — Events.lean (16 defs), Json.lean (9),
+[EventsIx.lean](L4YAML/Output/EventsIx.lean) (4) and
+[JsonIx.lean](L4YAML/Output/JsonIx.lean) (1) — neither by module nor by
+declaration name. So both matrix axes and both pipelines are scored by
+unverified code, and the demonstration below (a commented-out arm leaving CI
+green while the event axis regressed 402→399) applies equally to the JSON axis
+and to the indexed twins. The steps below are written for the legacy event
+emitter because it is the largest and the one whose mirror structure is
+documented; the same three-step shape (pin, gate, then prove agreement with the
+verified loop) is what the other three need, and `JsonIx`'s 1 def and
+`EventsIx`'s 4 are thin enough that their agreement theorems reduce to the
+legacy ones plus the scan/parse swap.
 Demonstrated 2026-07-04: commenting out the `some .documentEnd` suffix arm
 (the C1 fix from commit `7d43fe61`) left `lake build` — and CI — green while
 the event axis silently regressed 402→399 (HWV9, QT73, M7A3). YAML 1.2.2
@@ -636,7 +753,7 @@ lemmas can be stated from `Proofs/`.
    [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml)
    uses an explicit target list that omits `Tests.Guards`,
    `Tests.Reflections`, `l4yaml-event`, `l4yaml-json`, and `eventscore`, and
-   `scripts/run-all-tests.sh` runs nothing event-related — so even the
+   `lake run run-all-tests` runs nothing event-related — so even the
    existing reflection pins never elaborate in CI. Add the guard/reflection
    libs and the event targets to the build list, and add an event-scoring
    step with a fail threshold:
@@ -693,21 +810,31 @@ port must also re-prove the corresponding `Indexed*` lemmas:
   still returns an empty node unconditionally.
 - **B2** — the `protectedLen` boundary parameter of
   `collectDoubleQuotedLoop` (escaped-trailing-tab trimming); the indexed
-  `collectDoubleQuotedLoopIx` has no such parameter.
+  `collectDoubleQuotedLoopIx` carries the same boundary as a `content` /
+  `spaces` split of the accumulator (the buffered trailing `s-white*` run is
+  dropped at a fold without rescanning `content`).
 
 ## Contributing
 
 Issues and pull requests are welcome. Please open an issue before starting
 substantial work so we can discuss scope and proof strategy.
 
+Proof work follows [`Blueprint/06-discipline.md`](Blueprint/06-discipline.md);
+[`AGENTS.md`](AGENTS.md) is the one-screen orientation (sources of truth,
+build and gates, the closure-log item protocol, campaign vocabulary), and
+`lake run docs-nav -- next` finds the active mandate in `DOCS.md`
+without paging it.
+
 ## Acknowledgments
 
-**Heath Sanchez**, [Metalogic Labs](https://metalogiclabs.xyz/) — an independent
-Lean audit of the parser/grammar boundary at `16562a7`, which refuted the
-advertised `parse_iff_grammar` biconditional with four machine-checked
-counterexamples and identified the missing layer the corrected statement needs.
-The correction is recorded under
-[Machine-checked verification](#1-machine-checked-verification) above and in
+**Heath Sanchez**, [Metalogic Labs](https://metalogiclabs.xyz/) — two
+independent Lean audits of the parser/grammar boundary. The first, against
+`main` at `16562a7`, refuted the advertised `parse_iff_grammar` biconditional
+with four machine-checked counterexamples and identified the missing layer the
+corrected statement needs. The second supplies a candidate
+`SerializationWellFormed` — an event/state semantics with an executable checker,
+a correctness proof relating the two, and transcriptions of both runtime guards.
+Both are recorded under
 [DOCS.md § Grammar completeness plan](DOCS.md#grammar-completeness-plan).
 
 ## License

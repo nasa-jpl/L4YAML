@@ -2,13 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.FirstFiltered
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FilteredGrowth.FirstFiltered
+
+@[expose] public section Blanket
 
 /-! # `FilteredGrowth.Infra` — Phase 3 Step
 `6f.3b3.filteredgrowth.infra`
 
-**Sub-session 2 of `.filteredgrowth`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 5900–6070, ~170 LOC).
+**Sub-session 2 of `.filteredgrowth`** (~170 legacy LOC).
 
 Filtered token array growth infrastructure. Every `scanNextTokenIx`
 step adds at least one non-`.placeholder` token; the proof decomposes
@@ -26,24 +30,21 @@ into:
      decrease filtered count (used by `scanValuePrepareIx`).
 
 Ships:
-  * **§1 `List_filter_set_length_monoIx`** — list helper for §2 (legacy
-    5912).
+  * **§1 `List_filter_set_length_monoIx`** — list helper for §2.
   * **§2 `Array_setIfInBounds_filter_monoIx`** — `Array.setIfInBounds`
-    with a filter-passing replacement preserves or grows filtered size
-    (legacy 5929).
+    with a filter-passing replacement preserves or grows filtered size.
   * **§3 `preprocess_filtered_monoIx`** — `scanNextTokenIx_preprocess`
-    monotonicity for filtered count (legacy 5945).
+    monotonicity for filtered count.
   * **§4 `allowDir_ite_filter_monoIx`** — the `allowDirectives`/`
-    documentEverStarted` if-then-else preserves filtered token count
-    (legacy 5958).
+    documentEverStarted` if-then-else preserves filtered token count.
   * **§5 `List_filter_length_ge_oneIx`** — if a non-empty list's first
-    element passes `p`, `(l.filter p).length ≥ 1` (legacy 5968).
+    element passes `p`, `(l.filter p).length ≥ 1`.
   * **§6 `filtered_grows_of_extended_prefixIx`** — extending an array
     with a `p`-passing first new element grows `(filter p).size` by
-    ≥ 1 (legacy 5980).
+    ≥ 1.
   * **§7 `filtered_grows_of_any_newIx`** — variant of §6 where the
     `p`-passing element is at some `j ≥ a.size`, not necessarily
-    `a.size` itself (legacy 6025).
+    `a.size` itself.
 
 ## Indexed simplification
 
@@ -78,7 +79,7 @@ variable {input : String}
 
 Replacing an element of a list with a value that passes the filter
 does not decrease the filtered length. Verbatim port of legacy
-`List_filter_set_length_mono` (line 5912). -/
+`List_filter_set_length_mono`. -/
 
 lemma List_filter_set_length_monoIx {α : Type} (l : List α) (i : Nat) (v : α)
     (p : α → Bool) (hv : p v = true) :
@@ -99,7 +100,7 @@ lemma List_filter_set_length_monoIx {α : Type} (l : List α) (i : Nat) (v : α)
 
 `Array.setIfInBounds` with a filter-passing replacement preserves or
 grows the filtered array size. Verbatim port of legacy
-`Array_setIfInBounds_filter_mono` (line 5929). -/
+`Array_setIfInBounds_filter_mono`. -/
 
 lemma Array_setIfInBounds_filter_monoIx {α : Type} (a : Array α) (i : Nat) (v : α)
     (p : α → Bool) (hv : p v = true) :
@@ -119,7 +120,7 @@ lemma Array_setIfInBounds_filter_monoIx {α : Type} (a : Array α) (i : Nat) (v 
 
 The filtered token count doesn't decrease through
 `scanNextTokenIx_preprocess`. Indexed twin of legacy
-`preprocess_filtered_mono` (line 5945). -/
+`preprocess_filtered_mono`. -/
 
 lemma preprocess_filtered_monoIx (s s_pp : ScannerStateIx input) (c : Char)
     (h : scanNextTokenIx_preprocess s = .ok (some (s_pp, c))) :
@@ -145,7 +146,7 @@ lemma preprocess_filtered_monoIx (s s_pp : ScannerStateIx input) (c : Char)
 The `allowDirectives = true` if-then-else (which sets
 `allowDirectives := false` and `documentEverStarted := true`)
 preserves filtered token count — both fields are non-token. Verbatim
-port of legacy `allowDir_ite_filter` (line 5958). -/
+port of legacy `allowDir_ite_filter`. -/
 
 lemma allowDir_ite_filter_monoIx (s : ScannerStateIx input) :
     let p := fun (t : IxToken input) => t.token != .placeholder
@@ -157,8 +158,7 @@ lemma allowDir_ite_filter_monoIx (s : ScannerStateIx input) :
 /-! ## §5  `List_filter_length_ge_oneIx`
 
 If a non-empty list's first element passes filter `p`, the filtered
-list has length ≥ 1. Verbatim port of legacy `List_filter_length_ge_one`
-(line 5968). -/
+list has length ≥ 1. Verbatim port of legacy `List_filter_length_ge_one`. -/
 
 lemma List_filter_length_ge_oneIx {α : Type} (l : List α) (p : α → Bool)
     (h_len : l.length ≥ 1) (h_head : p (l[0]'(by omega)) = true) :
@@ -174,7 +174,7 @@ lemma List_filter_length_ge_oneIx {α : Type} (l : List α) (p : α → Bool)
 If array `b` extends array `a` (same elements at positions `< a.size`),
 has at least one more element, and that element at position `a.size`
 passes filter `p`, then `(b.filter p).size ≥ (a.filter p).size + 1`.
-Verbatim port of legacy `filtered_grows_of_extended_prefix` (line 5980). -/
+Verbatim port of legacy `filtered_grows_of_extended_prefix`. -/
 
 lemma filtered_grows_of_extended_prefixIx {α : Type}
     (a b : Array α) (p : α → Bool)
@@ -223,7 +223,7 @@ element, and some element at position `j ≥ a.size` passes filter `p`,
 then `(b.filter p).size ≥ (a.filter p).size + 1`. Used when we know
 a specific NEW element (e.g. the last) is non-`.placeholder`, but
 don't know the exact value at the first new position `a.size`.
-Verbatim port of legacy `filtered_grows_of_any_new` (line 6025). -/
+Verbatim port of legacy `filtered_grows_of_any_new`. -/
 
 lemma filtered_grows_of_any_newIx {α : Type}
     (a b : Array α) (p : α → Bool)
@@ -273,3 +273,5 @@ lemma filtered_grows_of_any_newIx {α : Type}
   | cons => simp
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth
+
+end Blanket

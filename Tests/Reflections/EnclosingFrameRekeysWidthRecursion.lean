@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 472 — a width strong-induction whose per-window obligation references the ENCLOSING
 # FRAME (one bracket-level OUT, wider by exactly 2) CANNOT be keyed on the inner BODY width: the IH
@@ -114,3 +119,5 @@ example : frameWidth 2 6 = 6 := rfl
 example : solveFrame 6 = 3 := rfl   -- 6 → 4 → 2 → 0, three nested levels
 
 end EnclosingFrameRekeysWidthRecursion
+
+end Blanket

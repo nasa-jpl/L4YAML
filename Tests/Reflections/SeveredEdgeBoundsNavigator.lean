@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 335 — a SEVERED recursion edge bounds a navigator's domain; a PATH-blind gate admits windows past it
 
@@ -102,3 +107,5 @@ example :
   ⟨rfl, rfl, rfl⟩
 
 end Tests.Reflections.SeveredEdgeBoundsNavigator
+
+end Blanket

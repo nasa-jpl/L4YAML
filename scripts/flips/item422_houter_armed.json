@@ -1,0 +1,41 @@
+{
+  "item": 422,
+  "tag": "HOUTER-ARMED",
+  "rev": "be8c55a7",
+  "target": "L4YAML",
+  "log": "scratch/houter_armed.log",
+  "msgWidth": 110,
+  "rounds": 1,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "colon_open_map_explicit.h_outer",
+          "line": 25227,
+          "old": [
+            "      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True) :"
+          ],
+          "new": [
+            "      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨",
+            "      (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ nv)) :"
+          ],
+          "count": 1
+        },
+        {
+          "name": "compact_open_map.h_outer",
+          "line": 25424,
+          "old": [
+            "      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨ True)"
+          ],
+          "new": [
+            "      (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨",
+            "      (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ n + 1 + m))"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -2,7 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.Composition
+
+module
+
+public import L4YAML.Parser.Composition
+
+
+
+public meta import L4YAML.Parser.Composition
+public meta import L4YAML.Spec.Types
+@[expose] public section Blanket
 
 /-!
 # Scanner Hardening — Compile-Time Guards (v0.2.10)
@@ -95,9 +104,13 @@ open L4YAML.TokenParser
 -- §15: Flow explicit key edge cases
 -- {? : v1, ? : v2} — duplicate null keys in flow
 #guard match parseYamlSingle "{? : v1, ? : v2}" with | .ok v => v.isMapping | .error _ => false
--- {?, ?} — bare ? entries in flow
-#guard match parseYamlSingle "{?, ?}" with | .ok v => v.isMapping | .error _ => false
--- {? , ? } — bare ? with spaces
+-- {?, ?} — bare ? entries in flow, with NO separation after the `?`.  Rejected
+-- since DOCS item 9j: `[150] ns-flow-pair` is `"?" s-separate
+-- ns-flow-map-explicit-entry`, and inside a flow the only zero-width arm of
+-- `s-separate-lines` is `/* Start of line */`.  See the accepted twin below.
+#guard match parseYamlSingle "{?, ?}" with | .ok _ => false | .error _ => true
+-- {? , ? } — bare ? with the separation present: the `( e-node e-node )` arm of
+-- `[142] c-ns-flow-map-explicit-entry`, and still accepted.
 #guard match parseYamlSingle "{? , ? }" with | .ok v => v.isMapping | .error _ => false
 -- [? a : b, ? c : d] — multiple explicit entries in flow sequence
 #guard match parseYamlSingle "[? a : b, ? c : d]" with
@@ -270,3 +283,5 @@ open L4YAML.TokenParser
 #guard match parseYamlSingle "[1, 2]" with | .ok v => v.isSequence | .error _ => false
 
 end Tests.Guards.ScannerHardening
+
+end Blanket

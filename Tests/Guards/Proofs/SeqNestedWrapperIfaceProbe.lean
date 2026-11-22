@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Emission-spine-walk WRAPPER interface probe — `(i'-b-B2c-nested-fbc-emission-locator-wrapper-interface)`
@@ -101,3 +105,5 @@ def allTrue (tokens : Array (Positioned YamlToken)) (a : Nat) : Bool :=
 #guard allTrue P 3 != allTrue N 7      -- whole-path differs ⇒ SeqPathAllSeq is load-bearing
 
 end L4YAML.Proofs.EmitterScannability.SeqNestedWrapperIfaceProbe
+
+end Blanket

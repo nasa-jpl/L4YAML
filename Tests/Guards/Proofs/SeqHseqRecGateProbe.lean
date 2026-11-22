@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `h_seq_rec` GATE-STRENGTH probe — the narrow-gate locator's `SeqPathAllSeq` is too strong
@@ -112,3 +116,5 @@ def M : Array (Positioned YamlToken) :=
 #guard weakGuard N 3 6 && weakGuard M 7 8                 -- yet BOTH are in `h_seq_rec`'s weak-guard domain
 
 end L4YAML.Proofs.EmitterScannability.SeqHseqRecGateProbe
+
+end Blanket

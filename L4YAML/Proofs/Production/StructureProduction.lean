@@ -2,9 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Production.ScalarProduction
-import L4YAML.Proofs.Coupling.StructureCoupling
-import L4YAML.Proofs.Foundation.CharClass
+
+module
+
+public import L4YAML.Proofs.Production.ScalarProduction
+public import L4YAML.Proofs.Coupling.StructureCoupling
+public import L4YAML.Proofs.Foundation.CharClass
+
+@[expose] public section Blanket
 
 /-! # Structure Production Coupling (Phase C of v0.4.4)
 
@@ -122,6 +127,37 @@ lemma scanFlowEntry_prod (sc : ScannerState) (sp : SurfPos)
     ∃ sp', ScannerSurfCorr s' sp' :=
   scanFlowEntry_corr sc sp hcorr s' hok
 
+-- `scanFlowEntry` produces `GLit ','` when the head character is `,`.
+-- Strengthens `scanFlowEntry_prod`: the entry separator carries the
+-- `GLit ','` surface witness needed for `SFlowSeqEntries`/`SFlowMapEntries`
+-- accumulation (Fix A, Piece 2). Both the guard-throw and the clean paths
+-- are handled; on `.ok` the state is `(sc.emit .flowEntry).advance` (with the
+-- untracked `simpleKeyAllowed` field flipped), so the tracked correspondence
+-- fields transfer from `advance_non_newline_corr`.
+lemma scanFlowEntry_glit (sc : ScannerState) (sp : SurfPos)
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some ',')
+    (s' : ScannerState) (hok : scanFlowEntry sc = .ok s') :
+    ∃ sp', GLit ',' sp sp' ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := peek_some_has_more hpeek
+  refine ⟨⟨rest, sc.col + 1⟩, GLit.mk rest sc.col, ?_⟩
+  unfold scanFlowEntry at hok
+  simp only [bind, Except.bind] at hok
+  have hcorr_emit : ScannerSurfCorr (sc.emit .flowEntry) ⟨',' :: rest, sc.col⟩ :=
+    ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
+  have hcorr_adv := advance_non_newline_corr (sc.emit .flowEntry) ',' rest hcorr_emit hmore
+    (by decide) (by decide)
+  split at hok
+  · split at hok
+    · exact absurd hok (by simp)
+    · have h := Except.ok.inj hok; subst h
+      exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix,
+             hcorr_adv.indent_cols_nonneg⟩
+  · have h := Except.ok.inj hok; subst h
+    exact ⟨hcorr_adv.chars_from, hcorr_adv.col_eq, hcorr_adv.end_eq, hcorr_adv.input_prefix,
+           hcorr_adv.indent_cols_nonneg⟩
+
 /-! ## §2 Block Indicator Productions
 
 Block indicators (`-`, `?`, `:`) each advance past a single character.
@@ -158,7 +194,11 @@ lemma scanBlockEntry_prod (sc : ScannerState) (sp : SurfPos)
   · -- !inFlow: pushSequenceIndent
     split at hok
     · simp at hok
-    · have h := Except.ok.inj hok; subst h
+    · split at hok  -- item 48 same-line check
+      · simp at hok
+      split at hok  -- `scanBlockEntryValidate` (item 134)
+      · simp at hok
+      have h := Except.ok.inj hok; subst h
       have hcorr_ind := pushSequenceIndent_corr sc
         ⟨'-' :: rest, sc.col⟩ hcorr (sc.col : Int) (Int.natCast_nonneg _)
       have hcorr_emit : ScannerSurfCorr
@@ -239,7 +279,9 @@ lemma scanKey_prod (sc : ScannerState) (sp : SurfPos)
   unfold scanKey at hok
   simp only [bind, Except.bind] at hok
   split at hok
-  · -- !inFlow: pushMappingIndent
+  · -- !inFlow: `scanKeyValidate` (item 131), then pushMappingIndent
+    split at hok
+    · simp at hok
     have hcorr_ind := pushMappingIndent_corr sc
       ⟨'?' :: rest, sc.col⟩ hcorr (sc.col : Int) (Int.natCast_nonneg _)
     have hcorr_emit : ScannerSurfCorr
@@ -297,7 +339,9 @@ lemma scanValue_prod (sc : ScannerState) (sp : SurfPos)
   -- scanValueValidate (Except)
   split at hok
   · simp at hok
-  · -- scanValueTabCheck (Except)
+  · -- scanValueIndentTabCheck (item 31), then scanValueTabCheck
+    split at hok
+    · simp at hok
     split at hok
     · simp at hok
     · have h := Except.ok.inj hok; subst h
@@ -351,15 +395,50 @@ lemma isNsAnchorChar_of_scanner_cond {c : Char}
           (isPrintable_iff c).mp hpr, hbom⟩,
          not_of_bool_false (isFlowIndicator_correspondence c) hfi⟩
 
--- `collectAnchorNameLoop` produces `GStar (GChar isNsAnchorChar)`.
+lemma scanner_cond_of_isNsAnchorChar {c : Char} (h : isNsAnchorChar c) :
+    (!isFlowIndicatorBool c && !isWhiteSpaceBool c &&
+      !isLineBreakBool c && isPrintableBool c && (c != '\ufeff')) = true := by
+  obtain ⟨⟨hnlb, hnws, hpr, hbom⟩, hnfi⟩ := h
+  simp only [Bool.and_eq_true, bne_iff_ne, Bool.not_eq_true']
+  refine ⟨⟨⟨⟨?_, ?_⟩, ?_⟩, (isPrintable_iff c).mpr hpr⟩, hbom⟩
+  · exact Bool.eq_false_iff.mpr (fun ht => hnfi ((isFlowIndicator_correspondence c).mpr ht))
+  · exact Bool.eq_false_iff.mpr (fun ht => hnws ((isWhiteSpace_correspondence c).mpr ht))
+  · exact Bool.eq_false_iff.mpr (fun ht => hnlb ((isLineBreak_correspondence c).mpr ht))
+
+lemma gnot_gchar_nil {P : Char → Prop} (col : Nat) : GNot (GChar P) ⟨[], col⟩ := by
+  intro s' h; cases h
+
+lemma gnot_gchar_head {P : Char → Prop} {c : Char} {rest : List Char} {col : Nat}
+    (h : ¬ P c) : GNot (GChar P) ⟨c :: rest, col⟩ := by
+  intro s' hg; cases hg with | mk _ _ _ hp => exact h hp
+
+-- `GNot (GChar P)` at a position whose scanner twin has `peek? = none`.
+lemma gnot_gchar_of_peek_none {P : Char → Prop} {sc : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = none) : GNot (GChar P) sp := by
+  have hnil := peek_none_chars_nil hcorr hpeek
+  obtain ⟨chars, col⟩ := sp
+  simp only at hnil; subst hnil; exact gnot_gchar_nil col
+
+lemma peek_none_of_fuel_zero {sc : ScannerState} (h : sc.inputEnd - sc.offset ≤ 0) :
+    sc.peek? = none := by
+  unfold ScannerState.peek?
+  simp only [show ¬ sc.offset < sc.inputEnd by omega, ↓reduceIte]
+
+-- `collectAnchorNameLoop` produces the MAXIMAL `GStar (GChar isNsAnchorChar)`:
+-- with fuel covering the remaining input, the loop stops only at end of input or
+-- at a non-anchor char, which is the `GNot` lookahead [101]/[104] demand.
 -- When starting from empty name and the result name grew, positions differ (sp ≠ sp').
 lemma collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
+    (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat)
+    (hfuel : sc.inputEnd - sc.offset ≤ fuel) :
     ∃ sp', GStar (GChar isNsAnchorChar) sp sp' ∧
            ScannerSurfCorr (collectAnchorNameLoop sc name fuel).snd sp' ∧
-           (sp = sp' → (collectAnchorNameLoop sc name fuel).fst = name) := by
+           (sp = sp' → (collectAnchorNameLoop sc name fuel).fst = name) ∧
+           GNot (GChar isNsAnchorChar) sp' := by
   induction fuel generalizing sc sp name with
-  | zero => exact ⟨sp, GStar.nil sp, hcorr, fun _ => rfl⟩
+  | zero =>
+    exact ⟨sp, GStar.nil sp, hcorr, fun _ => rfl,
+           gnot_gchar_of_peek_none hcorr (peek_none_of_fuel_zero hfuel)⟩
   | succ fuel' ih =>
     unfold collectAnchorNameLoop; split
     · rename_i c hpeek; split
@@ -381,21 +460,30 @@ lemma collectAnchorNameLoop_prod (sc : ScannerState) (sp : SurfPos)
           intro heq; rw [heq] at hlb; exact absurd hlb (by native_decide)
         have hcorr_adv := advance_non_newline_corr sc c rest hcorr
           hmore hne_nl hne_cr
-        obtain ⟨sp', h_tail, hcorr', _⟩ := ih sc.advance ⟨rest, sc.col + 1⟩
-          hcorr_adv (name.push c)
+        have hfuel' : sc.advance.inputEnd - sc.advance.offset ≤ fuel' := by
+          have h1 := ScannerProgress.advance_offset_lt sc hmore
+          have h2 : sc.advance.inputEnd = sc.inputEnd := advance_inputEnd sc
+          omega
+        obtain ⟨sp', h_tail, hcorr', _, hnot⟩ := ih sc.advance ⟨rest, sc.col + 1⟩
+          hcorr_adv (name.push c) hfuel'
         refine ⟨sp',
                GStar.cons _ _ _
                  (GChar.mk c rest sc.col (isNsAnchorChar_of_scanner_cond hcond))
                  h_tail,
-               hcorr', ?_⟩
+               hcorr', ?_, hnot⟩
         intro h_eq; exfalso
         have h_col_ge : sp'.col ≥ sc.col + 1 := gstar_gchar_col_le h_tail
         have : sp'.col = sc.col := by rw [← h_eq]
         omega
-      · -- not anchor char: stop
-        exact ⟨sp, GStar.nil sp, hcorr, fun _ => rfl⟩
+      · -- not anchor char: stop; the lookahead is exactly the failed condition
+        rename_i hcond
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        refine ⟨_, GStar.nil _, hcorr, fun _ => rfl, gnot_gchar_head ?_⟩
+        intro h; exact hcond (scanner_cond_of_isNsAnchorChar h)
     · -- none: stop
-      exact ⟨sp, GStar.nil sp, hcorr, fun _ => rfl⟩
+      rename_i hpeek
+      exact ⟨sp, GStar.nil sp, hcorr, fun _ => rfl, gnot_gchar_of_peek_none hcorr hpeek⟩
 
 -- `scanAnchorOrAlias` produces `GLit marker ∧ GStar (GChar isNsAnchorChar)` with `sp_mid ≠ sp'`.
 -- The marker character is `&` for anchors and `*` for aliases.
@@ -408,15 +496,17 @@ lemma scanAnchorOrAlias_prod (sc : ScannerState) (sp : SurfPos)
     ∃ sp_mid sp', GLit marker sp sp_mid ∧
                   GStar (GChar isNsAnchorChar) sp_mid sp' ∧
                   sp_mid ≠ sp' ∧
+                  GNot (GChar isNsAnchorChar) sp' ∧
                   ScannerSurfCorr s' sp' := by
   obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
   subst hsp_eq
   have hmore := peek_some_has_more hpeek
   have hcorr_adv := advance_non_newline_corr sc marker rest hcorr
     hmore hne_nl hne_cr
-  obtain ⟨sp', h_gstar, hcorr', h_sp_name⟩ :=
-    collectAnchorNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv "" _
-  refine ⟨⟨rest, sc.col + 1⟩, sp', GLit.mk rest sc.col, h_gstar, ?_, ?_⟩
+  obtain ⟨sp', h_gstar, hcorr', h_sp_name, h_not⟩ :=
+    collectAnchorNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_adv ""
+      (sc.inputEnd - sc.advance.offset) (by simp [advance_inputEnd sc])
+  refine ⟨⟨rest, sc.col + 1⟩, sp', GLit.mk rest sc.col, h_gstar, ?_, h_not, ?_⟩
   · -- sp_mid ≠ sp': .ok requires non-empty name, which requires sp advance
     intro h_eq
     have h_name_empty := h_sp_name h_eq
@@ -453,12 +543,21 @@ lemma GStar_gchar_lift {P Q : Char → Prop} (h : ∀ c, P c → Q c)
 /-! ### Tag suffix loop production -/
 
 -- `collectTagSuffixLoop` produces `GStar (GChar isTagCharProp)`.
+private lemma gstar_append_local {P : SurfPos → SurfPos → Prop} {a b c : SurfPos}
+    (h₁ : GStar P a b) : GStar P b c → GStar P a c := by
+  induction h₁ with
+  | nil _ => exact id
+  | cons s₁ s₂ _ hx _ ih => exact fun h => GStar.cons s₁ s₂ c hx (ih h)
+
 lemma collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (suffix : String) (fuel : Nat) :
+    (hcorr : ScannerSurfCorr sc sp) (suffix : String) (fuel : Nat)
+    (hfuel : sc.inputEnd - sc.offset ≤ fuel) :
     ∃ sp', GStar (GChar isTagCharProp) sp sp' ∧
-           ScannerSurfCorr (collectTagSuffixLoop sc suffix fuel).snd sp' := by
+           ScannerSurfCorr (collectTagSuffixLoop sc suffix fuel).snd sp' ∧
+           GNot (GChar isTagCharProp) sp' := by
   induction fuel generalizing sc sp suffix with
-  | zero => exact ⟨sp, GStar.nil sp, hcorr⟩
+  | zero =>
+    exact ⟨sp, GStar.nil sp, hcorr, gnot_gchar_of_peek_none hcorr (peek_none_of_fuel_zero hfuel)⟩
   | succ fuel' ih =>
     unfold collectTagSuffixLoop; split
     · rename_i c hpeek; split
@@ -474,17 +573,26 @@ lemma collectTagSuffixLoop_prod (sc : ScannerState) (sp : SurfPos)
           intro heq; rw [heq] at hcond; exact absurd hcond (by native_decide)
         have hcorr_adv := advance_non_newline_corr sc c rest hcorr
           hmore hne_nl hne_cr
-        obtain ⟨sp', h_tail, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩
-          hcorr_adv (suffix.push c)
+        have hfuel' : sc.advance.inputEnd - sc.advance.offset ≤ fuel' := by
+          have h1 := ScannerProgress.advance_offset_lt sc hmore
+          have h2 : sc.advance.inputEnd = sc.inputEnd := advance_inputEnd sc
+          omega
+        obtain ⟨sp', h_tail, hcorr', hnot⟩ := ih sc.advance ⟨rest, sc.col + 1⟩
+          hcorr_adv (suffix.push c) hfuel'
         exact ⟨sp',
                GStar.cons _ _ _
                  (GChar.mk c rest sc.col htag)
                  h_tail,
-               hcorr'⟩
-      · -- not tag char: stop
-        exact ⟨sp, GStar.nil sp, hcorr⟩
-    · -- none: stop
-      exact ⟨sp, GStar.nil sp, hcorr⟩
+               hcorr', hnot⟩
+      · -- not tag char: stop — the lookahead
+        rename_i hcond
+        obtain ⟨rest, hsp_eq⟩ := peek_some_sp hcorr hpeek
+        subst hsp_eq
+        exact ⟨_, GStar.nil _, hcorr,
+               gnot_gchar_head (fun h => hcond ((isTagChar_iff c).mpr h))⟩
+    · -- none: stop — end of input
+      rename_i hpeek
+      exact ⟨sp, GStar.nil sp, hcorr, gnot_gchar_of_peek_none hcorr hpeek⟩
 
 /-! ### Verbatim tag URI loop production -/
 
@@ -634,15 +742,16 @@ lemma scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
   · -- some '!': secondary tag
     have h_inj := Except.ok.inj hok; subst h_inj
     unfold scanSecondaryTag; dsimp only []
-    obtain ⟨sp', h_gstar, hcorr_sfx⟩ :=
+    obtain ⟨sp', h_gstar, hcorr_sfx, h_gnot⟩ :=
       collectTagSuffixLoop_prod sc.advance.advance ⟨srest, sc.advance.advance.col⟩
-        hcorr_bang2' "" _
+        hcorr_bang2' "" (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)
+        (by simp only [advance_inputEnd]; omega)
     -- Bridge col: sc.advance.advance.col = sc.col + 2
     have hcol_bridge : sc.advance.advance.col = sc.col + 2 := by
       have := hcorr_bang.col_eq; have := hcorr_bang2.col_eq
       dsimp only [] at *; omega
     rw [hcol_bridge] at h_gstar
-    refine ⟨sp', SCNsTagProperty.secondary srest sc.col sp' h_gstar, ?_⟩
+    refine ⟨sp', SCNsTagProperty.secondary srest sc.col sp' h_gstar h_gnot, ?_⟩
     exact ⟨hcorr_sfx.chars_from, hcorr_sfx.col_eq, hcorr_sfx.end_eq, hcorr_sfx.input_prefix, hcorr_sfx.indent_cols_nonneg⟩
   · -- fallthrough: contradicts hpeek2
     rename_i _ h_not_bang
@@ -650,10 +759,25 @@ lemma scanTag_secondary_prod (sc : ScannerState) (sp : SurfPos)
 
 -- Named/non-specific tag grammar + correspondence.
 -- Pre: scanner after first `!`, at ⟨rest, col+1⟩, peek ≠ `!`.
+private lemma collectTagHandleLoop_inputEnd (s : ScannerState) (chars : String) (fuel : Nat) :
+    (collectTagHandleLoop s chars fuel).snd.snd.inputEnd = s.inputEnd := by
+  induction fuel generalizing s chars with
+  | zero => unfold collectTagHandleLoop; rfl
+  | succ fuel' ih =>
+    unfold collectTagHandleLoop
+    split
+    · simp only []; exact advance_inputEnd s
+    · split
+      · rw [ih]; exact advance_inputEnd s
+      · simp only []
+    · simp only []
+
+-- `hend`: the suffix loop's fuel `inputEnd - offset` must cover the remaining input for the
+-- `[97]` lookahead (`scanTag` passes `sc.inputEnd`).
 lemma scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
     (hcorr : ScannerSurfCorr sc ⟨rest, col + 1⟩)
     (hpeek_not_bang : ¬(sc.peek? = some '!'))
-    (startPos : YamlPos) (inputEnd : Nat) :
+    (startPos : YamlPos) (inputEnd : Nat) (hend : sc.inputEnd ≤ inputEnd) :
     ∃ sp', SCNsTagProperty ⟨'!' :: rest, col⟩ sp' ∧
            ScannerSurfCorr (scanNamedTag sc startPos inputEnd) sp' := by
   unfold scanNamedTag; dsimp only []
@@ -687,9 +811,9 @@ lemma scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
         exact hpeek_not_bang h_peek
       have h_gplus := GStar_to_GPlus h_gstar_word h_ne
       -- Suffix production
-      obtain ⟨sp', h_gstar_tag, hcorr_sfx⟩ :=
-        collectTagSuffixLoop_prod _ sp_hdl hcorr_hdl "" _
-      exact ⟨sp', SCNsTagProperty.named rest col sp_mid sp_hdl sp' h_gplus h_glit h_gstar_tag,
+      obtain ⟨sp', h_gstar_tag, hcorr_sfx, h_gnot⟩ :=
+        collectTagSuffixLoop_prod _ sp_hdl hcorr_hdl "" (inputEnd - (collectTagHandleLoop sc "" (inputEnd - sc.offset)).snd.snd.offset) (by rw [collectTagHandleLoop_inputEnd]; omega)
+      exact ⟨sp', SCNsTagProperty.named rest col sp_mid sp_hdl sp' h_gplus h_glit h_gstar_tag h_gnot,
              corr_of_emitAt _ _ hcorr_sfx⟩
   · -- foundBang = false → primary/non-specific tag
     rename_i h_fb_false
@@ -699,10 +823,20 @@ lemma scanNamedTag_prod (sc : ScannerState) (rest : List Char) (col : Nat)
       · exact h
       · exact absurd h_fb h_fb_false
     subst h_eq
-    -- Lift GStar wordChar → GStar tagChar
+    -- Lift GStar wordChar → GStar tagChar, then the suffix loop extends it to
+    -- the full `ns-tag-char*` run (N1b: `!t.x` is one primary tag)
     have h_gstar_tag := GStar_gchar_lift (fun c => isWordCharProp_to_isTagCharProp) h_gstar_word
-    exact ⟨sp_mid, SCNsTagProperty.primary rest col sp_mid h_gstar_tag,
-           corr_of_emitAt _ _ hcorr_hdl⟩
+    obtain ⟨sp', h_sfx, hcorr_sfx, h_gnot⟩ :=
+      collectTagSuffixLoop_prod _ sp_mid hcorr_hdl
+        ("!", (collectTagHandleLoop sc "" (inputEnd - sc.offset)).fst).snd
+        (inputEnd - (collectTagHandleLoop sc "" (inputEnd - sc.offset)).snd.snd.offset) (by rw [collectTagHandleLoop_inputEnd]; omega)
+    have h_full := gstar_append_local h_gstar_tag h_sfx
+    by_cases h_ne : (⟨rest, col + 1⟩ : SurfPos) = sp'
+    · -- empty suffix: the bare `!` is the non-specific tag [100]
+      subst h_ne
+      exact ⟨_, SCNsTagProperty.nonSpecific rest col h_gnot, corr_of_emitAt _ _ hcorr_sfx⟩
+    · exact ⟨sp', SCNsTagProperty.primary rest col sp' (GStar_to_GPlus h_full h_ne) h_gnot,
+             corr_of_emitAt _ _ hcorr_sfx⟩
 
 -- `scanTag` on non-secondary branches produces `SCNsTagProperty`.
 -- Handles verbatim `!<uri>`, named `!handle!suffix`, and non-specific `!`.
@@ -784,7 +918,7 @@ lemma scanTag_nonSecondary_prod (sc : ScannerState) (sp : SurfPos)
       ⟨hcorr_bang.chars_from, hcorr_bang.col_eq,
        hcorr_bang.end_eq, hcorr_bang.input_prefix, hcorr_bang.indent_cols_nonneg⟩
     obtain ⟨sp', h_tag, hcorr'⟩ := scanNamedTag_prod sc.advance rest sc.col
-      hcorr_adv hpeek2 sc.currentPos sc.inputEnd
+      hcorr_adv hpeek2 sc.currentPos sc.inputEnd (Nat.le_of_eq (advance_inputEnd sc))
     exact ⟨sp', h_tag, corr_of_simpleKeyAllowed_update false hcorr'⟩
 
 -- `scanTag` preserves correspondence on all branches.
@@ -812,7 +946,7 @@ lemma unwindIndentsLoop_corr_exact (sc : ScannerState) (sp : SurfPos)
   | zero => simp [unwindIndentsLoop]; exact hcorr
   | succ fuel' ih =>
     unfold unwindIndentsLoop; split
-    · exact ih { (sc.emit .blockEnd) with indents := _ }
+    · exact ih { (sc.emit .blockEnd) with indents := _, pendingKeys := _ }
         ⟨(corr_of_emit .blockEnd hcorr).chars_from,
          (corr_of_emit .blockEnd hcorr).col_eq,
          (corr_of_emit .blockEnd hcorr).end_eq, (corr_of_emit .blockEnd hcorr).input_prefix,
@@ -946,7 +1080,9 @@ lemma scanDocumentEnd_prod (sc : ScannerState) (sp : SurfPos)
     have mk_corr : ScannerSurfCorr
         { ({ (unwindIndents sc (-1)) with simpleKey := { possible := false } }.emit .documentEnd).advance.advance.advance with
           simpleKeyAllowed := true, allowDirectives := true,
-          directivesPresent := false, definedAnchors := #[] }
+          directivesPresent := false, definedAnchors := #[],
+          -- Item 317: the marker ends the explicit-key register (`scanDocumentEnd`).
+          explicitKeyLine := none, explicitKeyCol := -1 }
         ⟨rest, 3⟩ := by
       exact ⟨hcorr_adv3.chars_from,
              by have h0 := hcorr_emit.col_eq
@@ -1053,43 +1189,105 @@ lemma GStar_SSWhite_to_GStar_SCommentChar {sp sp' : SurfPos}
     | tab rest col =>
       exact GStar.cons _ _ _ (not_isLineBreak_gives_SCommentChar '\t' rest col (by decide)) ih
 
+/-! ### `[82]` l-directive as the scanner cuts it (item 367)
+
+    `scanDirective` reads `%`, a maximal ns-char name (`collectDirectiveNameLoop`),
+    whites, and then one of three bodies — `YAML` (`digit+ . digit+`), `TAG`
+    (handle, whites, prefix) or a reserved name (rest of line unvalidated) — each
+    closed by `skipToEndOfLine`.  The loop lemmas below return the character
+    class each loop accepts and, where the body needs it, maximality
+    (`GNot (GChar _)` at the stop) off the fuel budget: every loop is called with
+    `fuel = inputEnd - offset`, so fuel never runs out before EOF. -/
+
+lemma isNsChar_iff_bool (c : Char) :
+    isNsChar c ↔
+      (!isWhiteSpaceBool c && !isLineBreakBool c && isPrintableBool c && c != '﻿') = true := by
+  simp only [isNsChar, ← isWhiteSpace_iff, ← isLineBreak_iff, ← isPrintable_iff]
+  cases h1 : isWhiteSpaceBool c <;> cases h2 : isLineBreakBool c <;>
+    cases h3 : isPrintableBool c <;> simp [bne_iff_ne]
+
+lemma isNsDecDigit_of_isDigit {c : Char} (h : c.isDigit = true) : isNsDecDigit c := by
+  simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq] at h
+  exact ⟨h.1, h.2⟩
+
+lemma not_isNsDecDigit_of_not_isDigit {c : Char} (h : ¬ c.isDigit = true) :
+    ¬ isNsDecDigit c := by
+  intro hd; simp only [Char.isDigit, Bool.and_eq_true, decide_eq_true_eq, not_and] at h
+  exact h hd.1 hd.2
+
+lemma isTagHandleChar_iff_bool (c : Char) :
+    (isWordCharBool c || c == '!') = true ↔ (isWordCharProp c ∨ c = '!') := by
+  simp [isWordChar_iff]
+
+lemma collectDirectiveNameLoop_inputEnd (sc : ScannerState) (name : String) (fuel : Nat) :
+    (collectDirectiveNameLoop sc name fuel).snd.inputEnd = sc.inputEnd := by
+  induction fuel generalizing sc name with
+  | zero => simp [collectDirectiveNameLoop]
+  | succ fuel' ih =>
+    unfold collectDirectiveNameLoop; split
+    · split
+      · exact (ih _ _).trans (advance_inputEnd sc)
+      · rfl
+    · rfl
+
+lemma collectVersionMajorLoop_inputEnd (sc : ScannerState) (major : String) (fuel : Nat) :
+    (collectVersionMajorLoop sc major fuel).snd.inputEnd = sc.inputEnd := by
+  induction fuel generalizing sc major with
+  | zero => simp [collectVersionMajorLoop]
+  | succ fuel' ih =>
+    unfold collectVersionMajorLoop; split
+    · exact advance_inputEnd sc
+    · split
+      · exact (ih _ _).trans (advance_inputEnd sc)
+      · rfl
+    · rfl
+
+/-- The directive name: a maximal run of ns-chars after the `%`, returned as the
+    characters the scanner pushed (so `name == "YAML"` can be read off it) with
+    the stop position's maximality. -/
 lemma collectDirectiveNameLoop_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat) :
-    ∃ sp', GStar SCommentChar sp sp' ∧
+    (hcorr : ScannerSurfCorr sc sp) (name : String) (fuel : Nat)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
+    ∃ (nm : List Char) (sp' : SurfPos),
+      sp.chars = nm ++ sp'.chars ∧ sp'.col = sp.col + nm.length ∧
+      (∀ c ∈ nm, isNsChar c) ∧
+      (collectDirectiveNameLoop sc name fuel).fst.toList = name.toList ++ nm ∧
+      GNot (GChar isNsChar) sp' ∧
       ScannerSurfCorr (collectDirectiveNameLoop sc name fuel).snd sp' := by
   induction fuel generalizing sc sp name with
-  | zero => simp [collectDirectiveNameLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | zero =>
+    simp only [collectDirectiveNameLoop]
+    exact ⟨[], sp, by simp, by simp, by simp, by simp,
+      gnot_gchar_of_peek_none hcorr (peek_none_of_fuel_zero hfuel), hcorr⟩
   | succ fuel' ih =>
     unfold collectDirectiveNameLoop; split
     · rename_i c hpeek; split
-      · -- name char: ¬ws ∧ ¬lb ∧ printable ∧ ¬BOM → advance
-        rename_i h_pred
+      · rename_i h_pred
+        have h_ns : isNsChar c := (isNsChar_iff_bool c).mpr h_pred
         have h_nlb : ¬isLineBreakBool c = true := by
           intro h; simp [h] at h_pred
-        have hpr : isPrintableBool c = true := by
-          cases h : isPrintableBool c with
-          | true => rfl
-          | false => simp [h] at h_pred
-        have hbom : (c == '﻿') = false := by
-          cases h : (c == '﻿') with
-          | false => rfl
-          | true => simp [bne, h] at h_pred
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
-        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (name.push c)
-        exact ⟨sp', GStar.cons _ _ _
-          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
-      · exact ⟨sp, GStar.nil _, hcorr⟩
-    · exact ⟨sp, GStar.nil _, hcorr⟩
-
-lemma isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
-    ¬isLineBreakBool c = true := by
-  intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
-  cases hlb with
-  | inl h1 => subst h1; simp [Char.isDigit] at h
-  | inr h1 => subst h1; simp [Char.isDigit] at h
+        obtain ⟨nm, sp', hchars, hcol, hall, hname, hnot, hcorr'⟩ :=
+          ih sc.advance ⟨rest, sc.col + 1⟩ hadv (name.push c)
+            (advance_fuel_budget sc fuel' hmore hfuel)
+        refine ⟨c :: nm, sp', ?_, ?_, ?_, ?_, hnot, hcorr'⟩
+        · simp only [List.cons_append]; exact congrArg (c :: ·) hchars
+        · dsimp only at hcol; simp only [List.length_cons]; omega
+        · intro d hd
+          rcases List.mem_cons.mp hd with rfl | hd
+          · exact h_ns
+          · exact hall d hd
+        · rw [hname]; simp
+      · rename_i h_pred
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        exact ⟨[], _, by simp, by simp, by simp, by simp,
+          gnot_gchar_head (fun h => h_pred ((isNsChar_iff_bool c).mp h)), hcorr⟩
+    · rename_i hpeek
+      exact ⟨[], sp, by simp, by simp, by simp, by simp,
+        gnot_gchar_of_peek_none hcorr hpeek, hcorr⟩
 
 -- Printable-ASCII bridges for the nb-char [27] conjuncts: every character
 -- class the directive/tag loops accept sits inside `[#x20-#x7E]`, hence is
@@ -1104,6 +1302,13 @@ lemma not_bom_of_ascii {c : Char} (h2 : c.val ≤ 0x7E) : (c == '﻿') = false :
   cases hb : (c == '﻿') with
   | false => rfl
   | true => exact absurd (eq_of_beq hb ▸ h2) (by decide)
+
+lemma isDigit_not_isLineBreak (c : Char) (h : c.isDigit = true) :
+    ¬isLineBreakBool c = true := by
+  intro hlb; simp [isLineBreakBool, isLineFeedBool, isCarriageReturnBool] at hlb
+  cases hlb with
+  | inl h1 => subst h1; simp [Char.isDigit] at h
+  | inr h1 => subst h1; simp [Char.isDigit] at h
 
 lemma isDigit_ascii (c : Char) (h : c.isDigit = true) :
     0x20 ≤ c.val ∧ c.val ≤ 0x7E := by
@@ -1135,12 +1340,49 @@ lemma isUriChar_ascii (c : Char) (h : isUriCharBool c = true) :
       | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
       exact ⟨by decide, by decide⟩
 
+/-- The run a digit loop pushed, as a grammar fact: empty and stationary, or a
+    `[35] ns-dec-digit+` to the stop. -/
+def DigitRun (ds : List Char) (sp sp₁ : SurfPos) : Prop :=
+  (ds = [] ∧ sp₁ = sp) ∨ (ds ≠ [] ∧ GPlus (GChar isNsDecDigit) sp sp₁)
+
+lemma DigitRun.cons {c : Char} {rest : List Char} {col : Nat} {ds : List Char} {sp₁ : SurfPos}
+    (hd : isNsDecDigit c) (h : DigitRun ds ⟨rest, col + 1⟩ sp₁) :
+    DigitRun (c :: ds) ⟨c :: rest, col⟩ sp₁ := by
+  refine Or.inr ⟨List.cons_ne_nil _ _, GPlus.mk _ ⟨rest, col + 1⟩ _ (GChar.mk c rest col hd) ?_⟩
+  rcases h with ⟨_, rfl⟩ | ⟨_, hp⟩
+  · exact GStar.nil _
+  · exact GPlus_to_GStar hp
+
+lemma DigitRun.plus_of_ne {ds : List Char} {sp sp₁ : SurfPos} (h : DigitRun ds sp sp₁)
+    (hne : ds ≠ []) : GPlus (GChar isNsDecDigit) sp sp₁ := by
+  rcases h with ⟨h, _⟩ | ⟨_, hp⟩
+  · exact absurd h hne
+  · exact hp
+
+lemma DigitRun.nil_of_gnot {ds : List Char} {sp sp₁ : SurfPos} (h : DigitRun ds sp sp₁)
+    (hnot : GNot (GChar isNsDecDigit) sp) : ds = [] := by
+  rcases h with ⟨h, _⟩ | ⟨_, hp⟩
+  · exact h
+  · cases hp with
+    | mk _ _ hfirst _ => exact absurd hfirst (hnot _)
+
+/-- `[86]`'s major part: the digits pushed and, at the stop, either the `.`
+    consumed or a non-digit left in place (maximality). -/
 lemma collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (major : String) (fuel : Nat) :
-    ∃ sp', GStar SCommentChar sp sp' ∧
-      ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp' := by
+    (hcorr : ScannerSurfCorr sc sp) (major : String) (fuel : Nat)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
+    ∃ (ds : List Char) (sp₁ : SurfPos),
+      (collectVersionMajorLoop sc major fuel).fst.toList = major.toList ++ ds ∧
+      DigitRun ds sp sp₁ ∧
+      ((∃ sp₂, GLit '.' sp₁ sp₂ ∧
+          ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp₂) ∨
+        (GNot (GChar isNsDecDigit) sp₁ ∧
+          ScannerSurfCorr (collectVersionMajorLoop sc major fuel).snd sp₁)) := by
   induction fuel generalizing sc sp major with
-  | zero => simp [collectVersionMajorLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | zero =>
+    simp only [collectVersionMajorLoop]
+    exact ⟨[], sp, by simp, Or.inl ⟨rfl, rfl⟩,
+      Or.inr ⟨gnot_gchar_of_peek_none hcorr (peek_none_of_fuel_zero hfuel), hcorr⟩⟩
   | succ fuel' ih =>
     unfold collectVersionMajorLoop; split
     · -- peek? = some '.'
@@ -1148,45 +1390,59 @@ lemma collectVersionMajorLoop_prod (sc : ScannerState) (sp : SurfPos)
       obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
       have hmore := corr_nonempty_has_more hcorr
       have hadv := advance_non_newline_corr sc '.' rest hcorr hmore (by decide) (by decide)
-      exact ⟨⟨rest, sc.col + 1⟩, GStar.cons _ _ _
-        (not_isLineBreak_gives_SCommentChar '.' rest sc.col (by decide)) (GStar.nil _), hadv⟩
+      exact ⟨[], _, by simp, Or.inl ⟨rfl, rfl⟩, Or.inl ⟨⟨rest, sc.col + 1⟩, GLit.mk rest sc.col, hadv⟩⟩
     · -- peek? = some c (c ≠ '.')
       rename_i c _ hpeek; split
-      · -- isDigit
-        rename_i h_dig
+      · rename_i h_dig
         have h_nlb := isDigit_not_isLineBreak c h_dig
-        have hascii := isDigit_ascii c h_dig
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
-        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv _
-        exact ⟨sp', GStar.cons _ _ _
-          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
-      · exact ⟨sp, GStar.nil _, hcorr⟩
-    · exact ⟨sp, GStar.nil _, hcorr⟩
+        obtain ⟨ds, sp₁, hname, hrun, htail⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv _
+          (advance_fuel_budget sc fuel' hmore hfuel)
+        exact ⟨c :: ds, sp₁, by rw [hname]; simp, hrun.cons (isNsDecDigit_of_isDigit h_dig), htail⟩
+      · rename_i h_dig
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        exact ⟨[], _, by simp, Or.inl ⟨rfl, rfl⟩,
+          Or.inr ⟨gnot_gchar_head (not_isNsDecDigit_of_not_isDigit h_dig), hcorr⟩⟩
+    · rename_i hpeek
+      exact ⟨[], sp, by simp, Or.inl ⟨rfl, rfl⟩,
+        Or.inr ⟨gnot_gchar_of_peek_none hcorr hpeek, hcorr⟩⟩
 
+/-- `[86]`'s minor part: the digits pushed, maximal at the stop. -/
 lemma collectVersionMinorLoop_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (minor : String) (fuel : Nat) :
-    ∃ sp', GStar SCommentChar sp sp' ∧
-      ScannerSurfCorr (collectVersionMinorLoop sc minor fuel).snd sp' := by
+    (hcorr : ScannerSurfCorr sc sp) (minor : String) (fuel : Nat)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
+    ∃ (ds : List Char) (sp₁ : SurfPos),
+      (collectVersionMinorLoop sc minor fuel).fst.toList = minor.toList ++ ds ∧
+      DigitRun ds sp sp₁ ∧
+      GNot (GChar isNsDecDigit) sp₁ ∧
+      ScannerSurfCorr (collectVersionMinorLoop sc minor fuel).snd sp₁ := by
   induction fuel generalizing sc sp minor with
-  | zero => simp [collectVersionMinorLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | zero =>
+    simp only [collectVersionMinorLoop]
+    exact ⟨[], sp, by simp, Or.inl ⟨rfl, rfl⟩,
+      gnot_gchar_of_peek_none hcorr (peek_none_of_fuel_zero hfuel), hcorr⟩
   | succ fuel' ih =>
     unfold collectVersionMinorLoop; split
     · rename_i c hpeek; split
       · rename_i h_dig
         have h_nlb := isDigit_not_isLineBreak c h_dig
-        have hascii := isDigit_ascii c h_dig
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
-        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (minor.push c)
-        exact ⟨sp', GStar.cons _ _ _
-          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
-      · exact ⟨sp, GStar.nil _, hcorr⟩
-    · exact ⟨sp, GStar.nil _, hcorr⟩
+        obtain ⟨ds, sp₁, hname, hrun, hnot, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv
+          (minor.push c) (advance_fuel_budget sc fuel' hmore hfuel)
+        exact ⟨c :: ds, sp₁, by rw [hname]; simp,
+          hrun.cons (isNsDecDigit_of_isDigit h_dig), hnot, hcorr'⟩
+      · rename_i h_dig
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        exact ⟨[], _, by simp, Or.inl ⟨rfl, rfl⟩,
+          gnot_gchar_head (not_isNsDecDigit_of_not_isDigit h_dig), hcorr⟩
+    · rename_i hpeek
+      exact ⟨[], sp, by simp, Or.inl ⟨rfl, rfl⟩, gnot_gchar_of_peek_none hcorr hpeek, hcorr⟩
 
 lemma isWordCharOrBang_not_isLineBreak (c : Char)
     (h : (isWordCharBool c || c == '!') = true) :
@@ -1195,27 +1451,36 @@ lemma isWordCharOrBang_not_isLineBreak (c : Char)
   simp [isWordCharBool, isWordCharProp, isAsciiLetterProp] at h
   rcases hlb with rfl | rfl <;> simp_all
 
+/-- `[89]` c-tag-handle characters: `[38] ns-word-char` or `!`, a maximal run (the stop off
+    the fuel budget, as for the name). -/
 lemma collectTagHandleDirectiveLoop_prod (sc : ScannerState) (sp : SurfPos)
-    (hcorr : ScannerSurfCorr sc sp) (handle : String) (fuel : Nat) :
-    ∃ sp', GStar SCommentChar sp sp' ∧
+    (hcorr : ScannerSurfCorr sc sp) (handle : String) (fuel : Nat)
+    (hfuel : fuel ≥ sc.inputEnd - sc.offset) :
+    ∃ sp', GStar (GChar (fun c => isWordCharProp c ∨ c = '!')) sp sp' ∧
+      GNot (GChar (fun c => isWordCharProp c ∨ c = '!')) sp' ∧
       ScannerSurfCorr (collectTagHandleDirectiveLoop sc handle fuel).snd sp' := by
   induction fuel generalizing sc sp handle with
-  | zero => simp [collectTagHandleDirectiveLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
+  | zero =>
+    simp only [collectTagHandleDirectiveLoop]
+    exact ⟨sp, GStar.nil _, gnot_gchar_of_peek_none hcorr (peek_none_of_fuel_zero hfuel), hcorr⟩
   | succ fuel' ih =>
     unfold collectTagHandleDirectiveLoop; split
     · rename_i c hpeek; split
       · rename_i h_pred
         have h_nlb := isWordCharOrBang_not_isLineBreak c h_pred
-        have hascii := isWordCharOrBang_ascii c h_pred
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
-        obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (handle.push c)
+        obtain ⟨sp', hstar, hnot, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (handle.push c)
+          (advance_fuel_budget sc fuel' hmore hfuel)
         exact ⟨sp', GStar.cons _ _ _
-          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
-      · exact ⟨sp, GStar.nil _, hcorr⟩
-    · exact ⟨sp, GStar.nil _, hcorr⟩
+          (GChar.mk c rest sc.col ((isTagHandleChar_iff_bool c).mp h_pred)) hstar, hnot, hcorr'⟩
+      · rename_i h_pred
+        obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
+        exact ⟨_, GStar.nil _, gnot_gchar_head (fun h => h_pred ((isTagHandleChar_iff_bool c).mpr h)), hcorr⟩
+    · rename_i hpeek
+      exact ⟨sp, GStar.nil _, gnot_gchar_of_peek_none hcorr hpeek, hcorr⟩
 
 lemma isUriChar_not_isLineBreak (c : Char)
     (h : isUriCharBool c = true) :
@@ -1224,9 +1489,10 @@ lemma isUriChar_not_isLineBreak (c : Char)
   simp [isUriCharBool, isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
   rcases hlb with rfl | rfl <;> simp_all
 
+/-- `[93]` ns-tag-prefix characters: `[39] ns-uri-char`. -/
 lemma collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp) (pfx : String) (fuel : Nat) :
-    ∃ sp', GStar SCommentChar sp sp' ∧
+    ∃ sp', GStar (GChar isUriCharProp) sp sp' ∧
       ScannerSurfCorr (collectTagPrefixLoop sc pfx fuel).snd sp' := by
   induction fuel generalizing sc sp pfx with
   | zero => simp [collectTagPrefixLoop]; exact ⟨sp, GStar.nil _, hcorr⟩
@@ -1235,154 +1501,319 @@ lemma collectTagPrefixLoop_prod (sc : ScannerState) (sp : SurfPos)
     · rename_i c hpeek; split
       · rename_i h_pred
         have h_nlb := isUriChar_not_isLineBreak c h_pred
-        have hascii := isUriChar_ascii c h_pred
         obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
         have hmore := corr_nonempty_has_more hcorr
         have hadv := advance_non_newline_corr sc c rest hcorr hmore
           (not_isLineBreak_not_newline c h_nlb) (not_isLineBreak_not_cr c h_nlb)
         obtain ⟨sp', hstar, hcorr'⟩ := ih sc.advance ⟨rest, sc.col + 1⟩ hadv (pfx.push c)
         exact ⟨sp', GStar.cons _ _ _
-          (not_isLineBreak_gives_SCommentChar c rest sc.col h_nlb) hstar, hcorr'⟩
+          (GChar.mk c rest sc.col ((isUriChar_iff c).mp h_pred)) hstar, hcorr'⟩
       · exact ⟨sp, GStar.nil _, hcorr⟩
     · exact ⟨sp, GStar.nil _, hcorr⟩
+
+/-- Where a `%YAML`/`%TAG` line may stop after its last parameter, as the
+    scanner's `directiveTrailingContent` check reads it: EOF, a break, or a `#`
+    that at least one white separated from the parameter. -/
+def DirectiveStop (a b : SurfPos) : Prop :=
+  b.chars = [] ∨ (∃ ch r, b.chars = ch :: r ∧ isLineBreakBool ch = true) ∨
+    (∃ r, b.chars = '#' :: r ∧ b.col ≠ a.col)
+
+/-- What the scanner leaves between a directive's last parameter and the line
+    stop: the whites it skipped, a `DirectiveStop`, and the comment text
+    `skipToEndOfLine` swallowed up to the break. -/
+def DirectiveTail (a c : SurfPos) : Prop :=
+  ∃ b, GStar SSWhite a b ∧ DirectiveStop a b ∧ GStar SCommentChar b c
+
+/-- A run whose characters all satisfy `P`, as the `GStar (GChar P)` from its start to its end. -/
+lemma gstar_gchar_of_all {P : Char → Prop} (nm tail : List Char) (col : Nat)
+    (h : ∀ c ∈ nm, P c) : GStar (GChar P) ⟨nm ++ tail, col⟩ ⟨tail, col + nm.length⟩ := by
+  induction nm generalizing col with
+  | nil => simp only [List.nil_append, List.length_nil, Nat.add_zero]; exact GStar.nil _
+  | cons c nm ih =>
+    have hc := h c (List.mem_cons.mpr (Or.inl rfl))
+    have hrest := ih (col + 1) (fun d hd => h d (List.mem_cons.mpr (Or.inr hd)))
+    simp only [List.cons_append, List.length_cons]
+    rw [show col + (nm.length + 1) = col + 1 + nm.length by omega]
+    exact GStar.cons _ ⟨nm ++ tail, col + 1⟩ _ (GChar.mk c (nm ++ tail) col hc) hrest
+
+/-- `[82]` as `scanDirective` cuts a line: the three bodies of `SLDirective`
+    with the tail still in scanner form.  `ScannedDirective.toSLDirective`
+    (StreamAccum) attaches the `s-l-comments` the next step supplies. -/
+inductive ScannedDirective : SurfPos → SurfPos → Prop where
+  | yaml (rest : List Char) (col : Nat) (s₁ s₂ s₃ s₄ s' : SurfPos) :
+      GNot (GChar isNsChar) ⟨rest, col + 5⟩ →
+      GStar SSWhite ⟨rest, col + 5⟩ s₁ →
+      GPlus (GChar isNsDecDigit) s₁ s₂ →
+      GLit '.' s₂ s₃ →
+      GPlus (GChar isNsDecDigit) s₃ s₄ →
+      DirectiveTail s₄ s' →
+      ScannedDirective ⟨'%' :: 'Y' :: 'A' :: 'M' :: 'L' :: rest, col⟩ s'
+  | tag (rest : List Char) (col : Nat) (s₁ s₂ s₃ s₄ s' : SurfPos) :
+      GNot (GChar isNsChar) ⟨rest, col + 4⟩ →
+      GStar SSWhite ⟨rest, col + 4⟩ s₁ →
+      GStar (GChar (fun c => isWordCharProp c ∨ c = '!')) s₁ s₂ →
+      GNot (GChar (fun c => isWordCharProp c ∨ c = '!')) s₂ →
+      GStar SSWhite s₂ s₃ →
+      GStar (GChar isUriCharProp) s₃ s₄ →
+      DirectiveTail s₄ s' →
+      ScannedDirective ⟨'%' :: 'T' :: 'A' :: 'G' :: rest, col⟩ s'
+  | reserved (rest : List Char) (col : Nat) (s₀ s' : SurfPos) :
+      GStar (GChar isNsChar) ⟨rest, col + 1⟩ s₀ →
+      GNot (GChar isNsChar) s₀ →
+      rest ≠ 'Y' :: 'A' :: 'M' :: 'L' :: s₀.chars →
+      rest ≠ 'T' :: 'A' :: 'G' :: s₀.chars →
+      GStar SCommentChar s₀ s' →
+      ScannedDirective ⟨'%' :: rest, col⟩ s'
+
+/-- The trailing-content check of `scanYamlDirective`/`scanTagDirective`, read
+    on the surface: after the whites, the cursor is at a `DirectiveStop`. -/
+lemma directiveStop_of_validated {s_before s_v : ScannerState} {sp_before sp_v : SurfPos}
+    (hcorr_before : ScannerSurfCorr s_before sp_before)
+    (hcorr_v : ScannerSurfCorr s_v sp_v)
+    (h : s_v.peek? = none ∨ (∃ c, s_v.peek? = some c ∧ isLineBreakBool c = true) ∨
+      (s_v.peek? = some '#' ∧ ¬ (s_v.col == s_before.col) = true)) :
+    DirectiveStop sp_before sp_v := by
+  rcases h with h | ⟨c, hpeek, hlb⟩ | ⟨hpeek, hcol⟩
+  · exact Or.inl (peek_none_chars_nil hcorr_v h)
+  · obtain ⟨rest, rfl⟩ := peek_some_sp hcorr_v hpeek
+    exact Or.inr (Or.inl ⟨c, rest, rfl, hlb⟩)
+  · obtain ⟨rest, rfl⟩ := peek_some_sp hcorr_v hpeek
+    refine Or.inr (Or.inr ⟨rest, rfl, ?_⟩)
+    show s_v.col ≠ sp_before.col
+    rw [hcorr_before.col_eq]
+    exact fun heq => hcol (beq_iff_eq.mpr heq)
 
 lemma scanYamlDirective_prod (sc : ScannerState)
     (s_after_ws : ScannerState) (sp_ws : SurfPos)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
+    (hend : s_after_ws.inputEnd = sc.inputEnd)
     (startPos : YamlPos) (s' : ScannerState)
     (hok : scanYamlDirective sc s_after_ws startPos = .ok s') :
-    ∃ sp', GStar SCommentChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ s₂ s₃ s₄ sp_v, GPlus (GChar isNsDecDigit) sp_ws s₂ ∧ GLit '.' s₂ s₃ ∧
+      GPlus (GChar isNsDecDigit) s₃ s₄ ∧
+      GStar SSWhite s₄ sp_v ∧ DirectiveStop s₄ sp_v ∧
+      ScannerSurfCorr s' sp_v := by
   unfold scanYamlDirective at hok
   simp only [bind, Except.bind] at hok
   split at hok
   · exact absurd hok (by simp)
-  · obtain ⟨sp_major, h_nb_maj, hcorr_major⟩ :=
-      collectVersionMajorLoop_prod s_after_ws sp_ws hcorr_ws "" _
-    obtain ⟨sp_minor, h_nb_min, hcorr_minor⟩ :=
-      collectVersionMinorLoop_prod _ sp_major hcorr_major "" _
-    obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
-      skipWhitespace_corr _ sp_minor hcorr_minor
-    have h_nb_ws := GStar_SSWhite_to_GStar_SCommentChar h_ws
-    -- Compose all GStar SCommentChar evidence
-    have h_total := GStar_trans (GStar_trans h_nb_maj h_nb_min) (GStar_trans h_nb_ws (GStar.nil _))
-    -- Validation doesn't change position
-    split at hok
-    · split at hok
-      · exact absurd hok (by simp)
-      · split at hok
+  · obtain ⟨ds, sp₁, h_maj, h_run_maj, h_tail_maj⟩ :=
+      collectVersionMajorLoop_prod s_after_ws sp_ws hcorr_ws "" (sc.inputEnd - s_after_ws.offset)
+        (Nat.le_of_eq (by rw [hend]))
+    have hend_dot : (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd.inputEnd
+        = sc.inputEnd := by rw [collectVersionMajorLoop_inputEnd, hend]
+    -- The stop shape and the two non-empty checks are the same in every `.ok` arm.
+    suffices finish : ∀ (s_v : ScannerState),
+        (s_v = skipWhitespace (collectVersionMinorLoop
+          (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd ""
+          (sc.inputEnd - (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd.offset)).snd) →
+        (s_v.peek? = none ∨ (∃ c, s_v.peek? = some c ∧ isLineBreakBool c = true) ∨
+          (s_v.peek? = some '#' ∧ ¬ (s_v.col == (collectVersionMinorLoop
+            (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd ""
+            (sc.inputEnd - (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd.offset)).snd.col) = true)) →
+        ¬ ((collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).fst.isEmpty ||
+           (collectVersionMinorLoop
+            (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd ""
+            (sc.inputEnd - (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).snd.offset)).fst.isEmpty) = true →
+        (∀ sp_v, ScannerSurfCorr s_v sp_v → ScannerSurfCorr s' sp_v) →
+        ∃ s₂ s₃ s₄ sp_v, GPlus (GChar isNsDecDigit) sp_ws s₂ ∧ GLit '.' s₂ s₃ ∧
+          GPlus (GChar isNsDecDigit) s₃ s₄ ∧
+          GStar SSWhite s₄ sp_v ∧ DirectiveStop s₄ sp_v ∧ ScannerSurfCorr s' sp_v by
+      split at hok
+      · -- `#`
+        rename_i hpeek
+        split at hok
         · exact absurd hok (by simp)
-        · have h := Except.ok.inj hok; subst h
-          exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
-    · split at hok
-      · exact absurd hok (by simp)
-      · split at hok
+        · rename_i hcol
+          split at hok
+          · exact absurd hok (by simp)
+          · rename_i hne
+            have h := Except.ok.inj hok; subst h
+            exact finish _ rfl (Or.inr (Or.inr ⟨hpeek, hcol⟩)) hne
+              (fun sp_v hc => ⟨hc.chars_from, hc.col_eq, hc.end_eq, hc.input_prefix, hc.indent_cols_nonneg⟩)
+      · -- some c
+        rename_i c _ hpeek
+        split at hok
         · exact absurd hok (by simp)
-        · have h := Except.ok.inj hok; subst h
-          exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
-    · split at hok
-      · exact absurd hok (by simp)
-      · have h := Except.ok.inj hok; subst h
-        exact ⟨sp_ws2, h_total, ⟨hcorr_ws2.chars_from, hcorr_ws2.col_eq, hcorr_ws2.end_eq, hcorr_ws2.input_prefix, hcorr_ws2.indent_cols_nonneg⟩⟩
+        · rename_i hlb
+          split at hok
+          · exact absurd hok (by simp)
+          · rename_i hne
+            have h := Except.ok.inj hok; subst h
+            exact finish _ rfl (Or.inr (Or.inl ⟨c, hpeek, by simpa using hlb⟩)) hne
+              (fun sp_v hc => ⟨hc.chars_from, hc.col_eq, hc.end_eq, hc.input_prefix, hc.indent_cols_nonneg⟩)
+      · -- none
+        rename_i hpeek
+        split at hok
+        · exact absurd hok (by simp)
+        · rename_i hne
+          have h := Except.ok.inj hok; subst h
+          exact finish _ rfl (Or.inl hpeek) hne
+            (fun sp_v hc => ⟨hc.chars_from, hc.col_eq, hc.end_eq, hc.input_prefix, hc.indent_cols_nonneg⟩)
+    intro s_v hs_v hstop hne hcorr_lift
+    subst hs_v
+    simp only [Bool.or_eq_true, not_or, Bool.not_eq_true] at hne
+    have h_maj_ne : ds ≠ [] := by
+      intro hds; rw [hds, List.append_nil] at h_maj
+      have h1 : (collectVersionMajorLoop s_after_ws "" (sc.inputEnd - s_after_ws.offset)).fst.toList ≠ [] := by
+        simpa using hne.1
+      exact h1 (by rw [h_maj]; simp)
+    have h_plus_maj := h_run_maj.plus_of_ne h_maj_ne
+    -- The minor loop runs from wherever the major loop stopped.
+    rcases h_tail_maj with ⟨sp₂, hdot, hcorr_dot⟩ | ⟨hnot₁, hcorr₁⟩
+    · obtain ⟨ds', sp₃, h_min, h_run_min, _, hcorr_min⟩ :=
+        collectVersionMinorLoop_prod _ sp₂ hcorr_dot "" _ (Nat.le_of_eq (by rw [hend_dot]))
+      have h_min_ne : ds' ≠ [] := by
+        intro hds; rw [hds, List.append_nil] at h_min
+        have hX : _ = ("" : String) := String.ext h_min
+        rw [hX] at hne; exact absurd hne.2 (by decide)
+      obtain ⟨sp_v, h_ws, hcorr_v⟩ := skipWhitespace_corr _ sp₃ hcorr_min
+      exact ⟨sp₁, sp₂, sp₃, sp_v, h_plus_maj, hdot, h_run_min.plus_of_ne h_min_ne, h_ws,
+        directiveStop_of_validated hcorr_min hcorr_v hstop, hcorr_lift sp_v hcorr_v⟩
+    · -- No `.`: the minor run is empty, refused by the `isEmpty` check.
+      obtain ⟨ds', sp₃, h_min, h_run_min, _, _⟩ :=
+        collectVersionMinorLoop_prod _ sp₁ hcorr₁ "" _ (Nat.le_of_eq (by rw [hend_dot]))
+      have hds' : ds' = [] := h_run_min.nil_of_gnot hnot₁
+      rw [hds', List.append_nil] at h_min
+      have hX : _ = ("" : String) := String.ext h_min
+      rw [hX] at hne; exact absurd hne.2 (by decide)
 
 lemma scanTagDirective_prod
     (s_after_ws : ScannerState) (sp_ws : SurfPos)
     (hcorr_ws : ScannerSurfCorr s_after_ws sp_ws)
-    (sc : ScannerState) (startPos : YamlPos) (s' : ScannerState)
+    (sc : ScannerState) (hend : s_after_ws.inputEnd = sc.inputEnd)
+    (startPos : YamlPos) (s' : ScannerState)
     (hok : scanTagDirective sc s_after_ws startPos = .ok s') :
-    ∃ sp', GStar SCommentChar sp_ws sp' ∧ ScannerSurfCorr s' sp' := by
+    ∃ s₂ s₃ s₄ sp_v, GStar (GChar (fun c => isWordCharProp c ∨ c = '!')) sp_ws s₂ ∧
+      GNot (GChar (fun c => isWordCharProp c ∨ c = '!')) s₂ ∧
+      GStar SSWhite s₂ s₃ ∧ GStar (GChar isUriCharProp) s₃ s₄ ∧
+      GStar SSWhite s₄ sp_v ∧ DirectiveStop s₄ sp_v ∧
+      ScannerSurfCorr s' sp_v := by
   unfold scanTagDirective at hok
   simp only [bind, Except.bind] at hok
-  obtain ⟨sp_hdl, h_nb_hdl, hcorr_hdl⟩ :=
-    collectTagHandleDirectiveLoop_prod s_after_ws sp_ws hcorr_ws "" _
-  obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ :=
-    skipWhitespace_corr _ sp_hdl hcorr_hdl
-  have h_nb_ws := GStar_SSWhite_to_GStar_SCommentChar h_ws
-  obtain ⟨sp_pfx, h_nb_pfx, hcorr_pfx⟩ :=
-    collectTagPrefixLoop_prod _ sp_ws2 hcorr_ws2 "" _
-  -- Trailing content validation (added in 4y.1)
-  obtain ⟨sp_val, h_ws_val, hcorr_val⟩ :=
-    skipWhitespace_corr _ sp_pfx hcorr_pfx
-  have h_nb_val := GStar_SSWhite_to_GStar_SCommentChar h_ws_val
-  have h_total := GStar_trans h_nb_hdl (GStar_trans h_nb_ws (GStar_trans h_nb_pfx h_nb_val))
-  -- Validation doesn't change position
+  obtain ⟨sp_hdl, h_hdl, h_hnot, hcorr_hdl⟩ :=
+    collectTagHandleDirectiveLoop_prod s_after_ws sp_ws hcorr_ws "" (sc.inputEnd - s_after_ws.offset)
+      (Nat.le_of_eq (by rw [hend]))
+  obtain ⟨sp_ws2, h_ws, hcorr_ws2⟩ := skipWhitespace_corr _ sp_hdl hcorr_hdl
+  obtain ⟨sp_pfx, h_pfx, hcorr_pfx⟩ := collectTagPrefixLoop_prod _ sp_ws2 hcorr_ws2 "" _
+  obtain ⟨sp_val, h_ws_val, hcorr_val⟩ := skipWhitespace_corr _ sp_pfx hcorr_pfx
+  have lift : ∀ (s_v : ScannerState) (sp_v : SurfPos), ScannerSurfCorr s_v sp_v →
+      ∀ (startPos : YamlPos) (h t : String),
+      ScannerSurfCorr { s_v.emitAt startPos (.tagDirective h t) with directivesPresent := true } sp_v :=
+    fun _ _ hc _ _ _ => ⟨hc.chars_from, hc.col_eq, hc.end_eq, hc.input_prefix, hc.indent_cols_nonneg⟩
   split at hok
-  · split at hok
+  · contradiction  -- [89]: a malformed `%TAG` handle is refused
+  split at hok
+  · rename_i hpeek
+    split at hok
     · exact absurd hok (by simp)
-    · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
-  · split at hok
+    · rename_i hcol
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_hdl, sp_ws2, sp_pfx, sp_val, h_hdl, h_hnot, h_ws, h_pfx, h_ws_val,
+        directiveStop_of_validated hcorr_pfx hcorr_val (Or.inr (Or.inr ⟨hpeek, hcol⟩)),
+        lift _ _ hcorr_val _ _ _⟩
+  · rename_i c _ hpeek
+    split at hok
     · exact absurd hok (by simp)
-    · have h := Except.ok.inj hok; subst h
-      exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
-  · have h := Except.ok.inj hok; subst h
-    exact ⟨sp_val, h_total, ⟨hcorr_val.chars_from, hcorr_val.col_eq, hcorr_val.end_eq, hcorr_val.input_prefix, hcorr_val.indent_cols_nonneg⟩⟩
+    · rename_i hlb
+      have h := Except.ok.inj hok; subst h
+      exact ⟨sp_hdl, sp_ws2, sp_pfx, sp_val, h_hdl, h_hnot, h_ws, h_pfx, h_ws_val,
+        directiveStop_of_validated hcorr_pfx hcorr_val (Or.inr (Or.inl ⟨c, hpeek, by simpa using hlb⟩)),
+        lift _ _ hcorr_val _ _ _⟩
+  · rename_i hpeek
+    have h := Except.ok.inj hok; subst h
+    exact ⟨sp_hdl, sp_ws2, sp_pfx, sp_val, h_hdl, h_hnot, h_ws, h_pfx, h_ws_val,
+      directiveStop_of_validated hcorr_pfx hcorr_val (Or.inl hpeek),
+      lift _ _ hcorr_val _ _ _⟩
 
--- `scanDirective` produces `GStar SCommentChar` evidence: all characters after `%`
--- up to the line break are non-break characters.  After 4y.1, all directive
--- branches end with `skipToEndOfLine`, so the scanner is always at break/EOF.
--- Requires `hpeek` (the caller dispatches on `sc.peek? = some '%'`).
+/-- `scanDirective` produces `[82]` as the scanner cuts it (`ScannedDirective`),
+    ending at a break or EOF (every branch closes with `skipToEndOfLine`).
+    Requires `hpeek` (the caller dispatches on `sc.peek? = some '%'`). -/
 lemma scanDirective_prod (sc : ScannerState) (sp : SurfPos)
     (hcorr : ScannerSurfCorr sc sp)
     (hpeek : sc.peek? = some '%')
     (s' : ScannerState) (hok : scanDirective sc = .ok s') :
-    ∃ rest sp',
-      sp.chars = '%' :: rest ∧
-      GStar SCommentChar ⟨rest, sp.col + 1⟩ sp' ∧
-      ScannerSurfCorr s' sp' ∧
+    ∃ sp', ScannedDirective sp sp' ∧ ScannerSurfCorr s' sp' ∧
       (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) := by
   obtain ⟨rest, rfl⟩ := peek_some_sp hcorr hpeek
-  suffices h : ∃ sp', GStar SCommentChar ⟨rest, sc.col + 1⟩ sp' ∧ ScannerSurfCorr s' sp' ∧
-      (sp'.chars = [] ∨ ∃ ch rest', sp'.chars = ch :: rest' ∧ isLineBreakBool ch = true) by
-    obtain ⟨sp', hg, hc, hle⟩ := h; exact ⟨rest, sp', rfl, hg, hc, hle⟩
   unfold scanDirective at hok
   split at hok
   · exact absurd hok (by simp)
   · dsimp only [] at hok
-    -- Advance past '%'
     have hmore := corr_nonempty_has_more hcorr
     have hcorr_pct := advance_non_newline_corr sc '%' rest
       ⟨hcorr.chars_from, rfl, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
       hmore (by decide) (by decide)
-    -- Thread through name loop
-    obtain ⟨sp_name, h_nb_name, hcorr_name⟩ :=
-      collectDirectiveNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_pct "" _
-    -- Thread through whitespace
-    obtain ⟨sp_ws, h_ws, hcorr_ws⟩ :=
-      skipWhitespace_corr _ sp_name hcorr_name
-    have h_nb_ws := GStar_SSWhite_to_GStar_SCommentChar h_ws
-    -- Compose name + whitespace GStar evidence
-    have h_pre := GStar_trans h_nb_name h_nb_ws
-    -- Branch on directive type
+    obtain ⟨nm, sp_name, hchars, hcol, hall, hname, hnot, hcorr_name⟩ :=
+      collectDirectiveNameLoop_prod sc.advance ⟨rest, sc.col + 1⟩ hcorr_pct ""
+        (sc.inputEnd - sc.advance.offset) (Nat.le_of_eq (by rw [advance_inputEnd]))
+    simp only [String.toList_empty, List.nil_append] at hname
+    obtain ⟨sp_ws, h_ws, hcorr_ws⟩ := skipWhitespace_corr _ sp_name hcorr_name
+    have hend_ws : (skipWhitespace (collectDirectiveNameLoop sc.advance "" (sc.inputEnd - sc.advance.offset)).snd).inputEnd
+        = sc.inputEnd := by
+      rw [skipWhitespace_inputEnd', collectDirectiveNameLoop_inputEnd, advance_inputEnd]
+    obtain ⟨tail, tcol⟩ := sp_name
+    simp only at hchars hcol
+    subst hchars
     split at hok
-    · -- YAML directive (now wrapped with skipToEndOfLine)
+    · -- `%YAML`
+      rename_i h_y
+      have hnm : nm = ['Y', 'A', 'M', 'L'] := by
+        have := congrArg String.toList (eq_of_beq h_y); rw [hname] at this; simpa using this
+      subst hnm
+      have hcol5 : tcol = sc.col + 5 := by simp at hcol; omega
+      subst hcol5
       split at hok
       · rename_i s_yaml h_yaml_ok
         have h_eol := Except.ok.inj hok; subst h_eol
-        obtain ⟨sp_yaml, h_nb_yaml, hcorr_yaml⟩ :=
-          scanYamlDirective_prod sc _ sp_ws hcorr_ws _ s_yaml h_yaml_ok
-        obtain ⟨sp', h_nb_eol, hcorr'⟩ :=
-          skipToEndOfLine_corr _ sp_yaml hcorr_yaml
-        exact ⟨sp', GStar_trans h_pre (GStar_trans h_nb_yaml h_nb_eol), hcorr',
-          skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
+        obtain ⟨s₂, s₃, s₄, sp_v, hd1, hdot, hd2, h_wsv, hstop, hcorr_v⟩ :=
+          scanYamlDirective_prod sc _ sp_ws hcorr_ws hend_ws _ s_yaml h_yaml_ok
+        obtain ⟨sp', h_skip, hcorr'⟩ := skipToEndOfLine_corr _ sp_v hcorr_v
+        exact ⟨sp', .yaml tail sc.col sp_ws s₂ s₃ s₄ sp' hnot h_ws hd1 hdot hd2 ⟨sp_v, h_wsv, hstop, h_skip⟩,
+          hcorr', skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
       · simp at hok
-    · split at hok
-      · -- TAG directive (now wrapped with skipToEndOfLine)
+    · rename_i h_y
+      split at hok
+      · -- `%TAG`
+        rename_i h_t
+        have hnm : nm = ['T', 'A', 'G'] := by
+          have := congrArg String.toList (eq_of_beq h_t); rw [hname] at this; simpa using this
+        subst hnm
+        have hcol4 : tcol = sc.col + 4 := by simp at hcol; omega
+        subst hcol4
         split at hok
         · rename_i s_tag h_tag_ok
           have h_eol := Except.ok.inj hok; subst h_eol
-          obtain ⟨sp_tag, h_nb_tag, hcorr_tag⟩ :=
-            scanTagDirective_prod _ sp_ws hcorr_ws sc _ s_tag h_tag_ok
-          obtain ⟨sp', h_nb_eol, hcorr'⟩ :=
-            skipToEndOfLine_corr _ sp_tag hcorr_tag
-          exact ⟨sp', GStar_trans h_pre (GStar_trans h_nb_tag h_nb_eol), hcorr',
-            skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
+          obtain ⟨s₂, s₃, s₄, sp_v, h_hdl, h_hnot, h_ws2, h_pfx, h_wsv, hstop, hcorr_v⟩ :=
+            scanTagDirective_prod _ sp_ws hcorr_ws sc hend_ws _ s_tag h_tag_ok
+          obtain ⟨sp', h_skip, hcorr'⟩ := skipToEndOfLine_corr _ sp_v hcorr_v
+          exact ⟨sp', .tag tail sc.col sp_ws s₂ s₃ s₄ sp' hnot h_ws h_hdl h_hnot h_ws2 h_pfx ⟨sp_v, h_wsv, hstop, h_skip⟩,
+            hcorr', skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
         · simp at hok
-      · -- Reserved: skipToEndOfLine + directivesPresent flag (Fix B)
+      · -- reserved: `skipToEndOfLine` + `directivesPresent` flag (Fix B)
+        rename_i h_t
         have h := Except.ok.inj hok; subst h
-        obtain ⟨sp', h_nb_skip, hcorr'⟩ :=
-          skipToEndOfLine_corr _ sp_ws hcorr_ws
-        exact ⟨sp', GStar_trans h_pre h_nb_skip,
+        obtain ⟨sp', h_skip, hcorr'⟩ := skipToEndOfLine_corr _ sp_ws hcorr_ws
+        have hcol' : tcol = sc.col + 1 + nm.length := hcol
+        subst hcol'
+        refine ⟨sp', .reserved (nm ++ tail) sc.col ⟨tail, sc.col + 1 + nm.length⟩ sp'
+          (gstar_gchar_of_all nm tail (sc.col + 1) hall) hnot ?_ ?_
+          (GStar_trans (GStar_SSWhite_to_GStar_SCommentChar h_ws) h_skip),
           ⟨hcorr'.chars_from, hcorr'.col_eq, hcorr'.end_eq, hcorr'.input_prefix, hcorr'.indent_cols_nonneg⟩,
           skipToEndOfLine_at_break_or_eof_chars _ sp' hcorr'⟩
+        · intro heq; apply h_y
+          have hnm : nm = ['Y', 'A', 'M', 'L'] :=
+            List.append_cancel_right (show nm ++ tail = ['Y', 'A', 'M', 'L'] ++ tail from heq)
+          have : (collectDirectiveNameLoop sc.advance "" (sc.inputEnd - sc.advance.offset)).fst = "YAML" :=
+            String.ext (by rw [hname, hnm]; rfl)
+          simp [this]
+        · intro heq; apply h_t
+          have hnm : nm = ['T', 'A', 'G'] :=
+            List.append_cancel_right (show nm ++ tail = ['T', 'A', 'G'] ++ tail from heq)
+          have : (collectDirectiveNameLoop sc.advance "" (sc.inputEnd - sc.advance.offset)).fst = "TAG" :=
+            String.ext (by rw [hname, hnm]; rfl)
+          simp [this]
 
 end L4YAML.Proofs.StructureProduction
+
+end Blanket

@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 576 — INHABITATION PROBE for Front B's value-recovery trace, brick 2 last link (part 2)
@@ -156,8 +160,8 @@ theorem mapTokens_first_doc_at_pos_one
 -- Axiom audit — the position-pinning lemma and its loop traces route through `parseStreamLoop` /
 -- `parseDocument` and the `Except`-monad simp machinery, so they carry `Classical.choice` (same
 -- profile as bricks 1 / 2(a) / 2(b)-part-1, §5.6). `expect_pos_succ` is a pure structural inversion
--- of `expect` and audits `[propext]` ALONE. None depend on `Lean.ofReduceBool` (the firing probes
--- above are separate `native_decide` lemmas).
+-- of `expect` and audits `[propext]` ALONE. None carries a `native_decide` axiom (the firing
+-- probes above are separate `native_decide` lemmas).
 /-- info: 'L4YAML.Proofs.EmitterScannability.parseStream_first_doc_at_pos_one' depends on axioms: [propext,
  Classical.choice,
  Quot.sound] -/
@@ -176,8 +180,10 @@ theorem mapTokens_first_doc_at_pos_one
 #guard_msgs in
 #print axioms parseStreamLoop_first_doc_from_entry
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.expect_pos_succ' depends on axioms: [propext] -/
+/-- info: 'L4YAML.Proofs.EmitterScannability.expect_pos_succ' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms expect_pos_succ
 
 end ValueRecoveryPosition
+
+end Blanket

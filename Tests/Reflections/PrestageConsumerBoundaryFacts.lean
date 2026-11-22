@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 401 / 402 — pre-stage a consumer's DERIVABLE boundary side-inputs as a separate
 green increment before an atomic orthogonal-field threading.
@@ -107,3 +112,5 @@ theorem append_right_needs_nonempty :
 #guard (([Tok.content] ++ [Tok.opn] ++ ([] : List Tok)).getLast? == some Tok.opn)
 
 end Tests.Reflections.PrestageConsumerBoundaryFacts
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 360 — a flagged "needs-new-infra" REFUTATION arm is often a PINNING sibling's MIRROR: flip the type-discriminator bit, relax the pin-hypothesis to a floor
 
@@ -89,3 +94,5 @@ example : (([true, true, false] : List Bool).all (· == true)) = false :=
   refute [true, true, false] [] ⟨[true, true], rfl⟩
 
 end Tests.Reflections.RefuteArmMirrorsPinningSibling
+
+end Blanket

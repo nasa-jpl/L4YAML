@@ -1,6 +1,12 @@
 """Tests for parsing YAML via l4yaml."""
 from __future__ import annotations
 
+import ctypes
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 try:
@@ -97,6 +103,87 @@ class TestLoadMapping:
         v = l4yaml.load("k: v")
         with pytest.raises(KeyError):
             v["nonexistent"]
+
+    @pytest.mark.parametrize("key", ["\x00a", "a\x00b", "a\x00"])
+    def test_escaped_nul_keys_preserve_identity(self, key: str) -> None:
+        # YAML's quoted \0 escape represents a character inside the key,
+        # not a C terminator.  Include the truncated prefix as a decoy.
+        prefix = key.split("\x00", 1)[0]
+        escaped_key = key.replace("\x00", r"\0")
+        yaml = f'"{prefix}": wrong\n"{escaped_key}": correct'
+        v = l4yaml.load(yaml)
+        assert v.keys() == [prefix, key]
+        assert [k for k, _ in v.items()] == [prefix, key]
+        assert set(v.as_dict()) == {prefix, key}
+        assert v[key].as_str() == "correct"
+        assert v[prefix].as_str() == "wrong"
+        assert key in v
+        assert dict(v)[key].as_str() == "correct"
+
+    def test_escaped_nul_scalar_preserves_suffix(self) -> None:
+        assert l4yaml.load(r'"before\0after"').as_str() == "before\x00after"
+
+    def test_escaped_nul_unicode_key_roundtrip(self) -> None:
+        v = l4yaml.load('"é": wrong\n"é\\0💫": correct')
+        assert v["é\x00💫"].as_str() == "correct"
+        assert v.keys() == ["é", "é\x00💫"]
+
+    def test_length_aware_c_abi(self) -> None:
+        """Exercise both new C entry points, not only Python's wrappers."""
+        v = l4yaml.load('"a": wrong\n"a\\0b": correct')
+        lib = v._lib
+        data = b"a\x00b"
+        handle = lib.l4yaml_value_lookup_bytes(v._handle, data, len(data))
+        assert handle
+        try:
+            length = ctypes.c_size_t()
+            ptr = lib.l4yaml_value_string_bytes(handle, ctypes.byref(length))
+            assert ctypes.string_at(ptr, length.value) == b"correct"
+        finally:
+            lib.l4yaml_free(handle)
+
+        scalar = l4yaml.load(r'"before\0after"')
+        length = ctypes.c_size_t()
+        ptr = lib.l4yaml_value_string_bytes(
+            scalar._handle, ctypes.byref(length)
+        )
+        assert ctypes.string_at(ptr, length.value) == b"before\x00after"
+
+        # Existing C ABI calls retain their legacy NUL-terminated behavior.
+        assert lib.l4yaml_value_string(scalar._handle) == b"before"
+        old_handle = lib.l4yaml_value_lookup(v._handle, b"a\x00b")
+        assert old_handle
+        try:
+            assert lib.l4yaml_value_string(old_handle) == b"wrong"
+        finally:
+            lib.l4yaml_free(old_handle)
+
+    def test_length_aware_c_abi_null_length(self) -> None:
+        # A subprocess turns a native crash into a test failure instead of
+        # terminating the entire suite. NULL means the caller needs no length.
+        result = subprocess.run(
+            [sys.executable, "-c", r'''
+import ctypes
+import l4yaml
+
+scalar = l4yaml.load(r'"before\0after"')
+ptr = scalar._lib.l4yaml_value_string_bytes(scalar._handle, None)
+assert ctypes.string_at(ptr, 12) == b"before\x00after"
+mapping = l4yaml.load("a: b")
+ptr = mapping._lib.l4yaml_value_string_bytes(mapping._handle, None)
+assert ctypes.string_at(ptr) == b""
+'''],
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "PYTHONPATH": os.pathsep.join(
+                    [str(Path(l4yaml.__file__).resolve().parents[1])]
+                    + [p for p in [os.environ.get("PYTHONPATH")] if p]
+                ),
+            },
+        )
+        assert result.returncode == 0, result.stderr
 
 
 @needs_lib
@@ -218,3 +305,33 @@ class TestTypeErrors:
         v = l4yaml.load("hello")
         with pytest.raises(l4yaml.L4YAMLError):
             len(v)
+
+
+# ── Equality / hashing / iteration ───────────────────────────────────
+
+@needs_lib
+class TestValueIdentity:
+    def test_eq_and_hash_are_structural(self) -> None:
+        a: YamlValue = l4yaml.load("{k: [1, 2], j: x}")
+        b: YamlValue = l4yaml.load("{k: [1, 2], j: x}")
+        c: YamlValue = l4yaml.load("{k: [1, 3], j: x}")
+        assert a == b and hash(a) == hash(b)
+        assert a != c
+        assert len({a, b, c}) == 2
+
+    def test_repr_is_cached_and_stable(self) -> None:
+        v: YamlValue = l4yaml.load("a: [1, 2]")
+        first: str = repr(v)
+        assert repr(v) is first
+        assert repr(l4yaml.load("a: [1, 2]")) == first
+
+    def test_mapping_iter_is_lazy(self) -> None:
+        v: YamlValue = l4yaml.load("a: 1\nb: 2\nc: 3")
+        it = iter(v)
+        k, val = next(it)
+        assert (k, val.as_str()) == ("a", "1")
+        assert [k for k, _ in it] == ["b", "c"]
+
+    def test_sequence_iter_matches_as_list(self) -> None:
+        v: YamlValue = l4yaml.load("[x, y, z]")
+        assert [i.as_str() for i in v] == [i.as_str() for i in v.as_list()]

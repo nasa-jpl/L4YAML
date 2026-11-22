@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 604 -- compose mapping pairs element-wise (outer-parse half, R604)
@@ -97,7 +101,7 @@ theorem map_pairs_pointwise_concrete
     (_h_parse : parseYamlRaw (emit mapKV) = .ok docs)
     (h_size : docs.size = 1)
     (pairs' pairs'' : Array (YamlValue × YamlValue))
-    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
+    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorAliasFree = true ∧ p.2.anchorAliasFree = true)
     (h_val : docs[0]!.value = .mapping .flow pairs' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .mapping .flow pairs'' none none) :
     pairs'' = pairs'.map (fun ⟨kv, vv⟩ => ((kv.resolveAliases docs[0]!.anchors).stripAnchors,
@@ -118,7 +122,7 @@ theorem scalar_pair_concrete_elem0
     (_h_parse : parseYamlRaw (emit mapKV) = .ok docs)
     (h_size : docs.size = 1)
     (pairs' pairs'' : Array (YamlValue × YamlValue))
-    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true)
+    (h_af : ∀ p ∈ pairs'.toList, p.1.anchorAliasFree = true ∧ p.2.anchorAliasFree = true)
     (h_val : docs[0]!.value = .mapping .flow pairs' none none)
     (h_comp : (docs.map YamlDocument.compose)[0]!.value = .mapping .flow pairs'' none none)
     (h_pairs_size : 0 < pairs'.size)
@@ -151,3 +155,5 @@ theorem scalar_pair_concrete_elem0
 #print axioms compose_map_scalar_pair
 
 end ComposeMapPairsPointwise
+
+end Blanket

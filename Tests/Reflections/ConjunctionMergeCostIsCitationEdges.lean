@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 452 — executing a conjunction-motive producer merge is a MECHANICAL ZIP whose edit count is
 # the number of per-child WITNESS-CONSUMPTION sites (own-IH uses + sibling citations), NOT the body size.
@@ -143,3 +148,5 @@ example : Good (.node [.pairs [(.leaf, .node [.leaf])]]) := by
       · match j with | ⟨0, _⟩ => exact .node _ (fun k => match k with | ⟨0, _⟩ => .leaf)
 
 end Tests.Reflections.ConjunctionMergeCostIsCitationEdges
+
+end Blanket

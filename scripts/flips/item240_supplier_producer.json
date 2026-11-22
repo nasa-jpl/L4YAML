@@ -1,0 +1,75 @@
+{
+ "item": 240,
+ "tag": "SUPPLIER-PRODUCER",
+ "rev": "d622b0ae",
+ "target": "",
+ "log": "scratch/flip240_supplier_producer.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "FIELD",
+     "old": [
+      "      (h_live0 : sc.simpleKeyAllowed = true ∨ sc.simpleKey.possible = true) :",
+      "      PendingNode sc false sp_start sp_block sp_scan",
+      "  /-- Content token scanned INSIDE a block entry"
+     ],
+     "new": [
+      "      (h_live0 : sc.simpleKeyAllowed = true ∨ sc.simpleKey.possible = true)",
+      "      (h_scan : SLYamlStream sp_start sp_scan) :",
+      "      PendingNode sc false sp_start sp_block sp_scan",
+      "  /-- Content token scanned INSIDE a block entry"
+     ],
+     "count": 1
+    },
+    {
+     "name": "ARM",
+     "old": [
+      "  | pendingFlow =>",
+      "    -- Absorb opaque scanner content (flow/block indicators) via scannerDrop.",
+      "    exact SLYamlStream.scannerDrop sp_start sp_block sp_scan sp_mid h_stream h_ssl",
+      ""
+     ],
+     "new": [
+      "  | pendingFlow =>",
+      "    exact ssl_comments_extend_stream _ _ sp_mid (by assumption) h_ssl",
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "PROD_HEAD",
+     "old": [
+      "lemma block_dispatch_deferred",
+      "    (sp_start sp_X sp_scan' : SurfPos) (s' : ScannerState)",
+      "    (h_stream : SLYamlStream sp_start sp_X)",
+      ""
+     ],
+     "new": [
+      "lemma block_dispatch_deferred",
+      "    (sp_start sp_X sp_scan' : SurfPos) (s' : ScannerState)",
+      "    (h_stream : SLYamlStream sp_start sp_X)",
+      "    (h_scan : SLYamlStream sp_start sp_scan')",
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "PROD_BODY",
+     "old": [
+      "   PendingNode.pendingFlow sp_start sp_X sp_scan' h_stream h_arm h_nodir h_nic0 h_live0,",
+      ""
+     ],
+     "new": [
+      "   PendingNode.pendingFlow sp_start sp_X sp_scan' h_stream h_arm h_nodir h_nic0 h_live0 h_scan,",
+      ""
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

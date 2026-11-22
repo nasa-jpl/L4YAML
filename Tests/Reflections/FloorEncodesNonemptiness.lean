@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 431 — a window's Dyck floor already encodes the non-emptiness gate
 
@@ -63,3 +68,5 @@ theorem head_ne_close_of_floor (head : Nat) (t : List Nat) (h_floor : Floor (hea
 #guard decide (bal [1, 2] 1 ≥ 0)      -- delta 1 = +1 ≥ 0
 
 end Tests.Reflections.FloorEncodesNonemptiness
+
+end Blanket

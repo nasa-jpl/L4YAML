@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 347 — a PARENT-RELATIVE recursion-guard conjunct rides the recursion's structural SITES, not the uniform IH adapter; widen the IH SIGNATURE, discharge at the descend/advance sites where the parent–child relation is in scope
 
@@ -121,3 +126,5 @@ theorem own_output_is_a_loop {lo hi : Nat} (h : F lo hi) : F lo hi :=
   read_F_off_output (step_consumes_F h)
 
 end Tests.Reflections.ParentRelativeGConjunct
+
+end Blanket

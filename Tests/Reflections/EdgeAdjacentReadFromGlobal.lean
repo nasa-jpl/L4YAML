@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 430 — an edge-adjacent read comes from the global universal, not the restricted field
 
@@ -82,3 +87,5 @@ theorem head_from_restricted (toks : List Nat) (base lo hi : Nat)
 #guard (5 - 1 + 1 == 5)                -- the global index lo-1 reaches lo (lo = 5)
 
 end Tests.Reflections.EdgeAdjacentReadFromGlobal
+
+end Blanket

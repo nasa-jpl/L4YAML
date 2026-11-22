@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 483 — the nested TYPED locator is a FRAME, not a re-proof
 # (and the frame is cleaner than the hand-rolled depth-0 special case).
@@ -162,3 +167,5 @@ theorem inner_close_is_framed : step (pop false) (false :: [true]) = some [true]
   nested_close_via_frame false [true]
 
 end NestedTypedLocatorIsAFrame
+
+end Blanket

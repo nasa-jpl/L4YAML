@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 606 -- `emitPairList_allScalar_body_content_at` (R606)
@@ -22,7 +26,12 @@ explicit `.key` token that precedes each key scalar).
 ## Inhabitation-debt rules
 
 * Rule 1 (antecedents reachable): `h_ne` and `h_all` are trivially satisfied on
-  any concrete all-scalar pair list.  Verified abstractly.
+  any concrete all-scalar pair list.  Verified abstractly.  The adjacency
+  premise `h_adj` (`∀ t, lastRealTokenVal? s.tokens = some t →
+  t.completesFlowValue = false`) says the scan starts where a node is legal —
+  not straight after a completed flow value, which
+  `scanNextToken_checkFlowAdjacency` rejects — which is true at every position
+  the emitter emits a pair into (after `{`, `,` or `:`).
 
 * Rule 2 (conclusion non-vacuous): `r606_singleton_fires` applies R606 on a
   singleton list; `r606_two_pair_fires` applies it on a two-pair list and
@@ -94,7 +103,10 @@ theorem r606_singleton_fires
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
     (h_ska : s.simpleKeyAllowed = true) (h_sync : s.simpleKeyStack.size = s.flowLevel)
-    (h_dp : s.directivesPresent = false) :
+    -- item 9r: the pair list starts at an entry boundary.
+    (h_lrv : LastRawNotValue s)
+    (h_dp : s.directivesPresent = false)
+    (h_adj : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) :
     ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 4 ∧
@@ -109,7 +121,7 @@ theorem r606_singleton_fires
       (fun p hp => by
         simp only [List.mem_cons, List.mem_nil_iff, or_false] at hp
         exact ⟨sk, sv, by rw [hp], by rw [hp]⟩)
-      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_lrv h_dp h_adj
   obtain ⟨_, h_k_val, _, h_v_val⟩ :=
     h_pw 0 (by simp) sk sv (by simp)
   exact ⟨_n, s', block, h_corr',
@@ -128,7 +140,10 @@ theorem r606_two_pair_fires
     (h_col : s.col > 0) (h_ek : s.explicitKeyLine = none)
     (h_atol : AllTokensOnLine s s.line) (h_endline : EndLineOnLine s)
     (h_ska : s.simpleKeyAllowed = true) (h_sync : s.simpleKeyStack.size = s.flowLevel)
-    (h_dp : s.directivesPresent = false) :
+    -- item 9r: the pair list starts at an entry boundary.
+    (h_lrv : LastRawNotValue s)
+    (h_dp : s.directivesPresent = false)
+    (h_adj : ∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) :
     ∃ (_n : Nat) (s' : ScannerState) (block : List (Positioned YamlToken)),
       ScannerSurfCorr s' ⟨rest, s'.col⟩ ∧
       block.length = 9 ∧
@@ -149,7 +164,7 @@ theorem r606_two_pair_fires
         rcases hp with rfl | rfl
         · exact ⟨sk1, sv1, rfl, rfl⟩
         · exact ⟨sk2, sv2, rfl, rfl⟩)
-      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+      s rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_lrv h_dp h_adj
   obtain ⟨_, h_k1, _, h_v1⟩ := h_pw 0 (by simp) sk1 sv1 (by simp)
   obtain ⟨_, h_k2, _, h_v2⟩ := h_pw 1 (by simp) sk2 sv2 (by simp)
   obtain ⟨_, h_fe0⟩ := h_fe 0 (by simp)
@@ -161,53 +176,57 @@ theorem r606_two_pair_fires
     the native_decide axioms from the double-quoted scanner and escape functions
     (same set as R596). -/
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.emitPairList_allScalar_body_content_at' depends on axioms: [propext,
+/--
+info: 'L4YAML.Proofs.EmitterScannability.emitPairList_allScalar_body_content_at' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_15,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_18,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_27,
- escapeChar_hex_structure._native.native_decide.ax_1_1,
- escapeChar_hex_structure._native.native_decide.ax_1_2,
- escapeChar_hex_structure._native.native_decide.ax_1_3,
- escapeTag_not_linebreak._native.native_decide.ax_1_10,
- escapeTag_not_linebreak._native.native_decide.ax_1_11,
- escapeTag_not_linebreak._native.native_decide.ax_1_12,
- escapeTag_not_linebreak._native.native_decide.ax_1_2,
- escapeTag_not_linebreak._native.native_decide.ax_1_3,
- escapeTag_not_linebreak._native.native_decide.ax_1_4,
- escapeTag_not_linebreak._native.native_decide.ax_1_5,
- escapeTag_not_linebreak._native.native_decide.ax_1_6,
- escapeTag_not_linebreak._native.native_decide.ax_1_7,
- escapeTag_not_linebreak._native.native_decide.ax_1_8,
- escapeTag_not_linebreak._native.native_decide.ax_1_9,
- hexNibble_is_hex._native.native_decide.ax_1_1,
- hexNibble_lt128._native.native_decide.ax_1_1,
- hex_foldl_roundtrip._native.native_decide.ax_1_1,
- hex_two_foldl_bound._native.native_decide.ax_1_1,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_10,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_11,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_12,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_13,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_14,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_15,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_16,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_17,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_18,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_19,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_2,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_20,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_21,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_22,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_23,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_3,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_4,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_5,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_6,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_7,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_8,
- Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_9] -/
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_10,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_11,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_12,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_13,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_14,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_15,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_16,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_17,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_18,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_19,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_20,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_21,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_22,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_23,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_4,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_5,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_6,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_7,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_8,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_9,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_15,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_18,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_27,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_10,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_11,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_12,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_4,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_5,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_6,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_7,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_8,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_9,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hexNibble_is_hex._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hexNibble_lt128._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hex_foldl_roundtrip._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hex_two_foldl_bound._native.native_decide.ax_1_1]
+-/
 #guard_msgs (whitespace := lax) in
 #print axioms emitPairList_allScalar_body_content_at
 
 end PairListBodyContentAt
+
+end Blanket

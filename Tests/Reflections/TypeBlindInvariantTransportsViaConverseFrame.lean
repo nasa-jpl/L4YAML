@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 312 — a type-blind numeric invariant cannot CREATE a typed fact (fold-definedness); it only licenses its TRANSPORT across a frame boundary, and moving definedness from a verified LARGER context to a SMALLER sub-context needs the CONVERSE of the forward framing lemma
 
@@ -215,3 +220,5 @@ theorem opener_bit_via_converse_frame (interior : List Tok) (b : Bool) (s_p S : 
   rw [hm_nil, List.nil_append] at hSm; exact hSm
 
 end Tests.Reflections.TypeBlindInvariantTransportsViaConverseFrame
+
+end Blanket

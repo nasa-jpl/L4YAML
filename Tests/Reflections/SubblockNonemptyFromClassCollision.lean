@@ -22,6 +22,11 @@ shape-free.  This file proves the collision principle in general and witnesses t
 on concrete scalar-key and bracket-key map pairs.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace SubblockNonemptyFromClassCollision
 
 set_option autoImplicit false
@@ -128,3 +133,5 @@ end SubblockNonemptyFromClassCollision
 /-- info: 'SubblockNonemptyFromClassCollision.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms SubblockNonemptyFromClassCollision.demo
+
+end Blanket

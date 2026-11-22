@@ -1,5 +1,9 @@
-import L4YAML
-import Tests.VerifiedResult
+module
+
+public import L4YAML
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -7,7 +11,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
 /-- Check whether `s` contains `sub` as a substring. -/
-private def _root_.String.containsSubstr (s sub : String) : Bool :=
+def _root_.String.containsSubstr (s sub : String) : Bool :=
   (s.splitOn sub).length > 1
 
 /-!
@@ -43,7 +47,7 @@ namespace Tests.RawParse
 /-! ## Helpers -/
 
 /-- Check whether a `YamlValue` tree contains any `.alias` node. -/
-private def hasAlias : YamlValue → Bool
+def hasAlias : YamlValue → Bool
   | .alias _ => true
   | .sequence _ items _ _ => hasList items.toList
   | .mapping _ pairs _ _ => hasPairs pairs.toList
@@ -57,7 +61,7 @@ where
     | (k, v) :: rest => hasAlias k || hasAlias v || hasPairs rest
 
 /-- Check whether a `YamlValue` tree has any non-`none` anchor field. -/
-private def hasAnchorField : YamlValue → Bool
+def hasAnchorField : YamlValue → Bool
   | .scalar s => s.anchor.isSome
   | .sequence _ items _ a => a.isSome || hasFieldList items.toList
   | .mapping _ pairs _ a => a.isSome || hasFieldPairs pairs.toList
@@ -71,17 +75,17 @@ where
     | (k, v) :: rest => hasAnchorField k || hasAnchorField v || hasFieldPairs rest
 
 /-- Extract the alias name if the value is `.alias`. -/
-private def aliasName? : YamlValue → Option String
+def aliasName? : YamlValue → Option String
   | .alias n => some n
   | _ => none
 
 /-- Extract the anchor name from a scalar. -/
-private def scalarAnchor? : YamlValue → Option String
+def scalarAnchor? : YamlValue → Option String
   | .scalar s => s.anchor
   | _ => none
 
 /-- Extract anchor from a sequence or mapping. -/
-private def collectionAnchor? : YamlValue → Option String
+def collectionAnchor? : YamlValue → Option String
   | .sequence _ _ _ a => a
   | .mapping _ _ _ a => a
   | _ => none
@@ -300,3 +304,5 @@ def collectTests : IO VerifiedSuiteResult := do
   }
 
 end Tests.RawParse
+
+end Blanket

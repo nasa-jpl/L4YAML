@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 399 — a producer field and the consumer hypothesis it feeds can be the SAME
 predicate under two module-local names: check definitional equality FIRST (the bridge is
@@ -91,3 +96,5 @@ theorem bridge_concrete :
 #guard (Tok.opn == Tok.content) == false
 
 end Tests.Reflections.SynonymBridgeAndSlackGuard
+
+end Blanket

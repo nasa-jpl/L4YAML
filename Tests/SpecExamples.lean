@@ -1,5 +1,9 @@
-import L4YAML.Parser.Composition
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Parser.Composition
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -138,10 +142,10 @@ def cleanupExample (s : String) : String :=
 /-! ## File Discovery -/
 
 /-- Spec sections to test, in order. -/
-private def specSections : Array String := #["2", "5", "6", "7", "8", "9", "10"]
+def specSections : Array String := #["2", "5", "6", "7", "8", "9", "10"]
 
 /-- List YAML files in a directory, sorted. -/
-private def listYamlFiles (dir : System.FilePath) : IO (Array System.FilePath) := do
+def listYamlFiles (dir : System.FilePath) : IO (Array System.FilePath) := do
   let mut files : Array System.FilePath := #[]
   let entries ← dir.readDir
   for entry in entries do
@@ -153,7 +157,7 @@ private def listYamlFiles (dir : System.FilePath) : IO (Array System.FilePath) :
   pure sorted.toArray
 
 /-- Extract example number from filename like "example-2.7.yaml". -/
-private def exampleLabel (path : System.FilePath) : String :=
+def exampleLabel (path : System.FilePath) : String :=
   let name := path.fileName.getD "unknown"
   let name := name.dropSuffix ".yaml" |>.dropSuffix ".yml" |>.copy
   name.dropSuffix "example-" |>.copy
@@ -163,7 +167,7 @@ private def exampleLabel (path : System.FilePath) : String :=
 /-- Spec examples that are intentionally invalid YAML.
     The YAML 1.2.2 spec marks these with "Invalid" in the title.
     When the parser correctly rejects them, we count it as a pass. -/
-private def expectedErrorExamples : Array String :=
+def expectedErrorExamples : Array String :=
   #[ "example-5.2"   -- Invalid Use of BOM Inside a Document
    , "example-5.10"  -- Invalid Characters (@ and `)
    , "example-5.14"  -- Invalid Escaped Characters (\c, \xq-)
@@ -175,7 +179,7 @@ private def expectedErrorExamples : Array String :=
    ]
 
 /-- Check whether a given example label is an expected-error test. -/
-private def isExpectedError (exId : String) : Bool :=
+def isExpectedError (exId : String) : Bool :=
   expectedErrorExamples.any (· == exId)
 
 /-! ## Known Parser Gaps -/
@@ -183,18 +187,18 @@ private def isExpectedError (exId : String) : Bool :=
 /-- Spec examples that are valid YAML but expose known parser
     limitations. Tracked here so the test suite can distinguish
     "not yet implemented" from genuine regressions. -/
-private def knownParserGaps : Array String :=
+def knownParserGaps : Array String :=
   #[]
 
 /-- Check whether a given example label is a known parser gap. -/
-private def isKnownGap (exId : String) : Bool :=
+def isKnownGap (exId : String) : Bool :=
   knownParserGaps.any (· == exId)
 
 /-! ## Parse Testing -/
 
 /-- Try to parse one spec example file.
     Returns `(exampleLabel, parsed?, errorMsg)`. -/
-private def testOneExample (path : System.FilePath) :
+def testOneExample (path : System.FilePath) :
     IO (String × Bool × String) := do
   let raw ← IO.FS.readFile path
   let cleaned := cleanupExample raw
@@ -247,3 +251,5 @@ def collectTests : IO VerifiedSuiteResult := do
   }
 
 end Tests.SpecExamples
+
+end Blanket

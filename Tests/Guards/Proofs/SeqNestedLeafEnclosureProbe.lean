@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Emission-spine-walk locator WRAPPER — the LEAF map-exclusion is keyed to the TARGET WINDOW, not the base
@@ -90,3 +94,5 @@ def P : Array (Positioned YamlToken) :=
 #guard topTrue P 3 != topTrue N 3              -- SeqEnclosed tokens a    — SEPARATES seq head / map head
 
 end L4YAML.Proofs.EmitterScannability.SeqNestedLeafEnclosureProbe
+
+end Blanket

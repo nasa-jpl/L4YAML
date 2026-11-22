@@ -1,0 +1,498 @@
+{
+ "item": 380,
+ "tag": "ROOT-FRAMES",
+ "rev": "df58baa2",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/380-flip-root-frames.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "     -- `?` slot owes no `:` line, so its chain is the EMPTY chain, not `alt`.",
+    "     | Or.inr _ => Or.inl ⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩)"
+   ],
+   "new": [
+    "     -- `?` slot owes no `:` line, so its chain is the EMPTY chain, not `alt`.",
+    "     | Or.inr _ => Or.inl ⟨[FrameLevel.map 0], sorry⟩)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "          -- the node was what the park awaited — so the stack is empty.",
+    "          Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "          -- the node was what the park awaited — so the stack is empty.",
+    "          Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "            -- `nil`; the continuation goes in that slot (`- [1]: b⏎  c: 2`).",
+    "            Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "            -- `nil`; the continuation goes in that slot (`- [1]: b⏎  c: 2`).",
+    "            Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "         | Or.inr _, Or.inl sfx, _ =>",
+    "             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "         | Or.inr _, Or.inl sfx, _ =>",
+    "             Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "         | Or.inr _, Or.inr _, Or.inl nd =>",
+    "             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "         | Or.inr _, Or.inr _, Or.inl nd =>",
+    "             Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "         | Or.inr _, Or.inr _, Or.inr _ =>",
+    "             Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "         | Or.inr _, Or.inr _, Or.inr _ =>",
+    "             Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P7",
+   "old": [
+    "          -- resume (`[1]: a⏎[2]: b`, `[1]: a⏎b: 2⏎c: 3`).",
+    "          Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "          -- resume (`[1]: a⏎[2]: b`, `[1]: a⏎b: 2⏎c: 3`).",
+    "          Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P8",
+   "old": [
+    "  -- the recorded residue (DOCS item 173).",
+    "  obtain ⟨ksF, h_ltF, h_covF, h_routeF⟩ :",
+    "      ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "        ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+    "          IndentStackCover.Covered lo (FrameLevel.map k :: ks) s') ∨ True) ∧",
+    "        ∀ sp_v, SBlockMapEntry k sp_ind sp_v →",
+    "        ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_e :=",
+    "    match h_res_land, h_sfx_land, h_nodoc_land, h_mk_land, h_pr_land with",
+    "    | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>",
+    "        ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩",
+    "    | Or.inr _, Or.inl sfxrun, _, _, _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          suffixMapRouteF hcol_land sfxrun h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          nodocMapRouteF hcol_land nodoc h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          markerMapRouteF mk h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          propsMapRouteF pn h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "  -- the recorded residue (DOCS item 173).",
+    "  obtain ⟨ksF, h_ltF, h_covF, h_routeF⟩ :",
+    "      ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "        ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+    "          IndentStackCover.Covered lo (FrameLevel.map k :: ks) s') ∨ True) ∧",
+    "        ∀ sp_v, SBlockMapEntry k sp_ind sp_v →",
+    "        ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_e :=",
+    "    match h_res_land, h_sfx_land, h_nodoc_land, h_mk_land, h_pr_land with",
+    "    | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>",
+    "        ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩",
+    "    | Or.inr _, Or.inl sfxrun, _, _, _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          suffixMapRouteF hcol_land sfxrun h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          nodocMapRouteF hcol_land nodoc h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          markerMapRouteF mk h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          propsMapRouteF pn h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P9",
+   "old": [
+    "  -- punts the cover; the recorded residue).",
+    "  obtain ⟨ksF, h_ltF, h_covF, h_routeF⟩ :",
+    "      ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "        ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+    "          IndentStackCover.Covered lo (FrameLevel.map k :: ks) s') ∨ True) ∧",
+    "        ∀ sp_v, SBlockMapEntry k sp_ind sp_v →",
+    "        ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_e :=",
+    "    match h_res_land, h_sfx_land, h_nodoc_land, h_mk_land, h_pr_land with",
+    "    | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>",
+    "        ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩",
+    "    | Or.inr _, Or.inl sfxrun, _, _, _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          suffixMapRouteF hcol_land sfxrun h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          nodocMapRouteF hcol_land nodoc h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          markerMapRouteF mk h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          propsMapRouteF pn h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>",
+    "        ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "  -- punts the cover; the recorded residue).",
+    "  obtain ⟨ksF, h_ltF, h_covF, h_routeF⟩ :",
+    "      ∃ ks : List FrameLevel, (∀ fr ∈ ks, fr.width < k) ∧",
+    "        ((∃ lo : Nat, IndentStackCover.Floor lo k (FrameLevel.map k :: ks) ∧",
+    "          IndentStackCover.Covered lo (FrameLevel.map k :: ks) s') ∨ True) ∧",
+    "        ∀ sp_v, SBlockMapEntry k sp_ind sp_v →",
+    "        ∀ sp_e, SCompactMapTail k sp_v sp_e →",
+    "        ResumeFrames (SLYamlStream sp_start) ks sp_e :=",
+    "    match h_res_land, h_sfx_land, h_nodoc_land, h_mk_land, h_pr_land with",
+    "    | Or.inl ⟨ks, h_lt, cont⟩, _, _, _, _ =>",
+    "        ⟨ks, h_lt, Or.inr trivial, resumeMapRouteF h_ind cont⟩",
+    "    | Or.inr _, Or.inl sfxrun, _, _, _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          suffixMapRouteF hcol_land sfxrun h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inl nodoc, _, _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          nodocMapRouteF hcol_land nodoc h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inl mk, _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          markerMapRouteF mk h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inl pn =>",
+    "        ⟨[FrameLevel.map 0], sorry,",
+    "          h_cov_in.imp (fun h => ⟨k, ⟨Nat.le_refl k, by simp⟩, h⟩) id,",
+    "          propsMapRouteF pn h_ind⟩",
+    "    | Or.inr _, Or.inr _, Or.inr _, Or.inr _, Or.inr _ =>",
+    "        ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P10",
+   "old": [
+    "        · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "        · exact Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P11",
+   "old": [
+    "            Or.inr trivial, h_seqBottom⟩",
+    "      · exact Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "            Or.inr trivial, h_seqBottom⟩",
+    "      · exact Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P12",
+   "old": [
+    "                     h_ind h_lit h_sbi)))⟩",
+    "             | Or.inr _ => Or.inl ⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩)"
+   ],
+   "new": [
+    "                     h_ind h_lit h_sbi)))⟩",
+    "             | Or.inr _ => Or.inl ⟨[FrameLevel.map 0], sorry⟩)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P13",
+   "old": [
+    "           | Or.inr _ => Or.inl ⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩))"
+   ],
+   "new": [
+    "           | Or.inr _ => Or.inl ⟨[FrameLevel.map 0], sorry⟩))"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P14",
+   "old": [
+    "              | Or.inr _ => Or.inl ⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩)⟩"
+   ],
+   "new": [
+    "              | Or.inr _ => Or.inl ⟨[FrameLevel.map 0], sorry⟩)⟩"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P15",
+   "old": [
+    "              exact Or.inl ⟨w, sp_prep, sp_gram2, h_route372, h_ol, h_tws2, h_kcol,",
+    "                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),",
+    "                Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,"
+   ],
+   "new": [
+    "              exact Or.inl ⟨w, sp_prep, sp_gram2, h_route372, h_ol, h_tws2, h_kcol,",
+    "                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),",
+    "                Or.inl ⟨[FrameLevel.map 0], sorry, Or.inr trivial,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P16",
+   "old": [
+    "              -- made after its value resumes it (`ks = []`, nothing below).",
+    "              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,"
+   ],
+   "new": [
+    "              -- made after its value resumes it (`ks = []`, nothing below).",
+    "              Or.inl ⟨[FrameLevel.map 0], sorry, Or.inr trivial,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P17",
+   "old": [
+    "                  (Or.inr trivial) h_land.2.1 h_stream_mid h_ind', h_kcol,",
+    "                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),",
+    "                Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,"
+   ],
+   "new": [
+    "                  (Or.inr trivial) h_land.2.1 h_stream_mid h_ind', h_kcol,",
+    "                Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),",
+    "                Or.inl ⟨[FrameLevel.map 0], sorry, Or.inr trivial,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P18",
+   "old": [
+    "              Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),",
+    "              Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil), Or.inr trivial,"
+   ],
+   "new": [
+    "              Or.inr (PackAlt.step_content h_preprocess h_dispatch h_alt),",
+    "              Or.inl ⟨[FrameLevel.map 0], sorry, Or.inr trivial,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P19",
+   "old": [
+    "            (suffixMapRoute hcol0 h_sfx_land h_ind)",
+    "            (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "            (suffixMapRoute hcol0 h_sfx_land h_ind)",
+    "            (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P20",
+   "old": [
+    "              (nodocMapRoute hcol0 h_nodoc_land h_ind)",
+    "              (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "              (nodocMapRoute hcol0 h_nodoc_land h_ind)",
+    "              (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P21",
+   "old": [
+    "                (markerMapRoute h_mk_land h_ind)",
+    "                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "                (markerMapRoute h_mk_land h_ind)",
+    "                (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P22",
+   "old": [
+    "                (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind)",
+    "                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "                (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind)",
+    "                (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P23",
+   "old": [
+    "            (Or.inl (suffixMapRoute hcol0 h_sfx_land h_ind))",
+    "            (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "            (Or.inl (suffixMapRoute hcol0 h_sfx_land h_ind))",
+    "            (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P24",
+   "old": [
+    "              (Or.inl (nodocMapRoute hcol0 h_nodoc_land h_ind))",
+    "              (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "              (Or.inl (nodocMapRoute hcol0 h_nodoc_land h_ind))",
+    "              (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P25",
+   "old": [
+    "                (Or.inl (markerMapRoute h_mk_land h_ind))",
+    "                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "                (Or.inl (markerMapRoute h_mk_land h_ind))",
+    "                (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P26",
+   "old": [
+    "                (Or.inl (propsMapRoute (PropsRideRoute.toNodeRoute h_pr_land) h_ind))",
+    "                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "                (Or.inl (propsMapRoute (PropsRideRoute.toNodeRoute h_pr_land) h_ind))",
+    "                (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P27",
+   "old": [
+    "                (Or.inl (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind))",
+    "                (Or.inl ⟨[], fun _ h => absurd h (List.not_mem_nil),"
+   ],
+   "new": [
+    "                (Or.inl (rootMapRoute_or_refused h_ref hcol0 h_stream_land h_ind))",
+    "                (Or.inl ⟨[FrameLevel.map 0], sorry,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P28",
+   "old": [
+    "        h_face.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), h_face.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨[n], frameChainOne (a := n)",
+    "            (fun sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "              ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n sp_q sp_scan sp sp_i sp_c sp_v",
+    "                h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi)))⟩",
+    "        | Or.inr _ => Or.inl ⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩⟩"
+   ],
+   "new": [
+    "        h_face.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), h_face.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨[n], frameChainOne (a := n)",
+    "            (fun sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "              ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n sp_q sp_scan sp sp_i sp_c sp_v",
+    "                h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi)))⟩",
+    "        | Or.inr _ => Or.inl ⟨[FrameLevel.map 0], sorry⟩⟩"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P29",
+   "old": [
+    "        hvs.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), hvs.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨[n], frameChainOne (a := n)",
+    "            (fun sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "              ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n sp_q sp_scan sp sp_i sp_c sp_v",
+    "                h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi)))⟩",
+    "        | Or.inr _ => Or.inl ⟨[], fun _ hm => (List.not_mem_nil hm).elim⟩⟩"
+   ],
+   "new": [
+    "        hvs.2 sp (SBlockIndented_blockIn_to_blockOut h_bi), hvs.1,",
+    "        -- Item 196: this lane's slot is `[185]`'s, WIDER than the awaited",
+    "        -- node `h_kslot` premises, so the ancestors cannot fund it and the",
+    "        -- park's own frame is still the only answer — as a one-element chain.",
+    "        match h_expl with",
+    "        | Or.inl ⟨sp_q, h_qlit, route⟩ => Or.inl ⟨[n], frameChainOne (a := n)",
+    "            (fun sp h_bi sp_i sp_c h_iv h_lit sp_v h_sbi =>",
+    "              ResumeFrames.one (route sp_v (SBlockMapEntry.explicit n sp_q sp_scan sp sp_i sp_c sp_v",
+    "                h_qlit (SBlockIndented_blockIn_to_blockOut h_bi) h_iv h_lit h_sbi)))⟩",
+    "        | Or.inr _ => Or.inl ⟨[FrameLevel.map 0], sorry⟩⟩"
+   ],
+   "count": 1
+  }
+ ]
+}

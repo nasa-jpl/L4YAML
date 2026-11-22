@@ -1,6 +1,10 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
-import L4YAML.Proofs.Scanner.ScannerContracts
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+public import L4YAML.Proofs.Scanner.ScannerContracts
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -49,7 +53,8 @@ open L4YAML.Proofs.ScannerContracts
 def pushSequenceIndent (s : ScannerState) (col : Int) : ScannerState :=
   if col > s.currentIndent then
     let s' := s.emit .blockSequenceStart
-    { s' with indents := s'.indents.push { column := col, isSequence := true } }
+    { s' with indents := s'.indents.push { column := col, isSequence := true },
+              pendingKeys := s'.pendingKeys.push none }
   else s
 ```
 
@@ -168,7 +173,8 @@ lemma pushSequenceIndent_preserves_wellFormed (s : ScannerState) (col : Int)
 def pushMappingIndent (s : ScannerState) (col : Int) : ScannerState :=
   if col > s.currentIndent then
     let s' := s.emit .blockMappingStart
-    { s' with indents := s'.indents.push { column := col, isSequence := false } }
+    { s' with indents := s'.indents.push { column := col, isSequence := false },
+              pendingKeys := s'.pendingKeys.push none }
   else s
 ```
 
@@ -275,13 +281,13 @@ def unwindIndents (s : ScannerState) (col : Int) : ScannerState := Id.run do
   for _ in [:fuel] do
     if s'.currentIndent > col && s'.indents.size > 1 then
       s' := s'.emit .blockEnd
-      s' := { s' with indents := s'.indents.pop }
+      s' := { s' with indents := s'.indents.pop, pendingKeys := s'.pendingKeys.pop }
     else
       break
   return s'
 ```
 
-**Loop body**: `s' := s'.emit .blockEnd; s' := { s' with indents := s'.indents.pop }`
+**Loop body**: `s' := s'.emit .blockEnd; s' := { s' with indents := s'.indents.pop, pendingKeys := s'.pendingKeys.pop }`
 
 The critical observation for C1:
 - The loop condition checks `s'.indents.size > 1` before popping
@@ -295,31 +301,31 @@ For C2/C3/C4:
 
 /-- The loop body of `unwindIndents` preserves `flowLevel`. -/
 lemma unwindBody_flowLevel (s : ScannerState) :
-    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.flowLevel =
+    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }.flowLevel =
     s.flowLevel := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `flowStack`. -/
 lemma unwindBody_flowStack (s : ScannerState) :
-    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.flowStack =
+    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }.flowStack =
     s.flowStack := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `simpleKeyStack`. -/
 lemma unwindBody_simpleKeyStack (s : ScannerState) :
-    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.simpleKeyStack =
+    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }.simpleKeyStack =
     s.simpleKeyStack := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `offset`. -/
 lemma unwindBody_offset (s : ScannerState) :
-    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.offset =
+    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }.offset =
     s.offset := by
   simp [ScannerState.emit]
 
 /-- The loop body of `unwindIndents` preserves `inputEnd`. -/
 lemma unwindBody_inputEnd (s : ScannerState) :
-    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop }.inputEnd =
+    { s.emit .blockEnd with indents := (s.emit .blockEnd).indents.pop, pendingKeys := (s.emit .blockEnd).pendingKeys.pop }.inputEnd =
     s.inputEnd := by
   simp [ScannerState.emit]
 
@@ -327,7 +333,8 @@ lemma unwindBody_inputEnd (s : ScannerState) :
 lemma unwindBody_indents_ge_1 (s : ScannerState)
     (h : s.indents.size > 1) :
     { s.emit .blockEnd with
-      indents := (s.emit .blockEnd).indents.pop }.indents.size ≥ 1 := by
+      indents := (s.emit .blockEnd).indents.pop,
+      pendingKeys := (s.emit .blockEnd).pendingKeys.pop }.indents.size ≥ 1 := by
   simp [ScannerState.emit, Array.size_pop]
   omega
 
@@ -375,3 +382,5 @@ Verify `currentIndent` is correct after push/unwind operations.
 
 
 end L4YAML.Proofs.ScannerIndentStack
+
+end Blanket

@@ -1,4 +1,8 @@
-import L4YAML.Output.Events
+module
+
+public import L4YAML.Output.Events
+
+@[expose] public section Blanket
 
 /-!
 # l4yaml-event — test-suite event stream emitter
@@ -19,3 +23,5 @@ def main : IO UInt32 := do
   | .error e =>
     IO.eprintln (toString e)
     return 1
+
+end Blanket

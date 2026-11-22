@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 497 — the seq ROOT CARRIER `_seq` twin is the producer/consumer MEET, and a thin-instance
 twin is the CHEAPEST link in a guard re-thread (zero proof body — one parent-name swap + the forwarded
@@ -131,3 +136,5 @@ theorem strong_root_residual_unsatisfiable : ¬ WidthEnc StrongG root :=
 example : Goal root := rootCarrier_seq producer
 
 end ThinInstanceTwinIsProducerConsumerMeet
+
+end Blanket

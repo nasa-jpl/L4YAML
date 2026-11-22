@@ -1,0 +1,104 @@
+{
+ "item": 397,
+ "tag": "KSLOT-DOMAIN-R2",
+ "rev": "bb4d733e",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/397-kslot-domain-round2.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    -- whose frame has no value line pass `Or.inr trivial`.",
+    "    ((∃ ns : List Nat, ∀ nv ∈ ns,"
+   ],
+   "new": [
+    "    -- whose frame has no value line pass `Or.inr trivial`.",
+    "    ((∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "      -- carries whatever the pack now states.",
+    "      ((∃ ns : List Nat, ∀ nv ∈ ns,"
+   ],
+   "new": [
+    "      -- carries whatever the pack now states.",
+    "      ((∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    -- through either stands inside the same chain of `?` frames.",
+    "    ((∃ ns : List Nat, ∀ nv ∈ ns,"
+   ],
+   "new": [
+    "    -- through either stands inside the same chain of `?` frames.",
+    "    ((∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "    -- `nil`.  A frame whose enclosing construct has no value line says so.",
+    "    ((∃ ns : List Nat, ∀ nv ∈ ns,"
+   ],
+   "new": [
+    "    -- `nil`.  A frame whose enclosing construct has no value line says so.",
+    "    ((∃ ns : List Nat, RegisterWitness.MarkedColsIn s0 ns ∧ ∀ nv ∈ ns,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "        h_dispatch (Or.inr trivial) h_cf h_lkt"
+   ],
+   "new": [
+    "        h_dispatch (sorry) h_cf h_lkt"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "            (PackAlt.step_value h_preprocess h_dispatch h_noflow) (Or.inr trivial)"
+   ],
+   "new": [
+    "            (PackAlt.step_value h_preprocess h_dispatch h_noflow) (sorry)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P7",
+   "old": [
+    "    -- value line pass `Or.inr trivial`.",
+    "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,"
+   ],
+   "new": [
+    "    -- value line pass `Or.inr trivial`.",
+    "    (h_nodeV : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P8",
+   "old": [
+    "    -- nesting the compact conjunct above cannot reach (`?⏎  &p a: b⏎: - w`).",
+    "    (h_nodeV : (∃ ns : List Nat, ∀ nv ∈ ns,"
+   ],
+   "new": [
+    "    -- nesting the compact conjunct above cannot reach (`?⏎  &p a: b⏎: - w`).",
+    "    (h_nodeV : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,"
+   ],
+   "count": 1
+  }
+ ]
+}

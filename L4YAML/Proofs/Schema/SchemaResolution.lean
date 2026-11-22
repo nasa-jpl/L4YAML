@@ -1,5 +1,11 @@
-import L4YAML.Schema.Schema
-import L4YAML.Spec.Types
+module
+
+public import L4YAML.Schema.Schema
+
+public meta import L4YAML.Schema.Schema
+public import L4YAML.Spec.Types
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -192,10 +198,45 @@ lemma resolveScalar_not_map (content : String) (tag? : Option String) :
         · rfl  -- isInt = some i
         · split <;> rfl  -- isFloat = some f | str fallback
 
+/-- `scalarType` always returns a leaf type: the tagged arm is `resolveScalar`,
+    the untagged arm is `resolveImplicit` (= `resolveScalar _ none`) or `.str`. -/
+lemma scalarType_not_seq (s : Scalar) : (scalarType s).isSeq = false := by
+  unfold scalarType
+  split
+  · exact resolveScalar_not_seq _ _
+  · split
+    · have h := resolveScalar_not_seq s.content none
+      simpa [resolveScalar] using h
+    · rfl
+
+lemma scalarType_not_map (s : Scalar) : (scalarType s).isMap = false := by
+  unfold scalarType
+  split
+  · exact resolveScalar_not_map _ _
+  · split
+    · have h := resolveScalar_not_map s.content none
+      simpa [resolveScalar] using h
+    · rfl
+
 /-- Resolving a scalar produces a leaf type (corollary of the above). -/
 lemma resolve_scalar_is_leaf (s : Scalar) :
     (resolve (.scalar s)).isSeq = false ∧ (resolve (.scalar s)).isMap = false :=
-  ⟨resolveScalar_not_seq s.content s.tag, resolveScalar_not_map s.content s.tag⟩
+  ⟨scalarType_not_seq s, scalarType_not_map s⟩
+
+/-- Without a tag, a quoted or block scalar is a string whatever it spells (§10.3.2). -/
+lemma scalarType_nonplain_str (s : Scalar) (ht : s.tag = none) (hp : s.style ≠ .plain) :
+    scalarType s = .str s.content := by
+  have h : (s.style == ScalarStyle.plain) = false := by
+    cases hs : s.style <;> first | rfl | exact absurd hs hp
+  unfold scalarType
+  simp [ht, h]
+
+/-- Without a tag, a plain scalar is implicitly resolved. -/
+lemma scalarType_plain (s : Scalar) (ht : s.tag = none) (hp : s.style = .plain) :
+    scalarType s = resolveImplicit s.content := by
+  have h : (s.style == ScalarStyle.plain) = true := by rw [hp]; rfl
+  unfold scalarType
+  simp [ht, h]
 
 /-! ## §4 — `resolveScalar` Explicit Tag Dispatch -/
 
@@ -225,3 +266,5 @@ Moved to `Tests/Guards/Proofs/SchemaResolution.lean`.
 
 
 end L4YAML.Proofs.SchemaResolution
+
+end Blanket

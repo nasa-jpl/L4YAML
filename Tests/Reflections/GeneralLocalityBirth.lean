@@ -1,5 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability
-import L4YAML.Proofs.Output.EmitterScannability.TokVals
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+public import L4YAML.Proofs.Output.EmitterScannability.TokVals
+
+public meta import L4YAML.Proofs.Output.EmitterScannability.TokVals
+@[expose] public section Blanket
 
 /-!
 # Reflection — birth probes for the Front-B general-locality plan
@@ -18,7 +23,7 @@ plan is validated on REAL emissions before construction:
    single-document emission ends exactly at `tokens.size - 1` (the `streamEnd` position).
 4. **Purity** (module-B2 target): a value parsed from a flow-clean window is
    `resolveAliases`-invariant under an arbitrary junk anchor map, `stripAnchors`-invariant,
-   and `anchorFree`.
+   and `anchorAliasFree`.
 -/
 
 namespace GeneralLocalityBirth
@@ -116,8 +121,10 @@ def junkAnchors : Array (String × YamlValue) := #[("x", sc "q"), ("b", nested)]
 theorem purity_birth :
     ((parseNode { tokens := toks outer, pos := 2 } 23).toOption.map
        (fun r => (r.1.resolveAliases junkAnchors == r.1)
-         && (r.1.stripAnchors == r.1) && r.1.anchorFree)
+         && (r.1.stripAnchors == r.1) && r.1.anchorAliasFree)
       == some true) = true := by
   native_decide
 
 end GeneralLocalityBirth
+
+end Blanket

@@ -1,6 +1,15 @@
-import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
-import L4YAML.Output.Dump
+module
+
+public import L4YAML.Output.Emitter
+
+public meta import L4YAML.Output.Emitter
+public import L4YAML.Parser.Composition
+public meta import L4YAML.Parser.Composition
+public import L4YAML.Output.Dump
+
+public meta import L4YAML.Output.Dump
+public meta import L4YAML.Spec.Types
+@[expose] public section Blanket
 
 /-!
 # Comment Round-Trip Guards (Phase G6)
@@ -362,3 +371,5 @@ open L4YAML.Dump in
   dumpDocumentsWithComments #[doc1, doc2] == "first\n---\nsecond\n..."
 
 end L4YAML.Tests.Guards.CommentRoundTrip
+
+end Blanket

@@ -39,6 +39,11 @@ Negative: a scalar located entry `[A]` has no `OB :: (… ++ [CB])` bracket shap
 never fires there.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.DescendStepConsumerJoint
 
 inductive Tok | A | OB | CB
@@ -256,3 +261,5 @@ theorem descend_map_twice : MapBody [Tok.OB, Tok.CB] := by
 #guard ([Tok.OB, Tok.OB, Tok.OB, Tok.CB, Tok.CB, Tok.CB] : List Tok).length == 6
 
 end Tests.Reflections.DescendStepConsumerJoint
+
+end Blanket

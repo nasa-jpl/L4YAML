@@ -1,0 +1,17 @@
+wide:
+  a_very_long_key_name_that_exceeds_the_cell_cap_by_far:  1
+  b:  2
+  c:  {x: 1, y: [1, 2]}
+  d:  !!str       tagged
+  e:  &anc !!int  7
+  f:  |
+    literal body
+    keeps  its   spaces
+  g:  "quoted   value"   # trailing comment
+  h:
+    nested:      1
+    deeper_key:  [a, b]
+  i: # comment after colon
+    - 1
+  j_is_a_long_key_with_an_anchor_beyond_the_cap:  &lk  9
+  k:  &sk         10

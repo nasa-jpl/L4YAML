@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 362 — a balance-only invariant is TYPE-BLIND, so a "structure ⇒ typed-fact" bridge across a
 type-blind constructor is FALSE; PROBE a minimal pair before authoring, and on refutation THREAD the typed
@@ -137,3 +142,5 @@ example : typed (goodEntry ++ [feTok]) :=
     (by decide) (by decide)
 
 end Tests.Reflections.TypeBlindBridgeFalse
+
+end Blanket

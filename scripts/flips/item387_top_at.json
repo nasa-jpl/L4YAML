@@ -1,0 +1,23 @@
+{
+ "item": 387,
+ "tag": "TOP-AT",
+ "rev": "b5995693",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/387-flip-top-at.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "      (h_park_top : sc.currentIndent ≤ (n : Int))"
+   ],
+   "new": [
+    "      (h_park_top : sc.currentIndent ≤ (n : Int))",
+    "      (h_top_at : ∃ e : IndentEntry, sc.indents.back? = some e ∧ e.column = (n : Int))"
+   ],
+   "count": 1
+  }
+ ]
+}

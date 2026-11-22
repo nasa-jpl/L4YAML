@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
+
+module
+
+public import L4YAML.Init
+
+@[expose] public section Blanket
 
 /-! # Indent-stack Algebra  (Algebra Item 8)
 
@@ -115,3 +120,5 @@ lemma push_eq_cons (s : IndentStack α) (a : α) :
 end IndentStack
 
 end L4YAML.Algebra.Indent
+
+end Blanket

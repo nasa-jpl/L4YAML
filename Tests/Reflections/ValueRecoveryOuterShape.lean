@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 572 — INHABITATION PROBE for Front B's value-recovery trace, brick 1 (outer shape)
@@ -98,7 +102,7 @@ theorem mapPS_recovers_mapping
 
 -- Axiom audit — the source lemmas are structural unfolds; `Classical.choice` is inherited from
 -- the parser/`Except`-monad simp machinery they unfold, NOT from `native_decide` (the
--- `native_decide` firing probes above are separate and carry `Lean.ofReduceBool` on top).
+-- `native_decide` firing probes above are separate and carry a per-call-site axiom on top).
 /-- info: 'L4YAML.Proofs.EmitterScannability.parseFlowSequence_produces_sequence' depends on axioms: [propext,
  Classical.choice,
  Quot.sound] -/
@@ -112,3 +116,5 @@ theorem mapPS_recovers_mapping
 #print axioms parseFlowMapping_produces_mapping
 
 end ValueRecoveryOuterShape
+
+end Blanket

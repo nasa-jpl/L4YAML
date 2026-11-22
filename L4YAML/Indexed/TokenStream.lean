@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Indexed.Range
-import L4YAML.Token.Token
+
+module
+
+public import L4YAML.Indexed.Range
+public import L4YAML.Token.Token
+
+@[expose] public section Blanket
 
 /-! # `TokenStream input` — indexed L2 event/token stream
 
@@ -193,3 +198,5 @@ lemma getElem_eq_tokens_getElem {input : String}
 end TokenStream
 
 end L4YAML.Indexed
+
+end Blanket

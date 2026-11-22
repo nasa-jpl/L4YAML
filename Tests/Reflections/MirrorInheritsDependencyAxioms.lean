@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 516 — a faithful proof-mirror inherits its DEPENDENCY's axiom profile
 
 R516 lands the first sub-brick of the map fold cluster (`mapHRec_of_root_and_emit`, brick (2)):
@@ -7,6 +12,12 @@ text-swap mirror — and yet the axiom audit comes out DIFFERENT:
 
 * `seqWholeStreamWellTyped` → `[propext, Classical.choice, Quot.sound]` (clean)
 * `mapWholeStreamWellTyped` → `[propext, sorryAx, Classical.choice, Quot.sound]` (carries `sorryAx`)
+
+(Postscript.  The audit above is R516's reading.  The map relocation has since landed — the
+`FlowSubrangesOk` residual is discharged in `parseStream_emitMapping` — so both structure lemmas and
+both context pairs now audit `[propext, Classical.choice, Quot.sound]`, pinned by
+`Tests/Guards/Proofs/FlowContextProviderAxioms.lean`.  The lesson below stands; its model axiom
+`relocated_residual` plays the part the inline `sorry` played then.)
 
 The asymmetry is invisible in the proof TEXT.  It comes entirely from a DEPENDENCY: both lemmas read
 boundary/`WellTyped` facts off a structure lemma, but the SEQ structure lemma
@@ -192,3 +203,5 @@ end MirrorInheritsDependencyAxioms
 /-- info: 'MirrorInheritsDependencyAxioms.provider_at_produced' depends on axioms: [MirrorInheritsDependencyAxioms.relocated_residual] -/
 #guard_msgs in
 #print axioms MirrorInheritsDependencyAxioms.provider_at_produced
+
+end Blanket

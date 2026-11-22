@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 357 — a carried domain invariant needs one preservation edge per recursion MOVE; the descend+negation pair MASKS the missing ADVANCE (frame) edge
 
@@ -138,3 +143,5 @@ example : PathAllSeq ([.os] ++ [.os, .it, .cl]) :=
 example : ¬ PathAllSeq ([.os] ++ [.om]) := map_break [.os] ⟨by decide, by decide⟩
 
 end Tests.Reflections.CarriedInvariantAdvanceEdge
+
+end Blanket

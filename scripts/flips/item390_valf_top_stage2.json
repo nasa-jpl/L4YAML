@@ -1,0 +1,25 @@
+{
+ "item": 390,
+ "tag": "VALF-TOP-S2",
+ "rev": "9f1d5dd2",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/390-valf-top-stage2.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "      -- `?`/`:` push put `[187]`'s level at the indicator's own column.",
+    "      (h_floor : IndentFloor sc (n + 1))"
+   ],
+   "new": [
+    "      -- `?`/`:` push put `[187]`'s level at the indicator's own column.",
+    "      (h_floor : IndentFloor sc (n + 1))",
+    "      (h_top : sc.currentIndent ≤ (n : Int))"
+   ],
+   "count": 1
+  }
+ ]
+}

@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Scanner.ScannerWhitespace
+module
+
+public import L4YAML.Proofs.Scanner.ScannerWhitespace
+
+
+
+public meta import L4YAML.Scanner.Whitespace
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerWhitespace
 
@@ -239,3 +247,5 @@ open L4YAML.Proofs.ScannerLoopInvariant
 #guard ((ScannerState.mk' "ab").advanceN 10).offset == 2
 
 end L4YAML.Proofs.ScannerWhitespace
+
+end Blanket

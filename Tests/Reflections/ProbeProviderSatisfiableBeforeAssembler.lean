@@ -1,4 +1,10 @@
-import Tests.Reflections.RebaseFactFromEnclosingWindow
+module
+
+public import Tests.Reflections.RebaseFactFromEnclosingWindow
+
+
+public meta import Tests.Reflections.RebaseFactFromEnclosingWindow
+@[expose] public section Blanket
 
 /-!
 # Reflection 305 — the carrier ASSEMBLES from a per-window enclosing-facts `provider`: factor a heavy locate boundary as an EXISTENTIAL provider, discharge the assemble, PROBE the provider is satisfiable
@@ -109,3 +115,5 @@ theorem provider_mapT_unsat : ¬ ProviderAt mapT 1 4 := by
       ⟨by decide, by decide⟩)
 
 end Tests.Reflections.ProbeProviderSatisfiableBeforeAssembler
+
+end Blanket

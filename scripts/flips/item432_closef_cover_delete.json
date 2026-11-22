@@ -1,0 +1,149 @@
+{
+ "item": 432,
+ "tag": "CLOSEF-COVER-DELETE",
+ "rev": "a800d640",
+ "target": "L4YAML",
+ "log": "scratch/closef_cover_delete.log",
+ "msgWidth": 110,
+ "rounds": 5,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L2503.pendingProps.h_closeF.cover",
+     "line": 2503,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2508.pendingProps.h_closeFV.cover",
+     "line": 2508,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2830.pendingBlockContent.h_closeF.cover",
+     "line": 2830,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L2915.pendingBlockContent.h_closeFV.cover",
+     "line": 2915,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3047.pendingBlock.h_closeF.cover",
+     "line": 3047,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3112.pendingBlock.h_closeFV.cover",
+     "line": 3112,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3369.pendingMapValue.h_closeF.cover",
+     "line": 3369,
+     "old": [
+      "          IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L3414.pendingMapValue.h_closeFV.cover",
+     "line": 3414,
+     "old": [
+      "          IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "          IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29512.blockContent.h_closeF_old.cover",
+     "line": 29512,
+     "old": [
+      "        IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "        IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L29528.blockContent.h_closeFV_old.cover",
+     "line": 29528,
+     "old": [
+      "        IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "        IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L30094.block.h_closeFV_old.cover",
+     "line": 30094,
+     "old": [
+      "        IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "        IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L30107.block.h_closeF_old.cover",
+     "line": 30107,
+     "old": [
+      "        IndentStackCover.Covered lo ks sc) ∨ True) ∧"
+     ],
+     "new": [
+      "        IndentStackCover.Covered lo ks sc)) ∧"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

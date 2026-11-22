@@ -40,6 +40,11 @@ What this file does:
 * toy instances RUN end-to-end through BOTH `seqIhOfOracle` and `mapIhOfOracle`.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointOracleSeqIh
 
 set_option autoImplicit false
@@ -173,3 +178,5 @@ end JointOracleSeqIh
 /-- info: 'JointOracleSeqIh.mapIhOfOracle' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointOracleSeqIh.mapIhOfOracle
+
+end Blanket

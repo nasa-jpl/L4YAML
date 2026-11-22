@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
+
+module
+
+public import L4YAML.Init
+
+@[expose] public section Blanket
 
 /-! # List/String Algebra  (Algebra Items 9 + 22)
 
@@ -122,3 +127,5 @@ lemma reverse_dropWhile_reverse_idempotent {α : Type} (p : α → Bool) (xs : L
   exact dropWhile_idempotent p xs.reverse
 
 end L4YAML.Algebra.StringList
+
+end Blanket

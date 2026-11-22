@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 592 -- `parseFlow{Sequence,Mapping}Loop` element-value join (§5.10.5)
@@ -108,3 +112,5 @@ theorem map_pointwise_j0_applies
 #print axioms parseFlowMappingLoop_push_pointwise
 
 end LoopPushPointwise
+
+end Blanket

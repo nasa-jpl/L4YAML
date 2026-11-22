@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 496 — the climbing dropped-derivation premise (R494) does NOT re-emerge above its
 case-split terminus (R495): the terminating ancestor is an ABSORPTION boundary, so the lift ABOVE it
@@ -138,3 +143,5 @@ example : Goal 3 := localCarrier_seq 3 trivial ⟨id⟩
 example : Goal 3 := localCarrier_strong 3 trivial ⟨Nat.le_of_succ_le (by omega)⟩
 
 end PremiseAbsorbedAboveTerminusCleanLift
+
+end Blanket

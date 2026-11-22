@@ -27,6 +27,11 @@ the exact descend-at-guard lemma the real one performs, then instantiates at toy
 close branches end-to-end (input guard → descended suffix guard).
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointGuardDescendTail
 
 set_option autoImplicit false
@@ -171,3 +176,5 @@ end JointGuardDescendTail
 /-- info: 'JointGuardDescendTail.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointGuardDescendTail.demo
+
+end Blanket

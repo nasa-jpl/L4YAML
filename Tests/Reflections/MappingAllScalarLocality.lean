@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+
+@[expose] public section Blanket
 
 /-!
 # Reflection -- mapping all-scalar locality branch in emit_roundtrip_mapping_content_eq
@@ -165,7 +169,7 @@ theorem mapping_all_scalar_locality_chain
     rw [← h_eq]; exact h_shape
   have h_pairs'_size : pairs'.size = 1 := by rw [h_pairs'_sz]; rfl
   -- the single pinned pair is an anchorless scalar pair, so pairs' is anchor-free (J2 guard)
-  have h_af : ∀ p ∈ pairs'.toList, p.1.anchorFree = true ∧ p.2.anchorFree = true := by
+  have h_af : ∀ p ∈ pairs'.toList, p.1.anchorAliasFree = true ∧ p.2.anchorAliasFree = true := by
     intro q hq
     obtain ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq
     have hi'' : i < pairs'.size := by rwa [Array.length_toList] at hi
@@ -174,7 +178,7 @@ theorem mapping_all_scalar_locality_chain
     have h_q : q = pairs'[0]! := by
       rw [← h_eq, Array.getElem_toList, getElem!_pos pairs' 0 hi'']
     rw [h_q, h_pair0_pin]
-    exact ⟨by simp [YamlValue.anchorFree], by simp [YamlValue.anchorFree]⟩
+    exact ⟨by simp [YamlValue.anchorAliasFree], by simp [YamlValue.anchorAliasFree]⟩
   have h_pairs''_size : pairs''.size = 1 := by
     rw [compose_map_pairs_pointwise (raw_docs[0]!) pairs' pairs'' h_af h_raw_val h_comp_val,
         Array.size_map, h_pairs'_size]
@@ -211,3 +215,5 @@ theorem mapping_all_scalar_locality_chain
 #print axioms compose_map_scalar_pair
 
 end MappingAllScalarLocality
+
+end Blanket

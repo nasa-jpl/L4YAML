@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 355 — a position-navigator's per-arm exclusion facts live at DIFFERENT positions
 
@@ -84,3 +89,5 @@ theorem carried_domain_cannot_classify_head :
   refine ⟨rfl, ?_⟩; decide
 
 end Tests.Reflections.NavigatorArmsKeyedToPositions
+
+end Blanket

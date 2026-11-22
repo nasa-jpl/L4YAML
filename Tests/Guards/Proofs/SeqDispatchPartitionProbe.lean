@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Dispatch-partition probe (de-risk for `(i'-b-recursion-driver / ii-merge)` part (a))
@@ -92,3 +96,5 @@ def T : Array (Positioned YamlToken) :=
 #guard flowBracketDelta T[4]!.val == 1
 
 end L4YAML.Proofs.EmitterScannability.SeqDispatchPartitionProbe
+
+end Blanket

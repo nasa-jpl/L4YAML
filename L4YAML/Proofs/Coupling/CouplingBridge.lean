@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Surface.Document
-import L4YAML.Scanner.Scanner
+
+module
+
+public import L4YAML.Surface.Document
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Scanner ↔ Surface Syntax Bridge
@@ -568,6 +573,12 @@ lemma advance_flowLevel (s : ScannerState) : s.advance.flowLevel = s.flowLevel :
     · split <;> rfl
   · rfl
 
+/-- Item 35's BOM step preserves the flow level too — it is `advance` with
+    the column put back. -/
+lemma consumeBOM_flowLevel (s : ScannerState) :
+    s.consumeBOM.flowLevel = s.flowLevel := by
+  unfold ScannerState.consumeBOM; simpa using advance_flowLevel s
+
 lemma advance_dp (s : ScannerState) : s.advance.directivesPresent = s.directivesPresent := by
   unfold ScannerState.advance; split
   · dsimp only []; split
@@ -718,10 +729,10 @@ lemma cr_gives_SBBreak (sp : SurfPos) (rest : List Char)
 
 /-! ## §6 Composition Helpers -/
 
-/-- Start-of-line gives `SSeparateInLine` (zero-width, any column). -/
+/-- Start-of-line gives `SSeparateInLine` (zero-width, at column 0). -/
 lemma start_of_line_gives_SSeparateInLine (rest : List Char) :
     SSeparateInLine ⟨rest, 0⟩ ⟨rest, 0⟩ :=
-  SSeparateInLine.startOfLine ⟨rest, 0⟩
+  SSeparateInLine.startOfLine rest
 
 /-- Space gives `SSeparateInLine`. -/
 lemma space_gives_SSeparateInLine (rest : List Char) (col : Nat) :
@@ -851,6 +862,13 @@ lemma corr_of_simpleKeyAllowed_update {sc : ScannerState} {sp : SurfPos}
     ScannerSurfCorr { sc with simpleKeyAllowed := b } sp :=
   ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
 
+/-- Item 47's scalar-scan epilogue updates both flags; neither is read by the
+    correspondence. -/
+lemma corr_of_simpleKeyAllowed_needIndentCheck_update {sc : ScannerState} {sp : SurfPos}
+    (b b' : Bool) (hcorr : ScannerSurfCorr sc sp) :
+    ScannerSurfCorr { sc with simpleKeyAllowed := b, needIndentCheck := b' } sp :=
+  ⟨hcorr.chars_from, hcorr.col_eq, hcorr.end_eq, hcorr.input_prefix, hcorr.indent_cols_nonneg⟩
+
 /-! ## §10 PeekBack Reasoning -/
 
 lemma listByteSize_pos_of_ne_nil {l : List Char} (h : l ≠ []) :
@@ -977,3 +995,5 @@ lemma gstar_gchar_col_le {p : Char → Prop} {s1 s2 : SurfPos}
     cases hfirst with | mk c rest col _ => exact Nat.le_trans (Nat.le_succ col) ih
 
 end L4YAML.Proofs.CouplingBridge
+
+end Blanket

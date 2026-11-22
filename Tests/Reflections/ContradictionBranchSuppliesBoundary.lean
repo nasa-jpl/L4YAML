@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 428 — the contradiction branch supplies its own boundary fact
 
@@ -113,3 +118,5 @@ theorem preClose_not_sep_map
   simp [isKey] at hc
 
 end Tests.Reflections.ContradictionBranchSuppliesBoundary
+
+end Blanket

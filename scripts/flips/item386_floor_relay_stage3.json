@@ -1,0 +1,66 @@
+{
+ "item": 386,
+ "tag": "FLOOR-RELAY-S3",
+ "rev": "e379e74c",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/386-flip-floor-relay_stage3.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "          IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc) ∨ True) ∧"
+   ],
+   "new": [
+    "          IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc)) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState} {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧"
+   ],
+   "new": [
+    "lemma deeperLandingResume {sp_start sp_gram sp_mid : SurfPos} {sc : ScannerState} {k : Nat}",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc)) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc) ∨ True) ∧"
+   ],
+   "new": [
+    "    -- stay raw — they name scanner levels, not node indices.",
+    "    (h_valF : (∃ (nv : Nat) (ks : List FrameLevel), (∀ fr ∈ ks, fr.width < nv) ∧",
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo nv (FrameLevel.map nv :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map nv :: ks) sc)) ∧"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo n (FrameLevel.map n :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc) ∨ True) ∧"
+   ],
+   "new": [
+    "      ((∃ lo : Nat, IndentStackCover.Floor lo n (FrameLevel.map n :: ks) ∧",
+    "        IndentStackCover.Covered lo (FrameLevel.map n :: ks) sc)) ∧"
+   ],
+   "count": 1
+  }
+ ]
+}

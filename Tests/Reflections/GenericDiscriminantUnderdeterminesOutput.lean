@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 481 — a GENERIC-discriminant premise underdetermines a TYPE-SPECIFIC output:
 # surface the refinement as an explicit hypothesis, don't try to derive it.
@@ -93,3 +98,5 @@ theorem seqOpener_of_seqChild (op : Bracket) (h : SeqChild op) : isSeqOpener op 
   rw [h.seq]; trivial
 
 end GenericDiscriminantUnderdeterminesOutput
+
+end Blanket

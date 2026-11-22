@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 419 — a producer-mirror's ONE non-cloning boundary corner is the CONSUME side's carrier
 END-DUAL: search the carrier before pricing it a fresh derivation
@@ -164,3 +169,5 @@ theorem preClose_is_sep_when_close_is_content :
     tokAt wContentClose (wContentClose.length - 3) = Tok.sep := by decide
 
 end Tests.Reflections.NoncloningCornerEndDualOfCarrier
+
+end Blanket

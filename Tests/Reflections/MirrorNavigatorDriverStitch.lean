@@ -27,6 +27,11 @@ both real drivers — then instantiates it at two DISTINCT deliverable-type trip
 and `MapPair`/`MapBody`) to exhibit the mirror, and runs each on a concrete single-item window.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace MirrorNavigatorDriverStitch
 
 set_option autoImplicit false
@@ -143,3 +148,5 @@ end MirrorNavigatorDriverStitch
 /-- info: 'MirrorNavigatorDriverStitch.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms MirrorNavigatorDriverStitch.demo
+
+end Blanket

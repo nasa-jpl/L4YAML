@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 417 — mirroring a gated global-adjacency predicate to a SIBLING trigger token: the DEF and the WINDOW-RESTRICTION clone for FREE, but the SATISFIABILITY PROBE does NOT clone — re-choose its witness for the NEW gate's non-vacuity axis
 
@@ -156,3 +161,5 @@ theorem sepAdj_vacuous_on_map_witness : SepAdj wMap := by
 #guard (decide (Tok.scal = Tok.key)) == false     -- … and scal ≠ key is the separator gate's pass test.
 
 end Tests.Reflections.MirroredGateReprobeWitness
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 300 — a PREFIX-quantified gate is never projectable from an interior-only window guard; reconstruct it in place from the boundary opener
 
@@ -116,3 +121,5 @@ theorem reconstruction_examples :
   constructor <;> rfl
 
 end Tests.Reflections.PrefixGateReconstructedFromBoundary
+
+end Blanket

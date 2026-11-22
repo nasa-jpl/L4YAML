@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 581 — INHABITATION PROBE for Front B's brick-3 content-half consumer joint (§5.11)
@@ -151,3 +155,5 @@ Sorry-free (no `sorryAx`); `Classical.choice` is pulled by `omega` / `simpa` / `
 #print axioms contentEqPairList_of_pointwise
 
 end PointwiseFoldAssembly
+
+end Blanket

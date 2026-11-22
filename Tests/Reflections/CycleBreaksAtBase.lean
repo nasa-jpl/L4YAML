@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 342 — a co-construction cycle breaks at its BASE; the root seed is the landed edge fed the FLAT producer
 
@@ -116,3 +121,5 @@ theorem root_content_via_carrier_stuck (s : Stream) (h_carrier : Carrier s) : Co
   h_carrier 0 (Nat.zero_le _)
 
 end Tests.Reflections.CycleBreaksAtBase
+
+end Blanket

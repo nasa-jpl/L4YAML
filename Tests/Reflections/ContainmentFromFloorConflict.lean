@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 476 — the load-bearing containment `lo ≤ p` of an enclosing-locate residual
 # falls out of a BALANCE-ADDITIVITY contradiction against the LOCATOR's OWN Dyck floor —
@@ -176,3 +181,5 @@ example (g : Nat → Int) (hg0 : g 0 = 0) (hg1 : g 1 = 1) (hg2 : g 2 = 0) :
         subst this; show g 1 - g 1 ≥ 0; omega)
 
 end ContainmentFromFloorConflict
+
+end Blanket

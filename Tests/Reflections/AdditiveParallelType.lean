@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Additive parallel type over shared edit — runnable demonstration
 
@@ -236,3 +241,5 @@ theorem emptyMap_props : MapProps emptyMap := mapProps_of_located [] emptyMap_en
 #guard  decide (emptyMap = [Tok.mOpen, Tok.mClose])
 
 end AdditiveParallelType
+
+end Blanket

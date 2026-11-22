@@ -1,0 +1,41 @@
+{
+  "item": 423,
+  "tag": "PACKALT-ARMED",
+  "rev": "53a36ba0",
+  "target": "L4YAML",
+  "log": "scratch/packalt_armed.log",
+  "msgWidth": 110,
+  "rounds": 6,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "PackAlt.body",
+          "line": 1120,
+          "old": [
+            "abbrev PackAlt (_sc : ScannerState) : Prop := True"
+          ],
+          "new": [
+            "def ArmedChain (sc : ScannerState) : Prop := RegisterWitness.markedCols sc ≠ []",
+            "def PackAlt (sc : ScannerState) : Prop := ExplicitValueRefused sc ∨ ArmedChain sc"
+          ],
+          "count": 1
+        },
+        {
+          "name": "PackAlt.ofRefused",
+          "old": [
+            "lemma PackAlt.ofRefused {sc : ScannerState} (_h : ExplicitValueRefused sc) : PackAlt sc :=",
+            "  trivial  -- refused: _h"
+          ],
+          "new": [
+            "lemma PackAlt.ofRefused {sc : ScannerState} (h : ExplicitValueRefused sc) : PackAlt sc :=",
+            "  Or.inl h"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

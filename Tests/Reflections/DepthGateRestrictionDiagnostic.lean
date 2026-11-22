@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 390 — the DEPTH-GATING of the in-scope global facts is the diagnostic for which conjuncts
 of a per-window provider RESTRICT now vs which OWE a deep characterization.
@@ -77,3 +82,5 @@ theorem allDepth_from_deep : ∀ k, Qdeep (k + 1) := fun _ => trivial
 #guard (0 % 4 == 0) && (1 % 4 == 1)   -- the gated fact holds at k = 0: Gate0 0 ∧ Q 1
 
 end Tests.Reflections.DepthGateRestrictionDiagnostic
+
+end Blanket

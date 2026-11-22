@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 313 — a FLOOR-BLIND gate (balance-0 only) admits CROSS-SIBLING windows the deliverable cannot inhabit, so the carrier is FALSE on a valid witness; the missing local-Dyck floor excludes exactly those windows and discharges the consumer's containment bound for free
 
@@ -98,3 +103,5 @@ theorem floored_window_cannot_cross
   omega
 
 end Tests.Reflections.FloorBlindGateAdmitsCrossSibling
+
+end Blanket

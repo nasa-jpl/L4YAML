@@ -1,4 +1,16 @@
-import L4YAML.Proofs.Scanner.ScannerScalar
+module
+
+public import L4YAML.Proofs.Scanner.ScannerScalar
+
+
+
+
+
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Token.Token
+public meta import L4YAML.Scanner.Scalar
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerScalar
 
@@ -382,3 +394,5 @@ private def scanTokens (input : String) : Option (List YamlToken) :=
   .scalar "hello\nworld\n" .literal, .blockEnd, .streamEnd]
 
 end L4YAML.Proofs.ScannerScalar
+
+end Blanket

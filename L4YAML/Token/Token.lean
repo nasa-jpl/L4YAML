@@ -2,8 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Spec.YamlSpec
+
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.YamlSpec
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # YAML Token Types
@@ -258,6 +264,174 @@ def YamlToken.canStartNode : YamlToken → Bool
   | _ => false
 
 /--
+Whether a token completes a value node inside a flow collection.
+
+A completed value is a scalar, an alias, or a closed flow collection
+(`]` / `}`).  Inside a flow collection the only tokens that may follow a
+completed value are an entry separator (`,`), a value indicator (`:`), or
+the matching close (`]` / `}`).  Any other node-starting character
+immediately after a completed value is separator-less adjacency
+(e.g. `[[a][b]]`, `[[a]b]`, `["a""b"]`) — invalid YAML that the parser
+rejects; the scanner rejects it via `scanNextToken_checkFlowAdjacency`.
+
+Node *properties* (`&anchor`, `!tag`) and the structural markers
+(`[`, `{`, `,`, `:`, `?`) are deliberately excluded — they precede or
+separate values rather than completing one.
+-/
+def YamlToken.completesFlowValue : YamlToken → Bool
+  | .scalar .. => true
+  | .alias .. => true
+  | .flowSequenceEnd => true
+  | .flowMappingEnd => true
+  | _ => false
+
+/--
+Whether a token is a whole node's BODY **in one token**: a scalar of any style,
+or an alias.
+
+`[96] c-ns-properties` is excluded — a property precedes a node rather than
+being one.  The flow closes are excluded too, but for a different reason, and
+item 159 is where the difference started to matter: a `]`/`}` DOES finish a
+node (`completesFlowValue` says so), but the node it finishes begins at a
+`[`/`{` an arbitrary distance back, so the close does not HEAD a run the way a
+scalar does.  `trailingNodeRun?` reads that node through `flowOpenIdx?` instead.
+-/
+def YamlToken.isNodeBody : YamlToken → Bool
+  | .scalar .. => true
+  | .alias .. => true
+  | _ => false
+
+/--
+Whether a token OPENS a flow collection — `[137] c-flow-sequence`'s `[` and
+`[140] c-flow-mapping`'s `{` — and whether one CLOSES one.
+
+A complete flow collection is a node whose body spans every token between the
+two, so a run that ends in a close is read back to the matching open
+(`flowOpenIdx?`).  That is what `isNodeBody` cannot express in one token.
+-/
+def YamlToken.isFlowOpen : YamlToken → Bool
+  | .flowSequenceStart => true
+  | .flowMappingStart => true
+  | _ => false
+
+@[inherit_doc YamlToken.isFlowOpen]
+def YamlToken.isFlowClose : YamlToken → Bool
+  | .flowSequenceEnd => true
+  | .flowMappingEnd => true
+  | _ => false
+
+/--
+Whether a token OFFERS the following node a slot: the tokens whose own
+production is followed by `s-l+block-indented` or `s-l+block-node`.  A node run
+that stands after one of these is that production's content, at whatever column
+the content sits — `a:⏎b` is `{a: b}`, `?⏎b⏎: v` is an explicit key's, `-⏎b` is
+the entry's, and `---⏎&p [b]` is the bare document's root node, since
+`[185] l-bare-document` is `s-l+block-node(-1, block-in)` just as
+`[186] s-l+block-in-block` is the entry's.  After anything else a run at an
+open level's own column has no slot, which is §9.2's dangling-node violation.
+
+**The three BOUNDARIES are offers beside the three indicators, and the set is
+measured kind by kind rather than argued** (items 278 and 281).  A `[96]` run
+can stand at a depth-0 open's front behind a non-offer only directly after the
+stream start, a document start, or a document END; every other predecessor is a
+second root node in one document and is refused as bare document content.  That
+is a census over the token kinds and not an inference from one of them —
+`ScannerFlowOpenUnderRun` §17 reads all 23, naming for each either an accepted
+witness or the refusal.
+
+Extending the three indicators with the three boundaries moves no verdict, and
+the reason is the INDENT STACK rather than the enumeration: §8.1's floor also
+requires the open's column to stand on that stack, and at each of the three the
+stack holds the sentinel alone — nothing has opened a block level after a
+stream or document start, and `...` UNWINDS every level it finds, which is
+measured (`[-1, 0]` → `[-1]` across the suffix) and not assumed.  So the two
+conditions are mutually exclusive at all three.  §9.2's reading is unmoved for
+a second reason: its offer test short-circuits only for a run whose start is
+neither a node body nor a node property, and a `[96]` run's start is always a
+property.  Each extension was censused over the 402-case suite and the whole
+Lean battery and neither moved a verdict: item 278's two starts over 1420
+inputs of the family, where the `pred` reading of `PropsParkDangling`'s pins
+was the one thing that changed, and item 281's suffix, where not even those
+move — no pinned input in the tree carries a `...` in front of a run.  What
+both buy is `ParkSlot.slotRun`, which was false at the three arms without
+them.
+
+**The suffix is where the argument from the second root node does not reach**
+(item 281).  Item 278 enumerated the non-offers by that refusal and stopped at
+the two starts; a `...` does not continue a document, it ENDS one, so what
+follows is a fresh bare document and `[185]` offers it the same slot `---`
+does.  `a⏎...⏎&x⏎[1]` is accepted with the run standing behind `documentEnd`,
+and seven shapes read it — so the enumeration was a floor, exactly as a
+one-round census is.
+-/
+def YamlToken.offersNodeSlot : YamlToken → Bool
+  | .value => true
+  | .key => true
+  | .blockEntry => true
+  | .documentStart => true
+  | .streamStart => true
+  -- item 281: the suffix ends a document, so a run behind it heads the next
+  -- one's `[185] l-bare-document` exactly as a run behind `---` does.
+  | .documentEnd => true
+  | _ => false
+
+/--
+Whether a token is a node *property*.
+
+`[96] c-ns-properties` is exactly one optional `[101] c-ns-anchor-property`
+and one optional `[97] c-ns-tag-property`, in either order — so a node
+carries **at most one of each**, and a property run is at most two tokens
+long (`&a !t`, `!t &a`).
+
+`alias` is deliberately NOT a property: `[104] c-ns-alias-node` is a whole
+node, offered by `[161] ns-flow-node` and `[196] s-l+block-node` as an
+*alternative* to the properties-bearing form, never as its content.  So a
+property may not be followed by an alias either.
+
+Both facts are enforced by `scanNextToken_dispatchContent`, **inside flow
+collections only** — see `propertyRunHasAnchor`, `propertyRunHasTag` and
+`lastTokenIsNodeProperty`, whose docstrings explain why token adjacency
+identifies a property run in flow context but not in block context.
+-/
+def YamlToken.isNodeProperty : YamlToken → Bool
+  | .anchor .. => true
+  | .tag .. => true
+  | _ => false
+
+/-- Whether a token is the anchor half of `[96] c-ns-properties`
+    (see `YamlToken.isNodeProperty`). -/
+def YamlToken.isAnchorProperty : YamlToken → Bool
+  | .anchor .. => true
+  | _ => false
+
+/-- Whether a token is the tag half of `[96] c-ns-properties`
+    (see `YamlToken.isNodeProperty`). -/
+def YamlToken.isTagProperty : YamlToken → Bool
+  | .tag .. => true
+  | _ => false
+
+/--
+Whether a token leaves a flow collection *at an entry boundary* — i.e. the
+next thing the collection reads is a fresh `ns-flow-seq-entry` [138] or
+`ns-flow-map-entry` [141].
+
+Exactly three tokens do: the collection's own open (`[`, `{`) and the entry
+separator (`,`).  Everything else is inside an entry — a completed value, a
+`key`/`value` indicator, or a node property that some node is still waiting
+to be attached to.
+
+Used by `flowKeyPredecessorOk` for the `?` of `[150] ns-flow-pair`, which
+begins an entry and therefore may only appear at one of these three points.
+The dual, `YamlToken.completesFlowValue`, says the entry is *finished*; this
+one says no entry has been started.
+-/
+def YamlToken.opensFlowEntry : YamlToken → Bool
+  | .flowSequenceStart => true
+  | .flowMappingStart => true
+  | .flowEntry => true
+  | _ => false
+
+/--
 Whether a token is a flow indicator.
 
 Used to determine flow/block context boundaries.
@@ -320,6 +494,26 @@ inductive ScanError where
   | trailingContentAfterDocEnd (line col : Nat)
   /-- `]` or `}` encountered outside any flow collection — §7.4 violation. -/
   | flowEndOutsideFlow (bracket : Char) (line col : Nat)
+  /-- Flow close indicator does not match the innermost open — §7.4 violation:
+      `]` closing a `{`-opened mapping or `}` closing a `[`-opened sequence
+      (`[a}`, `{a]`). `bracket` is the mismatched close found. -/
+  | mismatchedFlowClose (bracket : Char) (line col : Nat)
+  /-- Block scalar header (`|` or `>`) opened inside a flow collection —
+      §8.1 violation.  `c-l+literal` [170] and `c-l+folded` [174] are reachable
+      only through `s-l+block-node` [196]; `ns-flow-content` [158] offers plain,
+      flow-seq, flow-map, single- and double-quoted only.  So `[a, |⏎ x⏎]` and
+      `{k: |⏎ x⏎}` have no derivation.  `indicator` is the header found. -/
+  | blockScalarInFlow (indicator : Char) (line col : Nat)
+  /-- A node's property run repeats a kind, or precedes an alias — §6.9
+      violation.  `[96] c-ns-properties` admits at most one
+      `[101] c-ns-anchor-property` and one `[97] c-ns-tag-property`, so
+      `&a &b`, `!t !u` and `&a !t &b` have no derivation; and
+      `[104] c-ns-alias-node` is a whole node, offered by `[161] ns-flow-node`
+      and `[196] s-l+block-node` as an alternative to the properties-bearing
+      form, so `&a *x` and `!t *x` have none either.  `indicator` is the
+      offending character (`&`, `!` or `*`).  Raised inside flow collections
+      only; see `L4YAML.Scanner.propertyRunHasAnchor`. -/
+  | invalidNodeProperties (indicator : Char) (line col : Nat)
   /-- Continuation line of quoted scalar is under-indented — §8.1 violation. -/
   | underIndentedScalar (style : ScalarStyle) (line : Nat)
   /-- Document marker (`---`/`...`) inside flow collection — §5.4 violation. -/
@@ -328,6 +522,26 @@ inductive ScanError where
   | underIndentedFlowContent (line col : Nat)
   /-- C0 control character (not matching `[2] nb-json`) inside quoted scalar — §5.1 violation. -/
   | invalidControlChar (c : Char) (style : ScalarStyle) (line col : Nat)
+  /-- A `:` glued to its follower after a completed same-line node — §8.2.2
+      [194] violation.  After a quoted scalar, alias, or flow-collection close
+      in block context, §7.5's validators admit a `:` only as the entry's
+      value indicator, and `[194] c-l-block-map-implicit-value`'s value
+      requires `s-separate` — so `"a" :b`, `[1]:b`, `*x :b` start a second
+      node in a slot that admits exactly one, and no derivation exists. -/
+  | unseparatedValue (line col : Nat)
+  /-- A block-collection indicator (`-`/`?`) on the line of an implicit `:`,
+      a node-property run, or a `---` marker — §8.2.2/§6.9/§9.1.1 violation.
+      `[194] c-l-block-map-implicit-value`'s slot is `s-l+block-node` (no
+      compact alternative), `[200]` separates properties from their collection
+      with `s-l-comments`, and no block collection opens on the `---` line —
+      so `k: - a`, `&a - b` and `--- - a` have no derivation. -/
+  | sameLineBlockCollection (line col : Nat)
+  /-- A second block-context value indicator on the line of an implicit `:` —
+      §8.2.2 [194] violation: the implicit value is `s-l+block-node`, which
+      has no same-line mapping, so `k: v : w` and `k: v: w` have no
+      derivation.  (`? a⏎: b: c` stays legal: the EXPLICIT value's slot is
+      `s-l+block-indented`, whose compact mapping this is.) -/
+  | nestedMappingOnLine (line col : Nat)
 
   /- Grammar-level errors (TokenParser.lean) -/
 
@@ -357,6 +571,7 @@ inductive ScanError where
   /-- Bare document (no `---`) after a previous document without `...` — §9.2 [211] violation.
       YAML streams allow bare documents only as the first document or after `...`. -/
   | invalidBareDocument (line col : Nat)
+  | invalidTagHandle (handle : String) (line col : Nat)  -- `%TAG` handle not `!`/`!!`/`!word!` (§6.8.2.2 [89])
   /-- Tag shorthand handle used without a corresponding `%TAG` directive — §6.8.2.2 violation.
       Named handles (e.g., `!prefix!`) are local to the document and must be declared. -/
   | undeclaredTagHandle (handle : String) (line col : Nat)  /-- Whitespace-only line in block scalar exceeds detected content indent — §8.1.3. -/
@@ -406,6 +621,9 @@ def ScanError.toString : ScanError → String
   | .documentMarkerInScalar style l => s!"document marker inside {repr style} scalar at line {l}"
   | .trailingContentAfterDocEnd l c => s!"unexpected content after document-end marker at line {l}, column {c}"
   | .flowEndOutsideFlow b l c => s!"unexpected '{b}' outside flow collection at line {l}, column {c}"
+  | .mismatchedFlowClose b l c => s!"mismatched flow close '{b}' at line {l}, column {c}"
+  | .blockScalarInFlow i l c => s!"block scalar '{i}' inside flow collection at line {l}, column {c}"
+  | .invalidNodeProperties i l c => s!"invalid node properties at '{i}', line {l}, column {c}"
   | .underIndentedScalar .doubleQuoted l => s!"under-indented continuation line in double-quoted scalar at line {l}"
   | .underIndentedScalar .singleQuoted l => s!"under-indented continuation line in single-quoted scalar at line {l}"
   | .underIndentedScalar style l => s!"under-indented continuation line in {repr style} scalar at line {l}"
@@ -414,6 +632,9 @@ def ScanError.toString : ScanError → String
   | .invalidControlChar c .doubleQuoted l col => s!"invalid control character U+{String.ofList (Nat.toDigits 16 c.val.toNat |>.map Char.toUpper)} in double-quoted scalar at line {l}, column {col}"
   | .invalidControlChar c .singleQuoted l col => s!"invalid control character U+{String.ofList (Nat.toDigits 16 c.val.toNat |>.map Char.toUpper)} in single-quoted scalar at line {l}, column {col}"
   | .invalidControlChar c style l col => s!"invalid control character U+{String.ofList (Nat.toDigits 16 c.val.toNat |>.map Char.toUpper)} in {repr style} scalar at line {l}, column {col}"
+  | .unseparatedValue l c => s!"':' glued to its follower after a completed node at line {l}, column {c} — a value requires separation (§8.2.2)"
+  | .sameLineBlockCollection l c => s!"block collection indicator at line {l}, column {c} — no block collection may share a line with an implicit ':', node properties, or '---' (§8.2.2)"
+  | .nestedMappingOnLine l c => s!"second value indicator at line {l}, column {c} — an implicit value admits no same-line mapping (§8.2.2)"
   | .expectedToken desc l (some got) => s!"expected {desc} at line {l}, got {got}"
   | .expectedToken desc _ none => s!"expected {desc} but reached end of tokens"
   | .nestingDepthExceeded l    => s!"maximum nesting depth exceeded at line {l}"
@@ -425,6 +646,7 @@ def ScanError.toString : ScanError → String
   | .invalidFlowEntry l c      => s!"invalid comma in flow collection at line {l}, column {c}"
   | .invalidImplicitKey l      => s!"invalid implicit key at line {l}"
   | .invalidBareDocument l c   => s!"bare document content at line {l}, column {c} — expected '---' or '...' before new document (§9.2)"
+  | .invalidTagHandle h l c => s!"invalid tag handle '{h}' at line {l}, column {c} — a handle is '!', '!!' or '!word!' (§6.8.2.2 [89])"
   | .undeclaredTagHandle h l c => s!"undeclared tag handle '{h}' at line {l}, column {c} — use %TAG directive to declare it (§6.8.2.2)"
   | .blockScalarIndentMismatch l c => s!"whitespace-only line exceeds detected block scalar content indent at line {l}, column {c} (§8.1.3)"
   | .undefinedAlias name l c => s!"undefined alias '*{name}' at line {l}, column {c} — no preceding '&{name}' anchor in this document (§7.1)"
@@ -486,3 +708,5 @@ def TokenStream.currentPos (s : TokenStream) : YamlPos :=
   | none => { offset := 0, line := 0, col := 0 }
 
 end L4YAML
+
+end Blanket

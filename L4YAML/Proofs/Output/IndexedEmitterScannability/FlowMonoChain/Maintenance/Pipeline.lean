@@ -2,14 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Maintenance.FlowDispatch
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Maintenance.FlowDispatch
+public import L4YAML.Proofs.Scanner.FlowAdjacencyIx
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Maintenance.Pipeline` — Phase 3 Step 6f.3b3.flowmono.maintenance.pipeline
 
-**Sub-session 2 of `.flowmono.maintenance`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines ~3735–~3901,
-~4066–~4082, ~4354–~4393, ~4554–~4570, ~4777–~4789, ~4918–~4943,
-~5057–~5064, ~5119–~5139, ~5247–~5272, ~5425–~5440; ~400 LOC
+**Sub-session 2 of `.flowmono.maintenance`** (~400 legacy LOC
 contribution before substrate elimination).
 
 Per-character dispatch return-value lemmas (one each for the
@@ -43,10 +46,8 @@ bridge).
   - **§1** — `dispatchStructural` return-value lemmas:
     `_none_flow` (inflow / underindent skip),
     `_none_bracket_init` / `_none_brace_init` (col=0 / no doc marker).
-  - **§2** — `checkBlockFlowIndent` return-value lemmas:
-    `_ok_flow` (inflow), `_bracket_init` / `_brace_init` (top level
-    with currentIndent = -1), `_ok_comma`, `_ok_close_bracket`,
-    `_ok_close_brace`.
+  - **§2** — retired at item 172: the open-side floor check is gone;
+    the flow-value floor's discharge family lives in `FlowMonoChain/Basic`.
   - **§3** — `dispatchFlowIndicators` return-value lemmas:
     `_none` (non-flow-indicator), `_bracket`, `_brace`,
     `_close_bracket` (flowLevel > 0),
@@ -64,14 +65,13 @@ bridge).
 
 ## Legacy mapping
 
-  | Section | Legacy lines     | Indexed counterpart                |
-  | ------- | ---------------- | ---------------------------------- |
-  | §1      | 3735–3747, 4066–4073, 5425–5432 | `dispatchStructural_*` |
-  | §2      | 3750–3756, 4077–4082, 4382–4393, 5119–5123, 5434–5440 | `checkBlockFlowIndent_*` |
-  | §3      | 3759–3774, 4085–4088, 5057–5064, 4777–4789 (+4918–4943 → collapsed), 5125–5139 (+5247–5272 → collapsed), 4554–4570 | `dispatchFlowIndicators_*` |
-  | §4      | 3777–3788, 4354–4377                | `dispatchBlockIndicators_*` |
-  | §5      | 4398–4421                          | `scanFlowEntryIx_ok` |
-  | §6      | 3852–3901                          | `scanNextTokenIx_via_*` |
+  | Section | Indexed counterpart |
+  | ------- | ------------------- |
+  | §1      | `dispatchStructural_*` |
+  | §3      | `dispatchFlowIndicators_*` |
+  | §4      | `dispatchBlockIndicators_*` |
+  | §5      | `scanFlowEntryIx_ok` |
+  | §6      | `scanNextTokenIx_via_*` |
 
 ## Deferred to `.sync`
 
@@ -89,6 +89,7 @@ open L4YAML
 open L4YAML.Indexed
 open L4YAML.Scanner.Indexed
 open L4YAML.Scanner.Indexed.ScannerStateIx
+open L4YAML.Proofs.FlowAdjacencyIx
 
 variable {input : String}
 
@@ -97,7 +98,7 @@ variable {input : String}
 /-- In flow context with `currentIndent < 0` and `col > 0`,
     structural dispatch returns `none` (no doc-marker / directive
     handling at non-zero column). Indexed twin of
-    `dispatchStructural_none_flow` (legacy 3735). -/
+    `dispatchStructural_none_flow`. -/
 lemma dispatchStructural_none_flow (s : ScannerStateIx input) (c : Char)
     (h_flow : s.inFlow = true)
     (h_indent : s.currentIndent < 0)
@@ -110,9 +111,9 @@ lemma dispatchStructural_none_flow (s : ScannerStateIx input) (c : Char)
 
 /-- At initial state (`flowLevel = 0`, not at doc-start/end markers),
     structural dispatch returns `none` for any non-`%` character.
-    Indexed twin of `dispatchStructural_none_bracket_init`
-    (legacy 4066) / `_none_brace_init` (legacy 5425), generalised
-    to any character — caller supplies the specialisation. -/
+    Indexed twin of `dispatchStructural_none_bracket_init` /
+    `_none_brace_init`, generalised to any character — caller supplies the
+    specialisation. -/
 lemma dispatchStructural_none_non_directive (s : ScannerStateIx input) (c : Char)
     (h_fl : s.flowLevel = 0)
     (h_noDocStart : atDocumentStartIx s.cursor = false)
@@ -141,92 +142,39 @@ lemma dispatchStructural_none_brace_init (s : ScannerStateIx input)
     scanNextTokenIx_dispatchStructural s '{' = .ok none :=
   dispatchStructural_none_non_directive s '{' h_fl h_noDocStart h_noDocEnd (by decide)
 
-/-! ## §2  `checkBlockFlowIndent` return-value lemmas -/
-
-/-- In flow context, the indent guard is vacuous. -/
-lemma checkBlockFlowIndent_ok_flow (s : ScannerStateIx input) (c : Char)
-    (h_flow : s.inFlow = true) :
-    scanNextTokenIx_checkBlockFlowIndent s c = .ok () := by
-  unfold scanNextTokenIx_checkBlockFlowIndent
-  simp only [h_flow, Bool.not_true, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-
-/-- At initial state (`flowLevel = 0`, `currentIndent = -1`),
-    `checkBlockFlowIndent` passes for `'['` (the indent guard fails
-    because `-1 ≥ 0` is false). -/
-lemma checkBlockFlowIndent_bracket_init (s : ScannerStateIx input)
-    (h_fl : s.flowLevel = 0)
-    (h_indent : s.currentIndent = -1) :
-    scanNextTokenIx_checkBlockFlowIndent s '[' = .ok () := by
-  unfold scanNextTokenIx_checkBlockFlowIndent
-  have h_not_inflow : s.inFlow = false := by
-    unfold ScannerStateIx.inFlow; rw [h_fl]; rfl
-  have h_indent_neg : ¬ (s.currentIndent ≥ (0 : Int)) := by rw [h_indent]; decide
-  simp only [h_not_inflow, Bool.not_false, Bool.true_and, h_indent_neg,
-    decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-
-/-- At initial state, `checkBlockFlowIndent` passes for `'{'`. -/
-lemma checkBlockFlowIndent_brace_init (s : ScannerStateIx input)
-    (h_fl : s.flowLevel = 0)
-    (h_indent : s.currentIndent = -1) :
-    scanNextTokenIx_checkBlockFlowIndent s '{' = .ok () := by
-  unfold scanNextTokenIx_checkBlockFlowIndent
-  have h_not_inflow : s.inFlow = false := by
-    unfold ScannerStateIx.inFlow; rw [h_fl]; rfl
-  have h_indent_neg : ¬ (s.currentIndent ≥ (0 : Int)) := by rw [h_indent]; decide
-  simp only [h_not_inflow, Bool.not_false, Bool.true_and, h_indent_neg,
-    decide_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-
-/-- The indent guard fires only on `'['` / `'{'`; for `','` it passes. -/
-lemma checkBlockFlowIndent_ok_comma (s : ScannerStateIx input) :
-    scanNextTokenIx_checkBlockFlowIndent s ',' = .ok () := by
-  unfold scanNextTokenIx_checkBlockFlowIndent
-  simp only [show (',' == '[') = false from by decide,
-    show (',' == '{') = false from by decide, Bool.or_self,
-    Bool.and_false, Bool.false_eq_true, ↓reduceIte]
-
-/-- The indent guard fires only on `'['` / `'{'`; for `']'` it passes. -/
-lemma checkBlockFlowIndent_ok_close_bracket (s : ScannerStateIx input) :
-    scanNextTokenIx_checkBlockFlowIndent s ']' = .ok () := by
-  unfold scanNextTokenIx_checkBlockFlowIndent
-  simp only [show (']' == '[') = false from by decide,
-    show (']' == '{') = false from by decide, Bool.or_self,
-    Bool.and_false, Bool.false_eq_true, ↓reduceIte]
-
-/-- The indent guard fires only on `'['` / `'{'`; for `'}'` it passes. -/
-lemma checkBlockFlowIndent_ok_close_brace (s : ScannerStateIx input) :
-    scanNextTokenIx_checkBlockFlowIndent s '}' = .ok () := by
-  unfold scanNextTokenIx_checkBlockFlowIndent
-  simp only [show ('}' == '[') = false from by decide,
-    show ('}' == '{') = false from by decide, Bool.or_self,
-    Bool.and_false, Bool.false_eq_true, ↓reduceIte]
-
 /-! ## §3  `dispatchFlowIndicators` return-value lemmas -/
 
 /-- For a character that is none of `[`, `]`, `{`, `}`, `,`, flow
     dispatch returns `none`. Indexed twin of
-    `dispatchFlowIndicators_none` (legacy 3759). -/
+    `dispatchFlowIndicators_none`. -/
 lemma dispatchFlowIndicators_none (s : ScannerStateIx input) (c : Char)
-    (h1 : c ≠ '[') (h2 : c ≠ ']') (h3 : c ≠ '{') (h4 : c ≠ '}') (h5 : c ≠ ',') :
+    (h1 : c ≠ '[') (h2 : c ≠ ']') (h3 : c ≠ '{') (h4 : c ≠ '}') (h5 : c ≠ ',')
+    (h_adj : scanNextTokenIx_checkFlowAdjacency s c = .ok ()) :
     scanNextTokenIx_dispatchFlowIndicators s c = .ok none := by
   unfold scanNextTokenIx_dispatchFlowIndicators
-  simp [pure, Pure.pure, Except.pure, beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2, beq_eq_false_iff_ne.mpr h3, beq_eq_false_iff_ne.mpr h4, beq_eq_false_iff_ne.mpr h5]
+  rw [h_adj]
+  simp [bind, Except.bind, pure, Pure.pure, Except.pure, beq_eq_false_iff_ne.mpr h1, beq_eq_false_iff_ne.mpr h2, beq_eq_false_iff_ne.mpr h3, beq_eq_false_iff_ne.mpr h4, beq_eq_false_iff_ne.mpr h5]
 
 /-- Flow dispatch for `'['` always returns
     `some (scanFlowSequenceStartIx s)`. -/
-lemma dispatchFlowIndicators_bracket (s : ScannerStateIx input) :
+lemma dispatchFlowIndicators_bracket (s : ScannerStateIx input)
+    (h_adj : scanNextTokenIx_checkFlowAdjacency s '[' = .ok ()) :
     scanNextTokenIx_dispatchFlowIndicators s '[' =
       .ok (some (scanFlowSequenceStartIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
-  simp only [pure, Pure.pure, Except.pure,
+  rw [h_adj]
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
     show ('[' == '[') = true from by decide, ↓reduceIte]
 
 /-- Flow dispatch for `'{'` always returns
     `some (scanFlowMappingStartIx s)`. -/
-lemma dispatchFlowIndicators_brace (s : ScannerStateIx input) :
+lemma dispatchFlowIndicators_brace (s : ScannerStateIx input)
+    (h_adj : scanNextTokenIx_checkFlowAdjacency s '{' = .ok ()) :
     scanNextTokenIx_dispatchFlowIndicators s '{' =
       .ok (some (scanFlowMappingStartIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
-  simp only [pure, Pure.pure, Except.pure, show ('{' == '[') = false from by decide,     show ('{' == ']') = false from by decide, show ('{' == '{') = true from by decide, ↓reduceIte, Bool.false_eq_true]
+  rw [h_adj]
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure, show ('{' == '[') = false from by decide,     show ('{' == ']') = false from by decide, show ('{' == '{') = true from by decide, ↓reduceIte, Bool.false_eq_true]
 
 /-- Flow dispatch for `']'` with `flowLevel > 0` returns
     `some (scanFlowSequenceEndIx s)`. The legacy split between
@@ -235,37 +183,43 @@ lemma dispatchFlowIndicators_brace (s : ScannerStateIx input) :
     because the indexed pipeline has no `validateFlowClose`
     tail-validation. -/
 lemma dispatchFlowIndicators_close_bracket (s : ScannerStateIx input)
-    (h_fl : s.flowLevel > 0) :
+    (h_fl : s.flowLevel > 0)
+    (h_kind : s.flowStack.back? = some true) :
     scanNextTokenIx_dispatchFlowIndicators s ']' =
       .ok (some (scanFlowSequenceEndIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
+  rw [checkFlowAdjacencyIx_ok_of_sepChar (by decide)]
   have h_ne : (s.flowLevel == 0) = false :=
     beq_eq_false_iff_ne.mpr (by omega)
-  simp only [pure, Pure.pure, Except.pure, show (']' == '[') = false from by decide,
+  have h_kind_ne : (s.flowStack.back? != some true) = false := by rw [h_kind]; rfl
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure, show (']' == '[') = false from by decide,
     show (']' == ']') = true from by decide,
-    h_ne, ↓reduceIte, Bool.false_eq_true]
+    h_ne, h_kind_ne, ↓reduceIte, Bool.false_eq_true]
 
 /-- Flow dispatch for `'}'` with `flowLevel > 0` returns
     `some (scanFlowMappingEndIx s)`. -/
 lemma dispatchFlowIndicators_close_brace (s : ScannerStateIx input)
-    (h_fl : s.flowLevel > 0) :
+    (h_fl : s.flowLevel > 0)
+    (h_kind : s.flowStack.back? = some false) :
     scanNextTokenIx_dispatchFlowIndicators s '}' =
       .ok (some (scanFlowMappingEndIx s)) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
+  rw [checkFlowAdjacencyIx_ok_of_sepChar (by decide)]
   have h_ne : (s.flowLevel == 0) = false :=
     beq_eq_false_iff_ne.mpr (by omega)
-  simp only [pure, Pure.pure, Except.pure, show ('}' == '[') = false from by decide,     show ('}' == ']') = false from by decide, show ('}' == '{') = false from by decide, show ('}' == '}') = true from by decide, h_ne, ↓reduceIte, Bool.false_eq_true]
+  have h_kind_ne : (s.flowStack.back? != some false) = false := by rw [h_kind]; rfl
+  simp only [bind, Except.bind, pure, Pure.pure, Except.pure, show ('}' == '[') = false from by decide,     show ('}' == ']') = false from by decide, show ('}' == '{') = false from by decide, show ('}' == '}') = true from by decide, h_ne, h_kind_ne, ↓reduceIte, Bool.false_eq_true]
 
 /-! ## §5  `scanFlowEntryIx_ok` (used by `_comma`) -/
 
 /-- `scanFlowEntryIx` succeeds when the last real token is not a
-    flow delimiter. Indexed twin of `scanFlowEntry_ok` (legacy 4398). -/
+    flow delimiter. Indexed twin of `scanFlowEntry_ok`. -/
 lemma scanFlowEntryIx_ok (s : ScannerStateIx input)
     (h_last : ∀ t, lastRealTokenValIx? s.tokens = some t →
       t ≠ YamlToken.flowSequenceStart ∧ t ≠ YamlToken.flowMappingStart
       ∧ t ≠ YamlToken.flowEntry) :
     scanFlowEntryIx s =
-      .ok { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true } := by
+      .ok { (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } } := by
   unfold scanFlowEntryIx
   simp only [bind, Except.bind]
   cases h_lrt : lastRealTokenValIx? s.tokens with
@@ -289,8 +243,9 @@ lemma dispatchFlowIndicators_comma (s : ScannerStateIx input)
       ∧ t ≠ YamlToken.flowEntry) :
     scanNextTokenIx_dispatchFlowIndicators s ',' =
       .ok (some { (s.emit YamlToken.flowEntry).advance with
-                  simpleKeyAllowed := true }) := by
+                  simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } }) := by
   unfold scanNextTokenIx_dispatchFlowIndicators
+  rw [checkFlowAdjacencyIx_ok_of_sepChar (by decide)]
   have h_ne : (s.flowLevel == 0) = false :=
     beq_eq_false_iff_ne.mpr (by omega)
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure,
@@ -340,82 +295,109 @@ lemma dispatchBlockIndicators_none_close_brace (s : ScannerStateIx input) :
 `Preserve/Step.lean`. Here we add the two siblings: content
 dispatch (success and error) and block-indicator dispatch. -/
 
+/-- Item 47's adjacent-value check is a no-op off the `:` — the indexed twin
+    of `scanNextToken_checkAdjacentValue_ok_of_ne_colon`. -/
+lemma scanNextTokenIx_checkAdjacentValue_ok_of_ne_colon
+    (s : ScannerStateIx input) {c : Char} (h : c ≠ ':') :
+    scanNextTokenIx_checkAdjacentValue s c = .ok () := by
+  have hc : (c == ':') = false := by simpa using h
+  simp only [scanNextTokenIx_checkAdjacentValue, hc, Bool.and_false, Bool.false_and,
+             Bool.false_eq_true, ↓reduceIte]
+
 /-- When all four upstream stages (preprocess → struct → check →
     flow → block) yield `.ok none` and content dispatch produces a
     result, `scanNextTokenIx` returns that result.
-    Indexed twin of `scanNextToken_via_content_dispatch` (legacy 3852). -/
+    Indexed twin of `scanNextToken_via_content_dispatch`. -/
 lemma scanNextTokenIx_via_content_dispatch
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
-    (h_check : scanNextTokenIx_checkBlockFlowIndent s_ad c = .ok ())
+    (h_fv : scanNextTokenIx_checkFlowValueIndent s s_pp = .ok ())
     (h_flow : scanNextTokenIx_dispatchFlowIndicators s_ad c = .ok none)
     (h_block : scanNextTokenIx_dispatchBlockIndicators s_ad c = .ok none)
+    (h_adj : scanNextTokenIx_checkAdjacentValue s_ad c = .ok ())
     (h_content : scanNextTokenIx_dispatchContent s_ad c = .ok s_result)
-    (h_ndp : s_pp.directivesPresent = false) :
+    (h_ndp : s_pp.directivesPresent = false)
+    (h_bare : scanNextTokenIx_checkBareDocument s_pp = .ok ())
+    (h_dang : scanNextTokenIx_checkDanglingNode s s_pp = .ok ()) :
     scanNextTokenIx s = .ok (some s_result) := by
   unfold scanNextTokenIx
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure]
   rw [h_pp]; dsimp only []
+  rw [h_dang]; dsimp only []
+  rw [h_fv]; dsimp only []
   rw [h_struct]; dsimp only []
   rw [scanNextTokenIx_checkNoPendingDirectives_ok _ h_ndp]; dsimp only []
+  rw [h_bare]; dsimp only []
   rw [← h_ad_eq]
-  rw [h_check]; dsimp only []
   rw [h_flow]; dsimp only []
   rw [h_block]; dsimp only []
+  rw [h_adj]; dsimp only []
   rw [h_content]
 
 /-- Error variant: when content dispatch errors, `scanNextTokenIx`
     propagates that error. Indexed twin of
-    `scanNextToken_via_content_dispatch_error` (legacy 3869). -/
+    `scanNextToken_via_content_dispatch_error`. -/
 lemma scanNextTokenIx_via_content_dispatch_error
     (s s_pp s_ad : ScannerStateIx input) (c : Char) (e : ScanError)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
-    (h_check : scanNextTokenIx_checkBlockFlowIndent s_ad c = .ok ())
+    (h_fv : scanNextTokenIx_checkFlowValueIndent s s_pp = .ok ())
     (h_flow : scanNextTokenIx_dispatchFlowIndicators s_ad c = .ok none)
     (h_block : scanNextTokenIx_dispatchBlockIndicators s_ad c = .ok none)
+    (h_adj : scanNextTokenIx_checkAdjacentValue s_ad c = .ok ())
     (h_content : scanNextTokenIx_dispatchContent s_ad c = .error e)
-    (h_ndp : s_pp.directivesPresent = false) :
+    (h_ndp : s_pp.directivesPresent = false)
+    (h_bare : scanNextTokenIx_checkBareDocument s_pp = .ok ())
+    (h_dang : scanNextTokenIx_checkDanglingNode s s_pp = .ok ()) :
     scanNextTokenIx s = .error e := by
   unfold scanNextTokenIx
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure]
   rw [h_pp]; dsimp only []
+  rw [h_dang]; dsimp only []
+  rw [h_fv]; dsimp only []
   rw [h_struct]; dsimp only []
   rw [scanNextTokenIx_checkNoPendingDirectives_ok _ h_ndp]; dsimp only []
+  rw [h_bare]; dsimp only []
   rw [← h_ad_eq]
-  rw [h_check]; dsimp only []
   rw [h_flow]; dsimp only []
   rw [h_block]; dsimp only []
+  rw [h_adj]; dsimp only []
   rw [h_content]
 
 /-- When structural/flow dispatches yield `.ok none` and block-
     indicator dispatch produces a result, `scanNextTokenIx` returns
     that result. Used for `:` (value indicator) in flow context.
-    Indexed twin of `scanNextToken_via_block_dispatch` (legacy 3889). -/
+    Indexed twin of `scanNextToken_via_block_dispatch`. -/
 lemma scanNextTokenIx_via_block_dispatch
     (s s_pp s_ad s_result : ScannerStateIx input) (c : Char)
     (h_pp : scanNextTokenIx_preprocess s = .ok (some (s_pp, c)))
     (h_struct : scanNextTokenIx_dispatchStructural s_pp c = .ok none)
     (h_ad_eq : s_ad = if s_pp.allowDirectives then
       { s_pp with allowDirectives := false, documentEverStarted := true } else s_pp)
-    (h_check : scanNextTokenIx_checkBlockFlowIndent s_ad c = .ok ())
+    (h_fv : scanNextTokenIx_checkFlowValueIndent s s_pp = .ok ())
     (h_flow : scanNextTokenIx_dispatchFlowIndicators s_ad c = .ok none)
     (h_block : scanNextTokenIx_dispatchBlockIndicators s_ad c = .ok (some s_result))
-    (h_ndp : s_pp.directivesPresent = false) :
+    (h_ndp : s_pp.directivesPresent = false)
+    (h_bare : scanNextTokenIx_checkBareDocument s_pp = .ok ())
+    (h_dang : scanNextTokenIx_checkDanglingNode s s_pp = .ok ()) :
     scanNextTokenIx s = .ok (some s_result) := by
   unfold scanNextTokenIx
   simp only [bind, Except.bind, pure, Pure.pure, Except.pure]
   rw [h_pp]; dsimp only []
+  rw [h_dang]; dsimp only []
+  rw [h_fv]; dsimp only []
   rw [h_struct]; dsimp only []
   rw [scanNextTokenIx_checkNoPendingDirectives_ok _ h_ndp]; dsimp only []
+  rw [h_bare]; dsimp only []
   rw [← h_ad_eq]
-  rw [h_check]; dsimp only []
   rw [h_flow]; dsimp only []
   rw [h_block]
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

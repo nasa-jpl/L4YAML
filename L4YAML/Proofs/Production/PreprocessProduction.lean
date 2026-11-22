@@ -2,8 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Coupling.ScannerCoupling
-import L4YAML.Proofs.Production.NodeProduction
+
+module
+
+public import L4YAML.Proofs.Coupling.ScannerCoupling
+public import L4YAML.Proofs.Production.NodeProduction
+public import L4YAML.Proofs.Scanner.ScannerLinePreservation
+public import L4YAML.Proofs.Scanner.PreprocessIndentStable
+public import L4YAML.Proofs.Coupling.LandingTab
+public import L4YAML.Proofs.Scanner.EntryBoundaryLayout
+
+@[expose] public section Blanket
 
 /-! # Preprocessing Production Coupling (Layer 4b)
 
@@ -39,16 +48,32 @@ open L4YAML.CharPredicates
 open L4YAML.Proofs.CouplingBridge
 open L4YAML.Proofs.ScannerCoupling
 open L4YAML.Proofs.NodeProduction
+open L4YAML.Proofs.PreprocessIndentStable
+open L4YAML.Proofs.LandingTab
+open L4YAML.Proofs.EntryBoundaryLayout
 
 /-! ## §1 Helpers -/
 
-/-- `GStar SSWhite` gives `SSeparateInLine` (zero-width startOfLine if nil). -/
+/-- `GStar SSWhite` gives `SSeparateInLine`: a nonempty run is `whites`, and an
+    empty run is `[66]`'s `startOfLine`, which the caller must place at column 0
+    (`h0`). -/
 lemma GStar_SSWhite_to_SSeparateInLine (sp sp' : SurfPos)
-    (h_ws : GStar SSWhite sp sp') :
+    (h_ws : GStar SSWhite sp sp') (h0 : sp = sp' → sp.col = 0) :
     SSeparateInLine sp sp' := by
   by_cases h : sp = sp'
-  · subst h; exact .startOfLine sp
+  · subst h; exact .startOfLine_of_col0 (h0 rfl)
   · exact .whites sp sp' (GStar_to_GPlus h_ws h)
+
+/-- A white run is an inline separation, or it is empty at a position off the
+    line start — the one case `[66]` has no arm for, returned by name so the
+    consumer can route it (an optional `s-separate?` slot, or a refutation). -/
+lemma GStar_SSWhite_sep_or_eps {sp sp' : SurfPos} (h_ws : GStar SSWhite sp sp') :
+    SSeparateInLine sp sp' ∨ (sp' = sp ∧ 0 < sp.col) := by
+  by_cases hc : sp.col = 0
+  · exact Or.inl (GStar_SSWhite_to_SSeparateInLine sp sp' h_ws (fun _ => hc))
+  · cases h_ws with
+    | nil _ => exact Or.inr ⟨rfl, Nat.pos_of_ne_zero hc⟩
+    | cons _ s₂ _ hx hrest => exact Or.inl (.whites _ _ (GPlus.mk _ s₂ _ hx hrest))
 
 /-- Strengthened `consumeNewline`: produces `SBBreak` and land at col=0. -/
 lemma consumeNewline_break_prod (sc : ScannerState) (sp : SurfPos) (c : Char)
@@ -256,13 +281,14 @@ lemma skipToContentComment_identity_of_content_peek
     gap between the scanner and the formalized grammar. We capture it in
     a single sorry theorem used by multiple proofs. -/
 
--- BOM grammar gap (now closed): comment preceding whitespace at any column.
--- With column-independent SSeparateInLine.startOfLine, zero-width separation
--- suffices to build SSBComment.withSep.
-lemma bom_noWhitespace_ssbcomment (sp sp_cmt sp_end : SurfPos)
-    (h_cmtv : SCNbCommentText sp sp_cmt) (h_break : SBComment sp_cmt sp_end) :
-    SSBComment sp sp_end :=
-  .withSep sp sp sp_cmt sp_end (.startOfLine sp) (.some sp sp_cmt h_cmtv) h_break
+-- A comment with no whitespace before it is `[76]`'s `withSep` only at column
+-- 0, where the zero-width `[66]` applies; a `#` the scanner accepts at `col > 0`
+-- without consumed whitespace sits after a white the previous token swallowed,
+-- and that white is the separator the caller must exhibit.
+lemma noWhitespace_ssbcomment_col0 (chars : List Char) (sp_cmt sp_end : SurfPos)
+    (h_cmtv : SCNbCommentText ⟨chars, 0⟩ sp_cmt) (h_break : SBComment sp_cmt sp_end) :
+    SSBComment ⟨chars, 0⟩ sp_end :=
+  .withSep _ _ sp_cmt sp_end (.startOfLine chars) (.some _ sp_cmt h_cmtv) h_break
 
 /-! ## §2 skipToContentLoop at col=0 → GStar SLComment
 
@@ -289,11 +315,13 @@ lemma skipToContentLoop_col0_prod
     ∃ sp_mid sp_ws sp', GStar SLComment sp sp_mid ∧ sp_mid.col = 0 ∧
                   GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' ∧
-                  (sp' = sp_ws ∨ s_result.peek? = none) := by
+                  (sp' = sp_ws ∨ s_result.peek? = none) ∧
+                  LandingTabFacts sc.currentIndent sc.needIndentCheck
+                    s_result.peek? sp sp_mid := by
   induction fuel generalizing sc sp s_result with
   | zero =>
-    simp [skipToContentLoop] at hok; subst hok
-    exact ⟨sp, sp, sp, GStar.nil _, hcol, GStar.nil _, GOpt.none _, hcorr, Or.inl rfl⟩
+    -- `hfuel` is `0 ≥ _ + 1`: the loop is never entered with no fuel at all.
+    exact absurd hfuel (by omega)
   | succ fuel' ih =>
     unfold skipToContentLoop at hok
     dsimp only [] at hok
@@ -303,7 +331,7 @@ lemma skipToContentLoop_col0_prod
     · -- skipToContentWs = .ok s1
       rename_i s1 hok_ws
       obtain ⟨sp_ws, hstar_ws, hcorr_ws⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
-      obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
+      obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt, h_cok⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
       split at hok
       · -- peek? = some c
         rename_i c hpeek
@@ -314,10 +342,17 @@ lemma skipToContentLoop_col0_prod
             consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
           -- Build SLComment from this iteration
           have h_sep : SSeparateInLine sp sp_ws :=
-            GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws
+            GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws (fun _ => hcol)
           have h_lcomment : SLComment sp sp_brk :=
             SLComment.mk sp sp_ws sp_cmt sp_brk h_sep hopt_cmt
               (SBComment.break _ _ h_break)
+          -- Item 64: the iteration transports §6.1's fact — nothing on the way
+          -- writes the indent stack, and the break re-arms the check.
+          have h_next_ind : (consumeNewline (skipToContentComment s1)).indents = sc.indents := by
+            rw [consumeNewline_indents, skipToContentComment_preserves_indents,
+              skipToContentWs_preserves_indents sc s1 hok_ws]
+          have h_next_nic : (consumeNewline (skipToContentComment s1)).needIndentCheck = true :=
+            consumeNewline_needIndentCheck_of_break _ c hpeek hlb
           -- Fuel budget for recursion
           have ⟨h_ws_off, h_ws_end⟩ := skipToContentWs_offset_mono sc s1 hok_ws
           have ⟨h_sc_off, h_sc_end⟩ := skipToContentComment_offset_mono s1
@@ -350,29 +385,53 @@ lemma skipToContentLoop_col0_prod
               cases sp_brk; dsimp only [] at hcol_brk ⊢
               subst hcol_brk
               exact corr_of_simpleKeyAllowed_update true hcorr_brk
-            obtain ⟨sp_mid, sp_ws_r, sp', hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr', h_pk⟩ :=
+            obtain ⟨sp_mid, sp_ws_r, sp', hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr', h_pk,
+                h_ltsl⟩ :=
               ih _ ⟨sp_brk.chars, 0⟩ s_result hcorr_next rfl hfuel' hok
             exact ⟨sp_mid, sp_ws_r, sp', GStar.cons _ ⟨sp_brk.chars, 0⟩ _
               (by cases sp_brk; dsimp only [] at hcol_brk ⊢; subst hcol_brk; exact h_lcomment)
-              hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr', h_pk⟩
+              hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr', h_pk,
+              h_ltsl.transport (currentIndent_of_indents_eq h_next_ind) h_next_nic⟩
           · -- isInFlowSequence
-            obtain ⟨sp_mid, sp_ws_r, sp', hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr', h_pk⟩ :=
+            obtain ⟨sp_mid, sp_ws_r, sp', hstar_lc, hcol_mid, hws_r, hcmt_r, hcorr', h_pk,
+                h_ltsl⟩ :=
               ih _ sp_brk s_result hcorr_brk hcol_brk hfuel' hok
             exact ⟨sp_mid, sp_ws_r, sp', GStar.cons _ sp_brk _ h_lcomment hstar_lc,
-                   hcol_mid, hws_r, hcmt_r, hcorr', h_pk⟩
+                   hcol_mid, hws_r, hcmt_r, hcorr', h_pk,
+                   h_ltsl.transport (currentIndent_of_indents_eq h_next_ind) h_next_nic⟩
         · -- not line break → stop (trailing ws from final iteration)
           rename_i hnlb
           have hinj := Except.ok.inj hok; subst hinj
           -- skipToContentComment was identity (non-break peek proves no comment consumed)
           have h_id := skipToContentComment_identity_of_content_peek s1 c hpeek hnlb
           rw [h_id]
-          exact ⟨sp, sp_ws, sp_ws, GStar.nil _, hcol, hstar_ws, GOpt.none _, hcorr_ws,
-                 Or.inl rfl⟩
+          refine ⟨sp, sp_ws, sp_ws, GStar.nil _, hcol, hstar_ws, GOpt.none _, hcorr_ws,
+                 Or.inl rfl, ?_⟩
+          -- Item 64: this is the line preprocessing STOPS on, so §6.1's gate
+          -- has already run on it — a tab at or left of the indent would have
+          -- been `tabInIndentation` unless the line ended there.
+          intro hprem hci j sx hind hj htab
+          have hnic : sc.needIndentCheck = true := by
+            rcases hprem with h | h
+            · exact h
+            · exact absurd rfl h
+          obtain ⟨htab_pk, hcol_sp⟩ := skipSpaces_lands_at_tab hcorr hind htab
+          have hle : ((skipSpaces sc).col : Int) ≤ sc.currentIndent := by
+            rw [hcol_sp, ← SIndent_col' hind]; exact hj
+          rcases skipToContentWs_tab_under_indent hok_ws hnic hci htab_pk hle with
+            h_none | ⟨ch, hch, hclass⟩
+          · exact Or.inl h_none
+          · rcases hclass with rfl | hlb
+            · exact Or.inr hch
+            · exact absurd (by
+                have : s1.peek? = some c := by rw [← h_id]; exact hpeek
+                rw [hch] at this
+                cases this; exact hlb) hnlb
       · -- peek? = none → stop (EOF, trailing ws/comment from final iteration)
         rename_i hpeek_none
         have hinj := Except.ok.inj hok; subst hinj
         exact ⟨sp, sp_ws, sp_cmt, GStar.nil _, hcol, hstar_ws, hopt_cmt, hcorr_cmt,
-               Or.inr hpeek_none⟩
+               Or.inr hpeek_none, fun _ _ _ _ _ _ _ => Or.inl hpeek_none⟩
 
 /-- Top-level: `skipToContent` at col=0 produces `GStar SLComment` + correspondence. -/
 lemma skipToContent_col0_prod
@@ -385,7 +444,9 @@ lemma skipToContent_col0_prod
                   ScannerSurfCorr s_result sp' ∧
                   (sp' = sp_ws ∨ s_result.peek? = none) := by
   unfold skipToContent at hok
-  exact skipToContentLoop_col0_prod sc sp _ s_result hcorr hcol (by omega) hok
+  obtain ⟨sp_mid, sp_ws, sp', hstar, hcol_mid, hws, hcmt, hcorr', h_pk, _⟩ :=
+    skipToContentLoop_col0_prod sc sp _ s_result hcorr hcol (by omega) hok
+  exact ⟨sp_mid, sp_ws, sp', hstar, hcol_mid, hws, hcmt, hcorr', h_pk⟩
 
 /-! ## §3 skipToContent at col=0 → SLDocumentPrefix -/
 
@@ -410,51 +471,140 @@ lemma skipToContent_documentPrefix_prod
     When preceded by a break (SSBComment), the loop produces SSLComments:
     `SSBComment sp sp_after_break → skipToContentLoop → SSLComments sp sp'`. -/
 
-/-- `skipToContentLoop` after a break produces `SSLComments`. -/
+/-- `[79] s-l-comments` read from the scanner cursor `sp`, or — at a cursor off
+    the line start — a comment whose `[66]` separator is the white the previous
+    token swallowed (`a #b`: `collectPlainScalarLoop` stops after the space):
+    `c-nb-comment-text` at `sp`, its break, then `l-comment` lines.  The consumer
+    that holds that white (`GStar SSWhite a sp`) turns the second shape back
+    into `SSLComments a _` with `SSLCommentsFrom_prepend_white`; at column 0 the
+    second shape is empty (`SSLCommentsFrom.toSSL`). -/
+def SSLCommentsFrom (sp sp_mid : SurfPos) : Prop :=
+  SSLComments sp sp_mid ∨
+    (0 < sp.col ∧ ∃ sp_cmt sp_brk, SCNbCommentText sp sp_cmt ∧ SBComment sp_cmt sp_brk ∧
+      GStar SLComment sp_brk sp_mid)
+
+/-- The first break of a comment walk, with or without a separator before its
+    comment, followed by the comment lines. -/
+lemma SSLCommentsFrom.ofBreak {sp sp_brk sp_mid : SurfPos}
+    (h : SSBComment sp sp_brk ∨
+      (0 < sp.col ∧ ∃ sp_cmt, SCNbCommentText sp sp_cmt ∧ SBComment sp_cmt sp_brk))
+    (hstar : GStar SLComment sp_brk sp_mid) : SSLCommentsFrom sp sp_mid := by
+  rcases h with h | ⟨hc, sp_cmt, h_cmt, h_bc⟩
+  · exact Or.inl (.withComment _ _ _ h hstar)
+  · exact Or.inr ⟨hc, sp_cmt, sp_brk, h_cmt, h_bc, hstar⟩
+
+/-- At column 0 the separator-less shape cannot occur. -/
+lemma SSLCommentsFrom.toSSL {sp sp_mid : SurfPos} (h : SSLCommentsFrom sp sp_mid)
+    (hcol : sp.col = 0) : SSLComments sp sp_mid := by
+  rcases h with h | ⟨hc, _⟩
+  · exact h
+  · omega
+
+/-- A comment text consumes its `#`, so it never ends where it started. -/
+lemma SCNbCommentText_ne {sp sp' : SurfPos} (h : SCNbCommentText sp sp') : sp' ≠ sp := by
+  cases h with
+  | mk rest col s' hstar =>
+    intro heq
+    have := gstar_gchar_col_le hstar
+    rw [heq] at this
+    dsimp only at this
+    omega
+
+/-- With no whites consumed, `skipToContentWs` leaves input, offset and column
+    alone — so the comment gate it then passes is a fact about the ENTRY state,
+    i.e. about the token that parked there. -/
+lemma CommentOk_of_skipToContentWs_zero {sc s1 : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp) (hcorr1 : ScannerSurfCorr s1 sp)
+    (hok : skipToContentWs sc = .ok s1) (h : CommentOk s1) : CommentOk sc := by
+  have hin := skipToContentWs_input sc s1 hok
+  have hoff := ScannerSurfCorr_same_offset hcorr1 hcorr hin
+  have hcol : s1.col = sc.col := hcorr1.col_eq.symm.trans hcorr.col_eq
+  have hpb : s1.peekBack? = sc.peekBack? := by
+    simp only [ScannerState.peekBack?, hin, hoff]
+  unfold CommentOk at h ⊢
+  rw [hcol, hpb] at h
+  exact h
+
+/-- `skipToContentLoop` after a break produces `[79]` from the cursor the
+    break's comment started at (`SSLCommentsFrom`). -/
 lemma skipToContentLoop_after_break_prod
     (sp : SurfPos) (sp_after_break : SurfPos)
     (sc : ScannerState) (fuel : Nat) (s_result : ScannerState)
-    (h_sbcomment : SSBComment sp sp_after_break)
+    (h_sbcomment : SSBComment sp sp_after_break ∨
+      (0 < sp.col ∧ ∃ sp_cmt, SCNbCommentText sp sp_cmt ∧ SBComment sp_cmt sp_after_break))
     (hcorr : ScannerSurfCorr sc sp_after_break)
     (hcol : sp_after_break.col = 0)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
     (hok : skipToContentLoop sc fuel = .ok s_result) :
-    ∃ sp_mid sp_ws sp', SSLComments sp sp_mid ∧ sp_mid.col = 0 ∧
+    ∃ sp_mid sp_ws sp', SSLCommentsFrom sp sp_mid ∧ sp_mid.col = 0 ∧
+                  GStar SLComment sp_after_break sp_mid ∧
                   GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' ∧
-                  (sp' = sp_ws ∨ s_result.peek? = none) := by
-  obtain ⟨sp_mid, sp_ws, sp', hstar_lc, hcol_mid, hws, hcmt, hcorr', h_pk⟩ :=
+                  (sp' = sp_ws ∨ s_result.peek? = none) ∧
+                  LandingTabFacts sc.currentIndent sc.needIndentCheck
+                    s_result.peek? sp_after_break sp_mid := by
+  obtain ⟨sp_mid, sp_ws, sp', hstar_lc, hcol_mid, hws, hcmt, hcorr', h_pk, h_ltsl⟩ :=
     skipToContentLoop_col0_prod sc sp_after_break fuel s_result hcorr hcol hfuel hok
-  exact ⟨sp_mid, sp_ws, sp', SSLComments.withComment sp sp_after_break sp_mid h_sbcomment hstar_lc,
-         hcol_mid, hws, hcmt, hcorr', h_pk⟩
+  exact ⟨sp_mid, sp_ws, sp', SSLCommentsFrom.ofBreak h_sbcomment hstar_lc,
+         hcol_mid, hstar_lc, hws, hcmt, hcorr', h_pk, h_ltsl⟩
 
 /-- `skipToContentLoop` at any column → `SSLComments` OR flat whitespace.
     Returns a disjunction: if a break was consumed, produces full `SSLComments`
-    with `sp_mid.col = 0`; if not, `sp_mid = sp` (loop stopped on first iteration). -/
+    with `sp_mid.col = 0`; if not, `sp_mid = sp` (loop stopped on first
+    iteration) — and then `needIndentCheck` is untouched, because the no-break
+    stop paths run only the line-transparent whitespace/comment helpers (the
+    witness DOCS item 12's depth-0 props coupling reads). -/
 lemma skipToContentLoop_anyCol_prod
     (sc : ScannerState) (sp : SurfPos) (fuel : Nat) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hfuel : fuel ≥ sc.inputEnd - sc.offset + 1)
     (hok : skipToContentLoop sc fuel = .ok s_result) :
     ∃ sp_mid sp_ws sp',
-      (SSLComments sp sp_mid ∧ sp_mid.col = 0 ∨ sp_mid = sp) ∧
+      (SSLCommentsFrom sp sp_mid ∧ sp_mid.col = 0 ∧
+          -- N3: the separator-less shape is only produced when the scanner's
+          -- comment gate passed at the park — a fact about the parking token.
+          (SSLComments sp sp_mid ∨ CommentOk sc) ∧
+          -- **Item 76: the landing's own re-arm.**  A park that is NOT at a
+          -- line start reaches a column-0 landing only across a BREAK, and
+          -- `skipToContentLoop` re-arms the simple key on every break outside a
+          -- flow — so the walk itself says the next `saveSimpleKey` will be a
+          -- FRESH one.  Guarded by the park's column because the col-0 entry
+          -- lands without crossing anything, and by the flow level because
+          -- §7.4.2's gate is what suppresses the re-arm inside a collection.
+          (sp.col ≠ 0 → sc.inFlow = false → s_result.simpleKeyAllowed = true) ∧
+          -- **Item 147: the walk's own FLAG, beside the re-arm.**  The break
+          -- that carries a park off a line start down to column 0 is the same
+          -- break `consumeNewline` raises `needIndentCheck` on, and the flag
+          -- only ever goes up for the rest of the loop
+          -- (`skipToContentLoop_needIndentCheck_mono`).  So a landing from a
+          -- park that is NOT at a line start hands preprocessing a state whose
+          -- unwind is ARMED — which is what makes the landing's own floor a
+          -- fact rather than a disjunct.  Ungated by the flow level: a break
+          -- raises the check inside a collection too; only the key's re-arm
+          -- above is §7.4.2's to suppress.
+          (sp.col ≠ 0 → s_result.needIndentCheck = true) ∨
+        sp_mid = sp ∧ s_result.needIndentCheck = sc.needIndentCheck ∧
+          -- N3: a comment with no whites before it passed the scanner's gate.
+          (sp_ws = sp → sp' ≠ sp_ws → CommentOk sc)) ∧
       GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
       ScannerSurfCorr s_result sp' ∧
-      (sp' = sp_ws ∨ s_result.peek? = none) := by
+      (sp' = sp_ws ∨ s_result.peek? = none) ∧
+      LandingTabFacts sc.currentIndent sc.needIndentCheck s_result.peek? sp sp_mid := by
   by_cases hcol : sp.col = 0
   · -- col=0: use existing theorem, wrap as SSLComments.startOfLine
-    obtain ⟨sp_mid, sp_ws, sp', hstar, hcol_mid, hws, hcmt, hcorr', h_pk⟩ :=
+    obtain ⟨sp_mid, sp_ws, sp', hstar, hcol_mid, hws, hcmt, hcorr', h_pk, h_ltsl⟩ :=
       skipToContentLoop_col0_prod sc sp fuel s_result hcorr hcol hfuel hok
     cases sp with | mk chars col =>
     dsimp only [] at hcol; subst hcol
     exact ⟨sp_mid, sp_ws, sp',
-      Or.inl ⟨SSLComments.startOfLine chars sp_mid hstar, hcol_mid⟩,
-      hws, hcmt, hcorr', h_pk⟩
+      Or.inl ⟨Or.inl (SSLComments.startOfLine chars sp_mid hstar), hcol_mid,
+        Or.inl (SSLComments.startOfLine chars sp_mid hstar),
+        fun h _ => absurd rfl h, fun h => absurd rfl h⟩,
+      hws, hcmt, hcorr', h_pk, h_ltsl⟩
   · -- col≠0: induction on fuel; first break builds SSBComment
     induction fuel generalizing sc sp s_result with
     | zero =>
-      simp [skipToContentLoop] at hok; subst hok
-      exact ⟨sp, sp, sp, Or.inr rfl, GStar.nil _, GOpt.none _, hcorr, Or.inl rfl⟩
+      exact absurd hfuel (by omega)
     | succ fuel' ih =>
       unfold skipToContentLoop at hok
       dsimp only [] at hok
@@ -462,7 +612,7 @@ lemma skipToContentLoop_anyCol_prod
       · simp at hok
       · rename_i s1 hok_ws
         obtain ⟨sp_ws, hstar_ws, hcorr_ws⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
-        obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
+        obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt, h_cok⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
         split at hok
         · rename_i c hpeek
           split at hok
@@ -471,19 +621,35 @@ lemma skipToContentLoop_anyCol_prod
             obtain ⟨sp_brk, h_break, hcol_brk, hcorr_brk⟩ :=
               consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
             -- Build SSBComment for this iteration
-            have h_sbc : SSBComment sp sp_brk := by
+            have h_sbc : SSBComment sp sp_brk ∨
+                (0 < sp.col ∧ ∃ sp_cmt, SCNbCommentText sp sp_cmt ∧ SBComment sp_cmt sp_brk) := by
               by_cases h_eq : sp = sp_ws
-              · -- No whitespace: use noSep path
+              · -- No whitespace: a bare break is `noSep`; a comment with no
+                -- separator at `col > 0` is the shape whose white the previous
+                -- token swallowed.
                 subst h_eq
                 cases hopt_cmt
-                · exact SSBComment.noSep sp sp_brk (SBComment.break _ _ h_break)
+                · exact Or.inl (SSBComment.noSep sp sp_brk (SBComment.break _ _ h_break))
                 · rename_i h_cmtv
-                  exact bom_noWhitespace_ssbcomment sp sp_cmt sp_brk
-                    h_cmtv (SBComment.break _ _ h_break)
+                  exact Or.inr ⟨Nat.pos_of_ne_zero hcol, sp_cmt, h_cmtv,
+                    SBComment.break _ _ h_break⟩
               · -- Whitespace present: use withSep
-                exact SSBComment.withSep sp sp_ws sp_cmt sp_brk
+                exact Or.inl (SSBComment.withSep sp sp_ws sp_cmt sp_brk
                   (SSeparateInLine.whites sp sp_ws (GStar_to_GPlus hstar_ws h_eq))
-                  hopt_cmt (SBComment.break _ _ h_break)
+                  hopt_cmt (SBComment.break _ _ h_break))
+            -- N3: the same split read scanner-side — the separator-less
+            -- shape passed `commentOk` at the park.
+            have h_sbc_ok : SSBComment sp sp_brk ∨ CommentOk sc := by
+              by_cases h_eq : sp = sp_ws
+              · subst h_eq
+                cases hopt_cmt
+                · exact Or.inl (SSBComment.noSep sp sp_brk (SBComment.break _ _ h_break))
+                · rename_i h_cmtv
+                  exact Or.inr (CommentOk_of_skipToContentWs_zero hcorr hcorr_ws hok_ws
+                    (h_cok.resolve_left (SCNbCommentText_ne h_cmtv)))
+              · exact Or.inl (SSBComment.withSep sp sp_ws sp_cmt sp_brk
+                  (SSeparateInLine.whites sp sp_ws (GStar_to_GPlus hstar_ws h_eq))
+                  hopt_cmt (SBComment.break _ _ h_break))
             -- Fuel budget for remaining iterations
             have ⟨h_ws_off, h_ws_end⟩ := skipToContentWs_offset_mono sc s1 hok_ws
             have ⟨h_sc_off, h_sc_end⟩ := skipToContentComment_offset_mono s1
@@ -505,6 +671,13 @@ lemma skipToContentLoop_anyCol_prod
               · have : sc.inputEnd - (consumeNewline (skipToContentComment s1)).offset = 0 := by
                   omega
                 rw [this]; omega
+            -- Item 64: §6.1's fact rides the iteration — the stack is
+            -- untouched and the break re-arms the check.
+            have h_next_ind : (consumeNewline (skipToContentComment s1)).indents = sc.indents := by
+              rw [consumeNewline_indents, skipToContentComment_preserves_indents,
+                skipToContentWs_preserves_indents sc s1 hok_ws]
+            have h_next_nic : (consumeNewline (skipToContentComment s1)).needIndentCheck = true :=
+              consumeNewline_needIndentCheck_of_break _ c hpeek hlb
             -- Recurse: after break, col=0 so use skipToContentLoop_after_break_prod
             split at hok
             · -- !isInFlowSequence: simpleKeyAllowed update
@@ -515,31 +688,88 @@ lemma skipToContentLoop_anyCol_prod
                 cases sp_brk; dsimp only [] at hcol_brk ⊢
                 subst hcol_brk
                 exact corr_of_simpleKeyAllowed_update true hcorr_brk
-              obtain ⟨sp_mid, sp_ws_r, sp', hssl, hcol_mid, hws_r, hcmt_r, hcorr', h_pk⟩ :=
+              obtain ⟨sp_mid, sp_ws_r, sp', hssl, hcol_mid, h_lc, hws_r, hcmt_r, hcorr', h_pk,
+                  h_ltsl⟩ :=
                 skipToContentLoop_after_break_prod sp ⟨sp_brk.chars, 0⟩
                   { consumeNewline (skipToContentComment s1) with simpleKeyAllowed := true }
                   fuel' s_result
                   (by cases sp_brk; dsimp only [] at hcol_brk ⊢; subst hcol_brk; exact h_sbc)
                   hcorr_next rfl hfuel' hok
-              exact ⟨sp_mid, sp_ws_r, sp', Or.inl ⟨hssl, hcol_mid⟩, hws_r, hcmt_r, hcorr', h_pk⟩
-            · -- isInFlowSequence
-              obtain ⟨sp_mid, sp_ws_r, sp', hssl, hcol_mid, hws_r, hcmt_r, hcorr', h_pk⟩ :=
+              exact ⟨sp_mid, sp_ws_r, sp',
+                Or.inl ⟨hssl, hcol_mid,
+                  h_sbc_ok.imp_left (fun h => SSLComments.withComment _ _ _ h
+                    (by cases sp_brk; dsimp only [] at hcol_brk h_lc; subst hcol_brk; exact h_lc)),
+                  fun _ _ =>
+                  skipToContentLoop_simpleKeyAllowed_mono _ s_result fuel' rfl hok,
+                  -- Item 147: the break armed the check and the loop keeps it up.
+                  fun _ => skipToContentLoop_needIndentCheck_mono _ s_result fuel' hok
+                    (by simpa using h_next_nic)⟩,
+                hws_r, hcmt_r, hcorr', h_pk,
+                h_ltsl.transport (currentIndent_of_indents_eq h_next_ind) h_next_nic⟩
+            · -- isInFlowSequence: §7.4.2 suppresses the re-arm, and the walk
+              -- carries no flow level of its own — so the payload's premise is
+              -- refuted from the entry state's.
+              rename_i h_inflow
+              obtain ⟨sp_mid, sp_ws_r, sp', hssl, hcol_mid, h_lc, hws_r, hcmt_r, hcorr', h_pk,
+                  h_ltsl⟩ :=
                 skipToContentLoop_after_break_prod sp sp_brk
                   (consumeNewline (skipToContentComment s1)) fuel' s_result
                   h_sbc hcorr_brk hcol_brk hfuel' hok
-              exact ⟨sp_mid, sp_ws_r, sp', Or.inl ⟨hssl, hcol_mid⟩, hws_r, hcmt_r, hcorr', h_pk⟩
+              refine ⟨sp_mid, sp_ws_r, sp',
+                Or.inl ⟨hssl, hcol_mid,
+                  h_sbc_ok.imp_left (fun h => SSLComments.withComment _ _ _ h h_lc),
+                  fun _ h_nf => absurd ?_ h_inflow,
+                  -- Item 147: §7.4.2 suppresses the KEY's re-arm inside a
+                  -- collection, never the indent check — the break raises it
+                  -- here exactly as it does outside one.
+                  fun _ => skipToContentLoop_needIndentCheck_mono _ s_result fuel' hok
+                    h_next_nic⟩,
+                hws_r, hcmt_r, hcorr', h_pk,
+                h_ltsl.transport (currentIndent_of_indents_eq h_next_ind) h_next_nic⟩
+              show (!(consumeNewline (skipToContentComment s1)).inFlow) = true
+              unfold ScannerState.inFlow at h_nf ⊢
+              rw [ScannerCorrectness.consumeNewline_preserves_flowLevel,
+                  ScannerCorrectness.skipToContentComment_preserves_flowLevel,
+                  ScannerCorrectness.skipToContentWs_preserves_flowLevel sc s1 hok_ws]
+              simpa using h_nf
           · -- Not break: stop
             rename_i hnlb
             have hinj := Except.ok.inj hok; subst hinj
             have h_id := skipToContentComment_identity_of_content_peek s1 c hpeek hnlb
             rw [h_id]
-            exact ⟨sp, sp_ws, sp_ws, Or.inr rfl, hstar_ws, GOpt.none _, hcorr_ws,
-                   Or.inl rfl⟩
+            refine ⟨sp, sp_ws, sp_ws,
+                   Or.inr ⟨rfl, skipToContentWs_preserves_needIndentCheck sc s1 hok_ws,
+                     fun _ h => absurd rfl h⟩,
+                   hstar_ws, GOpt.none _, hcorr_ws, Or.inl rfl, ?_⟩
+            intro hprem hci j sx hind hj htab
+            have hnic : sc.needIndentCheck = true := by
+              rcases hprem with h | h
+              · exact h
+              · exact absurd rfl h
+            obtain ⟨htab_pk, hcol_sp⟩ := skipSpaces_lands_at_tab hcorr hind htab
+            have hle : ((skipSpaces sc).col : Int) ≤ sc.currentIndent := by
+              rw [hcol_sp, ← SIndent_col' hind]; exact hj
+            rcases skipToContentWs_tab_under_indent hok_ws hnic hci htab_pk hle with
+              h_none | ⟨ch, hch, hclass⟩
+            · exact Or.inl h_none
+            · rcases hclass with rfl | hlb
+              · exact Or.inr hch
+              · exact absurd (by
+                  have : s1.peek? = some c := by rw [← h_id]; exact hpeek
+                  rw [hch] at this
+                  cases this; exact hlb) hnlb
         · -- peek? = none: stop
           rename_i hpeek_none
           have hinj := Except.ok.inj hok; subst hinj
-          exact ⟨sp, sp_ws, sp_cmt, Or.inr rfl, hstar_ws, hopt_cmt, hcorr_cmt,
-                 Or.inr hpeek_none⟩
+          exact ⟨sp, sp_ws, sp_cmt,
+                 Or.inr ⟨rfl, (skipToContentComment_preserves_needIndentCheck s1).trans
+                   (skipToContentWs_preserves_needIndentCheck sc s1 hok_ws),
+                   fun h_eq h_ne => by
+                     subst h_eq
+                     exact CommentOk_of_skipToContentWs_zero hcorr hcorr_ws hok_ws
+                       (h_cok.resolve_left h_ne)⟩,
+                 hstar_ws, hopt_cmt, hcorr_cmt, Or.inr hpeek_none,
+                 fun _ _ _ _ _ _ _ => Or.inl hpeek_none⟩
 
 /-- `skipToContentLoop` starting at col=0 produces `SSLComments`. -/
 lemma skipToContentLoop_startOfLine_prod
@@ -552,7 +782,7 @@ lemma skipToContentLoop_startOfLine_prod
                   GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
                   ScannerSurfCorr s_result sp' ∧
                   (sp' = sp_ws ∨ s_result.peek? = none) := by
-  obtain ⟨sp_mid, sp_ws, sp', hstar_lc, hcol_mid, hws, hcmt, hcorr', h_pk⟩ :=
+  obtain ⟨sp_mid, sp_ws, sp', hstar_lc, hcol_mid, hws, hcmt, hcorr', h_pk, _⟩ :=
     skipToContentLoop_col0_prod sc sp fuel s_result hcorr hcol hfuel hok
   cases sp with | mk chars col =>
   dsimp only [] at hcol; subst hcol
@@ -571,16 +801,43 @@ lemma skipToContent_startOfLine_comments_prod
   unfold skipToContent at hok
   exact skipToContentLoop_startOfLine_prod sc sp _ s_result hcorr hcol (by omega) hok
 
-/-- `skipToContent` at any column → `SSLComments` (with col=0) OR flat whitespace. -/
+/-- `skipToContent` at any column → `SSLComments` (with col=0) OR flat whitespace
+    (and then the loop crossed no break, so `needIndentCheck` is untouched). -/
 lemma skipToContent_anyCol_prod
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContent sc = .ok s_result) :
     ∃ sp_mid sp_ws sp',
-      (SSLComments sp sp_mid ∧ sp_mid.col = 0 ∨ sp_mid = sp) ∧
+      (SSLCommentsFrom sp sp_mid ∧ sp_mid.col = 0 ∧
+          -- N3: the separator-less shape is only produced when the scanner's
+          -- comment gate passed at the park — a fact about the parking token.
+          (SSLComments sp sp_mid ∨ CommentOk sc) ∧
+          -- **Item 76: the landing's own re-arm.**  A park that is NOT at a
+          -- line start reaches a column-0 landing only across a BREAK, and
+          -- `skipToContentLoop` re-arms the simple key on every break outside a
+          -- flow — so the walk itself says the next `saveSimpleKey` will be a
+          -- FRESH one.  Guarded by the park's column because the col-0 entry
+          -- lands without crossing anything, and by the flow level because
+          -- §7.4.2's gate is what suppresses the re-arm inside a collection.
+          (sp.col ≠ 0 → sc.inFlow = false → s_result.simpleKeyAllowed = true) ∧
+          -- **Item 147: the walk's own FLAG, beside the re-arm.**  The break
+          -- that carries a park off a line start down to column 0 is the same
+          -- break `consumeNewline` raises `needIndentCheck` on, and the flag
+          -- only ever goes up for the rest of the loop
+          -- (`skipToContentLoop_needIndentCheck_mono`).  So a landing from a
+          -- park that is NOT at a line start hands preprocessing a state whose
+          -- unwind is ARMED — which is what makes the landing's own floor a
+          -- fact rather than a disjunct.  Ungated by the flow level: a break
+          -- raises the check inside a collection too; only the key's re-arm
+          -- above is §7.4.2's to suppress.
+          (sp.col ≠ 0 → s_result.needIndentCheck = true) ∨
+        sp_mid = sp ∧ s_result.needIndentCheck = sc.needIndentCheck ∧
+          -- N3: a comment with no whites before it passed the scanner's gate.
+          (sp_ws = sp → sp' ≠ sp_ws → CommentOk sc)) ∧
       GStar SSWhite sp_mid sp_ws ∧ GOpt SCNbCommentText sp_ws sp' ∧
       ScannerSurfCorr s_result sp' ∧
-      (sp' = sp_ws ∨ s_result.peek? = none) := by
+      (sp' = sp_ws ∨ s_result.peek? = none) ∧
+      LandingTabFacts sc.currentIndent sc.needIndentCheck s_result.peek? sp sp_mid := by
   unfold skipToContent at hok
   exact skipToContentLoop_anyCol_prod sc sp _ s_result hcorr (by omega) hok
 
@@ -607,27 +864,79 @@ lemma skipToContent_anyCol_prod
     `SBComment.eof` to incorporate the terminal whitespace into an
     `SLComment`, yielding `SSLComments` with `sp_final.chars = []`. -/
 
-/-- Convert `SSBComment` to `SLComment` at any column.
+/-- Convert `SSBComment` to `SLComment` at column 0.
     `SSBComment.withSep` already has `SSeparateInLine`; `SSBComment.noSep`
-    gets `SSeparateInLine.startOfLine` (zero-width, column-independent). -/
+    gets `SSeparateInLine.startOfLine`, which is why the line must start at
+    column 0: a bare break after content (`a:⏎`) is an `s-b-comment` but not
+    an `l-comment` line. -/
 lemma SSBComment_to_SLComment (sp sp' : SurfPos)
-    (h : SSBComment sp sp') : SLComment sp sp' := by
+    (h : SSBComment sp sp') (hcol : sp.col = 0) : SLComment sp sp' := by
   cases h
   case withSep s₁ s₂ hsep hopt hbreak =>
     exact SLComment.mk sp s₁ s₂ sp' hsep hopt hbreak
   case noSep hbreak =>
-    exact SLComment.mk sp sp sp sp'
-      (.startOfLine sp) (GOpt.none _) hbreak
+    exact SLComment.mk sp sp sp sp' (.startOfLine_of_col0 hcol) (GOpt.none _) hbreak
+
+/-- Where `[76] s-b-comment` ends: at column 0 (after its break) or at the end
+    of the input. -/
+lemma SBComment_end_col0_or_eof {a b : SurfPos} (h : SBComment a b) :
+    b.col = 0 ∨ b.chars = [] := by
+  cases h
+  · rename_i hb
+    left; cases hb <;> rfl
+  · right; rfl
+
+lemma SSBComment_end_col0_or_eof {a b : SurfPos} (h : SSBComment a b) :
+    b.col = 0 ∨ b.chars = [] := by
+  cases h
+  · rename_i hbc; exact SBComment_end_col0_or_eof hbc
+  · rename_i hbc; exact SBComment_end_col0_or_eof hbc
+
+lemma SLComment_end_col0_or_eof {a b : SurfPos} (h : SLComment a b) :
+    b.col = 0 ∨ b.chars = [] := by
+  cases h
+  rename_i hbc
+  exact SBComment_end_col0_or_eof hbc
+
+lemma GStar_SLComment_end_col0_or_eof {a b : SurfPos} (h : GStar SLComment a b)
+    (ha : a.col = 0 ∨ a.chars = []) : b.col = 0 ∨ b.chars = [] := by
+  induction h with
+  | nil _ => exact ha
+  | cons _ _ _ hx _ ih => exact ih (SLComment_end_col0_or_eof hx)
+
+/-- N3: `[202] l-document-prefix` ends at a line start or at EOF (a BOM leaves the
+    column alone, comment lines end after their break). -/
+lemma GStar_SLDocumentPrefix_end_col0_or_eof {a b : SurfPos} (h : GStar SLDocumentPrefix a b)
+    (ha : a.col = 0 ∨ a.chars = []) : b.col = 0 ∨ b.chars = [] := by
+  induction h with
+  | nil _ => exact ha
+  | cons a m b hpre _ ih =>
+    apply ih
+    cases hpre with
+    | comments _ _ hc => exact GStar_SLComment_end_col0_or_eof hc ha
+    | bom rest col s' hc =>
+      refine GStar_SLComment_end_col0_or_eof hc (Or.inl ?_)
+      rcases ha with h0 | h0
+      · exact h0
+      · cases h0
+
+/-- Where `[79] s-l-comments` ends: at column 0 or at the end of the input. -/
+lemma SSLComments_end_col0_or_eof {a b : SurfPos} (h : SSLComments a b) :
+    b.col = 0 ∨ b.chars = [] := by
+  cases h with
+  | withComment _ _ _ hsbc hstar =>
+    exact GStar_SLComment_end_col0_or_eof hstar (SSBComment_end_col0_or_eof hsbc)
+  | startOfLine _ _ hstar => exact GStar_SLComment_end_col0_or_eof hstar (Or.inl rfl)
 
 /-- Extract `GStar SLComment` from `SSLComments` at any column.
     `SSLComments.startOfLine` already carries `GStar SLComment`;
     `SSLComments.withComment` has `SSBComment` + `GStar SLComment`,
     and the `SSBComment` converts to `SLComment`. -/
 lemma SSLComments_to_GStar (sp sp' : SurfPos)
-    (h : SSLComments sp sp') : GStar SLComment sp sp' := by
+    (h : SSLComments sp sp') (hcol : sp.col = 0) : GStar SLComment sp sp' := by
   cases h
   case withComment s₁ hsbc hstar =>
-    exact GStar.cons sp s₁ sp' (SSBComment_to_SLComment sp s₁ hsbc) hstar
+    exact GStar.cons sp s₁ sp' (SSBComment_to_SLComment sp s₁ hsbc hcol) hstar
   case startOfLine chars hstar =>
     exact hstar
 
@@ -671,7 +980,7 @@ lemma skipToContentLoop_eof_ssl_comments_col0
     · -- skipToContentWs = .ok s1
       rename_i s1 hok_ws
       obtain ⟨sp_ws, hstar_ws, hcorr_ws⟩ := skipToContentWs_ok_corr sc sp s1 hcorr hok_ws
-      obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
+      obtain ⟨sp_cmt, hopt_cmt, hcorr_cmt, h_cok⟩ := skipToContentComment_corr s1 sp_ws hcorr_ws
       split at hok
       · -- peek? = some c
         rename_i c hpeek
@@ -682,7 +991,7 @@ lemma skipToContentLoop_eof_ssl_comments_col0
             consumeNewline_break_prod (skipToContentComment s1) sp_cmt c hcorr_cmt hpeek hlb
           -- Build SLComment from this iteration
           have h_sep : SSeparateInLine sp sp_ws :=
-            GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws
+            GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws (fun _ => hcol)
           have h_lcomment : SLComment sp sp_brk :=
             SLComment.mk sp sp_ws sp_cmt sp_brk h_sep hopt_cmt
               (SBComment.break _ _ h_break)
@@ -720,7 +1029,7 @@ lemma skipToContentLoop_eof_ssl_comments_col0
             obtain ⟨sp_final, h_ssl_rec, h_empty⟩ := ih _ ⟨sp_brk.chars, 0⟩ s_result
               hcorr_next rfl hfuel' hok heof
             -- Compose: SLComment sp sp_brk + SSLComments sp_brk sp_final → SSLComments sp sp_final
-            have h_gstar_rec := SSLComments_to_GStar ⟨sp_brk.chars, 0⟩ sp_final h_ssl_rec
+            have h_gstar_rec := SSLComments_to_GStar ⟨sp_brk.chars, 0⟩ sp_final h_ssl_rec rfl
             cases sp with | mk chars col =>
             dsimp only [] at hcol; subst hcol
             have h_lcomment' : SLComment ⟨chars, 0⟩ ⟨sp_brk.chars, 0⟩ := by
@@ -732,7 +1041,7 @@ lemma skipToContentLoop_eof_ssl_comments_col0
           · -- isInFlowSequence
             obtain ⟨sp_final, h_ssl_rec, h_empty⟩ := ih _ sp_brk s_result
               hcorr_brk hcol_brk hfuel' hok heof
-            have h_gstar_rec := SSLComments_to_GStar sp_brk sp_final h_ssl_rec
+            have h_gstar_rec := SSLComments_to_GStar sp_brk sp_final h_ssl_rec hcol_brk
             cases sp with | mk chars col =>
             dsimp only [] at hcol; subst hcol
             exact ⟨sp_final,
@@ -759,7 +1068,7 @@ lemma skipToContentLoop_eof_ssl_comments_col0
         have hempty := eof_corr (skipToContentComment s1) sp_cmt hcorr_cmt heof_sc
         -- Build SLComment: SSeparateInLine + GOpt SCNbCommentText + SBComment.eof
         have h_sep : SSeparateInLine sp sp_ws :=
-          GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws
+          GStar_SSWhite_to_SSeparateInLine sp sp_ws hstar_ws (fun _ => hcol)
         -- sp_cmt.chars = [] so sp_cmt = ⟨[], sp_cmt.col⟩
         cases sp_cmt with | mk cmt_chars cmt_col =>
         dsimp only [] at hempty; subst hempty
@@ -799,15 +1108,27 @@ lemma SSLComments_snoc {sp sp_mid sp' : SurfPos}
   · rename_i chars hgstar
     exact .startOfLine chars _ (GStar_trans hgstar (.cons _ _ _ h_lc (.nil _)))
 
+/-- Appending an `l-comment` line keeps either shape of `SSLCommentsFrom`. -/
+lemma SSLCommentsFrom.snoc {sp sp_mid sp' : SurfPos} (h : SSLCommentsFrom sp sp_mid)
+    (hl : SLComment sp_mid sp') : SSLCommentsFrom sp sp' := by
+  rcases h with h | ⟨hc, sp_cmt, sp_brk, h_cmt, h_bc, h_rest⟩
+  · exact Or.inl (SSLComments_snoc h hl)
+  · exact Or.inr ⟨hc, sp_cmt, sp_brk, h_cmt, h_bc,
+      GStar_trans h_rest (GStar.cons _ _ _ hl (GStar.nil _))⟩
+
 -- `skipToContent` reaching EOF produces `SSLComments` at any starting column.
 lemma skipToContent_eof_ssl_comments
     (sc : ScannerState) (sp : SurfPos) (s_result : ScannerState)
     (hcorr : ScannerSurfCorr sc sp)
     (hok : skipToContent sc = .ok s_result)
     (heof : ¬s_result.hasMore) :
-    ∃ sp_final, SSLComments sp sp_final ∧ sp_final.chars = [] := by
+    ∃ sp_final, SSLCommentsFrom sp sp_final ∧ sp_final.chars = [] ∧
+      -- N3: the separator-less shape passed the scanner's comment gate at `sp`.
+      (SSLComments sp sp_final ∨ CommentOk sc) := by
   by_cases hcol : sp.col = 0
-  · exact skipToContent_eof_ssl_comments_col0 sc sp s_result hcorr hcol hok heof
+  · obtain ⟨sp_final, h1, h2⟩ :=
+      skipToContent_eof_ssl_comments_col0 sc sp s_result hcorr hcol hok heof
+    exact ⟨sp_final, Or.inl h1, h2, Or.inl h1⟩
   · -- col≠0: use anyCol_prod + SBComment.eof
     obtain ⟨sp_mid, sp_ws, sp', hcase, hws, hcmt, hcorr', _⟩ :=
       skipToContent_anyCol_prod sc sp s_result hcorr hok
@@ -817,17 +1138,19 @@ lemma skipToContent_eof_ssl_comments
     cases hcase with
     | inl h =>
       -- Break was consumed: SSLComments sp sp_mid at col=0, extend with eof SLComment
-      obtain ⟨h_ssl, hcol_mid⟩ := h
-      have h_sep := GStar_SSWhite_to_SSeparateInLine sp_mid sp_ws hws
+      obtain ⟨h_ssl, hcol_mid, h_ok, -⟩ := h
+      have h_sep := GStar_SSWhite_to_SSeparateInLine sp_mid sp_ws hws (fun _ => hcol_mid)
       cases sp' with | mk chars' col' =>
       simp only [] at hchars; subst hchars
       exact ⟨⟨[], col'⟩,
-        SSLComments_snoc h_ssl
+        SSLCommentsFrom.snoc h_ssl
           (SLComment.mk sp_mid sp_ws ⟨[], col'⟩ ⟨[], col'⟩ h_sep hcmt (SBComment.eof col')),
-        rfl⟩
+        rfl,
+        h_ok.imp_left (fun h => SSLComments_snoc h
+          (SLComment.mk sp_mid sp_ws ⟨[], col'⟩ ⟨[], col'⟩ h_sep hcmt (SBComment.eof col')))⟩
     | inr h =>
       -- No break: sp_mid = sp, build SSLComments from whitespace + eof
-      rw [h] at hws
+      rw [h.1] at hws
       -- hws : GStar SSWhite sp sp_ws, hcmt : GOpt SCNbCommentText sp_ws sp'
       cases sp' with | mk chars' col' =>
       simp only [] at hchars; subst hchars
@@ -838,24 +1161,25 @@ lemma skipToContent_eof_ssl_comments
         cases hcmt
         · -- GOpt.none: sp_ws = ⟨[], col'⟩
           exact ⟨⟨[], col'⟩,
-            .withComment _ _ _ (.noSep _ _ (SBComment.eof col')) (.nil _),
-            rfl⟩
-        · -- GOpt.some: BOM edge case — use centralized sorry
+            Or.inl (SSLComments.withComment _ _ _ (.noSep _ _ (SBComment.eof col')) (.nil _)),
+            rfl,
+            Or.inl (SSLComments.withComment _ _ _ (.noSep _ _ (SBComment.eof col')) (.nil _))⟩
+        · -- GOpt.some: a comment at the cursor with no separator — the white
+          -- before it belongs to the previous token (`SSLCommentsFrom`).
           rename_i h_cmtv
           exact ⟨⟨[], col'⟩,
-            .withComment _ _ _
-              (bom_noWhitespace_ssbcomment sp_ws ⟨[], col'⟩ ⟨[], col'⟩
-                h_cmtv (SBComment.eof col'))
-              (.nil _),
-            rfl⟩
+            Or.inr ⟨by rw [← h_ws_eq]; exact Nat.pos_of_ne_zero hcol, ⟨[], col'⟩, ⟨[], col'⟩,
+              h_cmtv, SBComment.eof col', .nil _⟩,
+            rfl,
+            Or.inr (h.2.2 h_ws_eq.symm (SCNbCommentText_ne h_cmtv))⟩
       · -- Whitespace present: SSBComment.withSep + SBComment.eof
-        exact ⟨⟨[], col'⟩,
-          .withComment sp ⟨[], col'⟩ ⟨[], col'⟩
+        have h_ssl : SSLComments sp ⟨[], col'⟩ :=
+          SSLComments.withComment sp ⟨[], col'⟩ ⟨[], col'⟩
             (.withSep sp sp_ws ⟨[], col'⟩ ⟨[], col'⟩
               (SSeparateInLine.whites sp sp_ws (GStar_to_GPlus hws h_ws_eq))
               hcmt (SBComment.eof col'))
-            (.nil _),
-          rfl⟩
+            (.nil _)
+        exact ⟨⟨[], col'⟩, Or.inl h_ssl, rfl, Or.inl h_ssl⟩
 
 /-! ## §7 skipToContent non-break guarantee
 
@@ -935,4 +1259,798 @@ lemma skipToContent_peek_not_break
     needed here — this layer provides the preprocessing coupling that
     feeds into those existing results. -/
 
+/-! ## §9 Separator composition algebra (Fix A B.4β.2, sep-threading)
+
+    Transitivity of the separation productions: two adjacent separations
+    compose into one. This is the enabling primitive for the flow-interior
+    sep-threading rule (each accumulation step consumes its OWN leading
+    separation, which must be folded into the trailing separator slot of the
+    grammar construct built by the PREVIOUS step — an entry's trailing
+    `GOpt (SSeparate n c)`, a `held` frame's post-comma slot, or the
+    collection's post-bracket slot). With composition, those retrofits are
+    total algebra: no reachability reasoning about which slot shapes occur.
+
+    Derivability rests on the deliberate col-agnostic weakening of
+    `SSeparateInLine.startOfLine` (any zero-width match, §5.2 BOM note): the
+    only refutations needed are column-arithmetic (whitespace runs strictly
+    increase the column, so none can end at an actual start of line). -/
+
+/-- An inline separation is a whitespace run (`startOfLine` is the empty run). -/
+lemma SSeparateInLine_to_GStar_SSWhite {a b : SurfPos}
+    (h : SSeparateInLine a b) : GStar SSWhite a b :=
+  match h with
+  | .whites _ _ (.mk _ _ _ hw hrest) => .cons _ _ _ hw hrest
+  | .startOfLine _ => .nil _
+
+/-- Inline separations compose. -/
+lemma SSeparateInLine_trans {a b c : SurfPos}
+    (h₁ : SSeparateInLine a b) (h₂ : SSeparateInLine b c) : SSeparateInLine a c :=
+  match h₁ with
+  | .startOfLine _ => h₂
+  | .whites _ _ (.mk _ s₂ _ hx hrest) =>
+    .whites _ _ (GPlus.mk _ s₂ _ hx (GStar_trans hrest (SSeparateInLine_to_GStar_SSWhite h₂)))
+
+/-- A nonempty whitespace run strictly increases the column. -/
+lemma gplus_sswhite_col_gt {a b : SurfPos} (h : GPlus SSWhite a b) :
+    b.col ≥ a.col + 1 := by
+  cases h
+  rename_i hw hrest
+  have h1 := sswhite_col_succ _ _ hw
+  have h2 := gstar_sswhite_col_ge _ _ hrest
+  omega
+
+/-- Indentation is a whitespace run. -/
+lemma SIndent_to_GStar_SSWhite {n : Nat} {a b : SurfPos}
+    (h : SIndent n a b) : GStar SSWhite a b := by
+  induction h with
+  | zero => exact .nil _
+  | succ n rest col s' _ ih => exact .cons _ ⟨rest, col + 1⟩ _ (.space rest col) ih
+
+/-- A flow line prefix (indent + optional inline separation) is a whitespace run. -/
+lemma SFlowLinePrefix_to_GStar_SSWhite {n : Nat} {a b : SurfPos}
+    (h : SFlowLinePrefix n a b) : GStar SSWhite a b := by
+  cases h
+  rename_i hind hopt
+  refine GStar_trans (SIndent_to_GStar_SSWhite hind) ?_
+  cases hopt with
+  | none => exact .nil _
+  | some _ hil => exact SSeparateInLine_to_GStar_SSWhite hil
+
+/-- Prepend an inline separation to an `SSBComment` (folds into its leading
+    `s-separate-in-line` slot). -/
+lemma SSBComment_prepend {a b c : SurfPos}
+    (h_il : SSeparateInLine a b) (h : SSBComment b c) : SSBComment a c := by
+  cases h with
+  | withSep s₁ s₂ _ hsep hopt hbc =>
+    exact .withSep _ s₁ s₂ _ (SSeparateInLine_trans h_il hsep) hopt hbc
+  | noSep _ hbc => exact .withSep _ b b _ h_il (GOpt.none b) hbc
+
+/-- A whitespace run followed by an `s-b-comment` is a full `l-comment` line. -/
+lemma SLComment_of_ws_SSBComment {a b c : SurfPos}
+    (h_ws : GStar SSWhite a b) (h : SSBComment b c) (h0 : a = b → a.col = 0) :
+    SLComment a c := by
+  cases h with
+  | withSep s₁ s₂ _ hsep hopt hbc =>
+    exact .mk _ s₁ s₂ _
+      (SSeparateInLine_trans (GStar_SSWhite_to_SSeparateInLine a b h_ws h0) hsep) hopt hbc
+  | noSep _ hbc =>
+    exact .mk _ b b _ (GStar_SSWhite_to_SSeparateInLine a b h_ws h0) (GOpt.none b) hbc
+
+/-- Append a run of `l-comment` lines to an `SSLComments` (generalizes
+    `SSLComments_snoc`). -/
+lemma SSLComments_append_gstar {a b c : SurfPos}
+    (h_ssl : SSLComments a b) (h_lcs : GStar SLComment b c) : SSLComments a c := by
+  cases h_ssl
+  · rename_i mid hsbc hgstar
+    exact .withComment _ mid _ hsbc (GStar_trans hgstar h_lcs)
+  · rename_i chars hgstar
+    exact .startOfLine chars _ (GStar_trans hgstar h_lcs)
+
+/-- Prepend an inline separation to an `SSLComments`. The `startOfLine` head is
+    reachable only by the empty run (a nonempty whitespace run cannot end at
+    column 0). -/
+lemma SSLComments_prepend_inline {a b c : SurfPos}
+    (h_il : SSeparateInLine a b) (h : SSLComments b c) : SSLComments a c := by
+  cases h
+  · rename_i mid hsbc hgstar
+    exact .withComment _ mid _ (SSBComment_prepend h_il hsbc) hgstar
+  · rename_i chars hgstar
+    cases h_il
+    · rename_i hp
+      exact absurd (gplus_sswhite_col_gt hp) (by simp)
+    · exact .startOfLine _ _ hgstar
+
+/-- The swallowed white, handed back: a run into the cursor turns the
+    separator-less comment shape into `[79]` from the run's start. -/
+lemma SSLCommentsFrom_prepend_white {a sp sp_mid : SurfPos}
+    (h_ws : GStar SSWhite a sp) (h0 : a = sp → a.col = 0)
+    (h : SSLCommentsFrom sp sp_mid) : SSLComments a sp_mid := by
+  rcases h with h | ⟨_, sp_cmt, sp_brk, h_cmt, h_bc, h_rest⟩
+  · exact SSLComments_prepend_inline (GStar_SSWhite_to_SSeparateInLine a sp h_ws h0) h
+  · exact .withComment a sp_brk sp_mid
+      (.withSep a sp sp_cmt sp_brk (GStar_SSWhite_to_SSeparateInLine a sp h_ws h0)
+        (.some _ _ h_cmt) h_bc) h_rest
+
+/-- Prepend a whitespace run to an `s-separate-lines(n)`.
+
+    **β.3's trailing-whitespace bridge.** A flow-interior plain scalar ends its
+    *grammar* production before the whitespace the scanner then consumes
+    (`trimTrailingWS` drops it from the token value, but `collectPlainScalarLoop`
+    has already advanced past it), so the accumulation's flow endpoint sits a
+    whitespace run behind the scanner cursor.  The next step's leading separation
+    is derived from the cursor; this lemma walks it back to the endpoint, which is
+    where the frame's pending `GOpt (SSeparate n c)` slot expects it. -/
+lemma SSeparateLines_prepend_white {n : Nat} {a b c : SurfPos}
+    (h_ws : GStar SSWhite a b) (h : SSeparateLines n b c) : SSeparateLines n a c := by
+  cases h_ws with
+  | nil _ => exact h
+  | cons _ s₂ _ hx hrest =>
+  have h_il : SSeparateInLine a b := .whites _ _ (GPlus.mk _ s₂ _ hx hrest)
+  cases h with
+  | commented _ _ h_ssl h_pre =>
+    exact .commented _ _ _ _ (SSLComments_prepend_inline h_il h_ssl) h_pre
+  | inline _ h_inl =>
+    exact .inline _ _ _ (SSeparateInLine_trans h_il h_inl)
+
+/-- Splice `SSLComments + flow-line-prefix + SSLComments` into one
+    `SSLComments` (the prefix + the second block's head comment fold into one
+    additional `l-comment` line). -/
+lemma SSLComments_trans_prefix {n : Nat} {a s₁ b c : SurfPos}
+    (h₁ : SSLComments a s₁) (h_pre : SFlowLinePrefix n s₁ b)
+    (h₂ : SSLComments b c) : SSLComments a c := by
+  have h_ws := SFlowLinePrefix_to_GStar_SSWhite h_pre
+  cases h₂
+  · rename_i mid hsbc hgstar
+    cases h_ws with
+    | nil _ =>
+      rcases SSLComments_end_col0_or_eof h₁ with hcol | heof
+      · exact SSLComments_append_gstar
+          (SSLComments_snoc h₁ (SSBComment_to_SLComment _ _ hsbc hcol)) hgstar
+      · have h1 := ScalarProduction.ssbcomment_at_eof heof hsbc
+        subst h1
+        have h2 := ScalarProduction.gstar_slcomment_at_eof heof hgstar
+        subst h2
+        exact h₁
+    | cons _ _ _ hx hrest =>
+      exact SSLComments_append_gstar
+        (SSLComments_snoc h₁ (SLComment_of_ws_SSBComment (GStar.cons _ _ _ hx hrest) hsbc
+          (fun heq => by
+            have := gplus_sswhite_col_gt (GPlus.mk _ _ _ hx hrest)
+            rw [heq] at this; omega))) hgstar
+  · rename_i chars hgstar
+    have h_eq : (⟨chars, 0⟩ : SurfPos) = s₁ :=
+      gstar_sswhite_col_eq_nil s₁ ⟨chars, 0⟩
+        (by have := gstar_sswhite_col_ge _ _ h_ws; simp at this ⊢; omega) h_ws
+    exact SSLComments_append_gstar h₁ (h_eq ▸ hgstar)
+
+/-- Extend a flow line prefix by an inline separation (folds into its optional
+    trailing `s-separate-in-line` slot). -/
+lemma SFlowLinePrefix_extend_inline {n : Nat} {a b c : SurfPos}
+    (h : SFlowLinePrefix n a b) (h_il : SSeparateInLine b c) :
+    SFlowLinePrefix n a c := by
+  cases h
+  rename_i hind hopt
+  cases hopt with
+  | none => exact .mk n _ _ _ hind (GOpt.some _ _ h_il)
+  | some _ hil => exact .mk n _ _ _ hind (GOpt.some _ _ (SSeparateInLine_trans hil h_il))
+
+/-- `s-separate-lines(n)` composes. -/
+lemma SSeparateLines_trans {n : Nat} {a b c : SurfPos}
+    (h₁ : SSeparateLines n a b) (h₂ : SSeparateLines n b c) :
+    SSeparateLines n a c := by
+  cases h₁ with
+  | inline _ hil₁ =>
+    cases h₂ with
+    | inline _ hil₂ => exact .inline n _ _ (SSeparateInLine_trans hil₁ hil₂)
+    | commented s₁ _ hssl hpre =>
+      exact .commented n _ s₁ _ (SSLComments_prepend_inline hil₁ hssl) hpre
+  | commented s₁ _ hssl₁ hpre₁ =>
+    cases h₂ with
+    | inline _ hil₂ =>
+      exact .commented n _ s₁ _ hssl₁ (SFlowLinePrefix_extend_inline hpre₁ hil₂)
+    | commented s₂ _ hssl₂ hpre₂ =>
+      exact .commented n _ s₂ _ (SSLComments_trans_prefix hssl₁ hpre₁ hssl₂) hpre₂
+
+/-- `s-separate(n,c)` composes (context-generic). -/
+lemma SSeparate_trans {n : Nat} {c : YamlContext} {a b c' : SurfPos}
+    (h₁ : SSeparate n c a b) (h₂ : SSeparate n c b c') : SSeparate n c a c' := by
+  cases c with
+  | blockOut | blockIn | flowOut | flowIn => exact SSeparateLines_trans h₁ h₂
+  | blockKey | flowKey => exact SSeparateInLine_trans h₁ h₂
+
+/-- Extend an optional separation by a further separation (retrofit primitive:
+    fold a step's leading separation into the previous construct's trailing
+    `GOpt` slot). -/
+lemma GOpt_SSeparate_extend {n : Nat} {c : YamlContext} {a b c' : SurfPos}
+    (h : GOpt (SSeparate n c) a b) (h_sep : SSeparate n c b c') :
+    GOpt (SSeparate n c) a c' := by
+  cases h with
+  | none => exact .some _ _ h_sep
+  | some _ hs => exact .some _ _ (SSeparate_trans hs h_sep)
+
+/-- Extend an optional separation by an optional separation. -/
+lemma GOpt_SSeparate_extend_opt {n : Nat} {c : YamlContext} {a b c' : SurfPos}
+    (h : GOpt (SSeparate n c) a b) (h' : GOpt (SSeparate n c) b c') :
+    GOpt (SSeparate n c) a c' := by
+  cases h' with
+  | none => exact h
+  | some _ hs => exact GOpt_SSeparate_extend h hs
+
+/-- Retrofit a trailing separation onto closeable flow-seq entries: the
+    separation folds into the innermost entry's trailing `GOpt` slot. -/
+lemma SFlowSeqEntries_extendSep {n : Nat} {c : YamlContext} {s s_e s' : SurfPos}
+    {h_entries : SFlowSeqEntries n c s s_e}
+    (h_cl : FlowSeqEntriesCloseable h_entries)
+    (h_sep : SSeparate n c s_e s') :
+    ∃ h' : SFlowSeqEntries n c s s', FlowSeqEntriesCloseable h' := by
+  induction h_cl with
+  | single he hsep =>
+    have hsep2 := GOpt_SSeparate_extend hsep h_sep
+    exact ⟨.single _ _ _ _ _ he hsep2, .single he hsep2⟩
+  | consMore he hsep hcomma hsep' tail _ ih =>
+    obtain ⟨tail', h_cl'⟩ := ih h_sep
+    exact ⟨.consMore _ _ _ _ _ _ _ _ he hsep hcomma hsep' tail',
+           .consMore he hsep hcomma hsep' tail' h_cl'⟩
+
+/-- Retrofit a trailing separation onto closeable flow-map entries. -/
+lemma SFlowMapEntries_extendSep {n : Nat} {c : YamlContext} {s s_e s' : SurfPos}
+    {h_entries : SFlowMapEntries n c s s_e}
+    (h_cl : FlowMapEntriesCloseable h_entries)
+    (h_sep : SSeparate n c s_e s') :
+    ∃ h' : SFlowMapEntries n c s s', FlowMapEntriesCloseable h' := by
+  induction h_cl with
+  | single he hsep =>
+    have hsep2 := GOpt_SSeparate_extend hsep h_sep
+    exact ⟨.single _ _ _ _ _ he hsep2, .single he hsep2⟩
+  | consMore he hsep hcomma hsep' tail _ ih =>
+    obtain ⟨tail', h_cl'⟩ := ih h_sep
+    exact ⟨.consMore _ _ _ _ _ _ _ _ he hsep hcomma hsep' tail',
+           .consMore he hsep hcomma hsep' tail' h_cl'⟩
+
+
+/-! ## N3: the frame's one conversion at a park -/
+
+/-- A park whose characters begin with `c` has `c` under the scanner's cursor. -/
+lemma peek_of_corr_cons {sc : ScannerState} {c : Char} {rest : List Char} {col : Nat}
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, col⟩) : sc.peek? = some c := by
+  have hmore : sc.offset < sc.inputEnd := by
+    rcases Nat.lt_or_ge sc.offset sc.inputEnd with h | h
+    · exact h
+    · exfalso
+      have h2 := eof_corr sc _ hcorr (Nat.not_lt.mpr h)
+      simp at h2
+  obtain ⟨c', rest', hch, hpk⟩ := peek_corr sc _ hcorr hmore
+  simp only [List.cons.injEq] at hch
+  rw [← hch.1] at hpk
+  exact hpk
+
+/-- The scanner's comment gate FAILS right after it consumed a character that
+    is neither white, break nor BOM, away from column 0: `peekBack?` is that
+    character.  The uniform refutation for indicator and closing-quote parks. -/
+lemma CommentOk_false_of_advance {sc : ScannerState} {c : Char} {rest : List Char}
+    (hcorr : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩)
+    (hmore : sc.offset < sc.inputEnd)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r')
+    (hcol : sc.advance.col ≠ 0)
+    (hc : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) :
+    ¬ CommentOk sc.advance := by
+  intro h
+  have hpb := advance_peekBack_eq_peek hcorr hmore hnl hcr
+  rcases h with h | h | ⟨c', hc', hw⟩
+  · exact hcol h
+  · rw [hpb] at h; cases h
+  · rw [hpb] at hc'
+    cases hc'
+    rw [hc] at hw
+    cases hw
+
+/-- **The frame's one conversion.**  A landing read from the scanner park
+    `sp_scan` becomes `[79] s-l-comments` from the GRAMMAR endpoint `sp_gram`:
+    the whites the token swallowed are the comment's `[66]` separator, and with
+    no whites the separator-less shape is refuted by the park's own comment
+    gate (`h_gate`: plain parks never stop on `#` without whites, indicator
+    parks fail `commentOk`). -/
+lemma SSLCommentsFrom_at_park {sc : ScannerState} {sp_gram sp_scan sp_mid : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp_scan)
+    (h_run : GStar SSWhite sp_gram sp_scan)
+    (h_gate : sp_gram = sp_scan → sc.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    (h_from : SSLCommentsFrom sp_scan sp_mid)
+    (h_ok : SSLComments sp_scan sp_mid ∨ CommentOk sc) :
+    SSLComments sp_gram sp_mid := by
+  have h_ord : SSLComments sp_scan sp_mid → SSLComments sp_gram sp_mid := by
+    intro h
+    by_cases h_eq : sp_gram = sp_scan
+    · subst h_eq; exact h
+    · exact SSLComments_prepend_inline
+        (GStar_SSWhite_to_SSeparateInLine _ _ h_run (fun he => absurd he h_eq)) h
+  rcases h_ok with h | hcok
+  · exact h_ord h
+  · rcases h_from with h | ⟨hpos, sp_cmt, sp_brk, h_cmt, h_bc, h_rest⟩
+    · exact h_ord h
+    · have hpk : sc.peek? = some '#' := by
+        cases h_cmt with
+        | mk rest col s' _ => exact peek_of_corr_cons hcorr
+      by_cases h_eq : sp_gram = sp_scan
+      · exact absurd ⟨hcok, hpk⟩ (h_gate h_eq (by rw [← hcorr.col_eq]; omega))
+      · exact .withComment _ sp_brk _
+          (.withSep sp_gram sp_scan sp_cmt sp_brk
+            (.whites _ _ (GStar_to_GPlus h_run h_eq)) (.some _ _ h_cmt) h_bc) h_rest
+
+
+
+/-- The anchor/alias name walk only consumes characters that FAIL the scanner's
+    comment gate (`ns-anchor-char`: no white, break or BOM), so after a
+    nonempty name the park's `peekBack?` is such a character. -/
+lemma collectAnchorNameLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (name : String),
+    ScannerSurfCorr sc sp →
+    (collectAnchorNameLoop sc name fuel).snd = sc ∨
+    ∃ c, (collectAnchorNameLoop sc name fuel).snd.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  induction fuel with
+  | zero => intro sc sp name _; simp [collectAnchorNameLoop]
+  | succ fuel' ih =>
+    intro sc sp name hcorr
+    unfold collectAnchorNameLoop
+    split
+    · rename_i c hpeek
+      split
+      · rename_i hguard
+        have hmore : sc.offset < sc.inputEnd := by
+          by_cases h : sc.offset < sc.inputEnd
+          · exact h
+          · exfalso
+            have hz := eof_corr sc sp hcorr h
+            obtain ⟨c', rest', hch, hpk⟩ := peek_corr sc sp hcorr (by
+              -- peek? = some c forces hasMore
+              unfold ScannerState.peek? at hpeek
+              split at hpeek
+              · assumption
+              · cases hpeek)
+            rw [hz] at hch; cases hch
+        obtain ⟨c', rest, hch, hpk⟩ := peek_corr sc sp hcorr hmore
+        rw [hpeek] at hpk; cases hpk
+        have hcorr_c : ScannerSurfCorr sc ⟨c :: rest, sc.col⟩ := by
+          have hsp : sp = ⟨c :: rest, sc.col⟩ := by
+            cases sp; simp only [SurfPos.mk.injEq]; exact ⟨hch, hcorr.col_eq⟩
+          exact hsp ▸ hcorr
+        simp only [Bool.and_eq_true, Bool.not_eq_true', bne_iff_ne, ne_eq] at hguard
+        obtain ⟨⟨⟨⟨-, hws⟩, hbr⟩, -⟩, hbom⟩ := hguard
+        have hnl : c ≠ '\n' := fun h => by subst h; exact absurd hbr (by decide)
+        have hcr : c ≠ '\r' := fun h => by subst h; exact absurd hbr (by decide)
+        have hpb := advance_peekBack_eq_peek hcorr_c hmore hnl hcr
+        have hflag : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+          simp [hws, hbr, hbom]
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        rcases ih sc.advance sp' (name.push c) hcorr' with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact Or.inl rfl
+    · exact Or.inl rfl
+
+
+/-- A park whose last consumed character is neither white, break nor BOM fails
+    the scanner's comment gate off a line start. -/
+lemma CommentOk_false_of_peekBack {sc : ScannerState} {c : Char}
+    (hcol : sc.col ≠ 0) (hpb : sc.peekBack? = some c)
+    (hc : (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) :
+    ¬ CommentOk sc := by
+  intro h
+  rcases h with h0 | hnone | ⟨c', hc', hflag⟩
+  · exact hcol h0
+  · rw [hpb] at hnone; cases hnone
+  · rw [hpb] at hc'; cases hc'; rw [hc] at hflag; cases hflag
+
+
+/-- An anchor/alias park's last consumed character is the marker or an
+    `ns-anchor-char`: never white, break or BOM. -/
+lemma scanAnchorOrAlias_peekBack {sc : ScannerState} {sp : SurfPos} {marker : Char}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some marker)
+    (hmk : (isWhiteSpaceBool marker || isLineBreakBool marker || marker == '\uFEFF') = false)
+    (hnl : marker ≠ '\n') (hcr : marker ≠ '\r')
+    {isAnchor : Bool} {s' : ScannerState}
+    (hok : scanAnchorOrAlias sc isAnchor = .ok s') :
+    ∃ c, s'.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  obtain ⟨rest, hsp_eq⟩ := L4YAML.Proofs.ScalarProduction.peek_some_sp hcorr hpeek
+  subst hsp_eq
+  have hmore := L4YAML.Proofs.ScalarProduction.peek_some_has_more hpeek
+  have hpb0 := advance_peekBack_eq_peek hcorr hmore hnl hcr
+  obtain ⟨sp_adv, hcorr_adv⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc _ hcorr
+  have hloop := collectAnchorNameLoop_peekBack (sc.inputEnd - sc.advance.offset)
+    sc.advance sp_adv "" hcorr_adv
+  unfold scanAnchorOrAlias at hok; dsimp only [] at hok
+  split at hok
+  · exact absurd hok (by simp)
+  · have h := Except.ok.inj hok; subst h
+    rcases hloop with heq | ⟨c, hpb, hflag⟩
+    · exact ⟨marker, by
+        show (collectAnchorNameLoop sc.advance "" _).snd.peekBack? = some marker
+        rw [heq]; exact hpb0, hmk⟩
+    · exact ⟨c, hpb, hflag⟩
+
+
+/-! ### Tag parks: the last consumed character fails the comment gate -/
+
+lemma advance_peekBack_of_peek {sc : ScannerState} {sp : SurfPos} {c : Char}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some c)
+    (hnl : c ≠ '\n') (hcr : c ≠ '\r') : sc.advance.peekBack? = some c := by
+  obtain ⟨rest, hsp_eq⟩ := L4YAML.Proofs.ScalarProduction.peek_some_sp hcorr hpeek
+  subst hsp_eq
+  exact advance_peekBack_eq_peek hcorr
+    (L4YAML.Proofs.ScalarProduction.peek_some_has_more hpeek) hnl hcr
+
+lemma isUriChar_flag_false (c : Char) (h : isUriCharBool c = true) :
+    (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  have hlb : isLineBreakBool c = false := by
+    have := L4YAML.Proofs.StructureProduction.isUriChar_not_isLineBreak c h; simpa using this
+  rw [hlb]
+  simp only [isUriCharBool, decide_eq_true_eq] at h
+  by_cases hs : c = ' '
+  · subst hs; simp [isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  by_cases ht : c = '\t'
+  · subst ht; simp [isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  by_cases hb : c = '\uFEFF'
+  · subst hb; simp [isUriCharProp, isWordCharProp, isAsciiLetterProp] at h
+  simp [isWhiteSpaceBool, isSpaceBool, isTabBool, hs, ht, hb]
+
+lemma isTagChar_flag_false (c : Char) (h : isTagCharBool c = true) :
+    (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false :=
+  isUriChar_flag_false c ((isUriChar_iff c).2 ((isTagChar_iff c).1 h).1)
+
+lemma isWordChar_flag_false (c : Char) (h : isWordCharBool c = true) :
+    (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false :=
+  isUriChar_flag_false c ((isUriChar_iff c).2 (Or.inl ((isWordChar_iff c).1 h)))
+
+lemma collectVerbatimTagLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (uri : String), ScannerSurfCorr sc sp →
+    (collectVerbatimTagLoop sc uri fuel).2.2 = sc ∨
+    ∃ c, (collectVerbatimTagLoop sc uri fuel).2.2.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  induction fuel with
+  | zero => intro sc sp uri _; simp [collectVerbatimTagLoop]
+  | succ fuel' ih =>
+    intro sc sp uri hcorr
+    unfold collectVerbatimTagLoop
+    split
+    · have hpk : sc.peek? = some '>' := by assumption
+      exact Or.inr ⟨'>', advance_peekBack_of_peek hcorr hpk (by decide) (by decide), by decide⟩
+    · rename_i c _ _
+      have hpk : sc.peek? = some c := by assumption
+      split
+      · rename_i hguard
+        have hflag := isUriChar_flag_false c hguard
+        have hpb := advance_peekBack_of_peek hcorr hpk
+          (fun h => by subst h; exact absurd hflag (by decide))
+          (fun h => by subst h; exact absurd hflag (by decide))
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        rcases ih sc.advance sp' (uri.push c) hcorr' with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact Or.inl rfl
+    · exact Or.inl rfl
+
+lemma collectTagSuffixLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (suffix : String), ScannerSurfCorr sc sp →
+    (collectTagSuffixLoop sc suffix fuel).snd = sc ∨
+    ∃ c, (collectTagSuffixLoop sc suffix fuel).snd.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  induction fuel with
+  | zero => intro sc sp suffix _; simp [collectTagSuffixLoop]
+  | succ fuel' ih =>
+    intro sc sp suffix hcorr
+    unfold collectTagSuffixLoop
+    split
+    · rename_i c _
+      have hpk : sc.peek? = some c := by assumption
+      split
+      · rename_i hguard
+        have hflag := isTagChar_flag_false c hguard
+        have hpb := advance_peekBack_of_peek hcorr hpk
+          (fun h => by subst h; exact absurd hflag (by decide))
+          (fun h => by subst h; exact absurd hflag (by decide))
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        rcases ih sc.advance sp' (suffix.push c) hcorr' with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact Or.inl rfl
+    · exact Or.inl rfl
+
+lemma collectTagHandleLoop_peekBack (fuel : Nat) :
+    ∀ (sc : ScannerState) (sp : SurfPos) (chars : String), ScannerSurfCorr sc sp →
+    (∃ sp', ScannerSurfCorr (collectTagHandleLoop sc chars fuel).2.2 sp') ∧
+    ((collectTagHandleLoop sc chars fuel).2.2 = sc ∨
+    ∃ c, (collectTagHandleLoop sc chars fuel).2.2.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false) := by
+  induction fuel with
+  | zero => intro sc sp chars hcorr; simp [collectTagHandleLoop]; exact ⟨sp, hcorr⟩
+  | succ fuel' ih =>
+    intro sc sp chars hcorr
+    unfold collectTagHandleLoop
+    split
+    · have hpk : sc.peek? = some '!' := by assumption
+      obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+      exact ⟨⟨sp', hcorr'⟩,
+        Or.inr ⟨'!', advance_peekBack_of_peek hcorr hpk (by decide) (by decide), by decide⟩⟩
+    · rename_i c _ _
+      have hpk : sc.peek? = some c := by assumption
+      split
+      · rename_i hguard
+        have hflag := isWordChar_flag_false c hguard
+        have hpb := advance_peekBack_of_peek hcorr hpk
+          (fun h => by subst h; exact absurd hflag (by decide))
+          (fun h => by subst h; exact absurd hflag (by decide))
+        obtain ⟨sp', hcorr'⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+        obtain ⟨hc, hrest⟩ := ih sc.advance sp' (chars.push c) hcorr'
+        refine ⟨hc, ?_⟩
+        rcases hrest with heq | ⟨c2, hpb2, hflag2⟩
+        · exact Or.inr ⟨c, by rw [heq]; exact hpb, hflag⟩
+        · exact Or.inr ⟨c2, hpb2, hflag2⟩
+      · exact ⟨⟨sp, hcorr⟩, Or.inl rfl⟩
+    · exact ⟨⟨sp, hcorr⟩, Or.inl rfl⟩
+
+
+/-- A tag park's last consumed character is `!`, `<`, `>` or a tag/URI/word
+    character: never white, break or BOM. -/
+lemma scanTag_peekBack {sc : ScannerState} {sp : SurfPos}
+    (hcorr : ScannerSurfCorr sc sp) (hpeek : sc.peek? = some '!')
+    {s' : ScannerState} (hok : scanTag sc = .ok s') :
+    ∃ c, s'.peekBack? = some c ∧
+      (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+  have hpb_bang := advance_peekBack_of_peek hcorr hpeek (by decide) (by decide)
+  obtain ⟨sp1, hcorr1⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr sc sp hcorr
+  unfold scanTag at hok; dsimp only [] at hok
+  split at hok
+  · -- `!<uri>`
+    have hpk : sc.advance.peek? = some '<' := by assumption
+    have hpb_lt := advance_peekBack_of_peek hcorr1 hpk (by decide) (by decide)
+    obtain ⟨sp2, hcorr2⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr _ _ hcorr1
+    have hloop := collectVerbatimTagLoop_peekBack
+      (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)
+      sc.advance.advance sp2 "" hcorr2
+    unfold scanVerbatimTag at hok; dsimp only [] at hok
+    split at hok
+    · simp [bind, Except.bind] at hok
+    · split at hok
+      · simp [bind, Except.bind] at hok
+      · simp only [bind, Except.bind, pure, Except.pure, Except.ok.injEq] at hok
+        subst hok
+        rcases hloop with heq | ⟨c, hpb, hflag⟩
+        · exact ⟨'<', by
+            show (collectVerbatimTagLoop sc.advance.advance "" _).2.2.peekBack? = some '<'
+            rw [heq]; exact hpb_lt, by decide⟩
+        · exact ⟨c, hpb, hflag⟩
+  · -- `!!suffix`
+    have hpk : sc.advance.peek? = some '!' := by assumption
+    have hpb_bang2 := advance_peekBack_of_peek hcorr1 hpk (by decide) (by decide)
+    obtain ⟨sp2, hcorr2⟩ := L4YAML.Proofs.ScalarCoupling.advance_corr _ _ hcorr1
+    have hloop := collectTagSuffixLoop_peekBack
+      (sc.currentPos.offset + sc.advance.inputEnd - sc.advance.advance.offset)
+      sc.advance.advance sp2 "" hcorr2
+    have h := Except.ok.inj hok; subst h
+    unfold scanSecondaryTag; dsimp only []
+    rcases hloop with heq | ⟨c, hpb, hflag⟩
+    · exact ⟨'!', by
+        show (collectTagSuffixLoop sc.advance.advance "" _).snd.peekBack? = some '!'
+        rw [heq]; exact hpb_bang2, by decide⟩
+    · exact ⟨c, hpb, hflag⟩
+  · -- `!suffix` / `!handle!suffix`: both shapes run `collectTagSuffixLoop` from the
+    -- handle's end and `emitAt` the tag; `emitAt` only pushes a token, so the last
+    -- consumed character is the suffix loop's, else the handle loop's, else `!`.
+    have h := Except.ok.inj hok; subst h
+    unfold scanNamedTag; dsimp only []
+    obtain ⟨⟨sph, hcorrh⟩, hh⟩ := collectTagHandleLoop_peekBack _ sc.advance sp1 "" hcorr1
+    rcases hl : collectTagHandleLoop sc.advance "" (sc.inputEnd - sc.advance.offset)
+      with ⟨chars, fb, sh⟩
+    rw [hl] at hh hcorrh
+    dsimp only [] at hh hcorrh ⊢
+    have key : ∀ suffix : String, ∃ c,
+        (collectTagSuffixLoop sh suffix (sc.inputEnd - sh.offset)).snd.peekBack? = some c ∧
+          (isWhiteSpaceBool c || isLineBreakBool c || c == '\uFEFF') = false := by
+      intro suffix
+      rcases collectTagSuffixLoop_peekBack (sc.inputEnd - sh.offset) sh sph suffix hcorrh
+        with heq | ⟨c, hpb, hflag⟩
+      · rw [heq]
+        rcases hh with heq' | ⟨c, hpb, hflag⟩
+        · exact ⟨'!', by rw [heq']; exact hpb_bang, by decide⟩
+        · exact ⟨c, hpb, hflag⟩
+      · exact ⟨c, hpb, hflag⟩
+    cases fb
+    · simp only [Bool.false_eq_true, ↓reduceIte]
+      obtain ⟨c, hpb, hflag⟩ := key chars
+      exact ⟨c, hpb, hflag⟩
+    · simp only [↓reduceIte]
+      obtain ⟨c, hpb, hflag⟩ := key ""
+      exact ⟨c, hpb, hflag⟩
+
+/-! ### Where a block scalar parks
+
+`collectBlockScalarLoop` returns at a line start (a shorter-indented line is
+handed back untouched, as is a document boundary), at end of input, or on the
+non-printable/BOM character that stopped `collectLineContentLoop`.  A `#` off a
+line start is therefore never the block scalar's park — the fact the frame's
+comment gate needs for the `|`/`>` arm. -/
+
+lemma collectLineContentLoop_stop (fuel : Nat) :
+    ∀ (s : ScannerState) (content : String),
+    s.inputEnd - s.offset < fuel →
+    (collectLineContentLoop s content fuel).2.peek? = none ∨
+    ∃ c, (collectLineContentLoop s content fuel).2.peek? = some c ∧
+      (isLineBreakBool c || !isPrintableBool c || c == '\uFEFF') = true := by
+  induction fuel with
+  | zero => intro s _ hb; omega
+  | succ fuel' ih =>
+    intro s content hb
+    unfold collectLineContentLoop
+    split
+    · rename_i c hpk
+      split
+      · rename_i hstop
+        exact Or.inr ⟨c, hpk, hstop⟩
+      · have hlt : s.offset < s.inputEnd :=
+          L4YAML.Proofs.ScalarProduction.peek_some_has_more hpk
+        have hadv := L4YAML.Proofs.ScannerProgress.advance_offset_lt s hlt
+        have hend := advance_inputEnd s
+        exact ih s.advance (content.push c) (by omega)
+    · rename_i hpk
+      exact Or.inl hpk
+
+private lemma consumeNewline_col_zero {s : ScannerState} {c : Char}
+    (hpk : s.peek? = some c) (hbr : isLineBreakBool c = true) :
+    (consumeNewline s).col = 0 := by
+  have hlt : s.offset < s.inputEnd := L4YAML.Proofs.ScalarProduction.peek_some_has_more hpk
+  have hget : String.Pos.Raw.get s.input ⟨s.offset⟩ = c := by
+    unfold ScannerState.peek? at hpk
+    rw [ite_eq_left hlt] at hpk
+    exact Option.some.inj hpk
+  unfold consumeNewline
+  rw [hpk]
+  split
+  · rename_i heq
+    injection heq with hc'
+    subst hc'
+    exact advance_col_newline s hlt (by rw [hget]; rfl)
+  · rename_i heq
+    injection heq with hc'
+    subst hc'
+    have hcol0 : s.advance.col = 0 := advance_col_cr s hlt (by rw [hget]; rfl)
+    dsimp only []
+    split
+    all_goals exact hcol0
+  · rename_i hne1 hne2
+    simp only [isLineBreakBool, isLineFeedBool, isCarriageReturnBool,
+      Bool.or_eq_true, beq_iff_eq] at hbr
+    rcases hbr with rfl | rfl <;> simp_all
+
+private lemma peek_none_ne_hash {s : ScannerState} (h : s.peek? = none) :
+    s.peek? ≠ some '#' := by
+  intro h'; rw [h] at h'; cases h'
+
+lemma collectBlockScalarLoop_park (fuel : Nat) :
+    ∀ (s : ScannerState) (raw : String) (ci ie : Nat),
+    s.inputEnd ≤ ie →
+    (s.col = 0 ∨ s.peek? = none) →
+    (collectBlockScalarLoop s raw fuel ci ie).2.col = 0 ∨
+    (collectBlockScalarLoop s raw fuel ci ie).2.peek? ≠ some '#' := by
+  induction fuel with
+  | zero =>
+    intro s raw ci ie _ hinv
+    rcases hinv with h0 | hn
+    · exact Or.inl h0
+    · exact Or.inr (peek_none_ne_hash hn)
+  | succ fuel' ih =>
+    intro s raw ci ie hie hinv
+    unfold collectBlockScalarLoop
+    split
+    · rcases hinv with h0 | hn
+      · exact Or.inl h0
+      · exact Or.inr (peek_none_ne_hash hn)
+    · generalize hsp : consumeExactSpaces s ci = pr
+      obtain ⟨k, sa⟩ := pr
+      have hsa_end : sa.inputEnd = s.inputEnd := by
+        have h := L4YAML.Proofs.ScalarProduction.consumeExactSpaces_inputEnd s ci
+        rw [hsp] at h; exact h
+      try dsimp only []
+      split
+      · rename_i hnone
+        exact Or.inr (peek_none_ne_hash hnone)
+      · rename_i c hpk
+        split
+        · rename_i hbr
+          try dsimp only []
+          apply ih
+          · rw [consumeNewline_inputEnd]; omega
+          · exact Or.inl (consumeNewline_col_zero hpk hbr)
+        · rename_i hbr
+          split
+          · rcases hinv with h0 | hn
+            · exact Or.inl h0
+            · exact Or.inr (peek_none_ne_hash hn)
+          · generalize hl : collectLineContentLoop sa "" (ie - sa.offset + 1) = lr
+            obtain ⟨lc, sal⟩ := lr
+            have hsal_end : sal.inputEnd = sa.inputEnd := by
+              have h := L4YAML.Proofs.ScalarProduction.collectLineContentLoop_inputEnd sa "" (ie - sa.offset + 1)
+              rw [hl] at h; exact h
+            have hstop := collectLineContentLoop_stop (ie - sa.offset + 1) sa "" (by omega)
+            rw [hl] at hstop
+            try dsimp only [] at hstop
+            try dsimp only []
+            split
+            · rename_i c' hpk'
+              split
+              · rename_i hbr'
+                try dsimp only []
+                apply ih
+                · rw [consumeNewline_inputEnd]; omega
+                · exact Or.inl (consumeNewline_col_zero hpk' hbr')
+              · rename_i hbr'
+                split
+                · -- empty line run: the scanner stays at `s`
+                  rcases ‹s.col = 0 ∨ s.peek? = none› with h0 | hnone
+                  · exact Or.inl h0
+                  · refine Or.inr (fun hhash => ?_)
+                    have hh : s.peek? = some '#' := hhash
+                    rw [hnone] at hh; cases hh
+                dsimp only
+                refine Or.inr ?_
+                rcases hstop with hn | ⟨c'', hpk'', hflag⟩
+                · rw [hn] at hpk'; cases hpk'
+                · rw [hpk'] at hpk''
+                  cases hpk''
+                  intro hhash
+                  rw [hpk'] at hhash
+                  cases hhash
+                  simp only [hbr', Bool.false_or, Bool.or_eq_true, Bool.not_eq_eq_eq_not,
+                    Bool.not_true, beq_iff_eq] at hflag
+                  rcases hflag with h | h
+                  · exact absurd h (by decide)
+                  · exact absurd h (by decide)
+            · rename_i hnone
+              exact Or.inr (peek_none_ne_hash hnone)
+
+lemma scanBlockScalarConsumeNewline_park {s s' : ScannerState}
+    (h : scanBlockScalarConsumeNewline s = .ok s') :
+    (s'.col = 0 ∨ s'.peek? = none) ∧ s'.inputEnd = s.inputEnd := by
+  unfold scanBlockScalarConsumeNewline at h
+  split at h
+  · rename_i c hpk
+    split at h
+    · rename_i hbr
+      have he := Except.ok.inj h; subst he
+      exact ⟨Or.inl (consumeNewline_col_zero hpk hbr), consumeNewline_inputEnd s⟩
+    · split at h
+      · rename_i hnm
+        have he := Except.ok.inj h; subst he
+        refine ⟨Or.inr ?_, rfl⟩
+        unfold ScannerState.peek?
+        simp only [Bool.not_eq_eq_eq_not, Bool.not_true, ScannerState.hasMore,
+          decide_eq_false_iff_not] at hnm
+        simp [hnm]
+      · cases h
+  · rename_i hpk
+    have he := Except.ok.inj h; subst he
+    exact ⟨Or.inr hpk, rfl⟩
+
+/-- A block scalar never parks on `#` off a line start. -/
+lemma scanBlockScalar_park {s s' : ScannerState}
+    (hok : scanBlockScalar s = .ok s') :
+    s'.col = 0 ∨ s'.peek? ≠ some '#' := by
+  unfold scanBlockScalar at hok
+  try dsimp only at hok
+  split at hok
+  · cases hok
+  · rename_i s_nl hcn
+    obtain ⟨hinv, _⟩ := scanBlockScalarConsumeNewline_park hcn
+    have hle : s_nl.inputEnd ≤ s.inputEnd :=
+      L4YAML.Proofs.ScalarProduction.scanBlockScalar_afterNewline_inputEnd hcn
+    unfold scanBlockScalarBody at hok
+    try simp only [] at hok
+    repeat (any_goals (split at hok))
+    all_goals (try contradiction)
+    all_goals (simp only [Except.ok.injEq] at hok; subst hok; dsimp only [])
+    all_goals (unfold ScannerState.emitAt)
+    all_goals (exact collectBlockScalarLoop_park _ _ _ _ _ hle hinv)
+
 end L4YAML.Proofs.PreprocessProduction
+
+end Blanket

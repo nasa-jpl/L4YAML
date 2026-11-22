@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 395 — a redirected heavy producer: name the contract, land the trivial restriction, probe satisfiable with the OLD route's counterexample.
 
@@ -117,3 +122,5 @@ theorem crossWitness_fires_map_interior :
 #guard badWitness[2]! == Tok.mcls       -- ... followed by mcls (not content-start, not cls): violated
 
 end Tests.Reflections.RedirectedProviderContractFirst
+
+end Blanket

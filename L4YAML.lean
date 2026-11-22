@@ -1,118 +1,143 @@
-import L4YAML.Init
-import L4YAML.CapstoneAttr
-import L4YAML.Capstones
-import L4YAML.Config.Config
-import L4YAML.Output.Dump
-import L4YAML.Output.Emitter
-import L4YAML.FFI.FFI
-import L4YAML.Spec.Grammar
-import L4YAML.Config.Limits
-import L4YAML.Proofs.Contracts.BlockScalarContracts
-import L4YAML.Proofs.Foundation.CharClass
-import L4YAML.Proofs.RoundTrip.CommentProperties
-import L4YAML.Proofs.RoundTrip.CommentRoundTrip
-import L4YAML.Proofs.Completeness
-import L4YAML.Proofs.Composition
-import L4YAML.Proofs.Coupling.CouplingBridge
-import L4YAML.Proofs.Contracts.DocumentContracts
-import L4YAML.Proofs.Production.DocumentProduction
-import L4YAML.Proofs.Output.DumpRoundTrip
-import L4YAML.Proofs.Output.EmitterScannability.EscapeProperties
-import L4YAML.Proofs.Output.EmitterScannability.ScannerAcceptance
-import L4YAML.Proofs.Output.EmitterScannability.ScanSteps
-import L4YAML.Proofs.Output.EmitterScannability.FilteredGrowth
-import L4YAML.Proofs.Output.EmitterScannability.ScanChainGrowth
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
-import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
-import L4YAML.Proofs.Output.EmitterScannability.Block
-import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
-import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
-import L4YAML.Proofs.Output.EmitterScannability
-import L4YAML.Proofs.Output.IndexedEmitterScannability
-import L4YAML.Proofs.EndToEndCorrectness
-import L4YAML.Proofs.Errors.ErrorProperties
-import L4YAML.Proofs.Errors.EscapeResolution
-import L4YAML.Proofs.Errors.FoldNewlines
-import L4YAML.Algebra.AnchorMap
-import L4YAML.Algebra.Equivalence
-import L4YAML.Algebra.Combinators
-import L4YAML.Algebra.Fuel
-import L4YAML.Algebra.Idempotence
-import L4YAML.Algebra.Indent
-import L4YAML.Algebra.LawfulBEq
-import L4YAML.Algebra.Position
-import L4YAML.Algebra.Schema
-import L4YAML.Algebra.StringList
-import L4YAML.Algebra.Token
-import L4YAML.Algebra.TokenStream
-import L4YAML.Algebra.Value
-import L4YAML.Config.LoadConfig
-import L4YAML.Indexed.CharStream
-import L4YAML.Indexed.Range
-import L4YAML.Indexed.RepGraph
-import L4YAML.Indexed.TokenStream
-import L4YAML.Proofs.Production.NodeProduction
-import L4YAML.Proofs.Parser.ParserAnchorProofs
-import L4YAML.Proofs.Parser.ParserCompleteness
-import L4YAML.Proofs.Parser.ParserCorrectness
-import L4YAML.Proofs.Parser.ParserGrammable
-import L4YAML.Proofs.Parser.ParserGrammableBase
-import L4YAML.Proofs.Parser.ParserNodeProofs
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Parser.ParserWellBehaved
-import L4YAML.Proofs.Parser.FlowParserAcceptance
-import L4YAML.Proofs.Parser.ParserWfaProofs
-import L4YAML.Proofs.Parser.IndexedCorrectness
-import L4YAML.Proofs.Production.PreprocessProduction
-import L4YAML.Proofs.RoundTrip.RoundTrip
-import L4YAML.Proofs.RoundTrip.RoundTripComposition
-import L4YAML.Proofs.Coupling.ScalarCoupling
-import L4YAML.Proofs.Production.ScalarProduction
-import L4YAML.Proofs.Scanner.ScannerContracts
-import L4YAML.Proofs.Scanner.ScannerCorrectness
-import L4YAML.Proofs.Scanner.IndexedRoundtrip
-import L4YAML.Proofs.Coupling.ScannerCoupling
-import L4YAML.Proofs.Scanner.ScannerDispatch
-import L4YAML.Proofs.Scanner.ScannerDocument
-import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
-import L4YAML.Proofs.Output.ScannerEmitBridge
-import L4YAML.Proofs.Scanner.ScannerFlowCollection
-import L4YAML.Proofs.Scanner.ScannerIndent
-import L4YAML.Proofs.Scanner.ScannerIndentStack
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
-import L4YAML.Proofs.Scanner.ScannerPlainContent
-import L4YAML.Proofs.Scanner.ScannerPlainScalar
-import L4YAML.Proofs.Production.ScannerPlainScalarValid
-import L4YAML.Proofs.Scanner.ScannerProgress
-import L4YAML.Proofs.Scanner.ScannerProofs
-import L4YAML.Proofs.Scanner.ScannerScalar
-import L4YAML.Proofs.Scanner.ScannerSimpleKey
-import L4YAML.Proofs.Scanner.ScannerWhitespace
-import L4YAML.Proofs.Scanner.ScanStrictCoupling
-import L4YAML.Proofs.Schema.SchemaComposition
-import L4YAML.Proofs.Schema.SchemaDump
-import L4YAML.Proofs.Schema.SchemaResolution
-import L4YAML.Proofs.Soundness
-import L4YAML.Proofs.Production.StreamAccum
-import L4YAML.Proofs.Foundation.StringProperties
-import L4YAML.Proofs.Coupling.StructureCoupling
-import L4YAML.Proofs.Production.StructureProduction
-import L4YAML.Proofs.Coupling.SurfaceCoupling
-import L4YAML.Proofs.Schema.TagResolution
-import L4YAML.Scanner.Scanner
-import L4YAML.Schema.Schema
-import L4YAML.Schema.Api
-import L4YAML.Schema.Deriving
-import L4YAML.Schema.Dump
-import L4YAML.Schema.FromToYaml
-import L4YAML.Schema.Struct
-import L4YAML.Surface.Surface
-import L4YAML.Token.Token
-import L4YAML.Parser.Composition
-import L4YAML.Spec.Types
-import L4YAML.Spec.YamlSpec
+module
+
+public import L4YAML.Init
+public import L4YAML.CapstoneAttr
+public import L4YAML.Capstones
+public import L4YAML.Config.Config
+public import L4YAML.Output.Dump
+public import L4YAML.Output.Align
+public import L4YAML.Proofs.Output.AlignProofs
+public import L4YAML.Output.Emitter
+public import L4YAML.FFI.FFI
+public import L4YAML.Spec.Grammar
+public import L4YAML.Config.Limits
+public import L4YAML.Proofs.Contracts.BlockScalarContracts
+public import L4YAML.Proofs.Foundation.CharClass
+public import L4YAML.Proofs.RoundTrip.CommentProperties
+public import L4YAML.Proofs.RoundTrip.CommentRoundTrip
+public import L4YAML.Proofs.Completeness
+public import L4YAML.Proofs.Composition
+public import L4YAML.Proofs.Serialization
+public import L4YAML.Proofs.Coupling.CouplingBridge
+public import L4YAML.Proofs.Contracts.DocumentContracts
+public import L4YAML.Proofs.Production.Acceptance.Quoted
+public import L4YAML.Proofs.Production.Acceptance.Plain
+public import L4YAML.Proofs.Production.Acceptance.Properties
+public import L4YAML.Proofs.Production.Acceptance.FlowIndicators
+public import L4YAML.Proofs.Production.Acceptance.BlockIndicators
+public import L4YAML.Proofs.Production.Acceptance.BlockScalar
+public import L4YAML.Proofs.Production.DocumentProduction
+public import L4YAML.Proofs.Output.DumpRoundTrip
+public import L4YAML.Proofs.Output.EmitterScannability.EscapeProperties
+public import L4YAML.Proofs.Output.EmitterScannability.ScannerAcceptance
+public import L4YAML.Proofs.Output.EmitterScannability.ScanSteps
+public import L4YAML.Proofs.Output.EmitterScannability.FilteredGrowth
+public import L4YAML.Proofs.Output.EmitterScannability.ScanChainGrowth
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Proofs.Output.EmitterScannability.FilteredTracking
+public import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+public import L4YAML.Proofs.Output.EmitterScannability.Block
+public import L4YAML.Proofs.Output.EmitterScannability.BlockProducers
+public import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+public import L4YAML.Proofs.Output.EmitterScannability
+public import L4YAML.Proofs.Output.IndexedEmitterScannability
+public import L4YAML.Proofs.EndToEndCorrectness
+public import L4YAML.Proofs.Errors.ErrorProperties
+public import L4YAML.Proofs.Errors.EscapeResolution
+public import L4YAML.Proofs.Errors.FoldNewlines
+public import L4YAML.Algebra.AnchorMap
+public import L4YAML.Algebra.Equivalence
+public import L4YAML.Algebra.Combinators
+public import L4YAML.Algebra.Fuel
+public import L4YAML.Algebra.Idempotence
+public import L4YAML.Algebra.Indent
+public import L4YAML.Algebra.LawfulBEq
+public import L4YAML.Algebra.Position
+public import L4YAML.Algebra.Schema
+public import L4YAML.Algebra.StringList
+public import L4YAML.Algebra.Token
+public import L4YAML.Algebra.TokenStream
+public import L4YAML.Algebra.Value
+public import L4YAML.Config.LoadConfig
+public import L4YAML.Indexed.CharStream
+public import L4YAML.Indexed.Range
+public import L4YAML.Indexed.RepGraph
+public import L4YAML.Indexed.TokenStream
+public import L4YAML.Proofs.Production.NodeProduction
+public import L4YAML.Proofs.Parser.ParserAnchorProofs
+public import L4YAML.Proofs.Parser.ParserCompleteness
+public import L4YAML.Proofs.Parser.ParserCorrectness
+public import L4YAML.Proofs.Parser.ParserGrammable
+public import L4YAML.Proofs.Parser.ParserGrammableBase
+public import L4YAML.Proofs.Parser.TokenGrammar
+public import L4YAML.Proofs.Parser.StreamCompleteness
+public import L4YAML.Proofs.Parser.ParserScannableBase
+public import L4YAML.Proofs.Parser.ParserNodeProofs
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Parser.ParserWellBehaved
+public import L4YAML.Proofs.Parser.FlowParserAcceptance
+public import L4YAML.Proofs.Parser.ParserWfaProofs
+public import L4YAML.Proofs.Parser.ParserWfaScannable
+public import L4YAML.Proofs.Parser.IndexedCorrectness
+public import L4YAML.Proofs.Production.PreprocessProduction
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+public import L4YAML.Proofs.RoundTrip.RoundTripComposition
+public import L4YAML.Proofs.Coupling.ScalarCoupling
+public import L4YAML.Proofs.Production.ScalarProduction
+public import L4YAML.Proofs.Scanner.ScannerContracts
+public import L4YAML.Proofs.Scanner.ScannerCorrectness
+public import L4YAML.Proofs.Scanner.IndexedRoundtrip
+public import L4YAML.Proofs.Coupling.ScannerCoupling
+public import L4YAML.Proofs.Scanner.ScannerDispatch
+public import L4YAML.Proofs.Scanner.ScannerDocument
+public import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
+public import L4YAML.Proofs.Output.ScannerEmitBridge
+public import L4YAML.Proofs.Scanner.ScannerFlowCollection
+public import L4YAML.Proofs.Scanner.ScannerIndent
+public import L4YAML.Proofs.Scanner.ScannerIndentStack
+public import L4YAML.Proofs.Scanner.ScannerLinePreservation
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+public import L4YAML.Proofs.Scanner.ScannerPlainContent
+public import L4YAML.Proofs.Scanner.ScannerPlainScalar
+public import L4YAML.Proofs.Production.ScannerPlainScalarValid
+public import L4YAML.Proofs.Scanner.ScannerProgress
+public import L4YAML.Proofs.Scanner.ScannerProofs
+public import L4YAML.Proofs.Scanner.ScannerScalar
+public import L4YAML.Proofs.Scanner.ScalarWalkColFloor
+public import L4YAML.Proofs.Scanner.RegisterWitness
+public import L4YAML.Proofs.Scanner.StaleCursorFloor
+public import L4YAML.Proofs.Scanner.ExplicitKeyCoupling
+public import L4YAML.Proofs.Scanner.ScannerSimpleKey
+public import L4YAML.Proofs.Scanner.ScannerWhitespace
+public import L4YAML.Proofs.Scanner.ScanStrictCoupling
+public import L4YAML.Proofs.Schema.SchemaComposition
+public import L4YAML.Proofs.Schema.FlowIndicator
+public import L4YAML.Proofs.Schema.SchemaDump
+public import L4YAML.Proofs.Schema.SchemaResolution
+public import L4YAML.Proofs.Soundness
+public import L4YAML.Proofs.Production.StreamAccum
+public import L4YAML.Proofs.Foundation.StringProperties
+public import L4YAML.Proofs.Coupling.StructureCoupling
+public import L4YAML.Proofs.Production.StructureProduction
+public import L4YAML.Proofs.Coupling.SurfaceCoupling
+public import L4YAML.Proofs.Foundation.SurfaceSpanSupply
+public import L4YAML.Proofs.Coupling.TabIndentBridge
+public import L4YAML.Proofs.Schema.TagResolution
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.Api
+public import L4YAML.Schema.Deriving
+public import L4YAML.Schema.Dump
+public import L4YAML.Schema.FromToYaml
+public import L4YAML.Schema.Struct
+public import L4YAML.Surface.Surface
+public import L4YAML.Token.Token
+public import L4YAML.Parser.Composition
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.YamlSpec
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -149,3 +174,5 @@ open L4YAML
 - **Grammar**: Formal specification as inductive `Prop`s
 - **Proofs**: Soundness, completeness, round-trip, composition
 -/
+
+end Blanket

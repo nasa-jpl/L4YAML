@@ -1,5 +1,11 @@
-import L4YAML.Spec.Grammar
-import L4YAML.Spec.Types
+module
+
+public import L4YAML.Spec.Grammar
+
+public meta import L4YAML.Spec.Grammar
+public import L4YAML.Spec.Types
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -476,3 +482,5 @@ lemma validHeaderLength_nil : validHeaderLength [] := by
   unfold validHeaderLength extractHeaderChars; simp
 
 end L4YAML.Proofs.BlockScalarContracts
+
+end Blanket

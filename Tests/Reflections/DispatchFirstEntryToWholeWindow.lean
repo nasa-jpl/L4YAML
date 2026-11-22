@@ -27,6 +27,11 @@ from the real proof — then runs it on a concrete single-value window `[ sc ]` 
 a window WITH an interior separator, where the certificate genuinely fails.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace DispatchFirstEntryToWholeWindow
 
 set_option autoImplicit false
@@ -147,3 +152,5 @@ end DispatchFirstEntryToWholeWindow
 /-- info: 'DispatchFirstEntryToWholeWindow.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms DispatchFirstEntryToWholeWindow.demo
+
+end Blanket

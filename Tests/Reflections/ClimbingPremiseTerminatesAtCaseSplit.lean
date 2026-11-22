@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 495 — the climbing dropped-derivation premise (R494) terminates at a CASE SPLIT, not a
 single discharge, because the weaker guard ADMITS the degenerate input to the terminating ancestor too.
@@ -127,3 +132,5 @@ example : Goal 0 := terminate 0 ⟨id⟩
 example : Goal 3 := terminate 3 ⟨id⟩
 
 end ClimbingPremiseTerminatesAtCaseSplit
+
+end Blanket

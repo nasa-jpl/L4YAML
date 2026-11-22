@@ -1,0 +1,36 @@
+{
+ "item": 404,
+ "tag": "KSLOT-FIELD-R1",
+ "rev": "585b2f49",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/404-kslot-field-round1.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "      -- (`? - a⏎: - w`).",
+    "      (h_kslot : (∃ nv : Nat,"
+   ],
+   "new": [
+    "      -- (`? - a⏎: - w`).",
+    "      (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "      -- with no slot at all, or one left of the frame's own index.",
+    "      (h_kslot : (∃ nv : Nat,"
+   ],
+   "new": [
+    "      -- with no slot at all, or one left of the frame's own index.",
+    "      (h_kslot : (∀ nv ∈ RegisterWitness.markedCols sc,"
+   ],
+   "count": 1
+  }
+ ]
+}

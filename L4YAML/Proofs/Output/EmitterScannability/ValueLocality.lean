@@ -3,9 +3,13 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Parser.ParserWellBehaved
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Proofs.Output.EmitterScannability.TokVals
+module
+
+public import L4YAML.Proofs.Parser.ParserWellBehaved
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Proofs.Output.EmitterScannability.TokVals
+
+@[expose] public section Blanket
 
 /-!
 # Value locality: the both-success token-`.val`-window joint over the parser clique
@@ -436,7 +440,7 @@ lemma parseSinglePairMapping_inv (ps : ParseState) (g : Nat) (v : YamlValue) (q 
       obtain ⟨key0, psk0⟩ := kr
       have hk : pairKeyStep ps.advance g = .ok (key0, psk0) := by rw [hk_eq]; exact heq5
       simp only [] at h
-      cases key0 <;> simp only [] at h <;>
+      cases key0 <;> (unfold keyPathSegment at h; simp only [] at h) <;>
       (split at h
        · rename_i hc
          obtain ⟨h_pkv, h_st⟩ := tryConsume_true_facts _ YamlToken.value hc
@@ -476,6 +480,11 @@ lemma parseSinglePairMapping_inv (ps : ParseState) (g : Nat) (v : YamlValue) (q 
     rename_i x heq
     have hk : pairKeyStep ps.advance g = .ok (emptyNode, ps.advance) := by
       unfold pairKeyStep; rw [heq]
+    -- 4.33: first reduce the stray key-content matcher application UNIFORMLY with
+    -- `rw` — kabstract reaches the ite's Decidable instance, whereas simp/dsimp
+    -- skip instance args, diverge the hypothesis, and `split at h` then refuses.
+    -- With no instance-side occurrence left, the `emptyNode` unfold is safe again.
+    rw [show keyPathSegment emptyNode = "" from rfl] at h
     simp only [emptyNode] at h
     split at h
     · rename_i hc
@@ -1725,3 +1734,5 @@ lemma parseNode_joint (f1 f2 : Nat) (ps1 ps2 : ParseState) (nn : Nat)
   parseNode_joint_all f1 f1 (Nat.le_refl _) f2 ps1 ps2 nn v1 v2 q1 q2 hnn h_ag h_cl h1 h2 h_fr
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

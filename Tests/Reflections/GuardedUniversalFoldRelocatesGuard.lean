@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 301 — the consumer fold collapses a GUARDED universal to a single provider, and the guard relocates: producer's gift, consumer's debt
 
@@ -91,3 +96,5 @@ theorem fold_endpoints : Carrier 0 6 ∧ Fact 4 :=
   ⟨carrier_concrete, consume_needs_gate carrier_concrete (by unfold Gate; decide)⟩
 
 end Tests.Reflections.GuardedUniversalFoldRelocatesGuard
+
+end Blanket

@@ -1,8 +1,12 @@
-import L4YAML.Spec.Grammar
-import L4YAML.Output.Dump
-import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Output.Dump
+public import L4YAML.Output.Emitter
+public import L4YAML.Parser.Composition
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -89,7 +93,7 @@ needed for `ValidNode` constructors.
 
 /-- Characters safe for plain scalar first position (block context).
     Must not be an indicator char. -/
-private def plainSafeFirstChars : List Char :=
+def plainSafeFirstChars : List Char :=
   ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -98,7 +102,7 @@ private def plainSafeFirstChars : List Char :=
    '/', '.', '_', '(', ')']
 
 /-- Characters safe for plain scalar body (no `: `, ` #`, no flow indicators). -/
-private def plainSafeBodyChars : List Char :=
+def plainSafeBodyChars : List Char :=
   ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -178,15 +182,19 @@ def genSingleQuotedContent (rng : Rng) (maxLen : Nat := 12) : Rng × String :=
 /-! ## ValidNode Generator -/
 
 /-- Maximum depth for generated trees. -/
-private def maxDepth : Nat := 4
+def maxDepth : Nat := 4
 
 /-- Maximum items per collection. -/
-private def maxCollectionSize : Nat := 4
+def maxCollectionSize : Nat := 4
 
 -- ValidNode needs Nonempty for partial def compilation
-private instance : Nonempty ValidNode := ⟨.emptyNode⟩
+-- Not `private`: the `partial def`s below need this instance for their
+-- nonemptiness obligation, and an exposed body may not name a private
+-- declaration -- the failure reads "could not prove that the type ... is
+-- nonempty" rather than naming the instance.
+instance : Nonempty ValidNode := ⟨.emptyNode⟩
 
-private def genPlainBlock (rng : Rng) : Rng × ValidNode :=
+def genPlainBlock (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genPlainSafe rng
   if h1 : content.length > 0 then
     if h2 : validPlainFirstBool content false = true then
@@ -201,7 +209,7 @@ private def genPlainBlock (rng : Rng) : Rng × ValidNode :=
     else (rng, .emptyNode)
   else (rng, .emptyNode)
 
-private def genPlainFlow (rng : Rng) : Rng × ValidNode :=
+def genPlainFlow (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genPlainSafe rng
   if h1 : content.length > 0 then
     if h2 : validPlainFirstBool content true = true then
@@ -219,15 +227,15 @@ private def genPlainFlow (rng : Rng) : Rng × ValidNode :=
     else (rng, .emptyNode)
   else (rng, .emptyNode)
 
-private def genSingleQuoted' (rng : Rng) : Rng × ValidNode :=
+def genSingleQuoted' (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genSingleQuotedContent rng
   (rng, .singleQuoted content)
 
-private def genDoubleQuoted' (rng : Rng) : Rng × ValidNode :=
+def genDoubleQuoted' (rng : Rng) : Rng × ValidNode :=
   let (rng, content) := genDoubleQuotedContent rng
   (rng, .doubleQuoted content)
 
-private def genScalar (rng : Rng) : Rng × ValidNode :=
+def genScalar (rng : Rng) : Rng × ValidNode :=
   let (rng, choice) := rng.next 5
   match choice with
   | 0 => genPlainBlock rng
@@ -684,3 +692,5 @@ def collectTests : IO VerifiedSuiteResult := do
            tests := results }
 
 end Tests.PropertyTests
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 378 — a prefix-length positional bridge is reusable for ANY structured element by
 re-association; the feared "close bridge" is the separator bridge with a re-bracketed prefix
@@ -73,3 +78,5 @@ theorem read_interior_needs_inner {α : Type} (op i0 i1 : α) (irest rest : List
 #guard !([0, 3, 4] : List Nat).contains 1
 
 end Tests.Reflections.RebracketReusesPrefixBridge
+
+end Blanket

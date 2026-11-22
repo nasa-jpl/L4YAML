@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 446 — generalizing a ROOT-span producer to a WINDOW-parametric one is exactly ONE swap:
 # replace the BASE-CASE assembler (the flat, root-only supplier) with its window-parametric sibling,
@@ -113,3 +118,5 @@ theorem r446_finding
         (Nat.le_refl lo) (Nat.le_refl hi) h_gate⟩
 
 end Tests.Reflections.RootToWindowBaseAssemblerSwap
+
+end Blanket

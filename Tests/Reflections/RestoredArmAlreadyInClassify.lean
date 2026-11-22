@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 414 — the arm a false guard suppressed is already built in the classify; restore it with `by_cases`
 
@@ -115,3 +120,5 @@ theorem discriminator_matches_empty_head : headEmpty emptyThenScalar = true := b
 #guard ((Tok.op == Tok.op) && !(Tok.scal == Tok.cl)) == true
 
 end Tests.Reflections.RestoredArmAlreadyInClassify
+
+end Blanket

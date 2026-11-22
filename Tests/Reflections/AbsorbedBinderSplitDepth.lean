@@ -3,6 +3,11 @@ Copyright (c) 2026 L4YAML contributors. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 407 — un-ignoring an absorbed binder: the split DEPTH is arm-specific
 
 Self-contained toy for [[ref-absorbed-binder-split-depth-per-glue]].
@@ -76,3 +81,5 @@ theorem field_does_not_entail_boundary : ∃ n, n % 2 = 0 ∧ ¬ (n ≠ 8) :=
 #guard (decide ((8 : Nat) ≠ 8) == false)
 
 end Tests.Reflections.AbsorbedBinderSplitDepth
+
+end Blanket

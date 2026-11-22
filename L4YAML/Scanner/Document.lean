@@ -2,9 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.State
-import L4YAML.Scanner.Whitespace
-import L4YAML.Scanner.Indent
+
+module
+
+public import L4YAML.Scanner.State
+public import L4YAML.Scanner.Whitespace
+public import L4YAML.Scanner.Indent
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Scanner — Document Boundaries and Directives
@@ -127,6 +133,13 @@ def collectVersionMinorLoop (s : ScannerState) (minor : String) (fuel : Nat) : S
         (minor, s)
     | none => (minor, s)
 
+/-- Spec [89] `c-tag-handle`: `!`, `!!`, or `!` ns-word-char+ `!`. -/
+def isTagHandleShaped (h : String) : Bool :=
+  h == "!" || h == "!!" ||
+  (match h.toList with
+   | '!' :: rest => rest.length ≥ 2 && rest.getLast? == some '!' && rest.dropLast.all isWordCharBool
+   | _ => false)
+
 -- Helper: Collect TAG directive handle: '!' delimiters + ns-word-char [38] per [89]-[92].
 @[yaml_spec "6.8.2" 89 "c-tag-handle",
   yaml_spec "5.6" 38 "ns-word-char"]
@@ -208,6 +221,10 @@ def scanTagDirective (s : ScannerState) (s_after_ws : ScannerState) (startPos : 
   let result := collectTagHandleDirectiveLoop s_after_ws "" fuel_handle
   let handle := result.1
   let s_after_handle := result.2
+  -- [89] c-tag-handle: `!` | `!!` | `!` ns-word-char+ `!` — any other handle is refused here, so the
+  -- parser's tag table only ever holds handles a `.tag` token can name (S3 obligation (a)).
+  if !isTagHandleShaped handle then
+    throw (.invalidTagHandle handle s_after_ws.line s_after_ws.col)
   let s_after_ws2 := skipWhitespace s_after_handle
   let fuel_prefix := s.inputEnd - s_after_ws2.offset
   let result2 := collectTagPrefixLoop s_after_ws2 "" fuel_prefix
@@ -290,7 +307,15 @@ def scanDocumentStart (s : ScannerState) : ScannerState :=
     seenYamlDirective := false
     directivesPresent := false
     documentEverStarted := true
-    definedAnchors := #[] }
+    definedAnchors := #[]
+    -- Item 299: the marker's line, for §9.1.1's three block checks.
+    docStartLine := some s_advanced.line
+    -- Item 317: a document marker ends every open node, the `?` frame among them, so the
+    -- explicit-key register dies with it.  A register that survived `---` made a later `:` the
+    -- explicit value of a key from the PREVIOUS document: `? a⏎---⏎- b⏎: v` scanned as three
+    -- documents, the third an empty scalar, where libyaml refuses it as it refuses `- b⏎: v`.
+    explicitKeyLine := none
+    explicitKeyCol := -1 }
 
 /-- Helper: skip whitespace (spaces + tabs) using structural recursion.
     Used by scanDocumentEnd for trailing content validation. -/
@@ -332,7 +357,10 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
     simpleKeyAllowed := true
     allowDirectives := true
     directivesPresent := false
-    definedAnchors := #[] }
+    definedAnchors := #[]
+    -- Item 317: as at `scanDocumentStart` — the marker ends the `?` frame and its register.
+    explicitKeyLine := none
+    explicitKeyCol := -1 }
   -- §9.1.2: After `...`, only s-l-comments (whitespace + optional comment) allowed.
   -- Skip whitespace on the same line (structural recursion via skipDocEndWhitespace)
   let s'' := skipDocEndWhitespace result (s.inputEnd - result.offset + 1)
@@ -346,3 +374,5 @@ def scanDocumentEnd (s : ScannerState) : Except ScanError ScannerState := do
   .ok result
 
 end L4YAML.Scanner
+
+end Blanket

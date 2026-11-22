@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflections 249 + 250 — the emit-producer strengthening is a consumer-joint-before-producer move,
   the recursive producer is a *verbatim mirror* of the flat one over one shared induction,
@@ -363,3 +368,5 @@ theorem built_map_flat_only : FlatMapBody (joinFE [[a, a] ++ kv :: [a]]) :=
 #guard decide (3 ≤ ([a] ++ kv :: [a]).length)
 
 end EmitProducerStrengthening
+
+end Blanket

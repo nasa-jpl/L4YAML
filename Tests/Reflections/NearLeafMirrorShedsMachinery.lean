@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 293 — a near-leaf mirror SHEDS the recursion machinery its recursive sibling needed
 
@@ -133,3 +138,5 @@ theorem not_wb_opn : ¬ WB [Tok.opn] := by
   intro h; exact absurd h.1 (by decide)
 
 end Tests.Reflections.NearLeafMirrorShedsMachinery
+
+end Blanket

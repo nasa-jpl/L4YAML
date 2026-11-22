@@ -33,6 +33,11 @@ transports of one guard, the descend edge demanding a strictly stronger invarian
     So you cannot reuse the advance edge's weaker hypothesis on the descend edge.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.GuardEdgeFloorAsymmetry
 
 /-! ## The toy balance — `bal f a b` is the running depth change from `a` to `b`
@@ -117,3 +122,5 @@ theorem not_flat_interior_dyck : ¬ (∀ i, bal fFlat 1 i ≥ 0) :=
 #guard (5 - 3) < (6 - 2)        -- DESCEND narrows (both ends move in)
 
 end Tests.Reflections.GuardEdgeFloorAsymmetry
+
+end Blanket

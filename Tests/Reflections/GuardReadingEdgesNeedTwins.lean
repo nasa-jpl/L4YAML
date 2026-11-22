@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 501 — re-threading a guard-strengthened recursion re-twins only the guard-READING edges
 
 Completing the carrier-free `FlowBodyContent` thread for the seq axis (`seqRoot_flowBodyContent_seq`, R501)
@@ -96,3 +101,5 @@ theorem gweak_is_strictly_more {l : List Bool} (g : GWeak l) : GStrong l ∧ l �
   ⟨g.allTrue, g.nonempty⟩
 
 end GuardReadingEdgesNeedTwins
+
+end Blanket

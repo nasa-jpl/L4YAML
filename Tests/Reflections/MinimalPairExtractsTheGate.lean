@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 297 — probe a gated universal as a MINIMAL PAIR; the gate is read off, not invented
 
@@ -109,3 +114,5 @@ theorem map_window_is_map_typed : enclosingMark 1 = some false := by decide
 #guard enclosingMark 1 == some false
 
 end Tests.Reflections.MinimalPairExtractsTheGate
+
+end Blanket

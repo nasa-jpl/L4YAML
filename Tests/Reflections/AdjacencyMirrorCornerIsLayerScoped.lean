@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 420 — a gated-adjacency mirror's non-cloning BOUNDARY corner (R418) is LAYER-SCOPED:
 the token-opaque combinator layer clones VERBATIM under a uniform (trigger, gate) substitution
@@ -199,3 +204,5 @@ theorem adjB_holds_sep_then_content : adjB wSepThenContent := by
 #guard isContent Tok.scal == true         -- content: a global boundary canNOT refute here
 
 end Tests.Reflections.AdjacencyMirrorCornerIsLayerScoped
+
+end Blanket

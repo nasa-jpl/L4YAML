@@ -1,6 +1,11 @@
-import Lean.Data.Json
-import L4YAML.Spec.Types
-import L4YAML.Spec.CharPredicates
+module
+
+public import Lean.Data.Json
+public import L4YAML.Spec.Types
+public import L4YAML.Spec.CharPredicates
+public import L4YAML.Schema.Schema
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -129,6 +134,13 @@ structure DumpConfig where
       on its own line.  The compact form is the conventional YAML style
       used by most serializers and config files. -/
   compactSequenceMap : Bool := false
+  /-- Emit a plain scalar tagged `!!null`/`!!bool`/`!!int`/`!!float` whose content
+      already resolves to that type under the Core Schema as the bare scalar
+      (`true`, `null`, `-7`): the tag is redundant for a Core Schema reader, and
+      the reserved-word quoting does not apply because the value is not a
+      string.  This is how `toYaml` marks non-string primitives.  When `false`
+      the tag is written out (`!!bool true`). -/
+  plainCoreScalars : Bool := true
   deriving Repr, BEq, Inhabited, ToJson
 
 /-- Manual `FromJson` instance for `DumpConfig` that uses structure defaults
@@ -151,36 +163,39 @@ instance : Lean.FromJson DumpConfig where
       | .ok v => v | _ => false
     let compactSequenceMap := match json.getObjValAs? Bool "compactSequenceMap" with
       | .ok v => v | _ => false
+    let plainCoreScalars := match json.getObjValAs? Bool "plainCoreScalars" with
+      | .ok v => v | _ => true
     .ok { indent, defaultStyle, scalarStyle, lineWidth, sortKeys,
-          allowReservedPlain, omitEmpty, compactSequenceMap }
+          allowReservedPlain, omitEmpty, compactSequenceMap, plainCoreScalars }
 
 /-! ## Private Helpers -/
 
 /-- Build an indentation string: `depth × width` spaces. -/
 def makeIndent (depth : Nat) (width : Nat) : String :=
-  String.ofList (List.replicate (depth * width) ' ')
+  "".pushn ' ' (depth * width)
 
 /--
-Escape a character for double-quoted YAML scalars (§5.7).
+Append the double-quoted escape of `c` (§5.7) to `acc`.
 
 Same table as `Emit.escapeChar`; duplicated here to avoid a
-dependency cycle (`Dump` imports only `Types`).
+dependency cycle (`Dump` imports only `Types`).  Printable characters
+are pushed in place rather than going through a one-character `String`.
 -/
-def escapeChar (c : Char) : String :=
+def pushEscaped (acc : String) (c : Char) : String :=
   match c with
-  | '\x00' => "\\0"
-  | '\x07' => "\\a"
-  | '\x08' => "\\b"
-  | '\t'   => "\\t"
-  | '\n'   => "\\n"
-  | '\x0b' => "\\v"
-  | '\x0c' => "\\f"
-  | '\r'   => "\\r"
-  | '\x1b' => "\\e"
-  | '\\'   => "\\\\"
-  | '"'    => "\\\""
+  | '\x00' => acc ++ "\\0"
+  | '\x07' => acc ++ "\\a"
+  | '\x08' => acc ++ "\\b"
+  | '\t'   => acc ++ "\\t"
+  | '\n'   => acc ++ "\\n"
+  | '\x0b' => acc ++ "\\v"
+  | '\x0c' => acc ++ "\\f"
+  | '\r'   => acc ++ "\\r"
+  | '\x1b' => acc ++ "\\e"
+  | '\\'   => acc ++ "\\\\"
+  | '"'    => acc ++ "\\\""
   | c      =>
-    if CharPredicates.isPrintableBool c then c.toString
+    if CharPredicates.isPrintableBool c then acc.push c
     else
       -- Non-printable (c-printable [1] excluded): YAML §5.7 numeric escapes.
       -- Raw controls are invalid inside double quotes (nb-json [2]), so the
@@ -188,21 +203,33 @@ def escapeChar (c : Char) : String :=
       let hex := fun (n w : Nat) =>
         let ds := String.ofList ((Nat.toDigits 16 n).map Char.toUpper)
         String.ofList (List.replicate (w - ds.length) '0') ++ ds
-      if c.toNat ≤ 0xFF then "\\x" ++ hex c.toNat 2
-      else if c.toNat ≤ 0xFFFF then "\\u" ++ hex c.toNat 4
-      else "\\U" ++ hex c.toNat 8
+      if c.toNat ≤ 0xFF then acc ++ "\\x" ++ hex c.toNat 2
+      else if c.toNat ≤ 0xFFFF then acc ++ "\\u" ++ hex c.toNat 4
+      else acc ++ "\\U" ++ hex c.toNat 8
+
+/-- Escape a character for double-quoted YAML scalars (§5.7). -/
+def escapeChar (c : Char) : String :=
+  pushEscaped "" c
 
 /-- Escape a string for double-quoted context. -/
 def escapeString (s : String) : String :=
-  s.foldl (fun acc c => acc ++ escapeChar c) ""
+  s.foldl pushEscaped ""
+
+/-- Append `s` as a double-quoted scalar to `acc`. -/
+def pushDoubleQuoted (acc : String) (s : String) : String :=
+  (s.foldl pushEscaped (acc.push '"')).push '"'
 
 /-- Emit a double-quoted scalar. -/
 def dumpDoubleQuoted (s : String) : String :=
-  "\"" ++ escapeString s ++ "\""
+  pushDoubleQuoted "" s
+
+/-- Append `s` as a single-quoted scalar to `acc`. Only `'` is escaped (as `''`). -/
+def pushSingleQuoted (acc : String) (s : String) : String :=
+  (s.foldl (fun acc c => if c == '\'' then acc ++ "''" else acc.push c) (acc.push '\'')).push '\''
 
 /-- Emit a single-quoted scalar. Only `'` is escaped (as `''`). -/
 def dumpSingleQuoted (s : String) : String :=
-  "'" ++ s.foldl (fun acc c => acc ++ if c == '\'' then "''" else c.toString) "" ++ "'"
+  pushSingleQuoted "" s
 
 /-- Check if string is a YAML reserved word (boolean, null). -/
 def isReservedWord (s : String) : Bool :=
@@ -220,17 +247,17 @@ def isIndicator (c : Char) : Bool :=
   c == '|' || c == '>' || c == '\'' || c == '"' ||
   c == '%' || c == '@' || c == '`'
 
-/-- Check if string contains `: ` or ` #` (unsafe in plain scalars). -/
+/-- Check if string contains `: ` or ` #` (unsafe in plain scalars).
+    One pass; state = previous char was `:` (1) / space (2), or matched (3). -/
 def hasUnsafeSubsequence (s : String) : Bool :=
-  go s.toList
+  s.foldl step 0 == 3
 where
-  go : List Char → Bool
-    | [] => false
-    | [_] => false
-    | c₁ :: c₂ :: rest =>
-      (c₁ == ':' && c₂ == ' ') ||
-      (c₁ == ' ' && c₂ == '#') ||
-      go (c₂ :: rest)
+  step (st : UInt8) (c : Char) : UInt8 :=
+    if st == 3 then 3
+    else if (st == 1 && c == ' ') || (st == 2 && c == '#') then 3
+    else if c == ':' then 1
+    else if c == ' ' then 2
+    else 0
 
 /-- Determine if string content is safe for plain scalar style.
     When `allowReserved` is `true`, reserved words like `true`, `false`, `null`
@@ -239,28 +266,49 @@ where
 def isPlainSafe (s : String) (allowReserved : Bool := false) : Bool :=
   if s.isEmpty then false
   else
-    let chars := s.toList
-    match chars with
-    | [] => false
-    | c :: _ =>
-      -- First character must not be a YAML indicator
-      !isIndicator c &&
-      -- Must not contain flow indicators or newlines; every char must be
-      -- ns-char [34] eligible (printable, not BOM) or the scanner would
-      -- terminate the plain scalar early on read-back
-      !s.any (fun ch => ch == '{' || ch == '}' || ch == '[' || ch == ']' ||
-                         ch == ',' || ch == '\n' || ch == '\r' ||
-                         ch == '﻿' || !CharPredicates.isPrintableBool ch) &&
-      -- Must not contain `: ` or ` #`
-      !hasUnsafeSubsequence s &&
-      -- Must not have leading/trailing whitespace or trailing `:`
-      -- Trailing `:` is interpreted as a mapping value indicator (§7.3.3)
-      c != ' ' && c != '\t' &&
-      (match chars.getLast? with
-       | some last => last != ' ' && last != '\t' && last != ':'
-       | none => true) &&
-      -- Must not be a reserved word (unless allowed)
-      (allowReserved || !isReservedWord s)
+    let c := s.front
+    let last := s.back
+    -- First character must not be a YAML indicator
+    !isIndicator c &&
+    -- Must not contain flow indicators or newlines; every char must be
+    -- ns-char [34] eligible (printable, not BOM) or the scanner would
+    -- terminate the plain scalar early on read-back
+    !s.any (fun ch => ch == '{' || ch == '}' || ch == '[' || ch == ']' ||
+                       ch == ',' || ch == '\n' || ch == '\r' ||
+                       ch == '﻿' || !CharPredicates.isPrintableBool ch) &&
+    -- Must not contain `: ` or ` #`
+    !hasUnsafeSubsequence s &&
+    -- Must not have leading/trailing whitespace or trailing `:`
+    -- Trailing `:` is interpreted as a mapping value indicator (§7.3.3)
+    c != ' ' && c != '\t' &&
+    last != ' ' && last != '\t' && last != ':' &&
+    -- Must not be a reserved word (unless allowed)
+    (allowReserved || !isReservedWord s)
+
+/-- A plain scalar whose Core Schema tag (`!!null`/`!!bool`/`!!int`/`!!float`) says
+    exactly what implicit resolution of its content would say anyway, and whose
+    content can be written plain.  Such a scalar may be emitted bare: a Core
+    Schema reader recovers the same type, and quoting (which would make it a
+    string) must not happen. -/
+def isRedundantCoreTag (s : Scalar) : Bool :=
+  s.style == .plain &&
+  (match s.tag with
+   | some t =>
+     let ty := Schema.resolveImplicit s.content
+     match Schema.normalizeTag t with
+     | "tag:yaml.org,2002:null"  => ty.isNull
+     | "tag:yaml.org,2002:bool"  => ty.isBool
+     | "tag:yaml.org,2002:int"   => ty.isInt
+     | "tag:yaml.org,2002:float" => ty.isFloat
+     | _ => false
+   | none => false)
+
+/-- An untagged scalar whose own style is not plain means a *string* (§10.3.2);
+    writing it plain would hand its content to implicit resolution, so plain is
+    allowed only when that resolution is a string anyway.  (`toYaml "42"` is such
+    a scalar: it must come out as `"42"`, not `42`.) -/
+def plainWouldRetype (s : Scalar) : Bool :=
+  s.style != .plain && s.tag.isNone && !(Schema.resolveImplicit s.content).isStr
 
 /-- Check if string contains newlines. -/
 def hasNewlines (s : String) : Bool :=
@@ -275,10 +323,21 @@ def hasNewlines (s : String) : Bool :=
     output calibrated to them) are untouched. -/
 def isPlainSafePreserve (s : String) (allowReserved : Bool := false) : Bool :=
   isPlainSafe s allowReserved ||
-  (match s.toList with
-   | '-' :: c :: rest =>
-     c != ' ' && c != '\t' && isPlainSafe (String.ofList (c :: rest)) allowReserved
-   | _ => false)
+  (s.front == '-' &&
+    (let rest := (s.drop 1).toString
+     !rest.isEmpty && rest.front != ' ' && rest.front != '\t' &&
+       isPlainSafe rest allowReserved))
+
+/-- Whether `s` can be written plain without changing what it means.  For an
+    untagged plain scalar whose content resolves to a non-string (`-7`, `-1.5`,
+    `-.inf`), the leading sign YAML [126] allows is accepted, since quoting it
+    would turn the number into a string; everything else goes through
+    `isPlainSafe` unchanged. -/
+def plainKeepsType (s : Scalar) (allowReserved : Bool) : Bool :=
+  if s.style == .plain && s.tag.isNone && !(Schema.resolveImplicit s.content).isStr then
+    isPlainSafePreserve s.content allowReserved
+  else
+    isPlainSafe s.content allowReserved && !plainWouldRetype s
 
 /-- Whether content can be carried VERBATIM inside single quotes:
     printable characters only (plus tab; C0, DEL, and C1 excluded per
@@ -306,9 +365,7 @@ def blockScalarRepresentable (s : String) : Bool :=
     See YAML §7.3.3 [128] ns-plain-safe(flow-in). -/
 def isFlowUnsafe (s : String) : Bool :=
   s.any (· == ':') ||
-  (match s.toList.getLast? with
-   | some c => c == '-' || c == ' '
-   | none => false)
+  (!s.isEmpty && (s.back == '-' || s.back == ' '))
 
 /-- Choose effective scalar style based on content, config, and dump context.
     In flow context, additional characters require quoting (see `isFlowUnsafe`). -/
@@ -326,7 +383,7 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
         .doubleQuoted
       else .singleQuoted
     | .plain =>
-      if isPlainSafe s.content cfg.allowReservedPlain &&
+      if plainKeepsType s cfg.allowReservedPlain &&
           (ctx == .block || !isFlowUnsafe s.content) then
         .plain
       else .doubleQuoted
@@ -340,7 +397,7 @@ def chooseScalarStyle (s : Scalar) (cfg : DumpConfig)
         else
           -- Block context: use block scalar style from annotation, or default to literal
           if s.style == .literal || s.style == .folded then s.style else .literal
-      else if isPlainSafe s.content cfg.allowReservedPlain &&
+      else if plainKeepsType s cfg.allowReservedPlain &&
               (ctx == .block || !isFlowUnsafe s.content) then
         .plain
       else .doubleQuoted
@@ -378,22 +435,31 @@ def resolveCollectionStyle (nodeStyle : CollectionStyle) (cfg : DumpConfig)
   | .auto => nodeStyle
 
 /--
-Emit a block scalar (literal `|` or folded `>`).
+Append a block scalar (literal `|` or folded `>`) to `acc`.
 
-Returns the header + newline + indented content lines.
+Writes the header + newline + indented content lines.
 Content lines are indented at `max(1, depth) × indentWidth` spaces
 to satisfy YAML's minimum 1-space content indent requirement.
 -/
-def dumpBlockScalar (content : String) (indicator : String)
+def pushBlockScalar (acc : String) (content : String) (indicator : String)
     (bsMeta : Option BlockScalarMeta) (depth : Nat) (indentWidth : Nat) : String :=
   let chomp := match bsMeta with | some m => m.chomp | none => .clip
   let chompStr := match chomp with | .clip => "" | .strip => "-" | .keep => "+"
   -- Block scalar content must be indented ≥ 1 space from the indicator
   let effectiveDepth := if depth == 0 then 1 else depth
   let ind := makeIndent effectiveDepth indentWidth
-  let lines := content.splitOn "\n"
-  let body := lines.map (fun line => if line.isEmpty then "" else ind ++ line)
-  indicator ++ chompStr ++ "\n" ++ String.intercalate "\n" body
+  let pushLine := fun (acc : String) (line : String) =>
+    if line.isEmpty then acc else acc ++ ind ++ line
+  let acc := acc ++ indicator ++ chompStr ++ "\n"
+  match content.splitOn "\n" with
+  | [] => acc
+  | line :: rest =>
+    rest.foldl (fun acc line => pushLine (acc.push '\n') line) (pushLine acc line)
+
+/-- Emit a block scalar (literal `|` or folded `>`); see `pushBlockScalar`. -/
+def dumpBlockScalar (content : String) (indicator : String)
+    (bsMeta : Option BlockScalarMeta) (depth : Nat) (indentWidth : Nat) : String :=
+  pushBlockScalar "" content indicator bsMeta depth indentWidth
 
 /-- Build tag + anchor prefix for a node. No trailing space. -/
 def nodePrefix (tag : Option String) (anchor : Option String) : String :=
@@ -404,6 +470,11 @@ def nodePrefix (tag : Option String) (anchor : Option String) : String :=
   | true, false => a
   | false, true => t
   | false, false => t ++ " " ++ a
+
+/-- Append `&anchor ` (with its trailing space) to `acc` when present. -/
+def pushAnchor (acc : String) : Option String → String
+  | some n => acc ++ "&" ++ n ++ " "
+  | none => acc
 
 /-- Check if a value is an empty collection (sequence or mapping with no items). -/
 def isEmptyCollection : YamlValue → Bool
@@ -435,10 +506,15 @@ Produces style-aware output:
 - Block or flow collections based on node annotations and config
 - Configurable indentation width
 
-**Contract**: `dumpValue v cfg depth` returns the text representation:
+**Contract**: `dumpValueInto acc v cfg depth ctx` appends the text
+representation of `v` to `acc` and returns the result:
 - First line has **no** leading indent (caller provides prefix)
 - Continuation lines include leading indent at `depth` level
 - No trailing newline
+
+The whole document is written into one accumulator `String`, so every
+item is appended in place to a uniquely referenced buffer and the cost is
+linear in the size of the output.
 
 ## Examples
 
@@ -449,122 +525,148 @@ dump (.sequence .block #[.plainScalar "a", .plainScalar "b"])
 ```
 -/
 def dump (v : YamlValue) (cfg : DumpConfig := {}) : String :=
-  dumpValue v cfg 0 .block
+  dumpValueInto "" v cfg 0 .block
 where
-  /-- Dump a value. First line unindented; continuation lines at `depth`.
-      `ctx` tracks whether we are inside a flow collection. -/
-  dumpValue : YamlValue → DumpConfig → Nat → DumpContext → String
-    | .scalar s, cfg, depth, ctx =>
-      let anchorStr := match s.anchor with | some n => "&" ++ n ++ " " | none => ""
-      let tagStr := match s.tag with | some t => t ++ " " | none => ""
-      let pfx := tagStr ++ anchorStr
-      let effectiveStyle := chooseScalarStyle s cfg ctx
-      let body := match effectiveStyle with
-        | .plain => s.content
-        | .doubleQuoted => dumpDoubleQuoted s.content
-        | .singleQuoted => dumpSingleQuoted s.content
-        | .literal => dumpBlockScalar s.content "|" s.blockMeta depth cfg.indent
-        | .folded => dumpBlockScalar s.content ">" s.blockMeta depth cfg.indent
-      pfx ++ body
-    | .alias name, _, _, _ => "*" ++ name
-    | .sequence style items tag anchor, cfg, depth, ctx =>
+  /-- Append a value to `acc`. First line unindented; continuation lines at
+      `depth`. `ctx` tracks whether we are inside a flow collection. -/
+  dumpValueInto (acc : String) (v : YamlValue) (cfg : DumpConfig) (depth : Nat)
+      (ctx : DumpContext) : String :=
+    match v with
+    | .scalar s =>
+      if cfg.plainCoreScalars && isRedundantCoreTag s &&
+          isPlainSafePreserve s.content true &&
+          (ctx == .block || !isFlowUnsafe s.content) then
+        -- A `toYaml`-style non-string primitive: bare, untagged, never quoted.
+        pushAnchor acc s.anchor ++ s.content
+      else
+        let acc := match s.tag with | some t => acc ++ t ++ " " | none => acc
+        let acc := pushAnchor acc s.anchor
+        match chooseScalarStyle s cfg ctx with
+        | .plain => acc ++ s.content
+        | .doubleQuoted => pushDoubleQuoted acc s.content
+        | .singleQuoted => pushSingleQuoted acc s.content
+        | .literal => pushBlockScalar acc s.content "|" s.blockMeta depth cfg.indent
+        | .folded => pushBlockScalar acc s.content ">" s.blockMeta depth cfg.indent
+    | .alias name => acc ++ "*" ++ name
+    | .sequence style items tag anchor =>
       let npfx := nodePrefix tag anchor
-      let effectiveStyle := resolveCollectionStyle style cfg ctx
-      match effectiveStyle with
+      match resolveCollectionStyle style cfg ctx with
       | .flow =>
-        let hdr := if npfx.isEmpty then "" else npfx ++ " "
-        hdr ++ "[" ++ dumpFlowList items.toList cfg depth ++ "]"
+        let acc := if npfx.isEmpty then acc else acc ++ npfx ++ " "
+        (dumpFlowListInto (acc.push '[') items 0 cfg depth).push ']'
       | .block =>
         if items.isEmpty then
-          (if npfx.isEmpty then "" else npfx ++ " ") ++ "[]"
-        else if npfx.isEmpty then
-          dumpBlockList items.toList cfg depth true
+          (if npfx.isEmpty then acc else acc ++ npfx ++ " ") ++ "[]"
         else
-          npfx ++ "\n" ++ makeIndent depth cfg.indent ++
-            dumpBlockList items.toList cfg depth true
-    | .mapping style pairs tag anchor, cfg, depth, ctx =>
+          let acc :=
+            if npfx.isEmpty then acc
+            else (acc ++ npfx ++ "\n").pushn ' ' (depth * cfg.indent)
+          dumpBlockListInto acc items 0 cfg depth
+    | .mapping style pairs tag anchor =>
       let npfx := nodePrefix tag anchor
-      let effectiveStyle := resolveCollectionStyle style cfg ctx
-      match effectiveStyle with
+      match resolveCollectionStyle style cfg ctx with
       | .flow =>
-        let hdr := if npfx.isEmpty then "" else npfx ++ " "
-        hdr ++ "{" ++ dumpFlowPairs pairs.toList cfg depth ++ "}"
+        let acc := if npfx.isEmpty then acc else acc ++ npfx ++ " "
+        (dumpFlowPairsInto (acc.push '{') pairs 0 cfg depth).push '}'
       | .block =>
-        if pairs.isEmpty then
-          (if npfx.isEmpty then "" else npfx ++ " ") ++ "{}"
+        -- No pairs, or omitEmpty skips every pair: emit empty mapping
+        if pairs.isEmpty || (cfg.omitEmpty && pairs.all (fun p => isEmptyCollection p.2)) then
+          (if npfx.isEmpty then acc else acc ++ npfx ++ " ") ++ "{}"
         else
-          let result := dumpBlockPairs pairs.toList cfg depth true
-          -- When omitEmpty filters out all pairs, emit empty mapping
-          if result.isEmpty then
-            (if npfx.isEmpty then "" else npfx ++ " ") ++ "{}"
-          else if npfx.isEmpty then
-            result
-          else
-            npfx ++ "\n" ++ makeIndent depth cfg.indent ++ result
-  /-- Comma-separated flow list items (always in flow context). -/
-  dumpFlowList : List YamlValue → DumpConfig → Nat → String
-    | [], _, _ => ""
-    | [v], cfg, depth => dumpValue v cfg depth .flowIn
-    | v :: vs, cfg, depth => dumpValue v cfg depth .flowIn ++ ", " ++ dumpFlowList vs cfg depth
-  /-- Comma-separated flow mapping pairs (keys in flowKey context, values in flowIn). -/
-  dumpFlowPairs : List (YamlValue × YamlValue) → DumpConfig → Nat → String
-    | [], _, _ => ""
-    | [(k, v)], cfg, depth =>
-      dumpValue k cfg depth .flowKey ++ ": " ++ dumpValue v cfg depth .flowIn
-    | (k, v) :: rest, cfg, depth =>
-      dumpValue k cfg depth .flowKey ++ ": " ++ dumpValue v cfg depth .flowIn ++ ", " ++
-        dumpFlowPairs rest cfg depth
-  /-- Block sequence items. `first = true` suppresses indent on first line.
+          let acc :=
+            if npfx.isEmpty then acc
+            else (acc ++ npfx ++ "\n").pushn ' ' (depth * cfg.indent)
+          dumpBlockPairsInto acc pairs 0 cfg depth true
+  termination_by (sizeOf v, 0)
+  decreasing_by all_goals simp_wf <;> exact Prod.Lex.left _ _ (by simp +arith)
+  /-- Comma-separated flow list items from index `i` on (always in flow context). -/
+  dumpFlowListInto (acc : String) (items : Array YamlValue) (i : Nat)
+      (cfg : DumpConfig) (depth : Nat) : String :=
+    if h : i < items.size then
+      let acc := if i == 0 then acc else acc ++ ", "
+      dumpFlowListInto (dumpValueInto acc items[i] cfg depth .flowIn) items (i + 1) cfg depth
+    else acc
+  termination_by (sizeOf items, items.size - i)
+  decreasing_by
+    all_goals simp_wf
+    · exact Prod.Lex.left _ _ (Array.sizeOf_getElem items i h)
+    · exact Prod.Lex.right _ (by omega)
+  /-- Comma-separated flow mapping pairs from index `i` on
+      (keys in flowKey context, values in flowIn). -/
+  dumpFlowPairsInto (acc : String) (pairs : Array (YamlValue × YamlValue)) (i : Nat)
+      (cfg : DumpConfig) (depth : Nat) : String :=
+    if h : i < pairs.size then
+      match hp : pairs[i] with
+      | (k, v) =>
+        let acc := if i == 0 then acc else acc ++ ", "
+        let acc := dumpValueInto acc k cfg depth .flowKey ++ ": "
+        dumpFlowPairsInto (dumpValueInto acc v cfg depth .flowIn) pairs (i + 1) cfg depth
+    else acc
+  termination_by (sizeOf pairs, pairs.size - i)
+  decreasing_by
+    all_goals simp_wf
+    all_goals have hs := Array.sizeOf_getElem pairs i h
+    all_goals rw [hp] at hs
+    all_goals simp at hs
+    · exact Prod.Lex.left _ _ (by omega)
+    · exact Prod.Lex.left _ _ (by omega)
+    · exact Prod.Lex.right _ (by omega)
+  /-- Block sequence items from index `i` on; items after the first start on
+      a new line indented at `depth`.
       When `cfg.compactSequenceMap` is true, non-empty block mapping items
       share the `- ` line with their first key (compact notation). -/
-  dumpBlockList : List YamlValue → DumpConfig → Nat → Bool → String
-    | [], _, _, _ => ""
-    | [v], cfg, depth, first =>
-      let ind := if first then "" else makeIndent depth cfg.indent
-      if isInlineValue v ||
-          (cfg.compactSequenceMap && isCompactableMapping v) then
-        ind ++ "- " ++ dumpValue v cfg (depth + 1) .block
-      else
-        ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
-          dumpValue v cfg (depth + 1) .block
-    | v :: vs, cfg, depth, first =>
-      let ind := if first then "" else makeIndent depth cfg.indent
-      let item :=
-        if isInlineValue v ||
-            (cfg.compactSequenceMap && isCompactableMapping v) then
-          ind ++ "- " ++ dumpValue v cfg (depth + 1) .block
+  dumpBlockListInto (acc : String) (items : Array YamlValue) (i : Nat)
+      (cfg : DumpConfig) (depth : Nat) : String :=
+    if h : i < items.size then
+      let acc := if i == 0 then acc else (acc.push '\n').pushn ' ' (depth * cfg.indent)
+      let acc :=
+        if isInlineValue items[i] ||
+            (cfg.compactSequenceMap && isCompactableMapping items[i]) then
+          dumpValueInto (acc ++ "- ") items[i] cfg (depth + 1) .block
         else
-          ind ++ "-\n" ++ makeIndent (depth + 1) cfg.indent ++
-            dumpValue v cfg (depth + 1) .block
-      item ++ "\n" ++ dumpBlockList vs cfg depth false
-  /-- Block mapping pairs. `first = true` suppresses indent on first line.
+          dumpValueInto ((acc ++ "-\n").pushn ' ' ((depth + 1) * cfg.indent))
+            items[i] cfg (depth + 1) .block
+      dumpBlockListInto acc items (i + 1) cfg depth
+    else acc
+  termination_by (sizeOf items, items.size - i)
+  decreasing_by
+    all_goals simp_wf
+    · exact Prod.Lex.left _ _ (Array.sizeOf_getElem items i h)
+    · exact Prod.Lex.left _ _ (Array.sizeOf_getElem items i h)
+    · exact Prod.Lex.right _ (by omega)
+  /-- Block mapping pairs from index `i` on. `first = true` until a pair has
+      been written; later pairs start on a new line indented at `depth`.
       When `cfg.omitEmpty` is true, pairs whose value is an empty collection
       are silently skipped. -/
-  dumpBlockPairs : List (YamlValue × YamlValue) → DumpConfig → Nat → Bool → String
-    | [], _, _, _ => ""
-    | [(k, v)], cfg, depth, first =>
-      if cfg.omitEmpty && isEmptyCollection v then ""
-      else
-        let ind := if first then "" else makeIndent depth cfg.indent
-        if isInlineValue v then
-          ind ++ dumpValue k cfg depth .block ++ ": " ++ dumpValue v cfg (depth + 1) .block
+  dumpBlockPairsInto (acc : String) (pairs : Array (YamlValue × YamlValue)) (i : Nat)
+      (cfg : DumpConfig) (depth : Nat) (first : Bool) : String :=
+    if h : i < pairs.size then
+      match hp : pairs[i] with
+      | (k, v) =>
+        if cfg.omitEmpty && isEmptyCollection v then
+          dumpBlockPairsInto acc pairs (i + 1) cfg depth first
         else
-          ind ++ dumpValue k cfg depth .block ++ ":\n" ++
-            makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1) .block
-    | (k, v) :: rest, cfg, depth, first =>
-      if cfg.omitEmpty && isEmptyCollection v then
-        dumpBlockPairs rest cfg depth first
-      else
-        let ind := if first then "" else makeIndent depth cfg.indent
-        let pair :=
-          if isInlineValue v then
-            ind ++ dumpValue k cfg depth .block ++ ": " ++ dumpValue v cfg (depth + 1) .block
-          else
-            ind ++ dumpValue k cfg depth .block ++ ":\n" ++
-              makeIndent (depth + 1) cfg.indent ++ dumpValue v cfg (depth + 1) .block
-        let tail := dumpBlockPairs rest cfg depth false
-        if tail.isEmpty then pair
-        else pair ++ "\n" ++ tail
+          let acc := if first then acc else (acc.push '\n').pushn ' ' (depth * cfg.indent)
+          let acc := dumpValueInto acc k cfg depth .block
+          let acc :=
+            if isInlineValue v then
+              dumpValueInto (acc ++ ": ") v cfg (depth + 1) .block
+            else
+              dumpValueInto ((acc ++ ":\n").pushn ' ' ((depth + 1) * cfg.indent))
+                v cfg (depth + 1) .block
+          dumpBlockPairsInto acc pairs (i + 1) cfg depth false
+    else acc
+  termination_by (sizeOf pairs, pairs.size - i)
+  decreasing_by
+    all_goals simp_wf
+    all_goals have hs := Array.sizeOf_getElem pairs i h
+    all_goals rw [hp] at hs
+    all_goals simp at hs
+    · exact Prod.Lex.right _ (by omega)
+    · exact Prod.Lex.left _ _ (by omega)
+    · exact Prod.Lex.left _ _ (by omega)
+    · exact Prod.Lex.left _ _ (by omega)
+    · exact Prod.Lex.right _ (by omega)
 
 /-! ## Directive Serialization -/
 
@@ -805,3 +907,5 @@ open L4YAML L4YAML.Dump
 
 
 end DumpGuards
+
+end Blanket

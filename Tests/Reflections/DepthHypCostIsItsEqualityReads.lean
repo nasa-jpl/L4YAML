@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 484 — a base-depth hypothesis costs exactly its EQUALITY reads to drop.
 
@@ -126,3 +131,5 @@ theorem consumerB_general_subsumes (d inner : Int) (hinner : inner = 0) (h : d =
   consumerBN d inner hinner (by omega)
 
 end DepthHypCostIsItsEqualityReads
+
+end Blanket

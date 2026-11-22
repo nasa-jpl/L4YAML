@@ -2,8 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Surface.Basic
-import L4YAML.Spec.Grammar
+
+module
+
+public import L4YAML.Surface.Basic
+public import L4YAML.Spec.Grammar
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Scalar Surface Syntax — Chapters 7.3 & 8.1
@@ -239,7 +245,9 @@ inductive SNsPlainFirst : L4YAML.YamlContext → SurfPos → SurfPos → Prop wh
       SNsPlainFirst c ⟨'?' :: next :: rest, col⟩ ⟨next :: rest, col + 1⟩
 
 /-- [130] ns-plain-char(c): subsequent characters in a plain scalar.
-    Safe chars except ':' and '#' have adjacency constraints. -/
+    `:` needs a following ns-plain-safe(c).  `#` is NOT a char here: the spec
+    admits it only directly after an ns-char, and this relation does not know
+    its predecessor — `[132]`'s `hash` entry (empty `s-white*`) is that clause. -/
 @[yaml_spec "7.3.3" 130 "ns-plain-char(c)"]
 inductive SNsPlainChar : L4YAML.YamlContext → SurfPos → SurfPos → Prop where
   | safe (c : L4YAML.YamlContext) (ch : Char) (rest : List Char) (col : Nat)
@@ -251,19 +259,21 @@ inductive SNsPlainChar : L4YAML.YamlContext → SurfPos → SurfPos → Prop whe
       (hSafe : isNsPlainSafe c next) :
       -- ':' followed by ns-plain-safe (not standalone)
       SNsPlainChar c ⟨':' :: next :: rest, col⟩ ⟨next :: rest, col + 1⟩
-  | hashAfterNs (c : L4YAML.YamlContext) (rest : List Char) (col : Nat)
-      (hColGt : col > 0) :
-      -- '#' preceded by non-space (approximated by col > 0)
-      SNsPlainChar c ⟨'#' :: rest, col⟩ ⟨rest, col + 1⟩
 
 /-- [132] nb-ns-plain-in-line(c) entry: `s-white* ns-plain-char(c)`.
     One unit of the intra-line repetition: optional whitespace followed by a
-    plain content character. -/
+    plain content character.  `hash` is `[130]`'s `( ns-char "#" )` clause:
+    an entry whose `s-white*` is EMPTY starts right after the previous plain
+    char (an ns-char), so `#` is content there — and only there (` #` is a
+    comment). -/
 @[yaml_spec "7.3.3" 132 "nb-ns-plain-in-line(c)"]
 inductive SNbNsPlainInLineEntry : L4YAML.YamlContext → SurfPos → SurfPos → Prop where
   | mk (c : L4YAML.YamlContext) (s s₁ s' : SurfPos) :
       GStar SSWhite s s₁ →
       SNsPlainChar c s₁ s' →
+      SNbNsPlainInLineEntry c s s'
+  | hash (c : L4YAML.YamlContext) (s s' : SurfPos) :
+      GLit '#' s s' →
       SNbNsPlainInLineEntry c s s'
 
 /-- [133] ns-plain-one-line(c): plain scalar content on a single line.
@@ -284,17 +294,21 @@ inductive SNsPlainOneLine : L4YAML.YamlContext → SurfPos → SurfPos → Prop 
     in `GStar (SSNsPlainNextLine n c)`.
     NOTE: `SLEmpty` uses `.flowIn` context per YAML spec §6.8 (`s-flow-folded`
     always uses `b-l-trimmed(n, flow-in)` regardless of outer context `c`).
-    NOTE: Uses `GStar` instead of `GPlus` for entries. The YAML spec requires
-    at least one `ns-plain-char`, which is enforced by the scanner's
-    content-length check. TODO: strengthen to `GPlus` once proved. -/
+    The char after `[69] s-flow-line-prefix(n)` is `ns-plain-char(c)` itself,
+    as in the spec: never white (the prefix took it) and never `#` (`[130]`
+    has no `#`; a `#` there opens a comment).  The scanner's content-length
+    check supplies that char (`collectPlainScalarLoop_prod`).  A continuation
+    line that consumes nothing past the prefix is an `l-empty` line, folded
+    away by `s-flow-folded(n)` above. -/
 @[yaml_spec "7.3.3" 134 "s-ns-plain-next-line(n,c)"]
 inductive SSNsPlainNextLine : Nat → L4YAML.YamlContext → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (c : L4YAML.YamlContext) (s s_ws s₁ s₂ s₃ s' : SurfPos) :
+  | mk (n : Nat) (c : L4YAML.YamlContext) (s s_ws s₁ s₂ s₃ s₄ s' : SurfPos) :
       GStar SSWhite s s_ws →
       SBBreak s_ws s₁ →
       GStar (SLEmpty n .flowIn) s₁ s₂ →
       SFlowLinePrefix n s₂ s₃ →
-      GStar (SNbNsPlainInLineEntry c) s₃ s' →
+      SNsPlainChar c s₃ s₄ →
+      GStar (SNbNsPlainInLineEntry c) s₄ s' →
       SSNsPlainNextLine n c s s'
 
 /-- [135] ns-plain-multi-line(n,c): multi-line plain scalar. -/
@@ -319,11 +333,13 @@ def SNsPlain (n : Nat) (c : L4YAML.YamlContext) : SurfPos → SurfPos → Prop :
 
 /-! ## §4 Alias Node -/
 
-/-- [104] c-ns-alias-node: '*' followed by anchor name. -/
+/-- [104] c-ns-alias-node: '*' followed by the MAXIMAL anchor name
+    ([102] `ns-anchor-char+`, not followed by another anchor char). -/
 @[yaml_spec "7.1" 104 "c-ns-alias-node"]
 inductive SCNsAliasNode : SurfPos → SurfPos → Prop where
   | mk (rest : List Char) (col : Nat) (s' : SurfPos) :
       GPlus (GChar isNsAnchorChar) ⟨rest, col + 1⟩ s' →
+      GNot (GChar isNsAnchorChar) s' →
       SCNsAliasNode ⟨'*' :: rest, col⟩ s'
 
 /-! ## §5 Block Scalars
@@ -333,12 +349,27 @@ indent indicators) followed by content lines at a detected indentation level.
 The indentation auto-detection makes the grammar context-dependent in a way
 that's naturally expressed as existential quantification over the indent value. -/
 
-/-- [162] c-b-block-header: block scalar header (chomp + indent indicators).
-    Matches a subset of `[-+0-9]` characters. -/
+/-- [163] c-indentation-indicator: an optional single digit `1`–`9`. -/
+@[yaml_spec "8.1.1" 163 "c-indentation-indicator"]
+inductive SCIndentationIndicator : SurfPos → SurfPos → Prop where
+  | empty (s : SurfPos) : SCIndentationIndicator s s
+  | digit (s s' : SurfPos) :
+      GChar (fun c => '1' ≤ c ∧ c ≤ '9') s s' → SCIndentationIndicator s s'
+
+/-- [164] c-chomping-indicator: an optional `-` (strip) or `+` (keep). -/
+@[yaml_spec "8.1.1" 164 "c-chomping-indicator"]
+inductive SCChompingIndicator : SurfPos → SurfPos → Prop where
+  | empty (s : SurfPos) : SCChompingIndicator s s
+  | strip (s s' : SurfPos) : GLit '-' s s' → SCChompingIndicator s s'
+  | keep (s s' : SurfPos) : GLit '+' s s' → SCChompingIndicator s s'
+
+/-- [162] c-b-block-header: `[163] [164]` or `[164] [163]` (each optional), then `s-b-comment`.
+    So at most one indicator of each kind, in either order. -/
 @[yaml_spec "8.1.1" 162 "c-b-block-header"]
 inductive SCBBlockHeader : SurfPos → SurfPos → Prop where
   | mk (s s₁ s' : SurfPos) :
-      GStar (GChar (fun c => L4YAML.Grammar.isBlockScalarHeaderChar c = true)) s s₁ →
+      GAlt (GSeq SCIndentationIndicator SCChompingIndicator)
+           (GSeq SCChompingIndicator SCIndentationIndicator) s s₁ →
       SSBComment s₁ s' →
       SCBBlockHeader s s'
 
@@ -358,16 +389,35 @@ inductive SBNbLiteralNext : Nat → SurfPos → SurfPos → Prop where
       SBAsLineFeed s s₁ → SLNbLiteralText n s₁ s' →
       SBNbLiteralNext n s s'
 
+/-- [169] l-trail-comments(n): trailing comment lines after block scalar
+    content — `l-chomped-empty`'s comment tail.  The first comment sits at
+    fewer than n indentation spaces (a comment at n or more spaces is scalar
+    CONTENT — `[171]`'s `nb-char+` admits `#`); the rider is `[78] l-comment`,
+    the same production `[79] s-l-comments` is built from, so a landing walk
+    between a block-scalar key and its `:` line re-parents here verbatim. -/
+@[yaml_spec "8.1.1" 169 "l-trail-comments(n)"]
+inductive SLTrailComments : Nat → SurfPos → SurfPos → Prop where
+  | mk (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
+      SIndentLt n s s₁ →
+      SCNbCommentText s₁ s₂ →
+      SBComment s₂ s₃ →
+      GStar SLComment s₃ s' →
+      SLTrailComments n s s'
+
 /-- [173] l-literal-content(n,t): full literal scalar content.
     Optional first line + continuation lines + optional trailing break,
-    plus l-chomped-empty(n,t): trailing empty lines + optional partial indent at EOF. -/
+    plus l-chomped-empty(n,t) ([166]–[168]): trailing empty lines, an optional
+    `[169] l-trail-comments` run, and an optional partial indent AT EOF — the
+    tail is confined to end of input: a partially indented line followed by
+    content is not the scalar's, it belongs to the enclosing collection. -/
 @[yaml_spec "8.1.2" 173 "l-literal-content(n,t)"]
 inductive SLLiteralContent : Nat → SurfPos → SurfPos → Prop where
-  | mk (n : Nat) (s s₁ s₂ s₃ s' : SurfPos) :
+  | mk (n : Nat) (s s₁ s₂ s₃ s₄ s' : SurfPos) :
       GOpt (GSeq (SLNbLiteralText n) (GStar (SBNbLiteralNext n))) s s₁ →
       GOpt SBBreak s₁ s₂ →
       GStar (SLEmpty n .blockIn) s₂ s₃ →
-      GOpt (SIndentLe n) s₃ s' →
+      GOpt (SLTrailComments n) s₃ s₄ →
+      GOpt (fun a b => SIndentLe n a b ∧ b.chars = []) s₄ s' →
       SLLiteralContent n s s'
 
 /-- [170] c-l+literal(n): complete literal block scalar.
@@ -412,3 +462,5 @@ inductive SCLFolded : Nat → SurfPos → SurfPos → Prop where
       SCLFolded n ⟨'>' :: rest, col⟩ s'
 
 end L4YAML.Surface
+
+end Blanket

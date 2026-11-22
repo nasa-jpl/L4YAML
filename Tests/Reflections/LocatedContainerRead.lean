@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 506 — a navigator LOCATES a container that STORES the deliverable; the read is free
 
 R505 ([[ParametricCarrierExtraction]]) reduced the carrier-free `RecSeqBody` recursion to ONE
@@ -95,3 +100,5 @@ theorem demo : (∀ n, LocatedEntry n → Deep n → Content n) ∧ (Guard 7 ∧
   ⟨fun _ e d => content_of_located e d, guard_cannot_produce⟩
 
 end LocatedContainerRead
+
+end Blanket

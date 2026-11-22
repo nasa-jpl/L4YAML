@@ -1,0 +1,120 @@
+{
+ "item": 373,
+ "tag": "SIBLING-ARM",
+ "rev": "65f09400",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/373-flip-sibling-arm.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "lemma rootMapRoute_or_refused {sc s_prep : ScannerState} {c : Char}",
+    "    {sp_start sp_land sp_key : SurfPos} {k : Nat}",
+    "    (h_ref : BareLandingFacts sc s_prep c ∨ True)",
+    "    (hcol0 : sp_land.col = 0)",
+    "    (h_stream_land : SLYamlStream sp_start sp_land)",
+    "    (h_ind : SIndent k sp_land sp_key) :"
+   ],
+   "new": [
+    "lemma rootMapRoute_or_refused {sc s_prep : ScannerState} {c : Char}",
+    "    {sp_start sp_land sp_key : SurfPos} {k : Nat}",
+    "    (h_ref : BareLandingFacts sc s_prep c ∨ True)",
+    "    (hcol0 : sp_land.col = 0)",
+    "    (h_stream_land : SLYamlStream sp_start sp_land)",
+    "    (h_ind : SIndent k sp_land sp_key)",
+    "    (h_nosib : (s_prep.indents.any fun e => e.column == (s_prep.col : Int)) = false) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "  | true => exact rootMapRoute hcol0 h_stream_land h_ind"
+   ],
+   "new": [
+    "  | true => exact absurd (h_nosib.symm.trans h_op) Bool.false_ne_true"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "lemma rootMapRouteF_or_refused {sc s_prep : ScannerState} {c : Char}",
+    "    {sp_start sp_land sp_key : SurfPos} {k : Nat}",
+    "    (h_ref : BareLandingFacts sc s_prep c ∨ True)",
+    "    (hcol0 : sp_land.col = 0)",
+    "    (h_stream_land : SLYamlStream sp_start sp_land)",
+    "    (h_ind : SIndent k sp_land sp_key) :"
+   ],
+   "new": [
+    "lemma rootMapRouteF_or_refused {sc s_prep : ScannerState} {c : Char}",
+    "    {sp_start sp_land sp_key : SurfPos} {k : Nat}",
+    "    (h_ref : BareLandingFacts sc s_prep c ∨ True)",
+    "    (hcol0 : sp_land.col = 0)",
+    "    (h_stream_land : SLYamlStream sp_start sp_land)",
+    "    (h_ind : SIndent k sp_land sp_key)",
+    "    (h_nosib : (s_prep.indents.any fun e => e.column == (s_prep.col : Int)) = false) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "  | true => exact rootMapRouteF hcol0 h_stream_land h_ind"
+   ],
+   "new": [
+    "  | true => exact absurd (h_nosib.symm.trans h_op) Bool.false_ne_true"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "    (h_tail : CompletedTail sc ∨ True) :"
+   ],
+   "new": [
+    "    (h_tail : CompletedTail sc ∨ True)",
+    "    (h_nosib : (s_prep.indents.any fun e => e.column == (s_prep.col : Int)) = false) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "  | true => exact bareNodeRoute h_stream"
+   ],
+   "new": [
+    "  | true => exact absurd (h_nosib.symm.trans h_op) Bool.false_ne_true"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P7",
+   "old": [
+    "    (h_ref : BareLandingFacts sc s_prep c ∨ True)",
+    "    (h_stream : SLYamlStream sp_start sp_mid)",
+    "    (h_sep : SSeparateLines 0 sp_mid sp_br) :"
+   ],
+   "new": [
+    "    (h_ref : BareLandingFacts sc s_prep c ∨ True)",
+    "    (h_stream : SLYamlStream sp_start sp_mid)",
+    "    (h_sep : SSeparateLines 0 sp_mid sp_br)",
+    "    (h_nosib : (s_prep.indents.any fun e => e.column == (s_prep.col : Int)) = false) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P8",
+   "old": [
+    "  | true => exact topLevelFlowResumeSep h_stream h_sep"
+   ],
+   "new": [
+    "  | true => exact absurd (h_nosib.symm.trans h_op) Bool.false_ne_true"
+   ],
+   "count": 1
+  }
+ ]
+}

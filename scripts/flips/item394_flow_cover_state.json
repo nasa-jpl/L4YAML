@@ -1,0 +1,235 @@
+{
+ "item": 394,
+ "tag": "FLOW-COVER-STATE",
+ "rev": "c668a2ea",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/394-flow-cover-state.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "public import L4YAML.Proofs.Scanner.CloseStaleExplicitKey"
+   ],
+   "new": [
+    "public import L4YAML.Proofs.Scanner.CloseStaleExplicitKey",
+    "set_option maxErrors 5000"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    (kc : Nat) (g : Option ScannerState) : Prop where"
+   ],
+   "new": [
+    "    (kc : Nat) (g : Option ScannerState) (s0 : ScannerState) : Prop where"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P3",
+   "old": [
+    "    (∃ ks : List FrameLevel, ∀ sp_mid, SSLComments sp_ne sp_mid →"
+   ],
+   "new": [
+    "    (∃ ks : List FrameLevel,",
+    "      (∃ lo m : Nat, IndentStackCover.Floor lo m ks ∧ IndentStackCover.Covered lo ks s0) ∧",
+    "      ∀ sp_mid, SSLComments sp_ne sp_mid →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P4",
+   "old": [
+    "inductive FlowOpenStack (sp_start : SurfPos) (n : Nat) (kc : Nat)",
+    "    (g : Option ScannerState) :"
+   ],
+   "new": [
+    "inductive FlowOpenStack (sp_start : SurfPos) (n : Nat) (kc : Nat)",
+    "    (g : Option ScannerState) (s0 : ScannerState) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P5",
+   "old": [
+    "  | seqBase (b : Bool) (sp_before sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail)",
+    "      (resume : FlowBaseRoutes sp_start n sp_br kc g)"
+   ],
+   "new": [
+    "  | seqBase (b : Bool) (sp_before sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail)",
+    "      (resume : FlowBaseRoutes sp_start n sp_br kc g s0)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P6",
+   "old": [
+    "      FlowOpenStack sp_start n kc g 1 #[true] #[b] tl sp_before sp_cur"
+   ],
+   "new": [
+    "      FlowOpenStack sp_start n kc g s0 1 #[true] #[b] tl sp_before sp_cur"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P7",
+   "old": [
+    "  | mapBase (b : Bool) (sp_before sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail)",
+    "      (resume : FlowBaseRoutes sp_start n sp_br kc g)"
+   ],
+   "new": [
+    "  | mapBase (b : Bool) (sp_before sp_br sp_open sp_es sp_cur : SurfPos) (tl : FrameTail)",
+    "      (resume : FlowBaseRoutes sp_start n sp_br kc g s0)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P8",
+   "old": [
+    "      FlowOpenStack sp_start n kc g 1 #[false] #[b] tl sp_before sp_cur"
+   ],
+   "new": [
+    "      FlowOpenStack sp_start n kc g s0 1 #[false] #[b] tl sp_before sp_cur"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P9",
+   "old": [
+    "  | seqNest (d : Nat) (ks km : Array Bool) (b : Bool) (tl : FrameTail)",
+    "      (sp_before0 sp_par sp_open sp_es sp_cur : SurfPos)",
+    "      (promise : b = false → ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                ∀ sp_prep sp_tok, (SSeparateLines n sp_ne sp_prep ∨ sp_prep = sp_ne) →",
+    "                GLit ':' sp_prep sp_tok →",
+    "                FlowOpenStack sp_start n kc g d ks km (.colon true) sp_before0 sp_tok)",
+    "      (inject : ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                FlowOpenStack sp_start n kc g d ks km (.value true) sp_before0 sp_ne)"
+   ],
+   "new": [
+    "  | seqNest (d : Nat) (ks km : Array Bool) (b : Bool) (tl : FrameTail)",
+    "      (sp_before0 sp_par sp_open sp_es sp_cur : SurfPos)",
+    "      (promise : b = false → ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                ∀ sp_prep sp_tok, (SSeparateLines n sp_ne sp_prep ∨ sp_prep = sp_ne) →",
+    "                GLit ':' sp_prep sp_tok →",
+    "                FlowOpenStack sp_start n kc g s0 d ks km (.colon true) sp_before0 sp_tok)",
+    "      (inject : ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                FlowOpenStack sp_start n kc g s0 d ks km (.value true) sp_before0 sp_ne)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P10",
+   "old": [
+    "      FlowOpenStack sp_start n kc g (d + 1) (ks.push true) (km.push b) tl sp_before0 sp_cur"
+   ],
+   "new": [
+    "      FlowOpenStack sp_start n kc g s0 (d + 1) (ks.push true) (km.push b) tl sp_before0 sp_cur"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P11",
+   "old": [
+    "  | mapNest (d : Nat) (ks km : Array Bool) (b : Bool) (tl : FrameTail)",
+    "      (sp_before0 sp_par sp_open sp_es sp_cur : SurfPos)",
+    "      (promise : b = false → ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                ∀ sp_prep sp_tok, (SSeparateLines n sp_ne sp_prep ∨ sp_prep = sp_ne) →",
+    "                GLit ':' sp_prep sp_tok →",
+    "                FlowOpenStack sp_start n kc g d ks km (.colon true) sp_before0 sp_tok)",
+    "      (inject : ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                FlowOpenStack sp_start n kc g d ks km (.value true) sp_before0 sp_ne)"
+   ],
+   "new": [
+    "  | mapNest (d : Nat) (ks km : Array Bool) (b : Bool) (tl : FrameTail)",
+    "      (sp_before0 sp_par sp_open sp_es sp_cur : SurfPos)",
+    "      (promise : b = false → ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                ∀ sp_prep sp_tok, (SSeparateLines n sp_ne sp_prep ∨ sp_prep = sp_ne) →",
+    "                GLit ':' sp_prep sp_tok →",
+    "                FlowOpenStack sp_start n kc g s0 d ks km (.colon true) sp_before0 sp_tok)",
+    "      (inject : ∀ sp_ne, SCFlowJsonContent n .flowIn sp_par sp_ne →",
+    "                FlowOpenStack sp_start n kc g s0 d ks km (.value true) sp_before0 sp_ne)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P12",
+   "old": [
+    "      FlowOpenStack sp_start n kc g (d + 1) (ks.push false) (km.push b) tl sp_before0 sp_cur"
+   ],
+   "new": [
+    "      FlowOpenStack sp_start n kc g s0 (d + 1) (ks.push false) (km.push b) tl sp_before0 sp_cur"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P13",
+   "old": [
+    "inductive FlowStackB (sp_start : SurfPos) (n : Nat) (kc : Nat)",
+    "    (g : Option ScannerState) :"
+   ],
+   "new": [
+    "inductive FlowStackB (sp_start : SurfPos) (n : Nat) (kc : Nat)",
+    "    (g : Option ScannerState) (s0 : ScannerState) :"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P14",
+   "old": [
+    "  | nil (sp : SurfPos) (tl : FrameTail) : FlowStackB sp_start n kc g 0 #[] #[] tl sp sp"
+   ],
+   "new": [
+    "  | nil (sp : SurfPos) (tl : FrameTail) : FlowStackB sp_start n kc g s0 0 #[] #[] tl sp sp"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P15",
+   "old": [
+    "      (h : FlowOpenStack sp_start n kc g d ks km tl sp_block sp_cur) :",
+    "      FlowStackB sp_start n kc g d ks km tl sp_block sp_cur"
+   ],
+   "new": [
+    "      (h : FlowOpenStack sp_start n kc g s0 d ks km tl sp_block sp_cur) :",
+    "      FlowStackB sp_start n kc g s0 d ks km tl sp_block sp_cur"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P16",
+   "old": [
+    "               (mk none (n_old + 1) sp_block ⟨(fun sp_ne h_content => h_closeF_mv.imp (fun ⟨ks, _, _, route⟩ => ⟨FrameLevel.map n_old :: ks, fun sp_m h_ssl =>",
+    "               route sp_m (SBlockNode.flowInBlock (n_old + 1) .blockOut sp_scan sp_prep sp_ne sp_m",
+    "                 h_sep (SFlowNode.content _ _ _ _ h_content) h_ssl)⟩) id), (fun _ sp_ne sp_m h_content h_ssl =>"
+   ],
+   "new": [
+    "               (mk none (n_old + 1) sp_block ⟨sorry, (fun _ sp_ne sp_m h_content h_ssl =>"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P17",
+   "old": [
+    "                      ((resume.valueF sp_tok (SFlowContent.flowSeq _ _ _ _ h_seq)).imp (fun ⟨ks, f⟩ => ⟨ks, Or.inr trivial, f⟩) id)"
+   ],
+   "new": [
+    "                      (sorry)"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P18",
+   "old": [
+    "                      ((resume.valueF sp_tok (SFlowContent.flowMap _ _ _ _ h_map)).imp (fun ⟨ks, f⟩ => ⟨ks, Or.inr trivial, f⟩) id)"
+   ],
+   "new": [
+    "                      (sorry)"
+   ],
+   "count": 1
+  }
+ ]
+}

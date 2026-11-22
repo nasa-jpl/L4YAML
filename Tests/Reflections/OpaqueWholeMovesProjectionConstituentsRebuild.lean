@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 458 — a downstream projection unreachable at an upstream producer has TWO remedies
 # (rebuild-from-constituents vs move-the-projection-up); the SELECTOR is the GRAIN at which the
@@ -156,3 +161,5 @@ theorem opaque_whole_moves_projection_constituents_rebuild :
    entryBuilder [] (Or.inr rfl)⟩
 
 end Tests.Reflections.OpaqueWholeMovesProjectionConstituentsRebuild
+
+end Blanket

@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Nested-`FlowBodyContent` EMISSION-seed availability probe — `(i'-b-B2c-nested-fbc-emission-seed)`
@@ -161,3 +165,5 @@ def T : Array (Positioned YamlToken) :=
         == [.scalar "2" .doubleQuoted, .flowEntry, .scalar "3" .doubleQuoted]
 
 end L4YAML.Proofs.EmitterScannability.SeqNestedEmissionSeedProbe
+
+end Blanket

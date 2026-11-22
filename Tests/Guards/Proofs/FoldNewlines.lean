@@ -1,4 +1,10 @@
-import L4YAML.Proofs.Errors.FoldNewlines
+module
+
+public import L4YAML.Proofs.Errors.FoldNewlines
+
+
+public meta import L4YAML.Parser.Composition
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.FoldNewlines
 
@@ -57,3 +63,5 @@ private def parseScalar (s : String) : Option String :=
 #guard parseScalar "'hello\n\nworld'" == some "hello\nworld"
 
 end L4YAML.Proofs.FoldNewlines
+
+end Blanket

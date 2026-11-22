@@ -1,6 +1,12 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+
+public meta import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+public meta import L4YAML.Proofs.Parser.ParserGrammableBase
+@[expose] public section Blanket
 
 /-!
 # Seq-descent enclosing-locator probe (de-risk for `(i'-b-locator descent)`)
@@ -202,3 +208,5 @@ def floorToks : Array (Positioned YamlToken) :=
 #guard !decide (flowBracketBalance floorToks 3 4 ≥ 0)
 
 end L4YAML.Proofs.EmitterScannability.SeqDescentLocatorProbe
+
+end Blanket

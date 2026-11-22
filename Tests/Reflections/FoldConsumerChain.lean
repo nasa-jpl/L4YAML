@@ -33,6 +33,11 @@ window the missing frame token would have excluded — yet `2 ≤ 1` is false, s
 would never reach it: the frame token is *load-bearing* for the fold.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.FoldConsumerChain
 
 inductive Tok | SS | OB | CB | SE | A
@@ -130,3 +135,5 @@ def bad : List Tok := [Tok.OB, Tok.A, Tok.CB]
 theorem neg_no_ss : bad[0]! ≠ Tok.SS := by decide
 
 end Tests.Reflections.FoldConsumerChain
+
+end Blanket

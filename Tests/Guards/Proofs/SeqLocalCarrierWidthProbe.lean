@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Window-local-carrier width-decrease probe (de-risk for the R447 carrier↔recursion co-construction)
@@ -98,3 +102,5 @@ def T : Array (Positioned YamlToken) :=
 #guard decide (width 5 8 < width 2 9)          -- STRICT vs whole window (3 < 7; joint width IH)
 
 end L4YAML.Proofs.EmitterScannability.SeqLocalCarrierWidthProbe
+
+end Blanket

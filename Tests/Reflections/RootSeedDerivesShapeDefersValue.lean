@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 385 — a recursion's ROOT SEED derives SHAPE and defers VALUE; 'not the descent's debt'
 does NOT mean 'derive it inline'
@@ -83,3 +88,5 @@ theorem debt_independent_of_shape : ∃ t, (2 + 2 ≤ t) ∧ ¬ TargetFact t :=
 theorem produced_has_producer (r : Nat) (h : EmissionInput r) : Produced r := flatProducer r h
 
 end Tests.Reflections.RootSeedDerivesShapeDefersValue
+
+end Blanket

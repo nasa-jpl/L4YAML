@@ -20,6 +20,11 @@ Self-contained `Nat`-list toy.  POSITIVE: the head-blind interior recovery, reus
 head-SPECIALIZED version pins the head, so the dual branch cannot reuse it (shown commented).
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.HeadBlindCoreServesBothArms
 
 set_option autoImplicit false
@@ -83,3 +88,5 @@ theorem refute_map (body interior rest : List Nat) (cl : Nat)
 #guard (([9, 2, 3, 7, 4, 5] : List Nat).drop 1).take 3 == [2, 3, 7]
 
 end Tests.Reflections.HeadBlindCoreServesBothArms
+
+end Blanket

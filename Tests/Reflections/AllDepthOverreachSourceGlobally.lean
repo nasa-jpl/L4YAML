@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 394 — an all-depth field over-reaches into the ORTHOGONAL axis; source it globally.
 
@@ -120,3 +125,5 @@ theorem consumer_reads_head (l : List Tok) (h : OpenerOk l)
 #guard badBody[2]! == Tok.mopn          -- ... followed by mopn ≠ content (field violated)
 
 end Tests.Reflections.AllDepthOverreachSourceGlobally
+
+end Blanket

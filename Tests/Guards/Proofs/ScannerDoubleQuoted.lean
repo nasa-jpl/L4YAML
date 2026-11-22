@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
+module
+
+public import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
+
+
+
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Proofs.Scanner.ScannerDoubleQuoted
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerDoubleQuoted
 
@@ -142,3 +150,5 @@ private def scanDQContent (input : String) : Option String :=
 #guard escapeString "a\"b" == "a\\\"b"
 
 end L4YAML.Proofs.ScannerDoubleQuoted
+
+end Blanket

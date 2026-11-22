@@ -1,0 +1,23 @@
+{
+ "item": 386,
+ "tag": "FLOOR-RELAY-S1",
+ "rev": "e379e74c",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/386-flip-floor-relay_stage1.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "    (h_top_old : sc.currentIndent ≤ (n : Int))"
+   ],
+   "new": [
+    "    (h_top_old : sc.currentIndent ≤ (n : Int))",
+    "    (h_lvl_old : (n : Int) ≤ sc.currentIndent)"
+   ],
+   "count": 1
+  }
+ ]
+}

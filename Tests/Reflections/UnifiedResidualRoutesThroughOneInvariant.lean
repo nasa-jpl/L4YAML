@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 490 — a guard RE-SCOPE that demotes a PROJECTED field to a UNIFIED residual can SIMPLIFY the
 downstream consumer: the unified residual routes through ONE invariant the consumer already holds, shedding
@@ -64,7 +69,7 @@ abbrev CS (n : Nat) : Prop := n = 99
     close position `j = 3` — the fact that lets it subsume the boundary case and shed the close marker. -/
 theorem floor : ∀ i, 1 ≤ i → i ≤ 3 → bal i ≥ 1 := by
   intro i h1 h2
-  have : bal i = 1 := if_pos (And.intro h1 h2)   -- constructive `if_pos`, no `Classical`
+  have : bal i = 1 := ite_eq_left (And.intro h1 h2)   -- constructive `if_pos`, no `Classical`
   omega
 
 /-- The typed opener `tokens[0] = .flowSequenceStart` is NOT a separator. -/
@@ -117,3 +122,5 @@ theorem weak_feContent :
 example : ∀ k', 0 ≤ k' → k' < 4 → Sep k' → bal k' = 0 → CS (k' + 1) := weak_feContent
 
 end UnifiedResidualRoutesThroughOneInvariant
+
+end Blanket

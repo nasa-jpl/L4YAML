@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 403 — a severed-edge constructor blocks PROJECTING an orthogonal field,
 forcing it to be a STORED carrier threaded through every producer in the cluster.
@@ -196,3 +201,5 @@ theorem coproduce_adj : (blocks : List (List Tok)) →
 #guard ([[Tok.opn, Tok.content], [Tok.content]].flatten.getLast? == some Tok.content)
 
 end Tests.Reflections.SeveredEdgeBlocksProjection
+
+end Blanket

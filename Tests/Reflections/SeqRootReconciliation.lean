@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 512 — fold the whole discharged seq chain into the contract consumer, collapsing
         the seq half of the frontier obligation to ONE hard residual (the root carrier)
 
@@ -137,3 +142,5 @@ theorem demo :
   ⟨run, fun hc he hd => driver_route_redundant sample hc he hd⟩
 
 end SeqRootReconciliation
+
+end Blanket

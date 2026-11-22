@@ -2,9 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Scanner.Scanner
-import L4YAML.Spec.CharPredicates
+
+module
+
+public import L4YAML.Spec.Grammar
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Spec.CharPredicates
+
+@[expose] public section Blanket
 
 /-!
 # Character Classification Correspondence Proofs (Layer 1c)
@@ -192,4 +197,44 @@ lemma canStartPlainScalar_exception_none (c : Char) (inFlow : Bool)
   unfold canStartPlainScalarBool
   rcases hExc with rfl | rfl | rfl <;> simp
 
+/-! ## `Char.ofNat` faithfulness
+
+`Char.ofNat` is **total**: `dite n.isValidChar (Char.ofNatAux n) (fun _ => '\0')`.
+On the else-branch it does not fail, it *substitutes* — so a caller that checks
+a weaker condition than `isValidChar` silently gets `'\0'` for every value the
+two conditions disagree on. That is exactly the surrogate range
+`U+D800`–`U+DFFF`, which is `< 0x110000` but not a Unicode scalar value.
+
+The lemma below is the one whose absence let that through. Note the contrast
+with `EscapeResolution.char_isValidChar`, which says the *output* is a valid
+`Char` — true of `'\0'` too, and therefore no guarantee at all about decoding.
+This says the output is the **requested** code point. Any decoder that guards
+on `isValidChar` may cite it; any decoder that guards on something weaker
+cannot, which is the point. -/
+
+/--
+`Char.ofNat` round-trips exactly on Unicode scalar values: when `n` is valid,
+the decoded character's code point *is* `n` — no substitution.
+-/
+lemma toNat_ofNat_of_isValidChar {n : Nat} (h : n.isValidChar) :
+    (Char.ofNat n).toNat = n := by
+  simp only [Char.ofNat, dite_eq_left h, Char.toNat, Char.ofNatAux,
+             UInt32.toNat, BitVec.toNat_ofNatLT]
+
+/--
+The contrapositive in the form a decoder needs: if the guarded value is a
+scalar value, `Char.ofNat` cannot have produced NUL unless the value *was*
+zero. Rules out the silent-substitution reading of a successful decode.
+-/
+lemma ofNat_eq_zero_iff_of_isValidChar {n : Nat} (h : n.isValidChar) :
+    Char.ofNat n = '\x00' ↔ n = 0 := by
+  constructor
+  · intro hz
+    have := toNat_ofNat_of_isValidChar h
+    rw [hz] at this
+    simpa using this.symm
+  · intro hz; subst hz; rfl
+
 end L4YAML.Proofs.CharClass
+
+end Blanket

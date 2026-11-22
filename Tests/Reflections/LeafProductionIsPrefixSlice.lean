@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 351 — the LEAF (the only deliverable-PRODUCING move of a position-navigator) is balance-FREE even on the CORRECTNESS side: its window identity is a pure prefix-slice fact; balance is confined to the non-producing interior MOVES
 
@@ -100,3 +105,5 @@ theorem producing_is_balance_free : ∀ m : Move, produces m = true → usesBala
   intro m h; cases m <;> simp_all [produces, usesBalance]
 
 end Tests.Reflections.LeafProductionIsPrefixSlice
+
+end Blanket

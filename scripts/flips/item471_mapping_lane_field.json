@@ -1,0 +1,38 @@
+{
+ "target": "L4YAML",
+ "msgWidth": 110,
+ "rounds": 4,
+ "report": "bodies",
+ "rev": "ccb16f6e",
+ "item": 471,
+ "tag": "PRICE-471-MAPPING-LANE-FIELD",
+ "log": "scratch/price471_c.log",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L2895.pendingBlockContent.h_mapTail",
+     "line": 2895,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)",
+      "      -- Item 471 (ω-pay-births) step (c), PRICED NOT LANDED: the MAPPING lane's still-open tail",
+      "      -- (items 193/196–198 named it): a dedent `?` at an enclosing column `k < n` is a SIBLING",
+      "      -- entry in the mapping the collection stands in; the ancestors' marks below `k` keep their",
+      "      -- `:` line across that entry.  `MarkedColsIn sc ns` holds every mark; the closed ones (`k ≤ nv`)",
+      "      -- owe nothing.",
+      "      (h_mapTail : (∃ ns : List Nat, RegisterWitness.MarkedColsIn sc ns ∧ ∀ nv ∈ ns,",
+      "        ∀ k : Nat, nv < k → k < n →",
+      "        ∀ sp_m : SurfPos, SSLComments sp_gram sp_m →",
+      "        ∀ sp_i sp_v : SurfPos, SIndent k sp_m sp_i → SBlockMapEntry k sp_i sp_v →",
+      "        ExplValueLine sp_start nv sp_v) ∨ PackAlt sc)"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

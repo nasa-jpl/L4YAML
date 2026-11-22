@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 400 — a closure algebra's BRIDGE hypothesis is a WEAKER fact than the rich
 field it builds, and is often a CONSEQUENCE of an existing INVARIANT conjunct of the carrier:
@@ -113,3 +118,5 @@ theorem cls_opn_not_unit : ¬ UnitEntry [Tok.cls, .opn] := by
 #guard ([Tok.cls, .opn])[1]! == Tok.opn
 
 end Tests.Reflections.BridgeDerivableFromInvariant
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 494 — a transporting LIFT's re-key cost is #(guard-keyed child names) PLUS the child
 twin's DROPPED-DERIVATION premise.  When the weaker guard can no longer SELF-DERIVE a fact the strong
@@ -114,3 +119,5 @@ example (n : Nat) (hg : WeakG n) (h_ne : NE n) : Packaged n :=
   lift_seq n hg h_ne
 
 end LiftForwardsDroppedDerivationPremise
+
+end Blanket

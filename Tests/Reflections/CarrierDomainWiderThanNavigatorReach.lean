@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 448 — a UNIVERSAL producer over a domain predicate D cannot be completed by a NAVIGATOR
 # whose reachable domain is a STRICT SUBSET of D.  The gap is forced by a SEVERED recursive edge: the
@@ -141,3 +146,5 @@ theorem r448_finding (w : Flat) (v : RecSeq) :
    rfl, rfl⟩
 
 end Tests.Reflections.CarrierDomainWiderThanNavigatorReach
+
+end Blanket

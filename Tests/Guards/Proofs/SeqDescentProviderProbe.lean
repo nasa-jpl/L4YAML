@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Descent-`provider` satisfiability probe (de-risk for `(i'-b-descent-assembly)`)
@@ -121,3 +125,5 @@ def T : Array (Positioned YamlToken) :=
 #guard decide (5 ≤ 8) && decide (8 ≤ 8)       -- a ≤ j ∧ b ≤ j
 
 end L4YAML.Proofs.EmitterScannability.SeqDescentProviderProbe
+
+end Blanket

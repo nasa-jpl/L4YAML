@@ -1,4 +1,16 @@
-import L4YAML.Proofs.Scanner.ScannerSimpleKey
+module
+
+public import L4YAML.Proofs.Scanner.ScannerSimpleKey
+
+
+
+
+
+public meta import L4YAML.Scanner.Scanner
+public meta import L4YAML.Token.Token
+public meta import L4YAML.Scanner.State
+public meta import L4YAML.Scanner.SimpleKey
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerSimpleKey
 
@@ -300,3 +312,5 @@ private def scanTokenTypes (input : String) : Option (List YamlToken) :=
   .scalar "key" .plain, .value, .blockEnd, .streamEnd]
 
 end L4YAML.Proofs.ScannerSimpleKey
+
+end Blanket

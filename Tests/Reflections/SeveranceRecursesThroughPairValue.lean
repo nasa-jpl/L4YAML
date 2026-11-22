@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 460 — the token-indistinguishable map severance is NOT eliminated by bridging to the
 # severance-free `RecMapEntry`/`RecMapBody`; it RE-SURFACES one level deeper, at every `RecMapPair`'s
@@ -253,3 +258,5 @@ theorem severance_recurses_through_pair_value :
    fun _p _v _i h h1 h2 => DPair.value_map_descent h h1 h2⟩
 
 end Tests.Reflections.SeveranceRecursesThroughPairValue
+
+end Blanket

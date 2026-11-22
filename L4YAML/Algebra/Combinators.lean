@@ -3,7 +3,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Surface.Combinators
+module
+
+public import L4YAML.Surface.Combinators
+
+@[expose] public section Blanket
 
 /-! # Surface Grammar Combinator Algebra  (Algebra Item 14)
 
@@ -235,3 +239,5 @@ lemma seq3_iff_seq_seq (s s' : SurfPos) :
       .mk s s₂ s₃ s' hp hq hr⟩
 
 end L4YAML.Algebra.Combinators
+
+end Blanket

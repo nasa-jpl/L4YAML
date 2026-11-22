@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 304 — a window-relative fact RE-BASES from its enclosing window by balance-`0` composition; the rebase precondition is load-bearing
 
@@ -123,3 +128,5 @@ theorem not_succ_map : ¬ Succ mapT 1 4 := by
   · exact absurd h2 (by decide)
 
 end Tests.Reflections.RebaseFactFromEnclosingWindow
+
+end Blanket

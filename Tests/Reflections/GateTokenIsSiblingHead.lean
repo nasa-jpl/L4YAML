@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 425 — the gate token of a shared GATED edge field IS the discriminating sibling's head
 
@@ -78,3 +83,5 @@ theorem wrong_gate_undergates : ¬ GatedHead Tok.opener (mapEntry []) := by
 #guard isContent Tok.key == false      -- map head: conclusion FALSE (gate `≠ key` rescues vacuously)
 
 end Tests.Reflections.GateTokenIsSiblingHead
+
+end Blanket

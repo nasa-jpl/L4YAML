@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Forward-CLOSE locate probe (de-risk for `(i'-b-locator-glue-close)`)
@@ -97,3 +101,5 @@ def T : Array (Positioned YamlToken) :=
 #guard flowBracketDelta T[8]!.val == -1
 
 end L4YAML.Proofs.EmitterScannability.SeqCloseLocateProbe
+
+end Blanket

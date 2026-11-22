@@ -2,8 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Lean.Elab.Declaration
-import L4YAML.CapstoneAttr
+
+module
+
+public import Lean.Elab.Declaration
+public meta import Lean.Elab.Declaration
+public import L4YAML.CapstoneAttr
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # L4YAML.Init — project prelude
@@ -14,7 +21,7 @@ Imported (directly or transitively) by every library module. Provides:
   approach as `Mathlib/Tactic/Lemma.lean`, core-only). Project policy
   (`Blueprint/06-discipline.md`): the `theorem` keyword is reserved for
   the `@[capstone]`-tagged blueprint capstones; **every other proof is
-  a `lemma`**. Enforced by `scripts/check-theorem-keyword.sh`.
+  a `lemma`**. Enforced by `lake run check-theorem-keyword`.
 - the `@[capstone]` attribute machinery, via `L4YAML.CapstoneAttr`.
 
 The `lemma` expander is a *macro* (not a `command_elab`) so that it
@@ -35,10 +42,12 @@ syntax (name := lemmaCmd) (priority := default + 1) declModifiers
 
 /-- Expand `lemma` to `theorem` by re-kinding the syntax node — resilient
     against changes to `theorem`'s internal structure. -/
-@[macro lemmaCmd] def expandLemma : Macro := fun stx =>
+@[macro lemmaCmd] meta def expandLemma : Macro := fun stx =>
   let stx := stx.modifyArg 1 fun stx =>
     let stx := stx.modifyArg 0 (mkAtomFrom · "theorem" (canonical := true))
     stx.setKind ``Parser.Command.theorem
   pure <| stx.setKind ``Parser.Command.declaration
 
 end L4YAML
+
+end Blanket

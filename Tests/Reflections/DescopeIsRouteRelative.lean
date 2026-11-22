@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 349 — a producer DESCOPED as "an alternative, not a necessity" un-descopes once the route that subsumed it is the one being eliminated; the emission seed extracts (position-blind), it does not re-scan (offset gap)
 
@@ -105,3 +110,5 @@ theorem descope_is_route_relative
   hs he
 
 end Tests.Reflections.DescopeIsRouteRelative
+
+end Blanket

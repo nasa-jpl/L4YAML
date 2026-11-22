@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Seq carrier domain vs all-seq locator reach — `(i'-b-B2c-(d) — STEP D: the map-mirror entanglement)`
@@ -100,3 +104,5 @@ def M : Array (Positioned YamlToken) :=
         ≠ ((btFold (some []) (M.toList.take 6)).map (·.all (· == true))))
 
 end L4YAML.Proofs.EmitterScannability.SeqCarrierMapNestedDomainProbe
+
+end Blanket

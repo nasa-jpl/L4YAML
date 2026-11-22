@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 391 — an all-depth BALANCE-FREE conjunct flagged "owes a deep characterization" owes
 it at the ROOT WINDOW ONLY; every gated window RESTRICTS from a single root instance.
@@ -95,3 +100,5 @@ theorem root_not_from_gated : ¬ (∀ k, content (k + 1)) := by
 #guard !(4 == 4) == false             -- content 4 is false (4 = 4): the all-depth fact's failure point
 
 end Tests.Reflections.DeepConjunctRootSeedOnly
+
+end Blanket

@@ -2,8 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.Scanner
-import L4YAML.Spec.CharPredicates
+
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Spec.CharPredicates
+
+public meta import L4YAML.Spec.CharPredicates
+@[expose] public section Blanket
 
 /-!
 # Scanner Proofs (Phase 9)
@@ -308,3 +314,5 @@ lemma TokenStream_peek_some_iff (s : TokenStream) :
   split <;> simp_all
 
 end L4YAML.Proofs.ScannerProofs
+
+end Blanket

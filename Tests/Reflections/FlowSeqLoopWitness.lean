@@ -1,5 +1,9 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Proofs.Output.EmitterScannability.ScannerSpanLocality
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 602 -- parseStream flow-sequence loop witness (R602)
@@ -99,3 +103,5 @@ theorem r602_outer_shape
 #print axioms parseStream_flowSeqStart_loop_witness
 
 end FlowSeqLoopWitness
+
+end Blanket

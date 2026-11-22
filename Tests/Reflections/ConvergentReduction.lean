@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Convergent reduction — runnable demonstration
 
@@ -132,7 +137,7 @@ theorem runFwd_aux : ∀ (ts : List Tok) (d : Int) (fuel : Nat),
       have hbal1 : bal (t :: rest) 1 = delta t := by rw [bal_cons t rest 0]; simp [bal]
       have hd' : ¬ (d + delta t < 0) := by rw [hbal1] at hstep1; omega
       simp only [runFwd]
-      rw [if_neg hd']
+      rw [ite_eq_right hd']
       apply ih (d + delta t) f
       · simp only [List.length_cons] at hlen; omega
       · intro i hi
@@ -162,7 +167,7 @@ theorem runStruct_aux : ∀ (ts : List Tok) (d : Int),
     have hbal1 : bal (t :: rest) 1 = delta t := by rw [bal_cons t rest 0]; simp [bal]
     have hd' : ¬ (d + delta t < 0) := by rw [hbal1] at hstep1; omega
     simp only [runStruct]
-    rw [if_neg hd']
+    rw [ite_eq_right hd']
     apply ih (d + delta t)
     · intro i hi
       have hpre' := hpre (i + 1) (by simp only [List.length_cons]; omega)
@@ -259,3 +264,5 @@ theorem good_both_convergent : ExecF good ∧ ExecS good := convergent good_Dyck
 theorem good_both_divergent : ExecF good ∧ ExecS good := divergent good_Dyck good_ExecS
 
 end ConvergentReduction
+
+end Blanket

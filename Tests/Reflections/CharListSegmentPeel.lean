@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 583 — BIRTH PROBE for Front B's brick-3 producer char-list segment peel (§5.13)
@@ -171,3 +175,5 @@ theorem emit_sequence_bracket_shape
 #print axioms emit_mapping_toList_bracket
 
 end CharListSegmentPeel
+
+end Blanket

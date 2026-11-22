@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 416 — a guard re-scope that GATES a field splits its consumers by premise-availability; the consumer that needs the field UNGATED re-sources it from a sibling boundary-fact at the NARROWED window (interior position = sub-window boundary)
 
@@ -160,3 +165,5 @@ theorem interior_recovered_by_narrow (carr : Carrier l6 4) : feUngated l6 1 :=
 #guard (decide (Tok.scal = Tok.key)) == false
 
 end Tests.Reflections.GatedFieldResourcedViaNarrow
+
+end Blanket

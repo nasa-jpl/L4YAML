@@ -1,4 +1,14 @@
-import L4YAML.Parser.Composition
+module
+
+public import L4YAML.Parser.Composition
+
+
+
+
+public meta import L4YAML.Spec.Types
+public meta import L4YAML.Parser.Composition
+public meta import L4YAML.Parser.State
+@[expose] public section Blanket
 
 /-!
 # %TAG Directive Resolution Guards (§6.8.2)
@@ -168,3 +178,5 @@ namespace Tests.Guards.Proofs.TagResolution
   | _ => false
 
 end Tests.Guards.Proofs.TagResolution
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 413 — on redirect, audit the replacement producer's WHOLE guard; clearing one axis ≠ clearing another
 
@@ -108,3 +113,5 @@ theorem clearing_axisA_does_not_clear_axisB :
 #guard routingTagA mixedWin && (deepOld mixedWin == false) && deepSeqNew mixedWin
 
 end Tests.Reflections.RedirectAuditFullGuard
+
+end Blanket

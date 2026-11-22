@@ -1,4 +1,8 @@
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # TryScan — scanner token-stream diagnostic
@@ -67,3 +71,5 @@ def main (args : List String) : IO UInt32 := do
     IO.eprintln "Usage: tryscan <file.yaml> [file2.yaml ...]"
     IO.eprintln "       tryscan --str '<yaml string>'"
     return 2
+
+end Blanket

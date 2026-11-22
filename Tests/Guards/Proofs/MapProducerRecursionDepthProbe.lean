@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Map-producer recursion-depth probe — `(i'-b-B2c-recursive-map — STEP D, producer-side probe)`
@@ -105,3 +109,5 @@ def M3 : Array (Positioned YamlToken) :=
 #guard decide (M3[10]!.val == .flowSequenceStart)  -- step-2 landing is the seq ⇒ the depth-2 deliverable
 
 end L4YAML.Proofs.EmitterScannability.MapProducerRecursionDepthProbe
+
+end Blanket

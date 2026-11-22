@@ -2,8 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Token.Token
-import L4YAML.Spec.CharPredicates
+
+module
+
+public import L4YAML.Token.Token
+public import L4YAML.Spec.CharPredicates
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-!
 # Scanner State
@@ -73,6 +79,13 @@ structure ScannerState where
   col : Nat := 0
   /-- Indentation stack. Bottom entry: `{ column := -1 }`. -/
   indents : Array IndentEntry := #[{ column := -1, isSequence := false }]
+  /-- One slot per `indents` level: the line of the `?` whose explicit entry is
+      still open at that mapping level (§8.2.2 [190]).  Set by `scanKey`, cleared
+      by the level's own `:` or by a sibling entry at its column, popped with the
+      level.  The `explicitKeyLine`/`explicitKeyCol` register is the innermost
+      `some`, re-read whenever a level's key closes, so an outer `?` survives an
+      inner one's value (item 335). -/
+  pendingKeys : Array (Option Nat) := #[none]
   /-- Flow nesting level. 0 = block context. -/
   flowLevel : Nat := 0
   /-- Emitted tokens -/
@@ -108,8 +121,45 @@ structure ScannerState where
   /-- Line number of the most recent explicit `?` key indicator, if the
       entry has not yet been closed by `:`.  Used to (a) inhibit simple-key
       saving on the same line as `?`, and (b) bypass the flow-sequence
-      implicit-key-single-line restriction when `?` was used. -/
+      implicit-key-single-line restriction when `?` was used.
+
+      **Scoped to the current flow level** (item 98): a flow open pushes the
+      pair `(explicitKeyLine, explicitKeyCol)` onto `explicitKeyStack` and
+      clears both, and the matching close restores them, so a pending `?`
+      is visible exactly at its own level.  A nested collection's `,`/`:`
+      indicators end entries of the NESTED collection only — the block
+      `?`'s value is still `[197] l-block-map-explicit-value(n)`'s
+      `s-indent(n) ":"` after the close (`? {a: b}⏎: - w`), and content on
+      the `?`'s line INSIDE the nested collection is that collection's own,
+      free to reserve its simple key (`? [a: b]⏎: v`). -/
   explicitKeyLine : Option Nat := none
+  /-- Line number of the most recent block-context IMPLICIT value indicator
+      (item 48).  `[194] c-l-block-map-implicit-value`'s value slot is
+      `s-l+block-node` — no compact alternative, no same-line mapping — so a
+      block-collection indicator or a second `:` on this line has no
+      derivation.  The EXPLICIT value (`[192]`'s, whose slot is
+      `s-l+block-indented` with the compact alternatives) does not set it,
+      which is what keeps `? a⏎: - b` and `? a⏎: b: c` served. -/
+  implicitValueLine : Option Nat := none
+  /-- Line of the most recent `---` document-start marker (item 299).  §9.1.1's
+      `[203] c-directives-end` line admits `s-l-comments` or one same-line
+      node and nothing else, so a block indicator or value indicator
+      dispatched with the marker still on the line has no derivation.  Set by
+      `scanDocumentStart` and written by nothing else; never cleared, since
+      lines only grow and a marker on an earlier line never reads as "on the
+      line" again.  `markerOnLine` is the read the three block checks make. -/
+  docStartLine : Option Nat := none
+  /-- Column of the pending `?` (item 48), meaningful only while
+      `explicitKeyLine` is set: an implicit `:` whose resolved key sits
+      DEEPER than this column is inside the explicit key's own content
+      (spec 8.19's multi-line compact keys), so the pending `?` survives it;
+      at or left of it, a sibling entry has closed the `?`-entry. -/
+  explicitKeyCol : Int := -1
+  /-- Saved `(explicitKeyLine, explicitKeyCol)` pairs for enclosing flow
+      nesting levels (item 98) — `simpleKeyStack`'s discipline for the
+      explicit-key stamp.  Pushed on flow-open (`[`, `{`), popped on
+      flow-close (`]`, `}`). -/
+  explicitKeyStack : Array (Option Nat × Int) := #[]
   /-- Collected comments (position × text). Comments are stored here as a
       side-channel rather than in the token array so that all existing
       `preserves_tokens` proofs remain valid unchanged. -/
@@ -222,6 +272,25 @@ def ScannerState.advance (s : ScannerState) : ScannerState :=
   else
     s
 
+/-- Consume a leading byte order mark, WITHOUT spending a column.
+
+    **Implements** (YAML 1.2.2 §5.2): `[3] c-byte-order-mark`, as
+    `[202] l-document-prefix` admits it — "in the case of UTF-8 the BOM
+    is not part of the content".  It is an encoding marker, not a
+    character of the first line, so `[63] s-indent(n)` counts from the
+    character AFTER it.
+
+    `advance` alone would leave `col = 1`, which reads the first line as
+    indented by one relative to every following line: `﻿a: 1⏎b: 2`
+    then dedents below its own mapping and the scan refuses it, and
+    `﻿---` is no longer at column 0, so it is a plain scalar rather
+    than `[203] c-directives-end`.  Both are the same off-by-one, and
+    resetting the column here is the whole of the fix. -/
+@[yaml_spec "5.2" 3 "c-byte-order-mark",
+  yaml_spec "9.1.1" 202 "l-document-prefix"]
+def ScannerState.consumeBOM (s : ScannerState) : ScannerState :=
+  { s.advance with col := 0 }
+
 /-- Helper for advanceN using structural recursion on `n`.
 
     **Termination**: Structurally recursive on `n`. -/
@@ -250,6 +319,80 @@ def ScannerState.currentIndent (s : ScannerState) : Int :=
   | some e => e.column
   | none => -1
 
+/-- Mark the innermost indent level as holding a pending explicit key opened on
+    `line` (`scanKey`, after `pushMappingIndent` has made the `?`'s level the top).
+    `pendingKeys` runs in lockstep with `indents` (one slot per level). -/
+def ScannerState.markPendingKey (s : ScannerState) (line : Nat) : ScannerState :=
+  { s with pendingKeys := s.pendingKeys.set! (s.indents.size - 1) (some line) }
+
+/-- `pendingKeys` with the slot of the level at column `col` closed (its `:` value
+    indicator arrived, or a sibling entry at its column ended the entry).  `cols`
+    is the indent stack's columns, in lockstep with `pks`. -/
+def PendingKeys.closeAt (cols : Array Int) (pks : Array (Option Nat)) (col : Int) :
+    Array (Option Nat) :=
+  (Array.range pks.size).map fun i =>
+    if cols[i]? == some col then none else pks[i]?.getD none
+
+/-- Whether the `-` or `:` under the cursor is an indicator: followed by a blank or EOF
+    (the dispatcher's `isBlockEntryCandidate` / block-context `isValueCandidate` test). -/
+def PendingKeys.indicatorAt (c : Char) (next : Option Char) : Bool :=
+  (c == '-' || c == ':') && (match next with | some n => isBlankBool n | none => true)
+
+/-- The stale-key gate: the cursor at `col` with `c` under it (and `next` after it) ends the
+    entry of the level at column `m` — `col ≤ m`, a `-` indicator only strictly left of `m`,
+    a `:` indicator not at `m` itself (that `:` is its value); a non-indicator `-`/`:` is
+    content and closes like any other character. -/
+def PendingKeys.staleGate (col m : Int) (c : Char) (next : Option Char) : Bool :=
+  let ind := PendingKeys.indicatorAt c next
+  col ≤ m && (!(c == '-' && ind) || col < m) && !(c == ':' && ind && col == m)
+
+/-- `pendingKeys` with every level the gate closes emptied. -/
+def PendingKeys.closeStale (cols : Array Int) (pks : Array (Option Nat)) (col : Int)
+    (c : Char) (next : Option Char) : Array (Option Nat) :=
+  (Array.range pks.size).map fun i =>
+    match cols[i]? with
+    | some m => if PendingKeys.staleGate col m c next then none else pks[i]?.getD none
+    | none => pks[i]?.getD none
+
+/-- The innermost pending explicit key as the register pair `(line, column)`;
+    `(none, -1)` when no level holds one. -/
+def PendingKeys.innermost (cols : Array Int) (pks : Array (Option Nat)) : Option Nat × Int :=
+  match (Array.range pks.size).findSomeRev? (fun i =>
+      (pks[i]?.getD none).map fun l => (l, cols[i]?.getD (-1))) with
+  | some (l, c) => (some l, c)
+  | none => (none, -1)
+
+/-- Close the level at `col` and re-read the register: the new stack, then the
+    innermost pending key's `(line, column)` — the one triple a `:` that ends an
+    explicit entry writes. -/
+def PendingKeys.close (cols : Array Int) (pks : Array (Option Nat)) (col : Int) :
+    Array (Option Nat) × Option Nat × Int :=
+  (PendingKeys.closeAt cols pks col,
+   (PendingKeys.innermost cols (PendingKeys.closeAt cols pks col)).1,
+   (PendingKeys.innermost cols (PendingKeys.closeAt cols pks col)).2)
+
+/-- The indent stack's columns, in lockstep with `pendingKeys`. -/
+def ScannerState.indentColumns (s : ScannerState) : Array Int := s.indents.map (·.column)
+
+/-- Close the pending explicit key of the level at column `col`. -/
+def ScannerState.clearPendingKeyAt (s : ScannerState) (col : Int) : ScannerState :=
+  { s with pendingKeys := PendingKeys.closeAt s.indentColumns s.pendingKeys col }
+
+/-- Close every pending explicit key the content `c` under the cursor lands past
+    (`PendingKeys.closeStale`). -/
+def ScannerState.closeStaleAt (s : ScannerState) (c : Char) : ScannerState :=
+  { s with pendingKeys :=
+      PendingKeys.closeStale s.indentColumns s.pendingKeys s.col c (s.peekAt? 1) }
+
+/-- The innermost pending explicit key, as the register pair `(line, column)`;
+    `(none, -1)` when no level holds one. -/
+def ScannerState.innermostPendingKey (s : ScannerState) : Option Nat × Int :=
+  PendingKeys.innermost s.indentColumns s.pendingKeys
+
+/-- Re-read the explicit-key register off the pending-key stack (block context). -/
+def ScannerState.readPendingKey (s : ScannerState) : ScannerState :=
+  { s with explicitKeyLine := s.innermostPendingKey.1, explicitKeyCol := s.innermostPendingKey.2 }
+
 /-- Emit a token at the current scanner position. -/
 def ScannerState.emit (s : ScannerState) (tok : YamlToken) : ScannerState :=
   { s with tokens := s.tokens.push { pos := s.currentPos, val := tok } }
@@ -258,4 +401,13 @@ def ScannerState.emit (s : ScannerState) (tok : YamlToken) : ScannerState :=
 def ScannerState.emitAt (s : ScannerState) (pos : YamlPos) (tok : YamlToken) : ScannerState :=
   { s with tokens := s.tokens.push { pos := pos, val := tok } }
 
+/-- The `---` marker is on the current line (item 299): the read §9.1.1's three
+    block checks make (`scanBlockEntry`, `scanKey`, `scanValueValidate`), off
+    the `docStartLine` field `scanDocumentStart` writes. -/
+@[yaml_spec "9.1.1" 203 "c-directives-end"]
+def ScannerState.markerOnLine (s : ScannerState) : Bool :=
+  s.docStartLine == some s.line
+
 end L4YAML.Scanner
+
+end Blanket

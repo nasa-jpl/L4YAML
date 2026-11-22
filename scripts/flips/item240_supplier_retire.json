@@ -1,0 +1,83 @@
+{
+ "item": 240,
+ "tag": "SUPPLIER-RETIRE",
+ "rev": "d622b0ae",
+ "target": "",
+ "log": "scratch/flip240_supplier_retire.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "PARK",
+     "old": [
+      "  /-- Flow indicator scanned (`]`, `}`, `,`), or deferred block dispatch.",
+      "      Carries stream at block level. Closing requires grammar composition",
+      "      (flow collection + SSLComments) — deferred to consumption site. -/",
+      "  | pendingFlow (sp_start sp_block sp_scan : SurfPos)",
+      "      (h_stream : SLYamlStream sp_start sp_block)",
+      "      -- Item 77: the escape carries no grammar, but it does carry the ONE",
+      "      -- scanner fact every park has — see `pendingContent.h_arm`.",
+      "      -- **Item 222: at that field's FULL strength.**  Item 77 wrote the flag",
+      "      -- alone and item 80 gave the content parks the cleared key beside it; the",
+      "      -- escape kept the weak half for fourteen items because nothing had asked",
+      "      -- what the other half cost.  It costs one lemma",
+      "      -- (`arm_tight_of_block_dispatch`) at eight of the producer's nine",
+      "      -- entrances and a DELETED projection at the ninth, which had been",
+      "      -- discarding `content_park_arm`'s conjunct since item 77.  What it buys",
+      "      -- is that this park's `sc` footprint is now `pendingContent`'s, as an",
+      "      -- expression rather than as a census reading — see",
+      "      -- `Tests/Guards/Proofs/ArmStrengthLadder.lean` §5.",
+      "      (h_arm : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ 0 < sp_scan.col)",
+      "      -- **Item 139 does NOT give this park a `CompletedTail`**, and the reason is",
+      "      -- the constructor's own producer: `block_dispatch_deferred` is the block",
+      "      -- INDICATOR dispatch's escape, so the last real token behind this park is",
+      "      -- a `-`, `?` or `:` — `completesFlowValue`'s complement by construction,",
+      "      -- exactly as a `[96]` run is (item 102's split).  §9.2's landing refusal",
+      "      -- therefore stands aside on every input this park lands, and its fallback",
+      "      -- arm is not refutable at the landing.",
+      "      (h_nodir : sc.allowDirectives = false)",
+      "      -- **Item 206: the escape's park answers the landing's flag question**",
+      "      -- (LAST, so the patterns naming the older fields still bind them).  This",
+      "      -- is item 154's `pendingContent.h_nic0` at the park item 154 could not",
+      "      -- reach — and REQUIRED rather than optional, because every one of the",
+      "      -- producer's eleven entrances can take the measurement (NINE since item",
+      "      -- 209 refuted the compact class; both of its sites were block-indicator",
+      "      -- ones, so the split below is 8 + 1): ten are block",
+      "      -- indicators, which spend a column and so never park at a line start",
+      "      -- (`deferred_nic0_of_dispatch`), and the eleventh is the content",
+      "      -- dispatch, whose only line-start scan is the block scalar and reaches",
+      "      -- column 0 by consuming the break that ARMS the check",
+      "      -- (`content_park_nic_any`).",
+      "      (h_nic0 : sp_scan.col = 0 → sc.needIndentCheck = true)",
+      "      -- **Item 293 — the park reads `flag ∨ live`** (LAST): a block",
+      "      -- indicator leaves the flag up, and content at this park keeps a",
+      "      -- live key or ends armed, so a flow open here pushes a live key.",
+      "      (h_live0 : sc.simpleKeyAllowed = true ∨ sc.simpleKey.possible = true) :",
+      "      PendingNode sc false sp_start sp_block sp_scan",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    },
+    {
+     "name": "ARM",
+     "old": [
+      "  | pendingFlow =>",
+      "    -- Absorb opaque scanner content (flow/block indicators) via scannerDrop.",
+      "    exact SLYamlStream.scannerDrop sp_start sp_block sp_scan sp_mid h_stream h_ssl",
+      ""
+     ],
+     "new": [
+      ""
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

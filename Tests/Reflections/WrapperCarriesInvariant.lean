@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 353 — the WRAPPER of a position-navigator is NOT among its mechanical slice bricks
 
@@ -98,3 +103,5 @@ theorem invariant_separates_seq_from_map :
     domainAllows .seqNonempty ≠ domainAllows .mapNonempty := by decide
 
 end Tests.Reflections.WrapperCarriesInvariant
+
+end Blanket

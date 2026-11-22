@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 340 — an END-FREE gate underdetermines a window's CLOSE
 
@@ -145,3 +150,5 @@ theorem close_token_separates_three_ends :
 #guard get V 4 != get V 6                      -- yet only b = 6 is the close
 
 end Tests.Reflections.EndFreeGateUnderdeterminesClose
+
+end Blanket

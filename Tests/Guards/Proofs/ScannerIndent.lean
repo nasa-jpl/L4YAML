@@ -1,4 +1,12 @@
-import L4YAML.Proofs.Scanner.ScannerIndent
+module
+
+public import L4YAML.Proofs.Scanner.ScannerIndent
+
+
+
+public meta import L4YAML.Scanner.Whitespace
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerIndent
 
@@ -41,3 +49,5 @@ private def skipSpacesCol (input : String) : Nat :=
 #guard (ScannerState.mk' "a\nb").advance.advance.advance.col == 1
 
 end L4YAML.Proofs.ScannerIndent
+
+end Blanket

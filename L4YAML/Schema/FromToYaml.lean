@@ -1,6 +1,10 @@
-import L4YAML.Spec.Types
-import L4YAML.Schema.Schema
-import Std.Data.HashMap
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Schema.Schema
+public import Std.Data.HashMap
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -69,28 +73,29 @@ instance : FromYamlType Unit where
   fromYamlType? | .null => .ok ()
                 | v => .error (.expectedNull v)
 
+/-- A plain scalar carrying a Core Schema tag.  The tag records that the value is
+    a null / bool / int / float rather than a string that happens to spell one, so
+    the dumper can emit it bare (`true`, not `"true"`) and a reader applying the
+    Core Schema recovers the type. -/
+def coreScalar (tag : String) (content : String) : YamlValue :=
+  YamlValue.scalar { content, style := .plain, tag := some tag }
+
 instance : ToYaml Unit where
-  toYaml _ := YamlValue.scalar { content := "null", style := .plain }
+  toYaml _ := coreScalar "!!null" "null"
 
 instance : FromYamlType Bool where
   fromYamlType? | .bool b => .ok b
                 | v => .error (.expectedBoolean v)
 
 instance : ToYaml Bool where
-  toYaml b := YamlValue.scalar {
-    content := if b then "true" else "false",
-    style := .plain
-  }
+  toYaml b := coreScalar "!!bool" (if b then "true" else "false")
 
 instance : FromYamlType Int where
   fromYamlType? | .int n => .ok n
                 | v => .error (.expectedInteger v)
 
 instance : ToYaml Int where
-  toYaml n := YamlValue.scalar {
-    content := toString n,
-    style := .plain
-  }
+  toYaml n := coreScalar "!!int" (toString n)
 
 instance : FromYamlType Nat where
   fromYamlType? | .int n =>
@@ -99,19 +104,20 @@ instance : FromYamlType Nat where
                 | v => .error (.expectedInteger v)
 
 instance : ToYaml Nat where
-  toYaml n := YamlValue.scalar {
-    content := toString n,
-    style := .plain
-  }
+  toYaml n := coreScalar "!!int" (toString n)
 
 instance : FromYamlType String where
   fromYamlType? | .str s => .ok s
                 | v => .error (.expectedString v)
 
+/-- A string is plain unless the Core Schema would read its content as something
+    else (`true`, `null`, `42`, `1.5`, `""`): then it is double-quoted, which under
+    §10.3.2 pins it as a string.  So a `String` and a `Bool` never collide:
+    `toYaml "true"` is `"true"`, `toYaml true` is `!!bool true`. -/
 instance : ToYaml String where
   toYaml s := YamlValue.scalar {
     content := s,
-    style := .plain
+    style := if (resolveImplicit s).isStr then .plain else .doubleQuoted
   }
 
 instance : FromYamlType Float where
@@ -119,11 +125,15 @@ instance : FromYamlType Float where
                 | .int n => .ok (Float.ofInt n)
                 | v => .error (.expectedFloat v)
 
+/-- YAML spelling of a float: `toString` writes `NaN`/`inf`/`-inf`, which the Core
+    Schema does not recognize; §10.3.2 wants `.nan`/`.inf`/`-.inf`. -/
+def floatContent (f : Float) : String :=
+  if f.isNaN then ".nan"
+  else if f.isInf then (if f < 0 then "-.inf" else ".inf")
+  else toString f
+
 instance : ToYaml Float where
-  toYaml f := YamlValue.scalar {
-    content := toString f,
-    style := .plain
-  }
+  toYaml f := coreScalar "!!float" (floatContent f)
 
 /-! ## Collection Instances -/
 
@@ -164,7 +174,7 @@ instance {α : Type u} [FromYamlType α] : FromYamlType (Option α) where
                 | v => some <$> fromYamlType? v
 
 instance {α : Type u} [ToYaml α] : ToYaml (Option α) where
-  toYaml | none => YamlValue.scalar { content := "null", style := .plain }
+  toYaml | none => coreScalar "!!null" "null"
          | some a => toYaml a
 
 /-! ## Tuple (Pair) Instances -/
@@ -207,8 +217,7 @@ instance {α : Type} [FromYamlType α] : FromYamlType (Std.HashMap String α) wh
 
 instance {α : Type u} [ToYaml α] : ToYaml (Std.HashMap String α) where
   toYaml hm :=
-    let pairs := hm.toArray.map fun (k, v) =>
-      (YamlValue.scalar { content := k, style := .plain }, toYaml v)
+    let pairs := hm.toArray.map fun (k, v) => (toYaml k, toYaml v)
     YamlValue.mapping .block pairs
 
 /-- Direct `FromYaml` instance for `HashMap String String` without schema resolution.
@@ -243,3 +252,5 @@ instance {α : Type} [FromYaml α] : FromYaml (Std.HashMap String α) where
     | v => .error (.notAMapping v)
 
 end L4YAML.Schema
+
+end Blanket

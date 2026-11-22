@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 307 — the ROOT seed of a universal-over-gated-windows producer carries a DISCRIMINATOR the gate cannot supply
 
@@ -109,3 +114,5 @@ theorem outer_wrong_for_nested : ¬ (nestedWin.bal = outerWin.bal) := by decide
 example : Deliverable nestedWin := descentStep nestedWin ⟨2, true⟩ rfl rfl
 
 end Tests.Reflections.RootSeedDiscriminatorNotFromGate
+
+end Blanket

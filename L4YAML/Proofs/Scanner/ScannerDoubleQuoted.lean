@@ -1,8 +1,14 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Output.Emitter
-import L4YAML.Spec.CharPredicates
-import L4YAML.Spec.Grammar
-import L4YAML.Proofs.RoundTrip.RoundTrip
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Output.Emitter
+public import L4YAML.Spec.CharPredicates
+public import L4YAML.Spec.Grammar
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+
+public meta import L4YAML.Scanner.Scalar
+public meta import L4YAML.Scanner.State
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -265,3 +271,5 @@ lemma emitScalar_eq (content : String) :
     emitScalar content = "\"" ++ escapeString content ++ "\"" := rfl
 
 end L4YAML.Proofs.ScannerDoubleQuoted
+
+end Blanket

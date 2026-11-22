@@ -1,4 +1,10 @@
-import L4YAML.Proofs.Errors.EscapeResolution
+module
+
+public import L4YAML.Proofs.Errors.EscapeResolution
+
+
+public meta import L4YAML.Parser.Composition
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.EscapeResolution
 
@@ -34,4 +40,23 @@ private def parseScalar (s : String) : Option String :=
 #guard parseScalar "\"\\u03B1\"" == some "α"     -- \u03B1 → 'α' (Greek alpha)
 #guard parseScalar "\"\\uFFFD\"" == some "\uFFFD" -- \uFFFD → replacement char
 
+-- Surrogate escapes are rejected (§4 of the module docstring).  A lone surrogate is not a
+-- Unicode scalar value, so it cannot be a character of any scalar; `parseHexEscape` guards on
+-- `Nat.isValidChar`, which is `Char.ofNat`'s own precondition.  Before 2026-08-11 the guard was
+-- the weaker `< 0x110000`, so each of these was *accepted* and decoded to U+0000 via
+-- `Char.ofNat`'s substituting else-branch — silent corruption, not an error.
+#guard parseScalar "\"\\ud800\"" == none        -- first surrogate
+#guard parseScalar "\"\\udfff\"" == none        -- last surrogate
+#guard parseScalar "\"\\udbff\"" == none        -- mid-block high surrogate
+#guard parseScalar "\"\\U0000d800\"" == none    -- same code point, 8-digit form
+#guard parseScalar "\"\\uD83D\\uDE00\"" == none -- a UTF-16 pair is still two lone surrogates
+
+-- …and the block is a hole, not a ceiling: both neighbours and the top of the range decode.
+#guard parseScalar "\"\\ud7ff\"" == some "\ud7ff"           -- one below the block
+#guard parseScalar "\"\\ue000\"" == some "\ue000"           -- one above the block
+#guard parseScalar "\"\\U0010FFFF\"" == some (String.singleton (Char.ofNat 0x10FFFF))
+#guard parseScalar "\"\\U00110000\"" == none                -- past the end (unchanged)
+
 end L4YAML.Proofs.EscapeResolution
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflections 255 + 256 — reconcile an *unbounded* consumer quantifier with a *bounded* producer by recovering the missing bounds from the enclosing context's own boundary tokens (255 seq, 256 map mirror)
 
@@ -226,3 +231,5 @@ def badMap : List Tok := [MB, A, ME]
 theorem neg_no_ss_map : badMap[0]! ≠ Tok.SS := by decide
 
 end Tests.Reflections.BoundaryBoundRecovery
+
+end Blanket

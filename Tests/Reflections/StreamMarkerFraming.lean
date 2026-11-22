@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 584 — BIRTH PROBE for Front B's span-locality producer, FIRST scanner step (§5.14)
@@ -169,3 +173,5 @@ theorem vals_framing_shape (input : String) (ft : Array (Positioned YamlToken))
 #print axioms scanFiltered_vals_stream_framing
 
 end StreamMarkerFraming
+
+end Blanket

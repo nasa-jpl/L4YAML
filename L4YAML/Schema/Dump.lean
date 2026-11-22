@@ -1,10 +1,14 @@
-import L4YAML.Spec.Types
-import L4YAML.Schema.Schema
-import L4YAML.Schema.FromToYaml
-import L4YAML.Schema.Struct
-import L4YAML.Output.Dump
-import L4YAML.Output.Emitter
-import L4YAML.Parser.IndexedComposition
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.FromToYaml
+public import L4YAML.Schema.Struct
+public import L4YAML.Output.Dump
+public import L4YAML.Output.Emitter
+public import L4YAML.Parser.IndexedComposition
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -66,7 +70,8 @@ This is the primary user-facing serialization entry point.
 
 ## Example
 ```lean
-dumpTyped true           -- produces: "\"true\""
+dumpTyped true           -- produces: "true"
+dumpTyped "true"         -- produces: "\"true\"" (a string that spells a bool is quoted)
 dumpTyped (42 : Nat)     -- produces: "42"
 dumpTyped ["a", "b"]     -- produces: "- a\n- b"
 ```
@@ -225,3 +230,5 @@ open L4YAML.Emit
 
 
 end SchemaDumpGuards
+
+end Blanket

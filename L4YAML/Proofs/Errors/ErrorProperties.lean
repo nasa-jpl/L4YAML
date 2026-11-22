@@ -2,9 +2,14 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Schema.Schema
-import L4YAML.Schema.FromToYaml
-import L4YAML.Schema.Struct
+
+module
+
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.FromToYaml
+public import L4YAML.Schema.Struct
+
+@[expose] public section Blanket
 
 /-!
 # Error Type Properties
@@ -127,3 +132,5 @@ lemma fromYamlType_nat_error {t : Schema.YamlType} {e : SchemaError} :
   | _ => left; simp_all [fromYamlType?, FromYamlType.fromYamlType?]
 
 end L4YAML.Proofs.ErrorProperties
+
+end Blanket

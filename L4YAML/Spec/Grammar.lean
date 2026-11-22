@@ -2,10 +2,16 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Types
-import L4YAML.Token.Token
-import L4YAML.Spec.YamlSpec
-import L4YAML.Spec.CharPredicates
+
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Token.Token
+public import L4YAML.Spec.YamlSpec
+public meta import L4YAML.Spec.YamlSpec
+public import L4YAML.Spec.CharPredicates
+
+@[expose] public section Blanket
 
 /-!
 # Formal YAML Grammar
@@ -311,7 +317,20 @@ inductive ValidNode where
       YAML 1.2.2: `e-node ::= e-scalar`, `e-scalar ::= /* empty */`.
       The parser produces this for absent values (e.g., empty block entries). -/
   | emptyNode
+  /-- [104] c-ns-alias-node (§7.1; https://yaml.org/spec/1.2.2/#71-alias-nodes) — Alias node.
+      YAML 1.2.2: `c-ns-alias-node ::= "*" ns-anchor-name`.  An alias is one of
+      the spec's node forms, so a grammar derivation must be able to name it.
+      It survives composition only where no finite substitution exists for it —
+      §3.2.1.3's node that "has itself as a descendant (via an alias)", which
+      `YamlValue` cannot express by sharing — and the style-aware writer puts it
+      back on the wire as alias syntax (`Output/Dump.lean`: `"*" ++ name`).  The
+      canonical emitter is a different matter: `Output/Emitter.lean` routes it
+      through `emitScalar`, which double-quotes unconditionally, so `emit` writes
+      the *string* `"*x"` and no round-trip through `emit` recovers this
+      constructor. -/
+  | aliasNode (name : String)
 
+attribute [yaml_spec "7.1" 104 "c-ns-alias-node"] ValidNode.aliasNode
 attribute [yaml_spec "7.3.3" 131 "ns-plain(n,FLOW-OUT/BLOCK-KEY (also BLOCK-OUT, BLOCK-IN indirectly))"] ValidNode.plainScalarBlock
 attribute [yaml_spec "7.3.3" 131 "ns-plain(n,FLOW-IN/FLOW-KEY)"] ValidNode.plainScalarFlow
 attribute [yaml_spec "7.3.2" 120 "c-single-quoted(n,c)"] ValidNode.singleQuoted
@@ -511,6 +530,9 @@ inductive NodeToValue : ValidNode → YamlValue → Prop where
   /-- [72] e-node — empty node maps to the null plain scalar. -/
   | emptyNode :
       NodeToValue .emptyNode (.scalar ⟨"", .plain, none, none, none⟩)
+  /-- [104] c-ns-alias-node — an alias node maps to the alias value. -/
+  | aliasNode (name : String) :
+      NodeToValue (.aliasNode name) (.alias name)
 
 /--
 **The specification**: a string `s` is valid YAML producing value `v`.
@@ -565,6 +587,7 @@ def toYamlValue : ValidNode → YamlValue
   | .flowMap entries =>
       .mapping .flow (toYamlValuePairs entries).toArray none
   | .emptyNode => .scalar ⟨"", .plain, none, none, none⟩
+  | .aliasNode name => .alias name
 where
   /-- Map a list of nodes to a list of values. -/
   toYamlValueList : List ValidNode → List YamlValue
@@ -708,9 +731,14 @@ allows `.alias` nodes — because alias resolution happens during
 composition, and the raw parser output (serialization tree) may contain
 unresolved aliases.
 
-The bridging theorem `compose_scannable_to_grammable` (Phase C1) will
-prove that alias resolution + anchor stripping transforms a `Scannable`
-tree into a `Grammable` tree.
+Alias resolution plus anchor stripping carries a `Scannable` tree to a
+`Grammable` one exactly when no alias survives: `compose_grammable`
+(`Proofs/Parser/ParserGrammableBase.lean`) takes `AliasFree` on the input and
+routes through `Scannable_aliasFree_to_Grammable`.  Where an alias does survive
+— a node that has itself as a descendant via the alias, §3.2.1.3 — the chain
+ends in `Scannable` instead (`compose_scannable`, `ParserScannableBase.lean`),
+and `ParserSoundness.scannableValue_has_witness` carries it to a `ValidNode`
+witness.
 
 **YAML 1.2.2**: §3.2.2 — the serialization tree may contain alias nodes;
 the representation graph (post-compose) does not.
@@ -839,3 +867,5 @@ instance (c : Char) : Decidable (isContentChar c) := by
   unfold isContentChar; infer_instance
 
 end L4YAML.Grammar
+
+end Blanket

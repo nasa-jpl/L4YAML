@@ -23,6 +23,7 @@
  *      ffi/l4yaml_shim.c -o ffi/l4yaml_shim.o
  */
 
+#include "l4yaml.h"
 #include <lean/lean.h>
 #include <string.h>
 
@@ -81,7 +82,10 @@ extern lean_obj_res l4yaml_parse_limits_yaml_impl(lean_obj_arg yaml);
 extern lean_obj_res l4yaml_parse_dump_config_yaml_impl(lean_obj_arg yaml);
 extern uint8_t      l4yaml_config_result_is_ok_impl(lean_obj_arg result);
 extern lean_obj_res l4yaml_config_result_get_error_impl(lean_obj_arg result);
-extern lean_obj_res l4yaml_config_result_get_limits_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_config_result_get_limits_or_default_impl(lean_obj_arg result);
+extern uint8_t      l4yaml_dump_result_is_ok_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_dump_result_get_error_impl(lean_obj_arg result);
+extern lean_obj_res l4yaml_dump_result_get_output_impl(lean_obj_arg result);
 extern lean_obj_res l4yaml_parse_with_yaml_config_impl(lean_obj_arg input,
                                                            lean_obj_arg config_yaml);
 
@@ -250,8 +254,15 @@ uint8_t l4yaml_value_scalar_style(void *v) {
 }
 
 const char *l4yaml_value_string(void *v) {
+    size_t ignored_len;
+    return l4yaml_value_string_bytes(v, &ignored_len);
+}
+
+const char *l4yaml_value_string_bytes(void *v, size_t *len) {
     lean_inc((lean_object *)v);
     lean_object *s = l4yaml_value_as_string((lean_object *)v);
+    if (len)
+        *len = lean_string_size(s) - 1; /* Lean includes terminal C NUL */
     return capture_string(s);
 }
 
@@ -281,8 +292,12 @@ void *l4yaml_value_map_val(void *v, uint32_t i) {
 }
 
 void *l4yaml_value_lookup(void *v, const char *key) {
+    return l4yaml_value_lookup_bytes(v, key, strlen(key));
+}
+
+void *l4yaml_value_lookup_bytes(void *v, const char *key, size_t key_len) {
     lean_inc((lean_object *)v);
-    lean_object *lean_key = lean_mk_string(key);
+    lean_object *lean_key = lean_mk_string_from_bytes(key, key_len);
     lean_object *opt = l4yaml_value_lookup_raw((lean_object *)v, lean_key);
     /* Option.none = tag 0, Option.some = tag 1 */
     if (lean_obj_tag(opt) == 0) {
@@ -347,7 +362,7 @@ const char *l4yaml_config_error_message(void *r) {
 
 void *l4yaml_config_get_limits(void *r) {
     lean_inc((lean_object *)r);
-    return l4yaml_config_result_get_limits_impl((lean_object *)r);
+    return l4yaml_config_result_get_limits_or_default_impl((lean_object *)r);
 }
 
 void *l4yaml_parse_configured(const char *input, size_t len,
@@ -357,11 +372,35 @@ void *l4yaml_parse_configured(const char *input, size_t len,
     return l4yaml_parse_with_yaml_config_impl(lean_input, lean_config);
 }
 
-const char *l4yaml_dump_configured(void *v, const char *config_yaml,
-                                      size_t config_len) {
+/* Run the configured dump; returns an owned Except String String handle.
+ * Each dump_result_*_impl accessor consumes one reference to it. */
+static lean_object *dump_configured_result(void *v, const char *config_yaml,
+                                           size_t config_len) {
     lean_inc((lean_object *)v);
     lean_object *lean_config = lean_mk_string_from_bytes(config_yaml, config_len);
-    lean_object *s = l4yaml_dump_with_yaml_config_impl((lean_object *)v, lean_config);
+    return l4yaml_dump_with_yaml_config_impl((lean_object *)v, lean_config);
+}
+
+const char *l4yaml_dump_configured(void *v, const char *config_yaml,
+                                      size_t config_len) {
+    lean_object *r = dump_configured_result(v, config_yaml, config_len);
+    lean_inc(r);
+    if (!l4yaml_dump_result_is_ok_impl(r)) {
+        lean_dec(r);
+        return NULL;
+    }
+    lean_object *s = l4yaml_dump_result_get_output_impl(r);
+    return capture_string(s);
+}
+
+const char *l4yaml_dump_configured_error(void *v, const char *config_yaml,
+                                            size_t config_len) {
+    lean_object *r = dump_configured_result(v, config_yaml, config_len);
+    lean_object *s = l4yaml_dump_result_get_error_impl(r);
+    if (lean_string_size(s) <= 1) {
+        lean_dec(s);
+        return NULL;
+    }
     return capture_string(s);
 }
 

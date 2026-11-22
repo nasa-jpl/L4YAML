@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 468 — a `native_decide`/`#guard` satisfiability PROBE of `P(concrete)` whose proof factors
 # as `general_reduction (concrete_fact)` is itself a TEMPLATE for the general producer: only the
@@ -118,3 +123,5 @@ example : ¬ Whole [-1, 1] := by decide
 example : foldFrom (some 0) (([-1, 1] : List Int).take 1) = none := by decide
 
 end ProbeProofFactorsGeneralReduction
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 389 — a DOMAIN-RESTRICTED producer is REDUNDANT (off the critical path) when an existing
 sibling already serves the same universal WHOLE-DOMAIN via a strictly WEAKER guard.
@@ -78,3 +83,5 @@ theorem P_cannot_cover_U : ∃ n, GU n ∧ ¬ GP n := bridge_false
 #guard 6 % 2 == 0          -- yet inside the sibling's weaker guard GP' — so P' covers it
 
 end Tests.Reflections.WholeDomainSiblingViaWeakerGuard
+
+end Blanket

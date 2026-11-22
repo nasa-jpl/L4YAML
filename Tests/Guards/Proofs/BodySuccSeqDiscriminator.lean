@@ -1,6 +1,12 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+
+public meta import L4YAML.Proofs.Output.EmitterScannability.WellBracketed
+public meta import L4YAML.Proofs.Parser.ParserGrammableBase
+@[expose] public section Blanket
 
 /-!
 # `bodySucc` seq-vs-map discriminator probe (Reflection 297)
@@ -90,3 +96,5 @@ def enclosingMark (T : Array (Positioned YamlToken)) (opener : Nat) : Option Boo
 #guard enclosingMark probeToks 3 == some false   -- map window [3,7): enclosed by `{`
 
 end L4YAML.Proofs.EmitterScannability.BodySuccSeqDiscriminator
+
+end Blanket

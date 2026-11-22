@@ -48,6 +48,11 @@ What this file does:
   axiom-free; the omega-backed relay `aleqj_of_relay` carries only `[propext, Quot.sound]`).
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace AxisDualFromTypeAgnosticCore
 
 set_option autoImplicit false
@@ -215,3 +220,5 @@ end AxisDualFromTypeAgnosticCore
 /-- info: 'AxisDualFromTypeAgnosticCore.aleqj_of_relay' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms AxisDualFromTypeAgnosticCore.aleqj_of_relay
+
+end Blanket

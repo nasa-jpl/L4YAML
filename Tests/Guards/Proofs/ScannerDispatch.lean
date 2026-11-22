@@ -1,4 +1,14 @@
-import L4YAML.Proofs.Scanner.ScannerDispatch
+module
+
+public import L4YAML.Proofs.Scanner.ScannerDispatch
+
+
+
+
+public meta import L4YAML.Scanner.State
+public meta import L4YAML.Token.Token
+public meta import L4YAML.Scanner.Scanner
+@[expose] public section Blanket
 
 namespace L4YAML.Proofs.ScannerDispatch
 
@@ -656,3 +666,5 @@ private def multiStepProgress : Bool :=
   .blockEnd, .blockEnd, .streamEnd]
 
 end L4YAML.Proofs.ScannerDispatch
+
+end Blanket

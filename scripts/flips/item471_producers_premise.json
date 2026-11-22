@@ -1,0 +1,120 @@
+{
+ "item": 471,
+ "tag": "PRICE-471-PRODUCERS-PREMISE",
+ "rev": "ccb16f6e",
+ "target": "L4YAML",
+ "log": "scratch/price471_d.log",
+ "msgWidth": 110,
+ "rounds": 6,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "L1226.ImplicitKeyPack.chain",
+     "line": 1226,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L1906.PropsKeyPack.chain",
+     "line": 1906,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) ∧"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)) ∧"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34640.entryKeyPack.h_nodeV",
+     "line": 34799,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34660.h_cp_chain",
+     "line": 34819,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L34681.h_cp_chain",
+     "line": 34840,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35351.entryPropsKeyPack.h_nodeV",
+     "line": 35510,
+     "old": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+     ],
+     "new": [
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35364.h_cp_chain",
+     "line": 35523,
+     "old": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+     ],
+     "new": [
+      "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35452.h_cp_chain",
+     "line": 35611,
+     "old": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+     ],
+     "new": [
+      "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+     ],
+     "count": 1
+    },
+    {
+     "name": "L35937.content_dispatch_routed.h_chainUp",
+     "line": 36096,
+     "old": [
+      "    (h_alt : PackAlt s_prep)"
+     ],
+     "new": [
+      "    (h_alt : PackAlt s_prep)",
+      "    (h_chainUp : ∃ ns : List Nat, RegisterWitness.MarkedColsIn s_prep ns ∧ ∀ nv ∈ ns,",
+      "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_prep sp_i → GLit ':' sp_i sp_c →",
+      "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+      "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

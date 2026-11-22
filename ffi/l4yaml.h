@@ -171,9 +171,20 @@ uint8_t l4yaml_value_kind(l4yaml_value_t v);
 
 /*
  * Scalar content as a C string.  Returns "" for non-scalar values.
+ * Legacy NUL-terminated view: use l4yaml_value_string_bytes for
+ * strings that may contain embedded NUL characters.
  * See "String lifetime" note at the top of this header.
  */
 const char *l4yaml_value_string(l4yaml_value_t v);
+
+/*
+ * Length-aware scalar content, including embedded NUL bytes.  Writes the
+ * UTF-8 byte length (excluding the terminal C NUL) to *len if len is not
+ * NULL.  Pass NULL when the length is not needed.  The returned pointer
+ * has the same lifetime as l4yaml_value_string; copy before the
+ * next string-returning call.  Returns "" and length 0 for non-scalars.
+ */
+const char *l4yaml_value_string_bytes(l4yaml_value_t v, size_t *len);
 
 /*
  * Scalar presentation style: L4YAML_STYLE_PLAIN (0),
@@ -203,12 +214,21 @@ l4yaml_value_t l4yaml_value_map_key(l4yaml_value_t v, uint32_t i);
 l4yaml_value_t l4yaml_value_map_val(l4yaml_value_t v, uint32_t i);
 
 /*
- * Look up a mapping key by string content.
+ * Look up a mapping key by NUL-terminated string content (legacy API).
+ * Use l4yaml_value_lookup_bytes for keys that may contain embedded NUL.
  * Returns the associated YamlValue, or NULL if not found / not a mapping.
  * Caller must free a non-NULL result.
  */
 l4yaml_value_t l4yaml_value_lookup(l4yaml_value_t v,
                                          const char *key);
+
+/*
+ * Look up a mapping key by its exact UTF-8 bytes (including embedded NUL).
+ * The key_len bytes at key must be valid UTF-8.
+ * Returns an owned value handle, or NULL if absent / not a mapping.
+ */
+l4yaml_value_t l4yaml_value_lookup_bytes(l4yaml_value_t v,
+                                        const char *key, size_t key_len);
 
 /*
  * YAML tag string (e.g. "!!int", "!custom").
@@ -241,12 +261,22 @@ const char *l4yaml_dump_docs(l4yaml_docs_t docs);
 /*
  * Dump a YamlValue using a YAML-configured DumpConfig.
  * The config_yaml string is itself parsed (bootstrapping) with strict
- * limits.  Falls back to default DumpConfig on config parse error.
- * See "String lifetime" note.
+ * limits.  Returns NULL if config_yaml does not parse into a DumpConfig
+ * (no fallback to the default DumpConfig); l4yaml_dump_configured_error()
+ * gives the reason.  See "String lifetime" note.
  */
 const char *l4yaml_dump_configured(l4yaml_value_t v,
                                       const char *config_yaml,
                                       size_t config_len);
+
+/*
+ * Why l4yaml_dump_configured() returned NULL: the DumpConfig parse error
+ * for config_yaml, or NULL if config_yaml is valid.  Re-runs the config
+ * parse only.  See "String lifetime" note.
+ */
+const char *l4yaml_dump_configured_error(l4yaml_value_t v,
+                                            const char *config_yaml,
+                                            size_t config_len);
 
 /* ── Config deserialization (self-hosted) ────────────────────────── */
 
@@ -278,8 +308,10 @@ uint8_t l4yaml_config_is_ok(l4yaml_config_result_t r);
 const char *l4yaml_config_error_message(l4yaml_config_result_t r);
 
 /*
- * Extract the ParserLimits handle from a successful config parse.
- * Caller must free.  Returns default limits on error.
+ * Extract the ParserLimits handle from a ParserLimits config result.
+ * Caller must free.  Returns DEFAULT limits if the result is an error,
+ * indistinguishably from a config that spelled out the defaults — check
+ * l4yaml_config_is_ok() first.
  */
 void *l4yaml_config_get_limits(l4yaml_config_result_t r);
 
@@ -287,7 +319,8 @@ void *l4yaml_config_get_limits(l4yaml_config_result_t r);
  * Parse YAML with custom limits specified as a YAML config string.
  * Two-step bootstrap: parses the config YAML first (strict limits),
  * then parses the input with the resulting ParserLimits.
- * Falls back to default limits on config parse error.
+ * A config parse error is an error result ("config error: ..." from
+ * l4yaml_result_error_message()); the input is not parsed.
  */
 l4yaml_result_t l4yaml_parse_configured(const char *input, size_t len,
                                               const char *config_yaml,

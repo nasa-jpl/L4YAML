@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 292 — discharge a producer-guarded oracle by RECONSTRUCTING the descended guard
 in place from the locator's own facts, never by re-running the locating descend-lemma
@@ -138,3 +143,5 @@ theorem full_supplies_succ : Full [.opn, .cls, .sep] 0 2 :=
   ⟨by decide, Or.inr (by decide)⟩
 
 end Tests.Reflections.ProducerGuardedOracleReconstruct
+
+end Blanket

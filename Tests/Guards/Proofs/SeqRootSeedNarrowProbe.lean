@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Narrow-from-root coverage probe (de-risk for `seqRoot_seqInteriorSeparators`)
@@ -83,3 +87,5 @@ def T : Array (Positioned YamlToken) :=
 #guard coveredByRoot T 5 8 == true
 
 end L4YAML.Proofs.EmitterScannability.SeqRootSeedNarrowProbe
+
+end Blanket

@@ -1,10 +1,16 @@
-import L4YAML.Spec.Types
-import L4YAML.Schema.Schema
-import L4YAML.Schema.FromToYaml
-import L4YAML.Schema.Dump
-import L4YAML.Output.Dump
-import L4YAML.Output.Emitter
-import L4YAML.Parser.Composition
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.FromToYaml
+public meta import L4YAML.Schema.FromToYaml
+public import L4YAML.Schema.Dump
+public meta import L4YAML.Schema.Dump
+public import L4YAML.Output.Dump
+public import L4YAML.Output.Emitter
+public import L4YAML.Parser.Composition
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -67,11 +73,11 @@ open L4YAML.TokenParser
 `dumpTyped` produces expected output for each ToYaml instance.
 -/
 
-/-- Bool `true` serializes to auto-quoted `"true"`. -/
-lemma dumpTyped_true : dumpTyped true = "\"true\"" := by native_decide
+/-- Bool `true` serializes to the bare plain scalar `true`. -/
+lemma dumpTyped_true : dumpTyped true = "true" := by native_decide
 
-/-- Bool `false` serializes to auto-quoted `"false"`. -/
-lemma dumpTyped_false : dumpTyped false = "\"false\"" := by native_decide
+/-- Bool `false` serializes to the bare plain scalar `false`. -/
+lemma dumpTyped_false : dumpTyped false = "false" := by native_decide
 
 /-- Nat 0 serializes to `"0"`. -/
 lemma dumpTyped_nat_zero : dumpTyped (0 : Nat) = "0" := by native_decide
@@ -79,14 +85,23 @@ lemma dumpTyped_nat_zero : dumpTyped (0 : Nat) = "0" := by native_decide
 /-- Nat 42 serializes to `"42"`. -/
 lemma dumpTyped_nat_42 : dumpTyped (42 : Nat) = "42" := by native_decide
 
-/-- Int -7 serializes to `"-7"`. -/
-lemma dumpTyped_int_neg7 : dumpTyped (-7 : Int) = "\"-7\"" := by native_decide
+/-- Int -7 serializes to the plain scalar `-7`. -/
+lemma dumpTyped_int_neg7 : dumpTyped (-7 : Int) = "-7" := by native_decide
 
 /-- Int 100 serializes to `"100"`. -/
 lemma dumpTyped_int_100 : dumpTyped (100 : Int) = "100" := by native_decide
 
-/-- Unit serializes to auto-quoted `"null"`. -/
-lemma dumpTyped_unit : dumpTyped () = "\"null\"" := by native_decide
+/-- Unit serializes to the bare plain scalar `null`. -/
+lemma dumpTyped_unit : dumpTyped () = "null" := by native_decide
+
+/-- `none` serializes to the bare plain scalar `null`. -/
+lemma dumpTyped_none : dumpTyped (none : Option String) = "null" := by native_decide
+
+/-- A *string* that spells a reserved word stays a string: it is quoted. -/
+lemma dumpTyped_string_null : dumpTyped "null" = "\"null\"" := by native_decide
+
+/-- A *string* that spells a boolean stays a string: it is quoted. -/
+lemma dumpTyped_string_true : dumpTyped "true" = "\"true\"" := by native_decide
 
 /-- Simple string serializes as plain scalar. -/
 lemma dumpTyped_string_simple : dumpTyped "hello" = "hello" := by native_decide
@@ -275,3 +290,5 @@ Moved to `Tests/Guards/Proofs/SchemaDump.lean`.
 
 
 end L4YAML.Proofs.SchemaDump
+
+end Blanket

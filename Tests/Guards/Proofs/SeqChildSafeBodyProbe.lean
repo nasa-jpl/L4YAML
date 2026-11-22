@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # Child-`SafeBodyUnit` probe (de-risk for `(i'-b-child-safebodyunit)`)
@@ -76,3 +80,5 @@ def T : Array (Positioned YamlToken) :=
   if 6 < i then decide (flowBracketBalance T 6 i ≥ 1) else true
 
 end L4YAML.Proofs.EmitterScannability.SeqChildSafeBodyProbe
+
+end Blanket

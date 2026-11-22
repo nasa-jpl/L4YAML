@@ -2,17 +2,23 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Parser.Composition
-import L4YAML.Parser.IndexedComposition
-import L4YAML.Parser.TokenParserIx
-import L4YAML.Scanner.IndexedDispatch
-import L4YAML.Spec.Grammar
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
-import L4YAML.Proofs.Parser.IndexedComposition
-import L4YAML.Proofs.Parser.IndexedGrammable
-import L4YAML.Proofs.Parser.ParserCorrectness
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Soundness
+
+module
+
+public import L4YAML.Parser.Composition
+public import L4YAML.Parser.IndexedComposition
+public import L4YAML.Parser.TokenParserIx
+public import L4YAML.Scanner.IndexedDispatch
+public import L4YAML.Spec.Grammar
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness
+public import L4YAML.Proofs.Parser.IndexedComposition
+public import L4YAML.Proofs.Parser.IndexedGrammable
+public import L4YAML.Proofs.Parser.ParserCorrectness
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Soundness
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # End-to-End Correctness (P10.11c) — Indexed cutover (Phase 3 Step 6f.3b2.consume)
@@ -489,3 +495,5 @@ theorem parseStream_respects_grammar_unconditional
     tokens docs h_scan h_parse
 
 end L4YAML.Proofs.EndToEndCorrectness
+
+end Blanket

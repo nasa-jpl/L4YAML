@@ -3,10 +3,14 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Config.Limits
-import L4YAML.Output.Dump
-import L4YAML.Schema.FromToYaml
-import L4YAML.Schema.Struct
+module
+
+public import L4YAML.Config.Limits
+public import L4YAML.Output.Dump
+public import L4YAML.Schema.FromToYaml
+public import L4YAML.Schema.Struct
+
+@[expose] public section Blanket
 
 /-!
 # Config Deserialization — FromYaml/ToYaml instances for ParserLimits and DumpConfig
@@ -103,6 +107,7 @@ instance : FromYaml DumpConfig where
       allowReservedPlain := (← getFieldOpt pairs "allowReservedPlain").getD dflt.allowReservedPlain
       omitEmpty := (← getFieldOpt pairs "omitEmpty").getD dflt.omitEmpty
       compactSequenceMap := (← getFieldOpt pairs "compactSequenceMap").getD dflt.compactSequenceMap
+      plainCoreScalars := (← getFieldOpt pairs "plainCoreScalars").getD dflt.plainCoreScalars
     }
 
 instance : ToYaml DumpConfig where
@@ -114,7 +119,8 @@ instance : ToYaml DumpConfig where
     ("sortKeys", toYaml cfg.sortKeys),
     ("allowReservedPlain", toYaml cfg.allowReservedPlain),
     ("omitEmpty", toYaml cfg.omitEmpty),
-    ("compactSequenceMap", toYaml cfg.compactSequenceMap)
+    ("compactSequenceMap", toYaml cfg.compactSequenceMap),
+    ("plainCoreScalars", toYaml cfg.plainCoreScalars)
   ]
 
 /-! ## Parser Limits Types -/
@@ -286,3 +292,5 @@ def parseConfigYaml (α : Type) [FromYaml α] (input : String) : Except String �
   (fromYaml? yaml).mapError toString
 
 end L4YAML.Config
+
+end Blanket

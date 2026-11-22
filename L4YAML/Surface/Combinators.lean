@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
+
+module
+
+public import L4YAML.Init
+
+@[expose] public section Blanket
 
 /-!
 # Grammar Combinators for Surface Syntax
@@ -13,7 +18,12 @@ carries the remaining input characters and the current column number.
 
 Column tracking is essential for YAML's indentation-sensitive grammar:
 - Line breaks reset column to 0
-- Each consumed character increments column by 1
+- Each consumed character increments column by 1, with ONE exception: the
+  byte-order mark of `[202] l-document-prefix` is consumed at no column cost,
+  because it occupies no column.  Across the whole surface grammar that arm
+  is the only one whose column does not account for the characters it ate —
+  one of 167, machine-checked in `Tests/Guards/Proofs/ColumnAdvanceCensus.lean`
+  (DOCS item 234), which also refutes the law stated without the exception.
 - `s-indent(n)` requires consuming `n` spaces at column 0 → n
 - `c-forbidden` requires `---`/`...` at column 0
 -/
@@ -23,7 +33,8 @@ set_option autoImplicit false
 namespace L4YAML.Surface
 
 /-- Surface syntax position: remaining characters + current column (0-indexed).
-    Column resets to 0 after line breaks, increments by 1 per character consumed. -/
+    Column resets to 0 after line breaks, and otherwise increments by 1 per
+    character consumed except a byte-order mark, which costs no column. -/
 structure SurfPos where
   chars : List Char
   col : Nat
@@ -84,3 +95,5 @@ def GNot (P : SurfPos → SurfPos → Prop) (s : SurfPos) : Prop :=
   ∀ s' : SurfPos, ¬ P s s'
 
 end L4YAML.Surface
+
+end Blanket

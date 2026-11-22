@@ -1,8 +1,12 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
-import L4YAML.Proofs.Scanner.ScannerContracts
-import L4YAML.Proofs.Scanner.ScannerIndentStack
-import L4YAML.Proofs.Scanner.ScannerScalar
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+public import L4YAML.Proofs.Scanner.ScannerContracts
+public import L4YAML.Proofs.Scanner.ScannerIndentStack
+public import L4YAML.Proofs.Scanner.ScannerScalar
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -235,3 +239,4 @@ Verify that the full scan pipeline preserves WellFormed on document-heavy inputs
 
 end L4YAML.Proofs.ScannerDocument
 
+end Blanket

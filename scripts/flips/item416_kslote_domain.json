@@ -1,0 +1,51 @@
+{
+ "item": 416,
+ "tag": "KSLOTE-FLIP",
+ "rev": "55d03804",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/kslote_flip.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "FIELD",
+   "old": [
+    "      (h_kslotE : (∃ (ne nv : Nat), n = ne + 1 ∧",
+    "        ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →"
+   ],
+   "new": [
+    "      (h_kslotE : (∃ ne : Nat, n = ne + 1 ∧",
+    "        ∀ nv ∈ RegisterWitness.markedCols sc,",
+    "        ∀ sp_m : SurfPos, SBlockNode n .blockIn sp_node sp_m →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "HAVE",
+   "old": [
+    "              have h_kslotE_k : (∃ nv : Nat,",
+    "                  ∀ sp_m : SurfPos, SBlockNode (k + 1) .blockIn sp_node sp_m →"
+   ],
+   "new": [
+    "              have h_kslotE_k : (∀ nv ∈ RegisterWitness.markedCols sc,",
+    "                  ∀ sp_m : SurfPos, SBlockNode (k + 1) .blockIn sp_node sp_m →"
+   ],
+   "count": 1
+  },
+  {
+   "name": "PROOF",
+   "old": [
+    "                rcases h_kslotE_p with ⟨ne, nv, hne, r⟩ | h_alt",
+    "                · obtain rfl : ne = k := by omega",
+    "                  exact Or.inl ⟨nv, r⟩"
+   ],
+   "new": [
+    "                rcases h_kslotE_p with ⟨ne, hne, r⟩ | h_alt",
+    "                · obtain rfl : ne = k := by omega",
+    "                  exact Or.inl r"
+   ],
+   "count": 1
+  }
+ ]
+}

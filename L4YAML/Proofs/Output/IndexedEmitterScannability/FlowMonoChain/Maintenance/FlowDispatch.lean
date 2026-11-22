@@ -2,13 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Helpers
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.Helpers
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Maintenance.FlowDispatch` — Phase 3 Step 6f.3b3.flowmono.maintenance.flowdispatch
 
-**Sub-session 1 of `.flowmono.maintenance`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines ~3300–~4470 +
-~4689–5115, ~700 LOC contribution before substrate elimination).
+**Sub-session 1 of `.flowmono.maintenance`** (~700 legacy LOC contribution
+before substrate elimination).
 Per-flow-dispatcher state-field preservation, `flowLevel` change
 lemmas, and `lastRealTokenValIx?` push helpers.
 
@@ -22,7 +26,7 @@ analogs, each requiring an `unfold; simp only [advance_*, emit_*,
 ScannerState.emit]` step — and (b) **pipeline dispatch composition**
 — the `scanNextToken_via_{content,block}_dispatch` family that
 threads `scanNextToken_preprocess` → `dispatchStructural` →
-`allowDirectives` → `checkBlockFlowIndent` → `dispatchFlowIndicators`
+`allowDirectives` → `dispatchFlowIndicators`
 → `dispatchBlockIndicators` → `dispatchContent` for specific
 scenarios. We split these into two files so each stays tight:
 
@@ -68,20 +72,20 @@ variants ship here; End variants already live in
 
 ## Legacy mapping
 
-  | Section | Legacy lines     | Indexed counterpart           |
-  | ------- | ---------------- | ----------------------------- |
-  | §1      | 3793–3815        | `scanFlowSequenceStartIx_*`   |
-  | §2      | 5010–5032        | `scanFlowMappingStartIx_*`    |
-  | §3      | 4689–4711        | `scanFlowSequenceEndIx_*`     |
-  | §4      | 5066–5085        | `scanFlowMappingEndIx_*`      |
-  | §5      | n/a (legacy did not collate per-field) | `scanFlowEntryIx_*` |
-  | §6      | 4463–4527        | `lastRealTokenValIx_push_*`   |
-  | §7      | 4528–4551        | `saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow` |
+  | Section | Indexed counterpart |
+  | ------- | ------------------- |
+  | §1      | `scanFlowSequenceStartIx_*`   |
+  | §2      | `scanFlowMappingStartIx_*`    |
+  | §3      | `scanFlowSequenceEndIx_*`     |
+  | §4      | `scanFlowMappingEndIx_*`      |
+  | §5      | `scanFlowEntryIx_*` (legacy did not collate per-field) |
+  | §6      | `lastRealTokenValIx_push_*`   |
+  | §7      | `saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow` |
 
 ## Deferred to `.maintenance.pipeline`
 
 The dispatch return-value lemmas (`dispatchStructural_none_*`,
-`checkBlockFlowIndent_ok_*`, `dispatchFlowIndicators_*`,
+`dispatchFlowIndicators_*`,
 `dispatchBlockIndicators_none_*`) and pipeline composition
 (`scanNextTokenIx_via_{content,block}_dispatch[_error]`) ship in the
 sibling `Pipeline.lean` file.
@@ -117,7 +121,7 @@ variable {input : String}
   unfold scanFlowSequenceStartIx; rfl
 
 @[simp] lemma scanFlowSequenceStartIx_explicitKeyLine (s : ScannerStateIx input) :
-    (scanFlowSequenceStartIx s).explicitKeyLine = s.explicitKeyLine := by
+    (scanFlowSequenceStartIx s).explicitKeyLine = none := by
   unfold scanFlowSequenceStartIx; rfl
 
 @[simp] lemma scanFlowSequenceStartIx_allowDirectives (s : ScannerStateIx input) :
@@ -144,7 +148,7 @@ lemma scanFlowSequenceStartIx_flowLevel_eq (s : ScannerStateIx input) :
   unfold scanFlowMappingStartIx; rfl
 
 @[simp] lemma scanFlowMappingStartIx_explicitKeyLine (s : ScannerStateIx input) :
-    (scanFlowMappingStartIx s).explicitKeyLine = s.explicitKeyLine := by
+    (scanFlowMappingStartIx s).explicitKeyLine = none := by
   unfold scanFlowMappingStartIx; rfl
 
 @[simp] lemma scanFlowMappingStartIx_allowDirectives (s : ScannerStateIx input) :
@@ -174,7 +178,7 @@ lemma scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
   unfold scanFlowSequenceEndIx; rfl
 
 @[simp] lemma scanFlowSequenceEndIx_explicitKeyLine (s : ScannerStateIx input) :
-    (scanFlowSequenceEndIx s).explicitKeyLine = s.explicitKeyLine := by
+    (scanFlowSequenceEndIx s).explicitKeyLine = (s.explicitKeyStack.back?.getD (none, -1)).1 := by
   unfold scanFlowSequenceEndIx; rfl
 
 @[simp] lemma scanFlowSequenceEndIx_allowDirectives (s : ScannerStateIx input) :
@@ -182,7 +186,7 @@ lemma scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
   unfold scanFlowSequenceEndIx; rfl
 
 @[simp] lemma scanFlowSequenceEndIx_needIndentCheck (s : ScannerStateIx input) :
-    (scanFlowSequenceEndIx s).needIndentCheck = s.needIndentCheck := by
+    (scanFlowSequenceEndIx s).needIndentCheck = false := by
   unfold scanFlowSequenceEndIx; rfl
 
 /-! ## §4  `scanFlowMappingEndIx` field preservation -/
@@ -196,7 +200,7 @@ lemma scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
   unfold scanFlowMappingEndIx; rfl
 
 @[simp] lemma scanFlowMappingEndIx_explicitKeyLine (s : ScannerStateIx input) :
-    (scanFlowMappingEndIx s).explicitKeyLine = s.explicitKeyLine := by
+    (scanFlowMappingEndIx s).explicitKeyLine = (s.explicitKeyStack.back?.getD (none, -1)).1 := by
   unfold scanFlowMappingEndIx; rfl
 
 @[simp] lemma scanFlowMappingEndIx_allowDirectives (s : ScannerStateIx input) :
@@ -204,7 +208,7 @@ lemma scanFlowMappingStartIx_flowLevel_eq (s : ScannerStateIx input) :
   unfold scanFlowMappingEndIx; rfl
 
 @[simp] lemma scanFlowMappingEndIx_needIndentCheck (s : ScannerStateIx input) :
-    (scanFlowMappingEndIx s).needIndentCheck = s.needIndentCheck := by
+    (scanFlowMappingEndIx s).needIndentCheck = false := by
   unfold scanFlowMappingEndIx; rfl
 
 /-! ## §5  `scanFlowEntryIx` field preservation (`Except`-form)
@@ -235,9 +239,11 @@ lemma scanFlowEntryIx_preserves_indents
   all_goals (simp only [Except.ok.injEq] at h; subst h)
   all_goals rfl
 
-lemma scanFlowEntryIx_preserves_explicitKeyLine
+/-- The `,` CLEARS the explicit-key line (item 9l): `[150] ns-flow-pair`'s
+    explicit alternative is one entry, and the `,` starts the next one. -/
+lemma scanFlowEntryIx_clears_explicitKeyLine
     (s s' : ScannerStateIx input) (h : scanFlowEntryIx s = .ok s') :
-    s'.explicitKeyLine = s.explicitKeyLine := by
+    s'.explicitKeyLine = none := by
   unfold scanFlowEntryIx at h
   simp only [bind, Except.bind] at h
   repeat (any_goals (split at h))
@@ -281,8 +287,7 @@ for `.maintenance` consumers:
 /-- After pushing a non-`.placeholder` token onto a token stream,
     `lastRealTokenValIx?` returns the pushed token's value.
 
-    Indexed twin of legacy `lastRealTokenVal_push_non_ph`
-    (legacy line 4463). -/
+    Indexed twin of legacy `lastRealTokenVal_push_non_ph`. -/
 lemma lastRealTokenValIx_push_non_ph
     (ts : Indexed.TokenStream input)
     (t : IxToken input) (h_nph : t.token ≠ YamlToken.placeholder) :
@@ -313,8 +318,7 @@ lemma lastRealTokenValIx_push_non_ph
     token or reports `.placeholder` (when the original stream was
     empty or had only one slot).
 
-    Indexed twin of legacy `lastRealTokenVal_push_two_ph`
-    (legacy line 4480). -/
+    Indexed twin of legacy `lastRealTokenVal_push_two_ph`. -/
 lemma lastRealTokenValIx_push_two_ph
     (ts : Indexed.TokenStream input)
     (ph1 ph2 : IxToken input)
@@ -424,4 +428,42 @@ lemma saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow
     | inl h => exact h_last t h
     | inr h => subst h; exact ⟨by decide, by decide, by decide⟩
 
+/-! ## §8  `scanFlow{Sequence,Mapping}StartIx` last-real-token facts
+
+Used by the flow-opener step lemmas (Fix A) to re-establish the
+`completesFlowValue = false` invariant after opening a flow collection:
+the newly-emitted `.flow{Sequence,Mapping}Start` is the last real token,
+and it does not complete a flow value.  Indexed twins of
+`scanFlow{Sequence,Mapping}Start_lastRealTokenVal` (ScanSteps). -/
+
+/-- After `scanFlowSequenceStartIx`, the last real token is
+    `.flowSequenceStart`. -/
+lemma scanFlowSequenceStartIx_lastRealTokenVal (s : ScannerStateIx input) :
+    lastRealTokenValIx? (scanFlowSequenceStartIx s).tokens
+      = some YamlToken.flowSequenceStart := by
+  have h : (scanFlowSequenceStartIx s).tokens = s.tokens.push
+      (IxToken.mk' (input := input) s.cursor.pos YamlToken.flowSequenceStart
+        s.cursor.pos (Nat.le_refl _) s.cursor.posBound) := rfl
+  rw [h]
+  exact lastRealTokenValIx_push_non_ph s.tokens
+    (IxToken.mk' (input := input) s.cursor.pos YamlToken.flowSequenceStart
+      s.cursor.pos (Nat.le_refl _) s.cursor.posBound)
+    (show YamlToken.flowSequenceStart ≠ YamlToken.placeholder by decide)
+
+/-- After `scanFlowMappingStartIx`, the last real token is
+    `.flowMappingStart`. -/
+lemma scanFlowMappingStartIx_lastRealTokenVal (s : ScannerStateIx input) :
+    lastRealTokenValIx? (scanFlowMappingStartIx s).tokens
+      = some YamlToken.flowMappingStart := by
+  have h : (scanFlowMappingStartIx s).tokens = s.tokens.push
+      (IxToken.mk' (input := input) s.cursor.pos YamlToken.flowMappingStart
+        s.cursor.pos (Nat.le_refl _) s.cursor.posBound) := rfl
+  rw [h]
+  exact lastRealTokenValIx_push_non_ph s.tokens
+    (IxToken.mk' (input := input) s.cursor.pos YamlToken.flowMappingStart
+      s.cursor.pos (Nat.le_refl _) s.cursor.posBound)
+    (show YamlToken.flowMappingStart ≠ YamlToken.placeholder by decide)
+
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

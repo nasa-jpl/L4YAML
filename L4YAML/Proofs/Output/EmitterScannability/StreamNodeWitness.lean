@@ -3,8 +3,12 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Output.EmitterScannability.ValueLocality
-import L4YAML.Proofs.Output.EmitterScannability.ValuePurity
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ValueLocality
+public import L4YAML.Proofs.Output.EmitterScannability.ValuePurity
+
+@[expose] public section Blanket
 
 /-!
 # The standalone-stream node witness
@@ -420,3 +424,5 @@ lemma parseStream_single_doc_node_witness
            omega)
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

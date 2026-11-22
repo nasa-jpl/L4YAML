@@ -1,5 +1,10 @@
-import L4YAML
-import Tests.VerifiedResult
+module
+
+public import L4YAML
+public import Tests.VerifiedResult
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -415,7 +420,7 @@ def coveredIndentProductions : Array Nat :=
 
 /-! ## HTML Report Generation -/
 
-private def escapeHtml (s : String) : String :=
+def escapeHtml (s : String) : String :=
   s.replace "&" "&amp;"
    |>.replace "<" "&lt;"
    |>.replace ">" "&gt;"
@@ -425,7 +430,7 @@ private def escapeHtml (s : String) : String :=
 def repoSourceUrl : String :=
   "https://github.com/nasa-jpl/L4YAML/blob/main/"
 
-private def reportCss : String :=
+def reportCss : String :=
   "    :root {
       --color-covered: #4CAF50;
       --color-uncovered: #ff9800;
@@ -574,7 +579,7 @@ private def reportCss : String :=
     }
 "
 
-private def reportJs : String :=
+def reportJs : String :=
   "
     let currentStatusFilter = 'all';
     let currentChapterFilter = 'all';
@@ -649,14 +654,14 @@ private def reportJs : String :=
   "
 
 /-- Determine the display status for a production. -/
-private def productionStatus (p : YamlProduction) : String :=
+def productionStatus (p : YamlProduction) : String :=
   if p.status == "OOS" then "oos"
   else if p.status == "G" then "grammar"
   else if hasImplementation p.number then "covered"
   else "uncovered"
 
 /-- Badge HTML for a production status. -/
-private def statusBadge (status : String) : String :=
+def statusBadge (status : String) : String :=
   match status with
   | "covered"   => "<span class=\"badge badge-covered\">Covered</span>"
   | "grammar"   => "<span class=\"badge badge-grammar\">Grammar Only</span>"
@@ -665,7 +670,7 @@ private def statusBadge (status : String) : String :=
   | _           => ""
 
 /-- Format percentage to 1 decimal. -/
-private def formatPct (pct : Float) : String :=
+def formatPct (pct : Float) : String :=
   let scaled := (pct * 10.0 + 0.5).floor.toUInt64.toNat
   let whole := scaled / 10
   let frac  := scaled % 10
@@ -928,3 +933,5 @@ def collectTests : IO VerifiedSuiteResult := do
            tests := results }
 
 end Tests.ProdCoverage
+
+end Blanket

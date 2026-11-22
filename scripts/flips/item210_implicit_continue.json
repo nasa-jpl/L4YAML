@@ -1,0 +1,26 @@
+{
+ "item": 210,
+ "tag": "FLIP-210",
+ "rev": "HEAD",
+ "target": "",
+ "log": "scratch/flip210.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "files": [
+  {
+   "file": "L4YAML/Surface/Document.lean",
+   "patches": [
+    {
+     "name": "IMPLICIT_CONTINUE",
+     "old": [
+      "GOpt SLAnyDocument s₂ s₃ →"
+     ],
+     "new": [
+      "GOpt SLExplicitDocument s₂ s₃ →"
+     ],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

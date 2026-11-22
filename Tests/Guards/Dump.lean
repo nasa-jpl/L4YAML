@@ -1,4 +1,12 @@
-import L4YAML.Output.Dump
+module
+
+public import L4YAML.Output.Dump
+
+
+
+public meta import L4YAML.Spec.Types
+public meta import L4YAML.Output.Dump
+@[expose] public section Blanket
 
 namespace L4YAML.Dump
 
@@ -60,7 +68,8 @@ open L4YAML L4YAML.Dump
 #guard dump (.plainScalar "multi\nline") == "|\n  multi\n  line"
 #guard dump (.alias "anchor1") == "*anchor1"
 #guard dump (.scalar ⟨"value", .plain, none, some "a1", none⟩) == "&a1 value"
-#guard dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) == "!!int 42"
+#guard dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) == "42"
+#guard dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) { plainCoreScalars := false } == "!!int 42"
 #guard dump (.sequence .flow #[.plainScalar "a", .plainScalar "b"]) == "[a, b]"
 #guard dump (.mapping .flow #[(.plainScalar "k", .plainScalar "v")]) == "{k: v}"
 #guard dump (.sequence .flow #[]) == "[]"
@@ -252,3 +261,5 @@ a core-schema consumer resolves — survives a load→dump round trip. -/
   { scalarStyle := .preserve } == "\"line1\\nline2\""
 
 end L4YAML.Dump
+
+end Blanket

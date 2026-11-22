@@ -2,13 +2,15 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.IndexedDispatch
-import L4YAML.Parser.TokenParserIx
 
-/-! # `IndexedComposition` — Phase 3 Step 6e indexed pipeline (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 Step 6f cutover commit.
+public import L4YAML.Scanner.IndexedDispatch
+public import L4YAML.Parser.TokenParserIx
+
+@[expose] public section Blanket
+
+/-! # `IndexedComposition` — Phase 3 Step 6e indexed pipeline
 
 ## Role
 
@@ -198,3 +200,5 @@ def parseYamlWithCommentsIx (input : String) : Except ScanError (Array YamlDocum
   | .error e => .error e
 
 end L4YAML.TokenParser.Indexed
+
+end Blanket

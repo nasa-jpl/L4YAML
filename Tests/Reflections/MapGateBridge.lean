@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 514 — the map gate's enclosing-opener conjunct, reconstructed in place
 
 R513 landed the map separator carrier `MapInteriorSeparators` (the `some false` dual of the seq
@@ -114,3 +119,5 @@ end MapGateBridge
 /-- info: 'MapGateBridge.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms MapGateBridge.demo
+
+end Blanket

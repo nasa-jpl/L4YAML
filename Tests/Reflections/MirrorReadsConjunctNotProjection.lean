@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 464 — a flat→strengthened producer MIRROR is a pure TEXT-SWAP iff the flat proof reads
 # each per-item fact from the predicate's STANDALONE CONJUNCT, not from a PROJECTION off the per-item
@@ -243,3 +248,5 @@ theorem combined_split_is_zero_delta_mirror :
   ⟨And.left, And.right, And.left, And.right, And.left, And.right⟩
 
 end Tests.Reflections.MirrorReadsConjunctNotProjection
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 308 — factor the descent into a FROM-LOCATED assembler before authoring it; the locator's DIRECTION is the residual's true shape
 
@@ -113,3 +118,5 @@ def descendChild : Win → Option Win
 #guard locateEnclosing innerBody != none
 
 end Tests.Reflections.FromLocatedAssemblerDirection
+
+end Blanket

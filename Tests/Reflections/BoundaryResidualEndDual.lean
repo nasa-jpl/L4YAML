@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 299 — the boundary residual is the interior fact's END-dual, discharged vacuously
 
@@ -104,3 +109,5 @@ theorem trailing_sep_rejected :
     ubodyB [3, 0, 5, 0] = false ∧ endsInSepB [3, 0, 5, 0] = true := by decide
 
 end Tests.Reflections.BoundaryResidualEndDual
+
+end Blanket

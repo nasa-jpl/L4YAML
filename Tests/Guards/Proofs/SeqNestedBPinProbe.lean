@@ -1,6 +1,10 @@
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+
+@[expose] public section Blanket
 
 /-!
 # `b`-pinning probe — the window END is NOT pinned by `SeqTypedInterior`'s balance-0 (R356)
@@ -90,3 +94,5 @@ def floorOk (tokens : Array (Positioned YamlToken)) (a b : Nat) : Bool :=
 #guard B[8]!.val == .flowSequenceEnd
 
 end L4YAML.Proofs.EmitterScannability.SeqNestedBPinProbe
+
+end Blanket

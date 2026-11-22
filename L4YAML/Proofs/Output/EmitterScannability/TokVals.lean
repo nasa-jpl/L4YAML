@@ -3,8 +3,12 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Spec.Types
-import L4YAML.Token.Token
+module
+
+public import L4YAML.Spec.Types
+public import L4YAML.Token.Token
+
+@[expose] public section Blanket
 
 /-!
 # The value-determined token run of an emission
@@ -211,3 +215,5 @@ lemma mapTokVals_flowClean (l : List (YamlValue × YamlValue)) :
 end
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

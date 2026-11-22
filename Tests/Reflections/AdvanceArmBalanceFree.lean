@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 334 — the GENERAL ADVANCE arm is BALANCE-FREE once the caller supplies the decomposition
 
@@ -115,3 +120,5 @@ example : (3 : Nat) ≠ headEnd :=
     Tok.comma Tok.op headEnd 3 (by decide) (by decide) (by decide)
 
 end Tests.Reflections.AdvanceArmBalanceFree
+
+end Blanket

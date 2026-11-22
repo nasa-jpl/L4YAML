@@ -1,4 +1,10 @@
-import L4YAML.Output.Events
+module
+
+public import L4YAML.Output.Events
+
+
+public meta import L4YAML.Output.Events
+@[expose] public section Blanket
 
 /-!
 # Reflection — INHABITATION / BOUNDARY probe for the escaped-trailing-tab fix (matrix defect B2)
@@ -34,7 +40,7 @@ namespace EscapedTrailingTab
 open L4YAML.Events
 
 /-- The full event stream `streamToEvents` emits for `input`, or a fixed error marker. -/
-private def run (input : String) : String :=
+def run (input : String) : String :=
   match streamToEvents input with | .ok s => s | .error _ => "«parse-error»"
 
 /-! ## Rule 5 (positive) — the four inputs B2 fixes, grounded on real bytes
@@ -88,3 +94,5 @@ theorem de56_05_drops_literal_tab_and_spaces : run inDE56_05 = outDE56_05 := by 
 #print axioms de56_00_keeps_escaped_tab
 
 end EscapedTrailingTab
+
+end Blanket

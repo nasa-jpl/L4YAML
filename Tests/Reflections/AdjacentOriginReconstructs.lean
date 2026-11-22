@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 namespace Tests.Reflections.AdjacentOriginReconstructs
 
 set_option autoImplicit false
@@ -63,7 +68,7 @@ example : ∀ i, 2 < i → i ≤ 5 → bal δopen 2 i ≥ 1 :=
     have hz : bal δopen (2 + 1) i = 0 :=
       balFrom_zero δopen (2 + 1) (i - (2 + 1)) (fun k hk => by
         show (if k = 2 then (1 : Int) else 0) = 0
-        rw [if_neg (by omega)])
+        rw [ite_eq_right (by omega)])
     rw [hz]; decide)
 
 /-! ## NEGATIVE — the reconstruction is LOAD-BEARING on the boundary-token pin -/
@@ -82,3 +87,5 @@ example : ¬ (∀ i, 2 < i → i ≤ 5 → bal δflat 2 i ≥ 1) := fun h =>
   absurd (h 3 (by decide) (by decide)) (by decide)
 
 end Tests.Reflections.AdjacentOriginReconstructs
+
+end Blanket

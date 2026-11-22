@@ -1,5 +1,9 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -181,3 +185,5 @@ Verify the *behavior* of the whitespace functions, not just WellFormed.
 
 
 end L4YAML.Proofs.ScannerWhitespace
+
+end Blanket

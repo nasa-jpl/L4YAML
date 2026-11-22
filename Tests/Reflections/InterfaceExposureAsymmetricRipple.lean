@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 445 — clearing a recursive producer's DESCEND-edge obstruction (R444's ROUTE A) by EXPOSING
 # the hidden relation through a forwarded IH/callback interface has an ASYMMETRIC cost: O(chain length)
@@ -120,3 +125,5 @@ theorem r445_finding {lo0 hi0 lo hi : Nat} (h_cov : Covers lo0 hi0 lo hi) :
   ⟨fun _ _ h_lo h_hi => consume_descend h_cov h_lo h_hi, consume_advance h_cov⟩
 
 end Tests.Reflections.InterfaceExposureAsymmetricRipple
+
+end Blanket

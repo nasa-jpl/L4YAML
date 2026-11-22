@@ -2,13 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Indexed.TokenStream
-import L4YAML.Spec.YamlSpec
 
-/-! # `ParseStateIx` — Phase 3 Step 6a indexed parser state (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 Step 6f cutover commit.
+public import L4YAML.Indexed.TokenStream
+public import L4YAML.Spec.YamlSpec
+public import L4YAML.Parser.AnchorIndex
+
+public meta import L4YAML.Spec.YamlSpec
+@[expose] public section Blanket
+
+/-! # `ParseStateIx` — Phase 3 Step 6a indexed parser state
 
 ## Role
 
@@ -73,6 +77,19 @@ structure ParseStateIx (input : String) where
   pos : Nat := 0
   /-- Accumulated anchor definitions -/
   anchors : Array (String × YamlValue) := #[]
+  /-- Hash index of `anchors` (name → first binding); see `AnchorIndex`. -/
+  anchorIndex : AnchorIndex anchors := by exact AnchorIndex.empty
+  /-- Anchor names DECLARED by a `&` node property, whether or not the node the
+      property decorates has finished parsing.  §7.1's only error is an anchor
+      that does not *previously occur*, and §3.2.2.2 binds an alias to the most
+      recent event carrying the anchor — for a collection that is its START
+      event — so an alias may name the enclosing, still-open node (`&x [*x]`).
+      `anchors` cannot answer that question: it stores resolved VALUES and so
+      cannot exist before node finalization.  The scanner already keeps this
+      set under the name `definedAnchors`. -/
+  declaredAnchors : Array String := #[]
+  /-- Hash index of `declaredAnchors`; see `DeclaredIndex`. -/
+  declaredIndex : DeclaredIndex declaredAnchors := by exact DeclaredIndex.empty
   /-- Tag handle → prefix mapping declared via `%TAG` for the current document.
       §6.8.2.2: tag handles are local to the document.
       Each entry is `(handle, tagPrefix)` so `!handle!suffix` resolves to
@@ -120,6 +137,15 @@ def ParseStateIx.peekPos? {input : String} (ps : ParseStateIx input) :
     Option YamlPos :=
   ps.peekIx?.map (·.start)
 
+/-- Peek at the token one past the current one, without consuming.
+    Indexed twin of `ParseState.peekNext?` — used for the two-token
+    lookahead that distinguishes a scanner-inserted retroactive `key`
+    marker (`key` immediately followed by `value`) from a genuine next
+    map entry. -/
+def ParseStateIx.peekNext? {input : String} (ps : ParseStateIx input) :
+    Option YamlToken :=
+  (ps.tokens.get? (ps.pos + 1)).map (·.token)
+
 /-- Advance past the current token. -/
 def ParseStateIx.advance {input : String} (ps : ParseStateIx input) :
     ParseStateIx input :=
@@ -156,17 +182,81 @@ def ParseStateIx.tryConsume {input : String} (ps : ParseStateIx input)
   | some t => if BEq.beq t tok then (true, ps.advance) else (false, ps)
   | none => (false, ps)
 
+/-- Record that `&name` has occurred, before the node it decorates is complete.
+    Indexed twin of `L4YAML.ParseState.declareAnchor`. -/
+def ParseStateIx.declareAnchor {input : String} (ps : ParseStateIx input)
+    (name : String) : ParseStateIx input :=
+  { ps with declaredAnchors := ps.declaredAnchors.push name,
+            declaredIndex := ps.declaredIndex.push name }
+
+/-- `declareAnchor` writes only `declaredAnchors`; every other field, and so
+    every reading a positional proof takes, is untouched.  `declareAnchorOpt`
+    is its only caller, so these fire only under the node-properties stage. -/
+@[simp] lemma ParseStateIx.declareAnchor_pos {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).pos = ps.pos := rfl
+
+@[simp] lemma ParseStateIx.declareAnchor_tokens {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).tokens = ps.tokens := rfl
+
+@[simp] lemma ParseStateIx.declareAnchor_anchors {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).anchors = ps.anchors := rfl
+
+@[simp] lemma ParseStateIx.declareAnchor_tagHandles {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).tagHandles = ps.tagHandles := rfl
+
+@[simp] lemma ParseStateIx.declareAnchor_trackPositions {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).trackPositions = ps.trackPositions := rfl
+
+@[simp] lemma ParseStateIx.declareAnchor_nodePositions {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).nodePositions = ps.nodePositions := rfl
+
+@[simp] lemma ParseStateIx.declareAnchor_currentPath {input : String} (ps : ParseStateIx input) (name : String) :
+    (ps.declareAnchor name).currentPath = ps.currentPath := rfl
+
+/-- Declare the anchor a node's properties carry, if they carry one.
+
+    One application rather than a `match` at `parseNodeProperties`' tail, so
+    that the shape of its result — `.ok (props, state)` — is the shape every
+    proof about that stage already reasons about. -/
+def ParseStateIx.declareAnchorOpt {input : String} (ps : ParseStateIx input) :
+    Option String → ParseStateIx input
+  | none => ps
+  | some name => ps.declareAnchor name
+
+@[simp] lemma ParseStateIx.declareAnchorOpt_none {input : String}
+    (ps : ParseStateIx input) : ps.declareAnchorOpt none = ps := rfl
+
+@[simp] lemma ParseStateIx.declareAnchorOpt_some {input : String}
+    (ps : ParseStateIx input) (name : String) :
+    ps.declareAnchorOpt (some name) = ps.declareAnchor name := rfl
+
 /-- Register an anchor definition `&name` with its resolved value for alias lookup.
 
-    The value is resolved (aliases expanded from the current anchor map)
-    and stripped (anchor annotation removed) before storing.  This ensures:
+    The value is stripped (anchor annotation removed), adapted for any flow
+    context, and then resolved (aliases expanded from the current anchor map)
+    before storing.  This ensures:
     - Transitive alias chains resolve correctly (`*b → [*a, world] → [hello, world]`)
     - Anchor map values compare equal to plain values (no stale `anchor := some name`)
+
+    Cleaning runs on the raw value, *before* alias substitution, so it costs
+    O(size of the anchor's own syntax) and the substituted anchor values stay
+    shared rather than being rebuilt node by node.  Every stored value is
+    already a fixed point of `stripAnchors ∘ adaptForFlowContext`, so this is
+    the same value the resolve-first order produced
+    (`Algebra.Value.cleaned_resolveAliases_comm`); only the cost differs.
 -/
 def ParseStateIx.addAnchor {input : String} (ps : ParseStateIx input)
     (name : String) (val : YamlValue) : ParseStateIx input :=
-  let cleaned := ((val.resolveAliases ps.anchors).stripAnchors).adaptForFlowContext
-  { ps with anchors := ps.anchors.push (name, cleaned) }
+  let cleaned := (val.stripAnchors.adaptForFlowContext).resolveAliasesWith ps.anchorIndex.find?
+  { ps with anchors := ps.anchors.push (name, cleaned),
+            anchorIndex := ps.anchorIndex.push name cleaned }
+
+/-- `addAnchor` stores the value `resolveAliases` would compute (clean first, then resolve): the index
+    only changes how the first-match lookup is performed. -/
+@[simp] lemma ParseStateIx.addAnchor_anchors {input : String} (ps : ParseStateIx input) (name : String) (val : YamlValue) :
+    (ps.addAnchor name val).anchors =
+      ps.anchors.push (name, (val.stripAnchors.adaptForFlowContext).resolveAliases ps.anchors) := by
+  simp [ParseStateIx.addAnchor]
 
 /-! ## Node Properties -/
 
@@ -236,7 +326,14 @@ def parseNodeProperties {input : String} (ps : ParseStateIx input) :
       props := { props with tag := some fullTag }
       ps := ps.advance
     | _ => break
-  return (props, ps)
+  -- §3.2.2.2/§7.1: the anchor OCCURS at the node's start event, so it is
+  -- already visible to an alias INSIDE the node it decorates (`&x [*x]`).
+  -- The declaration is taken from the COMPUTED properties rather than from the
+  -- loop, because the start event carries only the last `&`: a superseded
+  -- `&a` in `&a &b` — which §6.9.2 tolerates on collection content — names no
+  -- node, and so must not become aliasable.  `addAnchor`'s value table answers
+  -- a different question and is written later, at `applyNodeFinalization`.
+  return (props, ps.declareAnchorOpt props.anchor)
 
 /-! ## Empty Node -/
 
@@ -248,6 +345,22 @@ def emptyNode : YamlValue :=
 
 /-! ## Node Finalization Helper -/
 
+/-- The G5c path segment a mapping key contributes; non-scalar keys read as `"0"`.
+    A named def so parser bodies carry no `match` for proofs to case-split. -/
+@[simp] def keyPathSegment (key : YamlValue) : String :=
+  match key with | .scalar s => s.content | _ => "0"
+
+/-- Attach `props` to a collection node that carries no properties yet.
+    Kept out of `applyNodeFinalization` so that its equation lemmas need no
+    case split on `val`. -/
+@[simp] def applyNodeProps (val : YamlValue) (props : NodeProperties) : YamlValue :=
+  match val with
+  | YamlValue.sequence style items none none =>
+    YamlValue.sequence style items props.tag props.anchor
+  | YamlValue.mapping style pairs none none =>
+    YamlValue.mapping style pairs props.tag props.anchor
+  | other => other
+
 /-- Apply node properties, register anchors, and record G5c positions.
 
     This is the pure tail of `parseNode` after content dispatch.
@@ -256,12 +369,7 @@ def emptyNode : YamlValue :=
 def applyNodeFinalization {input : String}
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) : (YamlValue × ParseStateIx input) :=
-  let val := match val with
-    | YamlValue.sequence style items none none =>
-      YamlValue.sequence style items props.tag props.anchor
-    | YamlValue.mapping style pairs none none =>
-      YamlValue.mapping style pairs props.tag props.anchor
-    | other => other
+  let val := applyNodeProps val props
   let ps := match props.anchor with
     | some name => ps.addAnchor name val
     | none => ps
@@ -302,3 +410,5 @@ def validateNodeProps {input : String} (ps : ParseStateIx input)
     | _ => throw (.duplicateAnchor ps.currentLine)
 
 end L4YAML.TokenParser.Indexed
+
+end Blanket

@@ -1,5 +1,9 @@
-import L4YAML.Output.Events
-import Tests.SuiteRunner.Meta
+module
+
+public import L4YAML.Output.Events
+public import Tests.SuiteRunner.Meta
+
+@[expose] public section Blanket
 
 /-!
 # Event / error structural scorer
@@ -28,15 +32,15 @@ open Tests.SuiteRunner
 
 /-- Drop leading spaces from a line (the yaml-test-suite `tree:` field indents
     events for readability; the canonical event stream is flat). -/
-private def leftTrim (s : String) : String :=
+def leftTrim (s : String) : String :=
   String.ofList (s.toList.dropWhile (· == ' '))
 
 /-- Normalize an event stream to a list of non-empty, left-trimmed lines. -/
-private def normEvents (s : String) : List String :=
+def normEvents (s : String) : List String :=
   (s.splitOn "\n").map leftTrim |>.filter (fun l => !l.isEmpty)
 
 /-- Read every `.yaml` file in the suite `src/` directory, sorted by id. -/
-private def readSrc (suiteDir : String) : IO (Array (String × String)) := do
+def readSrc (suiteDir : String) : IO (Array (String × String)) := do
   let entries ← System.FilePath.readDir (suiteDir ++ "/src")
   let mut files : Array (String × String) := #[]
   for entry in entries do
@@ -46,7 +50,7 @@ private def readSrc (suiteDir : String) : IO (Array (String × String)) := do
   return files.insertionSort (fun a b => a.1 < b.1)
 
 /-- 1.3-specific tests whose 1.2.2 tree we still handle (see SuiteRunner/Main). -/
-private def yaml13Include : List String := ["6VJK", "7T8X", "MJS9", "M9B4"]
+def yaml13Include : List String := ["6VJK", "7T8X", "MJS9", "M9B4"]
 
 def main (args : List String) : IO UInt32 := do
   let detailsPath : Option String := do
@@ -144,3 +148,5 @@ def main (args : List String) : IO UInt32 := do
     IO.println s!"  Per-test details written to {p}"
   | none => pure ()
   return 0
+
+end Blanket

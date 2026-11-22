@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 500 — a *forced second projection* dissolves under a weaker→fuller COERCION
 
 R499 predicted that when a weaker-guard twin's CONSUMER **unifies** a residual the strong consumer
@@ -83,3 +88,5 @@ theorem head_condition_load_bearing :
   ⟨by intro x hx; simp at hx, by intro h; exact absurd (h false (by simp)) (by decide)⟩
 
 end CoercionDissolvesForcedProjection
+
+end Blanket

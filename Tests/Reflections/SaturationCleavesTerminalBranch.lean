@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 381 — a window-search recursion's TERMINAL (separator-free) branch is cleaved by
 container SATURATION; SHORT separator-free entries close VACUOUSLY by slice arithmetic, with no
@@ -125,3 +130,5 @@ def producingMoves (terminal : Bool) : Nat := if terminal then 2 else 3
 #guard !decide (producingMoves true == producingMoves false)
 
 end Tests.Reflections.SaturationCleavesTerminalBranch
+
+end Blanket

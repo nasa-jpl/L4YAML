@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 469 — a residual named "preserve invariant `I` across a single located edge `X`"
 # can hide a FRAME-TO-REACH component: the located position is NOT adjacent to the window origin
@@ -152,3 +157,5 @@ example : ¬ AllSeq ([Tok.lbrack] ++ Tok.lbrack :: [Tok.rbrack, Tok.rbrack]) := 
   exact hne (Option.some.inj hf).symm
 
 end ResidualIsCompositionOfLandedEdges
+
+end Blanket

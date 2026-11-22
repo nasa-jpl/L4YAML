@@ -28,6 +28,11 @@ and shows the cross-deliverable draw concretely: from inside the A-half a `BodyB
 reachable off the joint oracle's `.2`.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 namespace JointNavigatorDriverCrossDeliverable
 
 set_option autoImplicit false
@@ -171,3 +176,5 @@ end JointNavigatorDriverCrossDeliverable
 /-- info: 'JointNavigatorDriverCrossDeliverable.demo' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
 #print axioms JointNavigatorDriverCrossDeliverable.demo
+
+end Blanket

@@ -3,6 +3,11 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 243 — universal packaging is its own consumer joint
 
@@ -128,3 +133,5 @@ theorem joint_composes : P 2 6 :=
 #guard decide (opener 2) = true      -- the recoverable half is true regardless of `entry`
 
 end UniversalPackagingJoint
+
+end Blanket

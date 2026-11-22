@@ -1,0 +1,34 @@
+{
+ "item": 374,
+ "tag": "RESUMECTX-SEQTOP",
+ "rev": "d11be705",
+ "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+ "target": "L4YAML",
+ "log": "scratch/374-flip-resumectx-seqtop.log",
+ "msgWidth": 100,
+ "rounds": 1,
+ "patches": [
+  {
+   "name": "P1",
+   "old": [
+    "  ((∃ (k : Nat) (ks : List FrameLevel) (sp_land : SurfPos),"
+   ],
+   "new": [
+    "  (  ((∃ (k : Nat) (ks : List FrameLevel) (sp_land : SurfPos),"
+   ],
+   "count": 1
+  },
+  {
+   "name": "P2",
+   "old": [
+    "    s_prep.simpleKey.possible = true ∧",
+    "    s_prep.simpleKey.pos = s_prep.currentPos) ∨ True"
+   ],
+   "new": [
+    "    s_prep.simpleKey.possible = true ∧",
+    "    s_prep.simpleKey.pos = s_prep.currentPos) ∨ SeqTopKey s_prep) ∨ True"
+   ],
+   "count": 1
+  }
+ ]
+}

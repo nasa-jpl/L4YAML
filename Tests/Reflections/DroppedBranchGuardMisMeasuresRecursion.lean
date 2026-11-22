@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 473 — a width-recursion producer that DROPS the BRANCH-GUARD selecting its own
 # sub-case MIS-DIAGNOSES its recursion MEASURE.  The dropped guard, restored, BOTH excludes the
@@ -139,3 +144,5 @@ example : r472_thenBranch_frameWidth 2 6 = 6 := rfl
 example : r472_thenBranch_frameWidth 2 6 = bodyWidth 2 6 + 2 := rfl
 
 end DroppedBranchGuardMisMeasuresRecursion
+
+end Blanket

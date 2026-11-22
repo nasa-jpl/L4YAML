@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 586 — locality-reduction consumer joint (§5.16): retype the two Front-B frontier sorries
@@ -171,3 +175,5 @@ theorem locality_reduces_map
 #print axioms grammable_to_block
 
 end LocalityReductionJoint
+
+end Blanket

@@ -3,10 +3,15 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Algebra.Value
-import L4YAML.Algebra.Schema
-import L4YAML.Algebra.Equivalence
-import L4YAML.Algebra.AnchorMap
+module
+
+public import L4YAML.Algebra.Value
+public import L4YAML.Algebra.Schema
+public import L4YAML.Algebra.Equivalence
+public import L4YAML.Algebra.AnchorMap
+public import L4YAML.Proofs.Schema.FlowIndicator
+
+@[expose] public section Blanket
 
 /-! # Idempotence Capstone  (Algebra Item 4)
 
@@ -259,18 +264,31 @@ lemma resolve_stripAnchors (v : YamlValue) :
 termination_by sizeOf v
 decreasing_by yaml_decreasing
 
-/-- `resolve` is invariant under `adaptForFlowContext`: style is
-    metadata that resolution never reads (resolution depends on
-    `content` and `tag` only). -/
+/-- `resolve` is invariant under `adaptForFlowContext`.  Resolution reads the
+    style of an untagged scalar (a quoted scalar is a string, §10.3.2), and
+    `adaptForFlowContext` quotes exactly the plain scalars whose content holds a
+    flow indicator — so invariance rests on no Core Schema spelling of null,
+    bool, int or float containing `,[]{}`, which is
+    `resolveImplicit_of_hasFlowIndicator`. -/
 lemma resolve_adaptForFlowContext (v : YamlValue) :
     resolve v.adaptForFlowContext = resolve v := by
   match v with
   | .scalar s =>
     -- adaptForFlowContext either returns `.scalar { s with style := .doubleQuoted }`
-    -- or `.scalar s` (an `if`-split). Both branches preserve `content` and
-    -- `tag`, so `resolveScalar content tag` is unchanged.
+    -- (plain content with a flow indicator) or `.scalar s`.  Tagged scalars
+    -- resolve through the tag either way; an untagged one resolves to a string
+    -- either way, by `resolveImplicit_of_hasFlowIndicator`.
     simp only [adaptForFlowContext_scalar']
-    split <;> rfl
+    split
+    · rename_i h
+      simp only [Bool.and_eq_true] at h
+      have hdq : (ScalarStyle.doubleQuoted == ScalarStyle.plain) = false := rfl
+      show scalarType _ = scalarType s
+      unfold scalarType
+      cases ht : s.tag
+      · simp [h.1, hdq, resolveImplicit_of_hasFlowIndicator s.content h.2]
+      · simp
+    · rfl
   | .alias _ => rfl
   | .sequence style items tag anchor =>
     show
@@ -460,3 +478,5 @@ inventory frozen. Phase 1 remains closed.
 -/
 
 end L4YAML.Algebra.Idempotence
+
+end Blanket

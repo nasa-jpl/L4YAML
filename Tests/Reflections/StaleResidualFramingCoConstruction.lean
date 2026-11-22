@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 443 — a queued "the residual is the LOCATE/PRODUCE half" framing can be STALE: re-read the
 # landed code before authoring it.  The locate may already be landed AND folded; the genuine residual a
@@ -110,3 +115,5 @@ theorem framing_payoff {Carrier Deliv : Nat → Prop}
   ⟨fun W h => bridge assemble W h, fun W => carrier_closed assemble producer W⟩
 
 end Tests.Reflections.StaleResidualFramingCoConstruction
+
+end Blanket

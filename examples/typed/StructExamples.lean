@@ -1,4 +1,8 @@
-import LeanYaml
+module
+
+public import LeanYaml
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -254,3 +258,5 @@ end StructExamples
 
 -- Top-level main function for the executable
 def main : IO Unit := StructExamples.main
+
+end Blanket

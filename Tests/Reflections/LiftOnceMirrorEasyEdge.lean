@@ -34,6 +34,12 @@ only the head-seating field.
     UN-gated separator field is exactly the missing piece (it rejects the bad stream).  The gate is the
     projection's cost R291 says not to re-pay on the lifted edge.
 -/
+
+module
+
+
+@[expose] public section Blanket
+
 set_option autoImplicit false
 
 namespace Tests.Reflections.LiftOnceMirrorEasyEdge
@@ -214,3 +220,5 @@ theorem not_deep_neg : ¬ Deep hdNeg 0 4 := by
 #guard hdNeg 2 = Tok.sep
 
 end Tests.Reflections.LiftOnceMirrorEasyEdge
+
+end Blanket

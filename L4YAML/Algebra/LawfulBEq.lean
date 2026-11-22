@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Completeness
+
+module
+
+public import L4YAML.Proofs.Completeness
+
+@[expose] public section Blanket
 
 /-!
 # LawfulBEq Instances  (Algebra Item 23)
@@ -268,3 +273,5 @@ instance : LawfulBEq YamlValue where
   eq_of_beq h := beqYamlValue_eq _ _ h
 
 end L4YAML.Algebra.LawfulBEq
+
+end Blanket

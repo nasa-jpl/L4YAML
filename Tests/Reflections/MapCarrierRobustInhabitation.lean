@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.SeqInteriorSeparators
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 541 — INHABITATION PROBE for the boundary-robust map carrier `MapInteriorSeparators'`
@@ -190,7 +194,7 @@ arm to confirm the robust output it produces is genuine, not the window-close es
 
 /-- Positioned-token helper: wrap a `YamlToken` with a `default` position (the position is irrelevant
     to `MapGrammarFacts`, which inspects only `.val`). -/
-private def pt (t : YamlToken) : Positioned YamlToken := { pos := default, val := t }
+def pt (t : YamlToken) : Positioned YamlToken := { pos := default, val := t }
 
 /-- The canonical `{a: 1}` flow-map token stream — `{`, `.key`, `scalar "a"`, `.value`, `scalar "1"`,
     `}` (indices 0–5). The complete map BODY is the window `[1, 5)` (strictly between the braces);
@@ -338,7 +342,7 @@ not correspond to any emitted map): the `#guard` proves `fixtureMapSeqVal`'s val
 stays caught until the guarded conjuncts land. -/
 
 /-- Plain scalar value helper. -/
-private def sc (s : String) : YamlValue := .scalar { content := s, style := .plain }
+def sc (s : String) : YamlValue := .scalar { content := s, style := .plain }
 
 /-- `{a: [1], b: 2}` — the smallest map exercising conjunct 5 at an interior (non-window-close) closer:
     a bracket-valued FIRST entry followed by a second entry, so the value's `]` closer has `j + 1 ≠ b`. -/
@@ -1225,7 +1229,7 @@ theorem value_bracket_succ_guarded_fires_bracketVal :
 /-- The fixture body's recursive structure as an explicit `RecMapBody` shape: two pairs
     (`"a":["1"]`, `"b":"2"`) separated by the depth-0 `.flowEntry`, the first value a `RecSeqEntry.seq`.
     `abbrev` (reducible) so the constructor `apply`s and the window `decide` see the `++`/`::` spine. -/
-private abbrev interiorMapSeqVal : List (Positioned YamlToken) :=
+abbrev interiorMapSeqVal : List (Positioned YamlToken) :=
   (pt .key :: ([pt (.scalar "a" .doubleQuoted)] ++ pt .value ::
       (pt .flowSequenceStart :: ([pt (.scalar "1" .doubleQuoted)] ++ [pt .flowSequenceEnd]))))
     ++ pt .flowEntry ::
@@ -2321,3 +2325,5 @@ theorem mapPairSkeleton_locate_real_scalarKey_tight :
 #print axioms mapRoot_mapInteriorSeparators''_bracketVal
 
 end MapCarrierRobustInhabitation
+
+end Blanket

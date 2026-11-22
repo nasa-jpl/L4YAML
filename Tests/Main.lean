@@ -1,5 +1,9 @@
-import L4YAML.Spec.Types
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Spec.Types
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -83,3 +87,5 @@ def collectTests : IO VerifiedSuiteResult := do
   return { name := "tests", label := "Unit Tests", sourceFile := "Tests/Main.lean", tests := results }
 
 end Tests
+
+end Blanket

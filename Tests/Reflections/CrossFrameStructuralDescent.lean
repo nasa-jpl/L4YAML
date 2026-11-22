@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 508 — the cross-frame structural descent reaches what a path-gated walk cannot
 
 R507 ([[ProducerGateCoversFragment]]) found that the spine-walk seq navigator's gate
@@ -128,3 +133,5 @@ theorem demo :
   ⟨rfl, ⟨by decide, rfl⟩, rfl⟩
 
 end CrossFrameStructuralDescent
+
+end Blanket

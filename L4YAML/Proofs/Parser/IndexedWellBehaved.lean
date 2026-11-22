@@ -2,19 +2,31 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.ParseStateIx
-import L4YAML.Parser.FuelIx
-import L4YAML.Parser.TokenParserIx
-import L4YAML.Proofs.Production.ScannerPlainScalarValid
-import L4YAML.Proofs.Composition
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.Parser.ParserGrammableBase
 
-/-! # `IndexedWellBehaved` — Phase 3 Step 6d.1b indexed infrastructure (staging)
+module
 
-**Status**: staging file. Not imported by `L4YAML.lean` until the
-Phase 3 Step 6f cutover commit (Guardrail 1).
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.ParseStateIx
+public import L4YAML.Parser.FuelIx
+public import L4YAML.Parser.TokenParserIx
+public import L4YAML.Proofs.Production.ScannerPlainScalarValid
+public import L4YAML.Proofs.Composition
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.Parser.ParserGrammableBase
+
+-- `unfold Std.Legacy.Range.forIn'` needs that body, which core does not expose
+-- to a module consumer.  `import all` of its DECLARING module unseals it and
+-- is private in scope, so nothing reaches this module's own importers.
+import all Init.Data.Range.Basic
+-- This module's `elab` bodies are `meta` definitions, while the helpers they
+-- call are ordinary code that the library also uses at runtime.  A declaration
+-- carries one phase and the `meta` modifier cannot be dropped retroactively,
+-- so mixed references inside this module need to be permitted explicitly.
+set_option compiler.relaxedMetaCheck true
+
+@[expose] public section Blanket
+
+/-! # `IndexedWellBehaved` — Phase 3 Step 6d.1b indexed infrastructure
 
 ## Scope of Step 6d.1b (this commit)
 
@@ -521,27 +533,24 @@ lemma applyNodeFinalization_tokens_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.tokens = ps.tokens := by
-  simp only [applyNodeFinalization, ParseStateIx.addAnchor]
-  split <;> simp_all
-  all_goals (split <;> simp_all)
+  simp only [applyNodeFinalization]
+  split <;> (try split) <;> simp_all [ParseStateIx.addAnchor]
 
 /-- `applyNodeFinalization` preserves the parse position. -/
 lemma applyNodeFinalization_pos_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.pos = ps.pos := by
-  simp only [applyNodeFinalization, ParseStateIx.addAnchor]
-  split <;> simp_all
-  all_goals (split <;> simp_all)
+  simp only [applyNodeFinalization]
+  split <;> (try split) <;> simp_all [ParseStateIx.addAnchor]
 
 /-- `applyNodeFinalization` preserves `trackPositions`. -/
 lemma applyNodeFinalization_trackPositions_ix
     (val : YamlValue) (ps : ParseStateIx input) (props : NodeProperties)
     (nodeStartPos : YamlPos) :
     (applyNodeFinalization val ps props nodeStartPos).2.trackPositions = ps.trackPositions := by
-  simp only [applyNodeFinalization, ParseStateIx.addAnchor]
-  split <;> simp_all
-  all_goals (split <;> simp_all)
+  simp only [applyNodeFinalization]
+  split <;> (try split) <;> simp_all [ParseStateIx.addAnchor]
 
 /-! ### §5e′  parseNodeProperties preservation lemmas — Indexed
 
@@ -1279,10 +1288,35 @@ lemma parseBlockMappingEntryValue_wb_ix (tokens : Indexed.TokenStream input)
       have h_wb := parseNodeWBIx_apply h_ih h_tc_tok h_ok (by omega)
       exact ⟨h_wb.1, fun h_flow => h_wb.2.1 (h_tc_fn ▸ h_flow),
              h_wb.2.2.1.trans h_tc_fn, h_wb.2.2.2⟩)
-  · obtain ⟨rfl, rfl⟩ := h_ok
-    exact ⟨empty_scalar_scannable none none false,
-           fun _ => empty_scalar_scannable none none true,
-           h_tc_fn, h_tc_tok⟩
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Extend the flowNesting/tokens facts across the skipped retroactive `key`
+    -- and the consumed `:` (both non-flow tokens, so nesting is preserved).
+    have hB_tok : ((ps.tryConsume .value).2.tryConsume .key).2.tokens = tokens :=
+      (tryConsume_tokens_ix _ .key).trans h_tc_tok
+    have hC_tok : (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.tokens = tokens :=
+      (tryConsume_tokens_ix _ .value).trans hB_tok
+    have hB_fn : flowNestingIx tokens ((ps.tryConsume .value).2.tryConsume .key).2.pos
+        = flowNestingIx tokens ps.pos :=
+      (tryConsume_flowNesting_ix tokens _ .key h_tc_tok
+        (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+        (by exact fun h => nomatch h) (by exact fun h => nomatch h)).trans h_tc_fn
+    have hC_fn : flowNestingIx tokens (((ps.tryConsume .value).2.tryConsume .key).2.tryConsume .value).2.pos
+        = flowNestingIx tokens ps.pos :=
+      (tryConsume_flowNesting_ix tokens _ .value hB_tok
+        (by exact fun h => nomatch h) (by exact fun h => nomatch h)
+        (by exact fun h => nomatch h) (by exact fun h => nomatch h)).trans hB_fn
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    all_goals (first
+      | (obtain ⟨rfl, rfl⟩ := h_ok
+         exact ⟨empty_scalar_scannable none none false,
+                fun _ => empty_scalar_scannable none none true, h_tc_fn, h_tc_tok⟩)
+      | (obtain ⟨rfl, rfl⟩ := h_ok
+         exact ⟨empty_scalar_scannable none none false,
+                fun _ => empty_scalar_scannable none none true, hC_fn, hC_tok⟩)
+      | (have h_wb := parseNodeWBIx_apply h_ih hC_tok h_ok (by omega)
+         exact ⟨h_wb.1, fun h_flow => h_wb.2.1 (hC_fn ▸ h_flow),
+                h_wb.2.2.1.trans hC_fn, h_wb.2.2.2⟩))
 
 /-- Alias for `parseBlockMappingEntryValue_wb_ix` (used by
     `handleBlockMappingKeyEntry_wb_ix`). -/
@@ -1741,7 +1775,7 @@ lemma parseSinglePairMapping_wb_ix (tokens : Indexed.TokenStream input)
       advance_preserves_flowNestingIx tokens ps h_peek h_eq
         (by exact fun h => nomatch h) (by exact fun h => nomatch h)
         (by exact fun h => nomatch h) (by exact fun h => nomatch h)
-    simp only [emptyNode] at h_ok
+    -- 4.33: `emptyNode` stays folded — see the legacy twin.
     split at h_ok
     -- Cases 1-3: key = emptyNode
     all_goals (try (
@@ -2526,10 +2560,10 @@ lemma parseNodeContent_wb_ix (tokens : Indexed.TokenStream input)
     (n fuel : Nat) (h_fuel : fuel ≤ n)
     (h_fpsv : FlowAwarePSVIx tokens) (h_ih : ParseNodeWBIx tokens n)
     (h_matched : FlowBracketsMatchedIx tokens)
-    (ps : ParseStateIx input) (props : NodeProperties)
+    (ps : ParseStateIx input) (props : NodeProperties) (isSeqEntry : Bool)
     (result : YamlValue × ParseStateIx input)
     (h_eq : ps.tokens = tokens)
-    (h_ok : parseNodeContent ps fuel props = .ok result) :
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok result) :
     Scannable result.1 false ∧
     (flowNestingIx tokens ps.pos > 0 → Scannable result.1 true) ∧
     flowNestingIx tokens result.2.pos = flowNestingIx tokens ps.pos ∧
@@ -2559,7 +2593,15 @@ lemma parseNodeContent_wb_ix (tokens : Indexed.TokenStream input)
     exact parseBlockSequence_wb_ix tokens fuel h_fpsv h_ih_fuel ps result h_eq heq_peek h_ok
   · rename_i heq_peek
     exact parseBlockMapping_wb_ix tokens fuel h_ih_fuel ps result h_eq heq_peek h_ok
-  · exact parseImplicitBlockSequence_wb_ix tokens fuel h_ih_fuel ps result h_eq h_ok
+  -- blockEntry → empty scalar (seq-entry context, C2) or implicit block sequence
+  · split at h_ok
+    · -- isSeqEntry: empty scalar, ps' = ps (C2) — identical to the empty-content case
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
+      exact ⟨empty_scalar_scannable props.tag props.anchor false,
+             fun _ => empty_scalar_scannable props.tag props.anchor true,
+             rfl, h_eq⟩
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_wb_ix tokens fuel h_ih_fuel ps result h_eq h_ok
   · rename_i heq_peek
     exact parseFlowSequence_wb_ix tokens fuel h_fpsv h_ih_fuel h_matched ps result h_eq heq_peek h_ok
   · rename_i heq_peek
@@ -2661,7 +2703,7 @@ lemma parseNode_wb_all_ix (tokens : Indexed.TokenStream input)
                 parseNodeProperties_flowNesting_ix tokens ps v_props.1 v_props.2
                   heq_props h_eq
               have h_content := parseNodeContent_wb_ix tokens n k hk h_fpsv ih h_matched
-                v_props.2 v_props.1 v_content h_props_tok heq_content
+                v_props.2 v_props.1 _ v_content h_props_tok heq_content
               have h_fin_pos := applyNodeFinalization_pos_ix
                 v_content.1 v_content.2 v_props.1
                 (ps.peekPos?.getD { offset := 0, line := 0, col := 0 })
@@ -2856,6 +2898,8 @@ lemma parseStreamLoop_docs_from_parseDocument_ix
     split at h_ok
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
     · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc
+    · -- documentEnd (bare `...` suffix, C1) → skip it, recurse with same accumulator
+      exact ih _ _ _ ((tryConsume_tokens_ix _ _).trans h_eq) h_acc h_ok
     · rename_i tok
       split at h_ok
       · simp at h_ok
@@ -2870,7 +2914,8 @@ lemma parseStreamLoop_docs_from_parseDocument_ix
             (parseDocument_tokens_preserved_ix ps doc_new ps'
               (h_eq ▸ h_fpsv) (h_eq ▸ h_matched) h_pd).trans h_eq
           let ps_reset : ParseStateIx input :=
-            { ps' with anchors := #[], nodePositions := #[], currentPath := #[] }
+            { ps' with anchors := #[], anchorIndex := .empty, declaredAnchors := #[],
+                       declaredIndex := .empty, nodePositions := #[], currentPath := #[] }
           have h_next_tok : (ps_reset.tryConsume .documentEnd).2.tokens = tokens :=
             (tryConsume_tokens_ix _ _).trans h_pd_tok
           have h_acc' : ∀ doc ∈ (docs.push doc_new).toList,
@@ -2883,7 +2928,7 @@ lemma parseStreamLoop_docs_from_parseDocument_ix
             · exact h_acc d hd_old
             · exact ⟨ps, ps', h_eq, h_pd⟩
           split at h_ok
-          · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact h_acc'
+          · simp at h_ok  -- no progress → error, contradiction
           · exact ih _ _ _ h_next_tok h_acc' h_ok
 
 /-- Every document in `parseStreamIx`'s output was produced by `parseDocument`
@@ -3209,8 +3254,19 @@ lemma parseBlockMappingEntryValue_pos_mono_ix (fuel : Nat)
     -- Direct parseNode branch
     all_goals (try { have h_pn := parseNodePosMonoIx_apply h_ih h_ok; try simp only [] at h_pn
                      omega })
-  · -- consumed = false → emptyNode
-    simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega
+  · -- consumed = false: retroactive-key skip (V9D5) or empty value.
+    -- Position advances monotonically through the skipped `key` and consumed `:`.
+    have h_k := tryConsume_pos_mono_ix (ps.tryConsume .value).2 .key
+    have h_v := tryConsume_pos_mono_ix ((ps.tryConsume .value).2.tryConsume .key).2 .value
+    split at h_ok                    -- outer: peek?, peekNext?
+    all_goals (try (split at h_ok))  -- inner: peek? dispatch in the retroactive arm
+    -- emptyNode branches (fallback at ps_tc, retroactive at the skip+consume state)
+    all_goals (try {
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; simp only []; omega })
+    -- parseNode branch (retroactive collection value)
+    all_goals (try {
+      have h_pn := parseNodePosMonoIx_apply h_ih h_ok; try simp only [] at h_pn
+      omega })
 
 set_option maxHeartbeats 1600000 in
 lemma handleBlockMappingKeyEntry_pos_mono_ix (fuel : Nat)
@@ -3383,7 +3439,7 @@ lemma parseSinglePairMapping_pos_mono_ix (fuel : Nat)
   · rename_i k
     have h_ih_k : ParseNodePosMonoIx (input := input) k := fun ps' m v ps'' h_le h_pn =>
       h_ih ps' m v ps'' (by omega) h_pn
-    simp only [emptyNode] at h_ok
+    -- 4.33: `emptyNode` stays folded — see the legacy twin.
     split at h_ok <;> first | contradiction | skip
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
     all_goals (first | (split at h_ok <;> first | contradiction | skip) | skip)
@@ -3664,16 +3720,21 @@ lemma parseFlowMapping_pos_mono_ix (fuel : Nat)
 
 lemma parseNodeContent_pos_mono_ix (fuel : Nat)
     (h_ih : ParseNodePosMonoIx (input := input) fuel)
-    (ps : ParseStateIx input) (props : NodeProperties)
+    (ps : ParseStateIx input) (props : NodeProperties) (isSeqEntry : Bool)
     (result : YamlValue × ParseStateIx input)
-    (h_ok : parseNodeContent ps fuel props = .ok result) :
+    (h_ok : parseNodeContent ps fuel props isSeqEntry = .ok result) :
     result.2.pos ≥ ps.pos := by
   unfold parseNodeContent at h_ok
   split at h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; simp [ParseStateIx.advance]
   · exact parseBlockSequence_pos_mono_ix fuel h_ih ps result h_ok
   · exact parseBlockMapping_pos_mono_ix fuel h_ih ps result h_ok
-  · exact parseImplicitBlockSequence_pos_mono_ix fuel h_ih ps result h_ok
+  · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block sequence
+    split at h_ok
+    · -- isSeqEntry: empty scalar, result.2 = ps (C2)
+      simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
+    · -- otherwise: implicit block sequence
+      exact parseImplicitBlockSequence_pos_mono_ix fuel h_ih ps result h_ok
   · exact parseFlowSequence_pos_mono_ix fuel h_ih ps result h_ok
   · exact parseFlowMapping_pos_mono_ix fuel h_ih ps result h_ok
   · simp only [Except.ok.injEq] at h_ok; subst h_ok; exact Nat.le_refl _
@@ -3714,7 +3775,7 @@ lemma parseNode_pos_mono_all_ix : ∀ n, ParseNodePosMonoIx (input := input) n :
               try dsimp only [] at h_ok
               simp only [Except.ok.injEq] at h_ok
               have h_props := parseNodeProperties_pos_mono_ix ps props ps_props heq_props
-              have h_content := parseNodeContent_pos_mono_ix k ih ps_props props _ heq_content
+              have h_content := parseNodeContent_pos_mono_ix k ih ps_props props _ _ heq_content
               have h_ps := congrArg Prod.snd h_ok
               simp only [] at h_ps
               rw [show ps'.pos = ps_content.pos from by rw [← h_ps]; exact applyNodeFinalization_pos_ix ..]
@@ -3765,6 +3826,11 @@ lemma parseNode_emitter_advances_ix (ps : ParseStateIx input) (fuel : Nat)
           have h_ps := congrArg Prod.snd h_ok
           simp only [] at h_val h_ps
           rw [show ps'.pos = ps_content.pos from by rw [← h_ps]; exact applyNodeFinalization_pos_ix ..]
+          -- Position monotonicity of the (still-folded) content dispatch, used by the
+          -- blockEntry case where the isSeqEntry branch is opaque to `split`.
+          have h_content_ge : ps_content.pos ≥ ps_props.pos :=
+            parseNodeContent_pos_mono_ix fuel (parseNode_pos_mono_all_ix fuel)
+              ps_props props _ (content_val, ps_content) heq_content
           unfold parseNodeContent at heq_content
           split at heq_content
           · simp only [Except.ok.injEq] at heq_content
@@ -3794,10 +3860,11 @@ lemma parseNode_emitter_advances_ix (ps : ParseStateIx input) (fuel : Nat)
                 simp only [Except.ok.injEq] at heq_content
                 obtain ⟨_, rfl⟩ := Prod.mk.inj heq_content
                 split <;> simp [ParseStateIx.advance] at h_loop ⊢ <;> omega
-          · -- blockEntry → implicit block sequence (contradicts emit tokens)
+          · -- blockEntry: empty scalar (seq-entry context, C2) or implicit block
+            --  sequence — both are unreachable under an emitter token
             rcases Nat.lt_or_ge ps.pos ps_props.pos with h_strict | h_le
-            · have h_ibs := parseImplicitBlockSequence_pos_mono_ix fuel (parseNode_pos_mono_all_ix fuel) ps_props _ heq_content
-              simp only [] at h_ibs; omega
+            · -- props advanced strictly ⇒ ps_content.pos ≥ ps_props.pos > ps.pos (h_content_ge)
+              omega
             · have h_eq_pos : ps_props.pos = ps.pos := by omega
               have h_tok := parseNodeProperties_tokens_ix ps props ps_props heq_props
               have h_peek_eq : ps_props.peek? = ps.peek? := by
@@ -4500,3 +4567,5 @@ axioms (in the sister file), which the per-action preservation chain
 Reflection 68. -/
 
 end L4YAML.Proofs.Indexed.WellBehaved
+
+end Blanket

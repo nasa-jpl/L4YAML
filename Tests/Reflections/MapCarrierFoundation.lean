@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 513 — the MAP separator carrier, the `some false` mirror of the seq carrier
 
 R512 collapsed the SEQ half of the frontier obligation `FlowSubrangesOk tokens` to a single root carrier
@@ -139,3 +144,5 @@ end MapCarrierFoundation
 /-- info: 'MapCarrierFoundation.run' does not depend on any axioms -/
 #guard_msgs in
 #print axioms MapCarrierFoundation.run
+
+end Blanket

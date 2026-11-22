@@ -1,4 +1,8 @@
-import Lean.Data.Json
+module
+
+public import Lean.Data.Json
+
+@[expose] public section Blanket
 
 /-!
 # Query Results Tool
@@ -33,12 +37,12 @@ open Lean (Json ToJson FromJson)
 
 /-! ## JSON Accessors -/
 
-private def getStr (j : Json) (key : String) : String :=
+def getStr (j : Json) (key : String) : String :=
   match j.getObjValAs? String key with
   | .ok s => s
   | .error _ => ""
 
-private def getNat (j : Json) (key : String) : Nat :=
+def getNat (j : Json) (key : String) : Nat :=
   match j.getObjValAs? Nat key with
   | .ok n => n
   | .error _ => 0
@@ -48,12 +52,12 @@ private def getBool (j : Json) (key : String) : Bool :=
   | .ok b => b
   | .error _ => false
 
-private def getArr (j : Json) (key : String) : Array Json :=
+def getArr (j : Json) (key : String) : Array Json :=
   match j.getObjVal? key with
   | .ok (.arr a) => a
   | _ => #[]
 
-private def getObj (j : Json) (key : String) : Json :=
+def getObj (j : Json) (key : String) : Json :=
   match j.getObjVal? key with
   | .ok v => v
   | .error _ => .null
@@ -61,7 +65,7 @@ private def getObj (j : Json) (key : String) : Json :=
 /-! ## Commands -/
 
 /-- Print all unexpected-pass tests, optionally grouped by stage. -/
-private def cmdUps (tests : Array Json) (byStage : Bool) (idsOnly : Bool) : IO Unit := do
+def cmdUps (tests : Array Json) (byStage : Bool) (idsOnly : Bool) : IO Unit := do
   let ups := tests.filter (fun t => getStr t "outcome" == "unexpected-pass")
   if idsOnly then
     for t in ups do
@@ -85,7 +89,7 @@ private def cmdUps (tests : Array Json) (byStage : Bool) (idsOnly : Bool) : IO U
       IO.println s!"  [{getStr t "stage"}] {getStr t "id"}: {getStr t "name"}{errSuffix}"
 
 /-- Print all verified test failures with error messages. -/
-private def cmdVerifiedFailures (root : Json) : IO Unit := do
+def cmdVerifiedFailures (root : Json) : IO Unit := do
   let verified := getObj root "verified"
   if verified == .null then
     IO.println "No verified section in JSON."
@@ -105,7 +109,7 @@ private def cmdVerifiedFailures (root : Json) : IO Unit := do
   IO.println s!"\nTotal verified failures: {totalFails}"
 
 /-- Print a markdown-ready summary table. -/
-private def cmdSummary (root : Json) : IO Unit := do
+def cmdSummary (root : Json) : IO Unit := do
   let overall := getObj root "overall"
   let date := getStr root "date"
   IO.println s!"# Test Summary ({date})\n"
@@ -132,7 +136,7 @@ private def cmdSummary (root : Json) : IO Unit := do
     IO.println s!"| **Total** | **{getNat verified "totalPassed"}** | **{getNat verified "totalTests"}** |"
 
 /-- Filter tests by ID prefix. -/
-private def cmdFilter (tests : Array Json) (idPrefix : String) : IO Unit := do
+def cmdFilter (tests : Array Json) (idPrefix : String) : IO Unit := do
   let matched := tests.filter (fun t => (getStr t "id").startsWith idPrefix)
   IO.println s!"Matching tests ({matched.size}):\n"
   for t in matched do
@@ -141,7 +145,7 @@ private def cmdFilter (tests : Array Json) (idPrefix : String) : IO Unit := do
     IO.println s!"  [{getStr t "stage"}] {getStr t "id"}: {getStr t "name"} ({getStr t "outcome"}){errSuffix}"
 
 /-- Diff two JSON result files: show outcome changes, additions, removals. -/
-private def cmdDiff (pathA pathB : String) : IO UInt32 := do
+def cmdDiff (pathA pathB : String) : IO UInt32 := do
   let contentsA ← IO.FS.readFile pathA
   let contentsB ← IO.FS.readFile pathB
   let rootA ← match Json.parse contentsA with
@@ -236,3 +240,5 @@ def main (args : List String) : IO UInt32 := do
       IO.eprintln s!"Unknown command: {other}"
       IO.eprintln "Commands: summary, ups, verified-failures, filter, diff"
       return 1
+
+end Blanket

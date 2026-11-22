@@ -2,14 +2,20 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Output.Emitter
-import L4YAML.Spec.Grammar
-import L4YAML.Parser.IndexedComposition
-import L4YAML.Scanner.IndexedDispatch
-import L4YAML.Proofs.Parser.IndexedCompleteness
-import L4YAML.Proofs.Parser.IndexedComposition
-import L4YAML.Proofs.Parser.ParserSoundness
-import L4YAML.Proofs.RoundTrip.RoundTrip
+
+module
+
+public import L4YAML.Output.Emitter
+public import L4YAML.Spec.Grammar
+public import L4YAML.Parser.IndexedComposition
+public import L4YAML.Scanner.IndexedDispatch
+public import L4YAML.Proofs.Parser.IndexedCompleteness
+public import L4YAML.Proofs.Parser.IndexedComposition
+public import L4YAML.Proofs.Parser.ParserSoundness
+public import L4YAML.Proofs.RoundTrip.RoundTrip
+
+public meta import L4YAML.CapstoneAttr
+@[expose] public section Blanket
 
 /-!
 # Scanner–Emitter Bridge (P10.8f.4)
@@ -436,3 +442,5 @@ def canonicalRoundTrips (n : ValidNode) : Bool :=
   | .error _ => false
 
 end L4YAML.Proofs.ScannerEmitBridge
+
+end Blanket

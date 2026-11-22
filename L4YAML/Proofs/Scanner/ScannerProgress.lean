@@ -1,7 +1,11 @@
-import L4YAML.Scanner.Scanner
-import L4YAML.Proofs.Scanner.ScannerLoopInvariant
-import L4YAML.Proofs.Scanner.ScannerContracts
-import L4YAML.Proofs.Scanner.ScannerScalar
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Proofs.Scanner.ScannerLoopInvariant
+public import L4YAML.Proofs.Scanner.ScannerContracts
+public import L4YAML.Proofs.Scanner.ScannerScalar
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -296,6 +300,8 @@ lemma scanBlockEntry_offset_lt (s s' : ScannerState)
   simp only [bind, Except.bind] at h
   split at h
   · split at h <;> (try contradiction)
+    split at h <;> (try contradiction)  -- item 48 same-line check
+    split at h <;> (try contradiction)  -- `scanBlockEntryValidate` (item 134)
     injection h with h_eq; subst h_eq
     have h_pi : (pushSequenceIndent s s.col).offset = s.offset := pushSequenceIndent_offset s _
     have h_pie : (pushSequenceIndent s s.col).inputEnd = s.inputEnd := pushSequenceIndent_inputEnd s _
@@ -313,8 +319,9 @@ lemma scanKey_offset_lt (s s' : ScannerState)
     s.offset < s'.offset := by
   unfold scanKey at h
   simp only [bind, Except.bind] at h
-  split at h  -- !s.inFlow (pushMappingIndent branch)
-  · -- block: s_with_indent = pushMappingIndent s s.col
+  split at h  -- !s.inFlow (item 31: the preceding-whitespace tab check)
+  · split at h <;> (try contradiction)  -- `scanKeyValidate` (item 131)
+    -- block: s_with_indent = pushMappingIndent s s.col
     split at h  -- !s_after_advance.inFlow (tab check)
     · split at h  -- match peek? for tab detection
       · cases h  -- some '\t' → error contradiction
@@ -397,3 +404,5 @@ increasing offset position in the input.
 
 
 end L4YAML.Proofs.ScannerProgress
+
+end Blanket

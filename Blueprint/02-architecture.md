@@ -59,9 +59,9 @@ L4YAML's verification story has three concentric trust boundaries:
    **pure** — `propext`, `Quot.sound`, `Classical.choice` only (the
    latter used in `noncomputable def` witnesses in
    `ParserSoundness.lean`) — and 7 are **native** — additionally
-   `Lean.ofReduceBool`/`Lean.ofReduceNat`/`Lean.trustCompiler`,
-   backing `native_decide` reflected-decide leaves, which extends
-   trust to the compiler for those capstones. Nothing else: any
+   one per-call-site axiom for each `native_decide` reflected-decide
+   leaf, which extends trust to the compiler for those capstones.
+   Nothing else: any
    `sorryAx` or project-declared axiom fails the build.
 2. **L4YAML spec layer** — definitions in `Spec/Grammar.lean`,
    `Spec/YamlSpec.lean`, `Spec/Types.lean`, `Token/Token.lean`, and
@@ -260,7 +260,7 @@ fibration canary that cites the pipeline lemmas directly):
                                     │
                    ┌────────────────┼────────────────┐
                    ▼                ▼                ▼
-       parseYaml_pipeline    parseStream_sound    parseYaml_ok_iff
+       parseYaml_pipeline    parseStream_sound    parseYamlIx_ok_iff
                    │                │
                    │        ┌───────┴───┐
                    ▼        ▼           ▼

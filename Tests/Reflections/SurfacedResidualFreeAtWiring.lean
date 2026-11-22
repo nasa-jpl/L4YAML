@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 486 — a surfaced refinement residual is FREE at the wiring site.
 
@@ -125,3 +130,5 @@ theorem seqOpener_of_seqChild {t : Tok} (h : SeqChild t) : isSeqOpener t := by
   cases h; rfl
 
 end SurfacedResidualFreeAtWiring
+
+end Blanket

@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 397 — a new orthogonal invariant field: land its closure ALGEBRA first,
 mirrored on the sibling, before the value-induction; the closure bridge names the producer debt.
@@ -146,3 +151,5 @@ theorem openerAdj_badBalanced_false : ¬ OpenerAdj badBalanced := by
 #guard badBalanced[1]! == Tok.sep          -- ... but the opener's successor is .sep (not content-start)
 
 end Tests.Reflections.OrthogonalInvariantAlgebraBeforeThreading
+
+end Blanket

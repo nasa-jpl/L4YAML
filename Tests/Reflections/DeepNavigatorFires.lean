@@ -1,4 +1,8 @@
-import L4YAML.Proofs.Output.EmitterScannability
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability
+
+@[expose] public section Blanket
 
 /-!
 # Reflection — the deep-family navigator FIRES on the map-nested window class
@@ -162,3 +166,5 @@ Both firings run the real scanner under `native_decide` for the gate facts, so t
 per-decl reflected-decide axioms; the load-bearing check is NO `sorryAx` — the provider is closed
 by a real proof.  The stable pins live on the production side (`R447RootCarrier.lean`'s
 `seqRoot_carrier_r447_type_ok` pin, now `sorryAx`-free). -/
+
+end Blanket

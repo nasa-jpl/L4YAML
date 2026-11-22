@@ -1,5 +1,9 @@
-import L4YAML.Parser.Composition
-import Tests.VerifiedResult
+module
+
+public import L4YAML.Parser.Composition
+public import Tests.VerifiedResult
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -407,3 +411,5 @@ def collectTests : IO VerifiedSuiteResult := do
            sourceFile := "Tests/FlowTests.lean", tests := results }
 
 end Tests.Flow
+
+end Blanket

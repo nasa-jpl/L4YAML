@@ -3,8 +3,12 @@ Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
-import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
-import L4YAML.Proofs.Output.EmitterScannability.TokVals
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.NonemptyStructure
+public import L4YAML.Proofs.Output.EmitterScannability.TokVals
+
+@[expose] public section Blanket
 
 /-!
 # Value-determined scanner content pin (`emitTokVals`)
@@ -41,6 +45,7 @@ open L4YAML.Proofs.CouplingBridge
 open L4YAML.Proofs.ParserGrammable
 open L4YAML.Proofs.ParserWellBehaved
 open L4YAML.Proofs.ScalarCoupling
+open L4YAML.Proofs.FlowAdjacency
 
 /-! ## Pair-generic unfolding helpers for `mapTokVals`
 
@@ -80,6 +85,7 @@ def EmitScansTokVals (v : YamlValue) : Prop :=
     EndLineOnLine s →
     s.simpleKeyStack.size = s.flowLevel →
     s.directivesPresent = false →
+    (∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) →
     ∃ n s' block,
       ScanChainGrew (fun t => t.val != .placeholder) s n s'
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
@@ -118,6 +124,7 @@ def EmitScansSavedKeyTokVals (v : YamlValue) : Prop :=
     s.simpleKeyAllowed = true →
     s.simpleKeyStack.size = s.flowLevel →
     s.directivesPresent = false →
+    (∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) →
     ∃ n s' block,
       ScanChainGrew (fun t => t.val != .placeholder) s n s'
       ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
@@ -165,6 +172,7 @@ lemma emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
       EndLineOnLine s →
       s.simpleKeyStack.size = s.flowLevel →
       s.directivesPresent = false →
+      (∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) →
       ∃ n s' block,
         ScanChainGrew (fun t => t.val != .placeholder) s n s'
         ∧ ScannerSurfCorr s' ⟨rest_chars, s'.col⟩
@@ -186,7 +194,7 @@ lemma emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
   induction items with
   | nil => contradiction
   | cons v tail ih =>
-    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp h_last
     match tail, ih with
     | [], _ =>
       have h_eq : (emit.emitList [v]).toList = (emit v).toList := by
@@ -195,7 +203,7 @@ lemma emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
       obtain ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
               h_indent', h_line_v, _h_ska, _h_last, h_atol', h_endline', h_stack', h_fmc',
               h_block_eq, h_pin⟩ :=
-        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
+        h_all v (.head _) s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp h_last
       exact ⟨n, s', block, h_chain, h_corr, h_fl', h_dp, h_ids, h_ek', h_col', h_flow',
         h_indent', h_line_v, h_atol', h_endline', h_stack', h_fmc', h_block_eq,
         by rw [seqTokVals_singleton]; exact h_pin⟩
@@ -210,13 +218,13 @@ lemma emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
               h_indent₁, _h_line₁, _h_ska₁, h_last₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
               h_block_eq₁, h_pin₁⟩ :=
         h_ev s ([',', ' '] ++ (emit.emitList (v' :: vs)).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp h_last
       -- Step 2: Scan ',' via scanNextToken_flow_comma (state) + push lemma (block)
-      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂⟩ :=
+      obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_last₂⟩ :=
         scanNextToken_flow_comma s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁
-          h_last₁ h_atol₁ h_endline₁ (h_dp₁.trans h_dp)
+          h_last₁ h_atol₁ h_endline₁ (by rw [h_ek₁]; exact h_ek) (h_dp₁.trans h_dp)
       obtain ⟨feTok, h_feTok_val, h_comma_eq⟩ :=
         scanNextToken_flow_comma_filtered_push s₁
           (' ' :: (emit.emitList (v' :: vs)).toList ++ rest_chars)
@@ -255,7 +263,7 @@ lemma emitList_scans_tokvals (items : List YamlValue) (h_ne : items ≠ [])
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
           (by rw [h_stack_pp₃, h_stack₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
-          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
+          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp) (fun t ht => h_last₂ t (h_toks_pp₃ ▸ ht))
       -- Step 5: Lift chain for s₂ via preprocessing equality
       have h_snt_eq : scanNextToken s₂ = scanNextToken s₃ :=
         scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
@@ -345,6 +353,9 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
       s.simpleKeyAllowed = true →
       s.simpleKeyStack.size = s.flowLevel →
       s.directivesPresent = false →
+      (∀ t, lastRealTokenVal? s.tokens = some t → t.completesFlowValue = false) →
+      -- item 9r: the pair list starts at an entry boundary.
+      PairStartAtEntryBoundary s →
       ∃ n s' block,
         ScanChainGrew (fun t => t.val != .placeholder) s n s'
         ∧ ScannerSurfCorr s' ⟨rest, s'.col⟩
@@ -367,7 +378,8 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
   induction pairs with
   | nil => contradiction
   | cons p tail ih =>
-    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+    intro s rest_chars hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp h_last
+      h_pse
     match tail, ih with
     | [], _ =>
       have h_eq : (emit.emitPairList [p]).toList ++ rest_chars =
@@ -377,9 +389,9 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansSavedKeyTokVals p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, block_k, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_pin_k⟩ :=
+              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_pin_k⟩ :=
         h_ek_key s ([':', ' '] ++ (emit p.2).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp h_last
       have h_n₁_pos : 1 ≤ n₁ := by
         rcases Nat.eq_zero_or_pos n₁ with h0 | hpos
         · subst h0; rw [ScanChainGrew.eq_of_zero h_chain₁] at h_szlt₁; omega
@@ -389,9 +401,11 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
       have h_sv : scanValueValidate (saveSimpleKey s₁) = .ok () := by
         rw [h_sk_id]
         exact scanValueValidate_ok_of_flow_allTokensOnLine s₁ h_flow₁
-          (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+          (by rw [h_ek₁]; exact h_ek)
+          (savedKeyAtEntryBoundary_of_take h_tidx₁ h_szlt₁ h_ph0₁ h_take_k h_pse) h_endline₁
+          (flowGluedCollectionValue_false_of_corr_colon_blank s₁ _ h_corr₁)
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, _⟩ :=
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, h_val_push⟩ :=
         scanNextToken_flow_value s₁ ((emit p.2).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
           h_atol₁ h_endline₁ (h_dp₁.trans h_dp)
@@ -439,6 +453,12 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
             ((emit p.2).toList ++ rest_chars) := by
           rw [h_first_v]; simp only [List.cons_append]
         exact h_eq_chars ▸ h_corr₃
+      have h_last_s₃ : ∀ t, lastRealTokenVal? s₃.tokens = some t → t.completesFlowValue = false := by
+        obtain ⟨h_sz, pos, h_get⟩ := h_val_push h_ska₁
+        have h_lrt : lastRealTokenVal? s₂.tokens = some .value :=
+          lastRealTokenVal_of_last_nonph s₂.tokens s₁.tokens.size ⟨pos, .value, pos⟩ h_sz h_get nofun
+        intro t ht; rw [h_toks_pp₃, h_lrt] at ht
+        simp only [Option.some.injEq] at ht; subst ht; rfl
       have h_ev : EmitScansTokVals p.2 := h_all_v p (.head _)
       obtain ⟨n_v, s_end, block_v, h_chain_v, h_corr_end, h_fl_end, h_dp_end, h_ids_end,
               h_ek_end, h_col_end, h_flow_end, h_indent_end, h_line_end, _h_ska_v, _h_last_v,
@@ -451,7 +471,7 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
           (by rw [h_stack_pp₃, h_stack_v₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
-          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
+          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp) h_last_s₃
       have h_snt_eq : scanNextToken s₂ = scanNextToken s₃ :=
         scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
       have h_n_v_pos : n_v ≥ 1 := by
@@ -527,18 +547,20 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
       have h_ek_key : EmitScansSavedKeyTokVals p.1 := h_all_k p (.head _)
       obtain ⟨n₁, s₁, block_k, h_chain₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁,
               h_flow₁, h_indent₁, _h_line₁, h_atol₁, h_endline₁, h_stack₁, h_fmc₁,
-              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, _h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_pin_k⟩ :=
+              h_ska₁, h_poss₁, h_tidx₁, h_szlt₁, h_ph0₁, h_ph1₁, h_blockeq_k, h_take_k, h_pin_k⟩ :=
         h_ek_key s ([':', ' '] ++ (emit p.2).toList ++
             [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
-          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+          hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp h_last
       have h_sk_id := saveSimpleKey_id_of_flow_ska_false_ek_none s₁ h_flow₁ h_ska₁
           (by rw [h_ek₁]; exact h_ek)
       have h_sv : scanValueValidate (saveSimpleKey s₁) = .ok () := by
         rw [h_sk_id]
         exact scanValueValidate_ok_of_flow_allTokensOnLine s₁ h_flow₁
-          (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁
+          (by rw [h_ek₁]; exact h_ek)
+          (savedKeyAtEntryBoundary_of_take h_tidx₁ h_szlt₁ h_ph0₁ h_take_k h_pse) h_endline₁
+          (flowGluedCollectionValue_false_of_corr_colon_blank s₁ _ h_corr₁)
       obtain ⟨s₂, h_snt₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_col₂,
-              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, _⟩ :=
+              h_flow₂, h_indent₂, h_ek₂, _h_line₂, h_atol₂, h_endline₂, h_stack_v₂, _, _, h_val_push⟩ :=
         scanNextToken_flow_value s₁
           ((emit p.2).toList ++ [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₁ h_flow₁ h_indent₁ h_col₁ (by rw [h_ek₁]; exact h_ek) h_sv
@@ -595,6 +617,12 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
             [',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars) := by
           rw [h_first_v]; simp only [List.cons_append, List.append_assoc]
         exact h_eq_chars ▸ h_corr₃
+      have h_last_s₃ : ∀ t, lastRealTokenVal? s₃.tokens = some t → t.completesFlowValue = false := by
+        obtain ⟨h_sz, pos, h_get⟩ := h_val_push h_ska₁
+        have h_lrt : lastRealTokenVal? s₂.tokens = some .value :=
+          lastRealTokenVal_of_last_nonph s₂.tokens s₁.tokens.size ⟨pos, .value, pos⟩ h_sz h_get nofun
+        intro t ht; rw [h_toks_pp₃, h_lrt] at ht
+        simp only [Option.some.injEq] at ht; subst ht; rfl
       have h_ev : EmitScansTokVals p.2 := h_all_v p (.head _)
       have h_corr₃_assoc : ScannerSurfCorr s₃
           ⟨(emit p.2).toList ++ ([',', ' '] ++ (emit.emitPairList (p' :: ps)).toList ++ rest_chars), s₃.col⟩ := by
@@ -611,7 +639,7 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
           (h_atol_transfer₃ h_atol₂)
           (h_endline_transfer₃ h_endline₂)
           (by rw [h_stack_pp₃, h_stack_v₂, h_stack₁, h_fl₃, h_fl₂, h_fl₁]; exact h_sync)
-          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
+          (by rw [h_dp₃, h_dp₂, h_dp₁]; exact h_dp) h_last_s₃
       have h_snt_eq_v : scanNextToken s₂ = scanNextToken s₃ :=
         scanNextToken_eq_of_preprocess s₂ s₃ h_pp_eq
       have h_n_v_pos : n_v ≥ 1 := by
@@ -651,10 +679,11 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
               (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr₁_cons h_flow₁ h_indent₁ h_col₁
           (by decide) (by decide) (by decide) h_snt₂
-      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c, h_atol_c, h_endline_c, h_stack_c⟩ :=
+      obtain ⟨s_c, h_snt_c, h_corr_c, h_fl_c, h_dp_c, h_ids_c, h_ek_c, h_col_c, _h_line_c, h_atol_c, h_endline_c, h_stack_c, h_last_c⟩ :=
         scanNextToken_flow_comma s_v
           (' ' :: (emit.emitPairList (p' :: ps)).toList ++ rest_chars)
           h_corr_v h_flow_v h_indent_v h_col_v h_last_v h_atol_v h_endline_v
+          (by rw [h_ek_v, h_ek₃, h_ek₂])
           (by rw [h_dp_v, h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
       obtain ⟨feTok, h_feTok_val, h_comma_eq⟩ :=
         scanNextToken_flow_comma_filtered_push s_v
@@ -703,7 +732,10 @@ lemma emitPairList_scans_tokvals (pairs : List (YamlValue × YamlValue))
           (by rw [h_ska_pp]; exact h_ska_c_true)
           (by rw [h_stack_pp, h_stack_c, h_stack_v, h_stack_pp₃, h_stack_v₂, h_stack₁,
               h_sync, h_fl_pp, h_fl_c, h_fl_v, h_fl₃, h_fl₂, h_fl₁])
-          (by rw [h_dp_pp, h_dp_c, h_dp_v, h_dp₃, h_dp₂, h_dp₁]; exact h_dp)
+          (by rw [h_dp_pp, h_dp_c, h_dp_v, h_dp₃, h_dp₂, h_dp₁]; exact h_dp) (fun t ht => h_last_c t (h_toks_pp ▸ ht))
+          (PairStartAtEntryBoundary.of_tokens_eq h_toks_pp
+            (pairStartAtEntryBoundary_of_filtered_push
+              (by rw [h_feTok_val]; exact nofun) h_comma_eq))
       have h_snt_eq_r : scanNextToken s_c = scanNextToken s_pp :=
         scanNextToken_eq_of_preprocess s_c s_pp h_pp_eq_r
       have h_n_r_pos : n_r ≥ 1 := by omega
@@ -795,7 +827,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
   induction hg with
   | scalar sc _ h =>
       refine ⟨?_, ?_⟩
-      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_sync h_dp
+      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline _h_sync h_dp h_last
         have h_chars : (emit (.scalar sc)).toList ++ rest =
             ['"'] ++ (escapeString sc.content).toList ++ ['"'] ++ rest := by
           simp only [emit, emitScalar, String.toList_append]; rfl
@@ -804,7 +836,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
           rwa [← h_chars]
         obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', h_tok', h_ska', _h_line', h_atol', h_endline', h_stack'⟩ :=
           scanNextToken_flow_scanDoubleQuoted s_state sc.content rest hcorr' h_flow h_indent h_col
-            h_atol h_endline h_dp
+            h_atol h_endline h_dp h_last
         obtain ⟨tok, h_tok_val, h_push⟩ :=
           scanNextToken_flow_scalar_filtered_push_content s_state sc.content rest
             hcorr' h_flow h_indent h_col h_snt
@@ -820,7 +852,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · rw [h_push, Array.toList_push]
         · simp only [List.map_cons, List.map_nil, h_tok_val]
           rfl
-      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska _h_sync h_dp
+      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska _h_sync h_dp h_last
         have h_chars : (emit (.scalar sc)).toList ++ rest =
             ['"'] ++ (escapeString sc.content).toList ++ ['"'] ++ rest := by
           simp only [emit, emitScalar, String.toList_append]; rfl
@@ -835,9 +867,9 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
           rwa [this] at hcorr'
         obtain ⟨s', h_snt, h_corr', h_fl', h_dp', h_ids', h_ek', h_col', _h_tok', h_ska', _h_line', h_atol', h_endline', h_stack'⟩ :=
           scanNextToken_flow_scanDoubleQuoted s_state sc.content rest hcorr' h_flow h_indent h_col
-            h_atol h_endline h_dp
+            h_atol h_endline h_dp h_last
         obtain ⟨s'', h_snt'', h_poss'', h_tidx'', h_size'', h_ph'', h_ph1''⟩ :=
-          scanNextToken_flow_scalar_savedKey s_state sc.content rest hcorr' h_flow h_indent h_col h_ek h_ska h_dp
+          scanNextToken_flow_scalar_savedKey s_state sc.content rest hcorr' h_flow h_indent h_col h_ek h_ska h_dp h_last
         have h_eq : s'' = s' := Option.some.inj (Except.ok.inj (h_snt''.symm.trans h_snt))
         subst h_eq
         obtain ⟨tok, h_tok_val, h_push⟩ :=
@@ -876,7 +908,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
           rfl
   | sequence style items tag anchor _ h ih =>
       refine ⟨?_, ?_⟩
-      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
+      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp h_last
         have h_chars : (emit (.sequence style items tag anchor)).toList ++ rest =
             ['['] ++ (emit.emitList items.toList).toList ++ [']'] ++ rest := by
           simp only [emit, String.toList_append]; rfl
@@ -887,10 +919,10 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
               '[' :: ((emit.emitList items.toList).toList ++ [']'] ++ rest) := by
             simp only [List.cons_append, List.nil_append, List.append_assoc]
           rwa [this] at hcorr₀
-        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_sk_poss₁, _h_toks_gt₁, h_stack_push₁⟩ :=
+        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_sk_poss₁, _h_toks_gt₁, h_stack_push₁, h_last_s₁, h_push₁⟩ :=
           scanNextToken_flow_open_nested s_state
             ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
-            h_atol h_endline h_dp
+            h_atol h_endline h_dp h_last
         have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
         have h_s1_inflow : s₁.inFlow = true := by
           unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
@@ -947,7 +979,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
                     h_body_append, h_body_pin⟩ :=
               emitList_scans_tokvals (w :: ws) (by simp) h_all_rec s₁ ([']'] ++ rest)
                 (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
-                (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_sync (by rw [h_dp₁]; exact h_dp)
+                h_ek₁ h_atol₁ h_endline₁ h_s1_sync (by rw [h_dp₁]; exact h_dp) h_last_s₁
             exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
                    h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
                    h_body_append, h_body_pin⟩
@@ -955,15 +987,18 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
           unfold StackEndLineOnLine at h_stack_endline₁ ⊢
           rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
-        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _, _⟩ :=
+        have h_kind₂ : s₂.flowStack.back? = some true := by
+          rw [h_fmc₂.flowStack_eq rfl h_fl₂, h_push₁.1]
+          exact Array.back?_push
+        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _, _, _⟩ :=
           scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
-            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp)
+            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp) h_kind₂
         have h_corr₂_cons : ScannerSurfCorr s₂ ⟨']' :: rest, s₂.col⟩ := by
           have : [']'] ++ rest = ']' :: rest := by simp
           rwa [this] at h_corr₂
         obtain ⟨fseTok, h_fse_val, h_close_push⟩ :=
           scanNextToken_flow_close_seq_filtered_push s₂ rest h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
-            h_fl₂_ge2 h_snt₃
+            h_fl₂_ge2 h_kind₂ h_snt₃
         have h_fmc₂' : FlowMonoChain s_state.flowLevel s₁ n₂ s₂ := h_fmc₂.weaken (by omega)
         have h_fmc_all :=
           (FlowMonoChain.single h_snt₁ (Nat.le.refl) (by omega)).trans
@@ -995,7 +1030,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · rw [h_fl₃, h_fl₂, h_fl₁]; omega
         · rw [h_dp₃, h_dp₂, h_dp₁]
         · rw [h_ids₃, h_ids₂, h_ids₁]
-        · rw [h_ek₃, h_ek₂, h_ek₁]
+        · rw [h_ek₃, ek_restore_of_push_body h_push₁.2 (h_fmc₂.ekStack_eq rfl h_fl₂)]
         · rw [h_col₃]; omega
         · unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₃, h_fl₂, h_fl₁]; omega)
         · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
@@ -1006,7 +1041,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · -- value pin: the wrapped block maps to emitTokVals (.sequence …)
           simp only [List.map_cons, List.map_append, List.map_nil, h_fss_val, h_fse_val,
                      h_body_pin, emitTokVals]
-      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp h_last
         have h_chars : (emit (.sequence style items tag anchor)).toList ++ rest =
             ['['] ++ (emit.emitList items.toList).toList ++ [']'] ++ rest := by
           simp only [emit, String.toList_append]; rfl
@@ -1017,10 +1052,10 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
               '[' :: ((emit.emitList items.toList).toList ++ [']'] ++ rest) := by
             simp only [List.cons_append, List.nil_append, List.append_assoc]
           rwa [this] at hcorr₀
-        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, h_sk_poss₁, _h_toks_gt₁, h_stack_push₁⟩ :=
+        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, h_sk_poss₁, _h_toks_gt₁, h_stack_push₁, h_last_s₁, h_push₁⟩ :=
           scanNextToken_flow_open_nested s_state
             ((emit.emitList items.toList).toList ++ [']'] ++ rest) hcorr₀ h_flow h_indent h_col
-            h_atol h_endline h_dp
+            h_atol h_endline h_dp h_last
         obtain ⟨h_s1_size, h_s1_rawN, h_s1_rawN1⟩ :=
           scanNextToken_flow_open_seq_savedKey s_state s₁ ((emit.emitList items.toList).toList ++ [']'] ++ rest)
             h_corr_state_cons h_flow h_indent h_col h_ek h_ska h_snt₁
@@ -1080,7 +1115,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
                     h_body_append, h_body_pin⟩ :=
               emitList_scans_tokvals (w :: ws) (by simp) h_all_rec s₁ ([']'] ++ rest)
                 (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
-                (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_stack_size₁ (by rw [h_dp₁]; exact h_dp)
+                h_ek₁ h_atol₁ h_endline₁ h_stack_size₁ (by rw [h_dp₁]; exact h_dp) h_last_s₁
             exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
                    h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
                    h_body_append, h_body_pin⟩
@@ -1107,15 +1142,18 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
           unfold StackEndLineOnLine at h_stack_endline₁ ⊢
           rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
-        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_skrestore₃, h_prefix₃⟩ :=
+        have h_kind₂ : s₂.flowStack.back? = some true := by
+          rw [h_fmc₂.flowStack_eq rfl h_fl₂, h_push₁.1]
+          exact Array.back?_push
+        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_skrestore₃, h_prefix₃, _⟩ :=
           scanNextToken_flow_close_seq_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
-            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp)
+            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp) h_kind₂
         have h_corr₂_cons : ScannerSurfCorr s₂ ⟨']' :: rest, s₂.col⟩ := by
           have : [']'] ++ rest = ']' :: rest := by simp
           rwa [this] at h_corr₂
         obtain ⟨fseTok, h_fse_val, h_close_push⟩ :=
           scanNextToken_flow_close_seq_filtered_push s₂ rest h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
-            h_fl₂_ge2 h_snt₃
+            h_fl₂_ge2 h_kind₂ h_snt₃
         have h_fmc₂' : FlowMonoChain s_state.flowLevel s₁ n₂ s₂ := h_fmc₂.weaken (by omega)
         have h_fmc_all :=
           (FlowMonoChain.single h_snt₁ (Nat.le.refl) (by omega)).trans
@@ -1180,7 +1218,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · rw [h_fl₃, h_fl₂, h_fl₁]; omega
         · rw [h_dp₃, h_dp₂, h_dp₁]
         · rw [h_ids₃, h_ids₂, h_ids₁]
-        · rw [h_ek₃, h_ek₂, h_ek₁]
+        · rw [h_ek₃, ek_restore_of_push_body h_push₁.2 (h_fmc₂.ekStack_eq rfl h_fl₂)]
         · rw [h_col₃]; omega
         · unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₃, h_fl₂, h_fl₁]; omega)
         · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
@@ -1202,7 +1240,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
                      h_body_pin, emitTokVals]
   | mapping style pairs tag anchor _ _hk _hv ihk ihv =>
       refine ⟨?_, ?_⟩
-      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp
+      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_sync h_dp h_last
         have h_chars : (emit (.mapping style pairs tag anchor)).toList ++ rest =
             ['{'] ++ (emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest := by
           simp only [emit, String.toList_append]; rfl
@@ -1213,10 +1251,10 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
               '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) := by
             simp only [List.cons_append, List.nil_append, List.append_assoc]
           rwa [this] at hcorr₀
-        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_sk_poss₁, _h_toks_gt₁, h_stack_push₁⟩ :=
+        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, _h_sk_poss₁, _h_toks_gt₁, h_stack_push₁, h_last_s₁, h_push₁⟩ :=
           scanNextToken_flow_open_mapping_nested s_state
             ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
-            h_atol h_endline h_dp
+            h_atol h_endline h_dp h_last
         have h_fl₁_ge2 : s₁.flowLevel ≥ 2 := by rw [h_fl₁]; omega
         have h_s1_inflow : s₁.inFlow = true := by
           unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₁]; omega)
@@ -1282,7 +1320,8 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
                     h_body_append, h_body_pin, _h_n_ge3⟩ :=
               emitPairList_scans_tokvals (p :: ps) (by simp) h_all_k h_all_v s₁ (['}'] ++ rest)
                 (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
-                (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_s1_sync (by rw [h_dp₁]; exact h_dp)
+                h_ek₁ h_atol₁ h_endline₁ h_s1_ska h_s1_sync (by rw [h_dp₁]; exact h_dp) h_last_s₁
+                (pairStartAtEntryBoundary_of_filtered_push (by rw [h_fms_val]; exact nofun) h_open_push)
             exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
                    h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
                    h_body_append, h_body_pin⟩
@@ -1290,15 +1329,18 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
           unfold StackEndLineOnLine at h_stack_endline₁ ⊢
           rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
-        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _, _⟩ :=
+        have h_kind₂ : s₂.flowStack.back? = some false := by
+          rw [h_fmc₂.flowStack_eq rfl h_fl₂, h_push₁.1]
+          exact Array.back?_push
+        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, _, _, _⟩ :=
           scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
-            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp)
+            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp) h_kind₂
         have h_corr₂_cons : ScannerSurfCorr s₂ ⟨'}' :: rest, s₂.col⟩ := by
           have : ['}'] ++ rest = '}' :: rest := by simp
           rwa [this] at h_corr₂
         obtain ⟨fmeTok, h_fme_val, h_close_push⟩ :=
           scanNextToken_flow_close_map_filtered_push s₂ rest h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
-            h_fl₂_ge2 h_snt₃
+            h_fl₂_ge2 h_kind₂ h_snt₃
         have h_fmc₂' : FlowMonoChain s_state.flowLevel s₁ n₂ s₂ := h_fmc₂.weaken (by omega)
         have h_fmc_all :=
           (FlowMonoChain.single h_snt₁ (Nat.le.refl) (by omega)).trans
@@ -1330,7 +1372,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · rw [h_fl₃, h_fl₂, h_fl₁]; omega
         · rw [h_dp₃, h_dp₂, h_dp₁]
         · rw [h_ids₃, h_ids₂, h_ids₁]
-        · rw [h_ek₃, h_ek₂, h_ek₁]
+        · rw [h_ek₃, ek_restore_of_push_body h_push₁.2.2.2 (h_fmc₂.ekStack_eq rfl h_fl₂)]
         · rw [h_col₃]; omega
         · unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₃, h_fl₂, h_fl₁]; omega)
         · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
@@ -1341,7 +1383,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · -- value pin: the wrapped block maps to emitTokVals (.mapping …)
           simp only [List.map_cons, List.map_append, List.map_nil, h_fms_val, h_fme_val,
                      h_body_pin, emitTokVals]
-      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp
+      · intro s_state rest hcorr h_flow h_fl h_indent h_col h_ek h_atol h_endline h_ska h_sync h_dp h_last
         have h_chars : (emit (.mapping style pairs tag anchor)).toList ++ rest =
             ['{'] ++ (emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest := by
           simp only [emit, String.toList_append]; rfl
@@ -1352,10 +1394,10 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
               '{' :: ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) := by
             simp only [List.cons_append, List.nil_append, List.append_assoc]
           rwa [this] at hcorr₀
-        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, h_sk_poss₁, _h_toks_gt₁, h_stack_push₁⟩ :=
+        obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_ek₁, h_col₁, _h_line₁, h_atol₁, h_endline₁, h_stack_endline₁, h_stack_pop₁, h_sk_poss₁, _h_toks_gt₁, h_stack_push₁, h_last_s₁, h_push₁⟩ :=
           scanNextToken_flow_open_mapping_nested s_state
             ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest) hcorr₀ h_flow h_indent h_col
-            h_atol h_endline h_dp
+            h_atol h_endline h_dp h_last
         obtain ⟨h_s1_size, h_s1_rawN, h_s1_rawN1⟩ :=
           scanNextToken_flow_open_mapping_savedKey s_state s₁ ((emit.emitPairList pairs.toList).toList ++ ['}'] ++ rest)
             h_corr_state_cons h_flow h_indent h_col h_ek h_ska h_snt₁
@@ -1424,7 +1466,8 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
                     h_body_append, h_body_pin, _h_n_ge3⟩ :=
               emitPairList_scans_tokvals (p :: ps) (by simp) h_all_k h_all_v s₁ (['}'] ++ rest)
                 (h_list ▸ h_corr₁_assoc) h_s1_inflow (by rw [h_fl₁]; omega) h_s1_indent h_s1_col
-                (by rw [h_ek₁]; exact h_ek) h_atol₁ h_endline₁ h_s1_ska h_stack_size₁ (by rw [h_dp₁]; exact h_dp)
+                h_ek₁ h_atol₁ h_endline₁ h_s1_ska h_stack_size₁ (by rw [h_dp₁]; exact h_dp) h_last_s₁
+                (pairStartAtEntryBoundary_of_filtered_push (by rw [h_fms_val]; exact nofun) h_open_push)
             exact ⟨n₂, s₂, bodyBlock, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, h_ek₂, h_col₂,
                    h_s2_inflow, h_s2_indent, _h_line₂, h_atol₂, h_endline₂, h_stack₂, h_fmc₂,
                    h_body_append, h_body_pin⟩
@@ -1451,15 +1494,18 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         have h_stack_endline₂ : StackEndLineOnLine s₂ s₂.line := by
           unfold StackEndLineOnLine at h_stack_endline₁ ⊢
           rw [h_stack₂, _h_line₂]; exact h_stack_endline₁
-        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_skrestore₃, h_prefix₃⟩ :=
+        have h_kind₂ : s₂.flowStack.back? = some false := by
+          rw [h_fmc₂.flowStack_eq rfl h_fl₂, h_push₁.1]
+          exact Array.back?_push
+        obtain ⟨s₃, h_snt₃, h_corr₃, h_fl₃, h_dp₃, h_ids₃, h_ek₃, h_col₃, h_tok₃, h_ska₃, _h_line₃, h_atol₃, h_endline₃, h_stack₃, h_skrestore₃, h_prefix₃, _⟩ :=
           scanNextToken_flow_close_mapping_nested s₂ rest h_corr₂ h_s2_inflow h_s2_indent h_col₂ h_fl₂_ge2
-            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp)
+            h_atol₂ h_stack_endline₂ (by rw [h_dp₂, h_dp₁]; exact h_dp) h_kind₂
         have h_corr₂_cons : ScannerSurfCorr s₂ ⟨'}' :: rest, s₂.col⟩ := by
           have : ['}'] ++ rest = '}' :: rest := by simp
           rwa [this] at h_corr₂
         obtain ⟨fmeTok, h_fme_val, h_close_push⟩ :=
           scanNextToken_flow_close_map_filtered_push s₂ rest h_corr₂_cons h_s2_inflow h_s2_indent h_col₂
-            h_fl₂_ge2 h_snt₃
+            h_fl₂_ge2 h_kind₂ h_snt₃
         have h_fmc₂' : FlowMonoChain s_state.flowLevel s₁ n₂ s₂ := h_fmc₂.weaken (by omega)
         have h_fmc_all :=
           (FlowMonoChain.single h_snt₁ (Nat.le.refl) (by omega)).trans
@@ -1524,7 +1570,7 @@ lemma emit_scans_tokvals_both (v : YamlValue) {inFlow : Bool}
         · rw [h_fl₃, h_fl₂, h_fl₁]; omega
         · rw [h_dp₃, h_dp₂, h_dp₁]
         · rw [h_ids₃, h_ids₂, h_ids₁]
-        · rw [h_ek₃, h_ek₂, h_ek₁]
+        · rw [h_ek₃, ek_restore_of_push_body h_push₁.2.2.2 (h_fmc₂.ekStack_eq rfl h_fl₂)]
         · rw [h_col₃]; omega
         · unfold ScannerState.inFlow; exact decide_eq_true (by rw [h_fl₃, h_fl₂, h_fl₁]; omega)
         · unfold ScannerState.currentIndent; rw [h_ids₃, h_ids₂, h_ids₁]; exact h_indent
@@ -1555,6 +1601,75 @@ lemma emit_scans_saved_key_tokvals (v : YamlValue) {inFlow : Bool}
     (hg : Grammable v inFlow) : EmitScansSavedKeyTokVals v :=
   (emit_scans_tokvals_both v hg).2
 
+/-! ## E2. Item 180: the wrappers' close states are property-free
+
+The crossed-block clause of `danglingNodePos?` reads the trailing adjacent
+property block, and the §F wrappers' arrays are pinned to flow-clean runs —
+no `.anchor`/`.tag` anywhere — so the clause is silent and the sentinel
+discharge's new premise is paid from the pins. -/
+
+/-- A flow-clean token is no `[96]` property. -/
+lemma flowCleanTok_not_prop {t : YamlToken} (h : FlowCleanTok t = true) :
+    t.isNodeProperty = false := by
+  cases t <;> simp_all [FlowCleanTok, YamlToken.isNodeProperty]
+
+/-- A flow-sequence body run holds no property token. -/
+lemma seqTokVals_no_props (items : List YamlValue) :
+    ∀ t ∈ emitTokVals.seqTokVals items, t.isNodeProperty = false := by
+  intro t ht
+  refine flowCleanTok_not_prop
+    (emitTokVals_flowClean (.sequence .flow items.toArray) t ?_)
+  have h_eq : emitTokVals (.sequence .flow items.toArray)
+      = .flowSequenceStart :: (emitTokVals.seqTokVals items ++ [.flowSequenceEnd]) := by
+    simp [emitTokVals]
+  rw [h_eq]
+  exact List.mem_cons_of_mem _ (List.mem_append_left _ ht)
+
+/-- A flow-mapping body run holds no property token. -/
+lemma mapTokVals_no_props (pairs : List (YamlValue × YamlValue)) :
+    ∀ t ∈ emitTokVals.mapTokVals pairs, t.isNodeProperty = false := by
+  intro t ht
+  refine flowCleanTok_not_prop
+    (emitTokVals_flowClean (.mapping .flow pairs.toArray) t ?_)
+  have h_eq : emitTokVals (.mapping .flow pairs.toArray)
+      = .flowMappingStart :: (emitTokVals.mapTokVals pairs ++ [.flowMappingEnd]) := by
+    simp [emitTokVals]
+  rw [h_eq]
+  exact List.mem_cons_of_mem _ (List.mem_append_left _ ht)
+
+/-- The §F close states' arrays, read as excess-free from their pins. -/
+lemma crossedPropsExcess_none_of_close_pin
+    {s₃tok s₂tok s₁tok : Array (Positioned YamlToken)}
+    {block : List (Positioned YamlToken)} {tok : Positioned YamlToken}
+    {openTok closeTok : YamlToken} {body : List YamlToken}
+    (h_filt₃ : s₃tok.filter (fun t => t.val != .placeholder)
+        = (s₂tok.filter (fun t => t.val != .placeholder)).push tok)
+    (h_block : (s₂tok.filter (fun t => t.val != .placeholder)).toList
+        = (s₁tok.filter (fun t => t.val != .placeholder)).toList ++ block)
+    (h_filt₁ : (s₁tok.filter (fun t => t.val != .placeholder)).map (·.val)
+        = #[.streamStart, openTok])
+    (h_pin : block.map (·.val) = body)
+    (h_tok : tok.val = closeTok)
+    (h_open : openTok.isNodeProperty = false)
+    (h_close : closeTok.isNodeProperty = false)
+    (h_body : ∀ v ∈ body, v.isNodeProperty = false) :
+    crossedPropsExcessIdx? s₃tok = none := by
+  refine crossedPropsExcessIdx?_none_of_no_props (no_props_of_filtered_pin_list
+    (l := [YamlToken.streamStart, openTok] ++ (body ++ [closeTok])) ?_ ?_)
+  · rw [h_filt₃]
+    simp only [Array.toList_push, List.map_append, List.map_cons, List.map_nil]
+    rw [h_block]
+    simp only [List.map_append]
+    rw [h_pin, h_tok, ← Array.toList_map, h_filt₁]
+    rfl
+  · intro v hv
+    simp only [List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at hv
+    rcases hv with (rfl | rfl) | (hb | rfl)
+    · rfl
+    · exact h_open
+    · exact h_body v hb
+    · exact h_close
+
 /-! ## F. Whole-array wrappers
 
 Chain replays open_init → body → outermost close →
@@ -1576,18 +1691,19 @@ lemma scanFiltered_emitSeq_tokvals
   -- ═══ Step 1: open bracket → s₁ ═══
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
           h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, h_filt₁,
-          h_sync₁, _h_ska₁, _h_ssv₁⟩ :=
+          h_sync₁, _h_ska₁, _h_ssv₁, h_last_s₁, h_push₁⟩ :=
     scanNextToken_flow_open_init input ((emit.emitList items).toList ++ [']']) h_toList
   -- ═══ Step 2: body scan via emitList_scans_tokvals → s₂ and body block ═══
   obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, _h_ek₂, h_col₂, h_inflow₂,
-          h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂, _h_fmc₂, h_block_eq₂, h_pin⟩ :=
+          h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂, h_fmc₂, h_block_eq₂, h_pin⟩ :=
     emitList_scans_tokvals items h_ne h_all s₁ [']']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁ h_dp₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁ h_dp₁ h_last_s₁
   -- ═══ Step 3: close bracket → s₃ ═══
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
       (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      (by rw [h_fmc₂.flowStack_eq rfl h_fl₂]; exact h_push₁)
   -- ═══ Step 4: chain composition + token equation ═══
   have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
   have h_chain_all := (ScanChain.single h_snt₁).trans
@@ -1603,10 +1719,21 @@ lemma scanFiltered_emitSeq_tokvals
     unfold ScannerState.emit ScannerState.mk'
     dsimp only []
     decide
+  -- §9.2 dangling-node check (item 133): the same chain gives the stack itself
+  -- — and (item 180) the pinned run is property-free.
+  have h_np₃ : crossedPropsExcessIdx? s₃.tokens = none :=
+    crossedPropsExcess_none_of_close_pin h_filt₃ h_block_eq₂
+      (by rw [h_filt₁]) h_pin h_tok_fse_val rfl rfl
+      (seqTokVals_no_props items)
+  have h_dn₃ : scanLoop_checkDanglingNode s₃ = .ok () :=
+    scanLoop_checkDanglingNode_ok_of_sentinel_stack _
+      (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl) h_np₃
+  have h_fv₃ : scanLoop_checkFlowValueIndent s₃ = .ok () :=
+    scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _ (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl)
   have h_tok_eq : Scanner.scanFiltered input =
       .ok ((s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
     scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
-      h_chain_all h_eof h_fl₃ h_dp₃
+      h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
       (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
       h_indents_small
   have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder) := by
@@ -1658,18 +1785,19 @@ lemma scanFiltered_emitMap_tokvals
   -- ═══ Step 1: open brace → s₁ ═══
   obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
           h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, h_filt₁,
-          h_sync₁, h_ska₁, _h_ssv₁⟩ :=
+          h_sync₁, h_ska₁, _h_ssv₁, h_last_s₁, h_push₁⟩ :=
     scanNextToken_flow_open_mapping_init input ((emit.emitPairList pairs).toList ++ ['}']) h_toList
   -- ═══ Step 2: body scan via emitPairList_scans_tokvals → s₂ and body block ═══
   obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, _h_ek₂, h_col₂, h_inflow₂,
-          h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂, _h_fmc₂, h_block_eq₂, h_pin, _h_n3⟩ :=
+          h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂, h_fmc₂, h_block_eq₂, h_pin, _h_n3⟩ :=
     emitPairList_scans_tokvals pairs h_ne h_all_k h_all_v s₁ ['}']
       h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
-      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁ h_dp₁
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁ h_dp₁ h_last_s₁ h_push₁.2.2
   -- ═══ Step 3: close brace → s₃ ═══
   obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
     scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
       (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      (by rw [h_fmc₂.flowStack_eq rfl h_fl₂]; exact h_push₁.1)
   -- ═══ Step 4: chain composition + token equation ═══
   have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
   have h_chain_all := (ScanChain.single h_snt₁).trans
@@ -1686,10 +1814,21 @@ lemma scanFiltered_emitMap_tokvals
     unfold ScannerState.emit ScannerState.mk'
     dsimp only []
     decide
+  -- §9.2 dangling-node check (item 133): the same chain gives the stack itself
+  -- — and (item 180) the pinned run is property-free.
+  have h_np₃ : crossedPropsExcessIdx? s₃.tokens = none :=
+    crossedPropsExcess_none_of_close_pin h_filt₃ h_block_eq₂
+      (by rw [h_filt₁]) h_pin h_tok_fme_val rfl rfl
+      (mapTokVals_no_props pairs)
+  have h_dn₃ : scanLoop_checkDanglingNode s₃ = .ok () :=
+    scanLoop_checkDanglingNode_ok_of_sentinel_stack _
+      (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl) h_np₃
+  have h_fv₃ : scanLoop_checkFlowValueIndent s₃ = .ok () :=
+    scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _ (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl)
   have h_tok_eq : Scanner.scanFiltered input =
       .ok ((s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
     scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
-      h_chain_all h_eof h_fl₃ h_dp₃
+      h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
       (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
       h_indents_small
   have h_tokens_eq : tokens = (s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder) := by
@@ -1750,10 +1889,16 @@ lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
       rw [h_pk]; decide
     have h_indents_small : s₁.indents.size ≤ 1 := by
       rw [h_ids₁]; decide
+    have h_dn₁ : scanLoop_checkDanglingNode s₁ = .ok () :=
+      scanLoop_checkDanglingNode_ok_of_sentinel_stack _ h_ids₁
+        (crossedPropsExcessIdx?_none_of_no_props (no_props_of_filtered_pin h_filt₁
+          (by intro v hv; simp [Array.mem_def] at hv; rcases hv with rfl | rfl <;> rfl)))
+    have h_fv₁ : scanLoop_checkFlowValueIndent s₁ = .ok () :=
+      scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _ h_ids₁
     have h_tok_eq : Scanner.scanFiltered (emitScalar sc.content) =
         .ok ((s₁.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
       scanFiltered_tokens_eq_of_chain_short_stack (emitScalar sc.content) _ s₁ _ rfl h_no_bom
-        h_chain h_eof h_flow₁ h_dp₁
+        h_chain h_eof h_flow₁ h_dp₁ h_dn₁ h_fv₁
         (ScanChain.fuel_bound _ _ _ _ rfl h_chain h_eof)
         h_indents_small
     have h_tokens_eq : tokens
@@ -1791,11 +1936,11 @@ lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
         rw [h_chars, h_list]; rfl
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
               _h_inflow₁, _h_indent₁, _h_ek₁, _h_line₁, _h_atol₁, _h_endline₁, _h_sk₁, h_filt₁,
-              _h_sync₁, _h_ska₁, _h_ssv₁⟩ :=
+              _h_sync₁, _h_ska₁, _h_ssv₁, _h_last₁, h_push₁⟩ :=
         scanNextToken_flow_open_init (emit (.sequence style items tag anchor)) [']'] h_toList
       obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
         scanNextToken_flow_close_seq_outermost_ext s₁ h_corr₁ _h_inflow₁ _h_indent₁
-          (by rw [h_col₁]; omega) h_fl₁ h_dp₁
+          (by rw [h_col₁]; omega) h_fl₁ h_dp₁ h_push₁
       have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
       have h_chain_all := (ScanChain.single h_snt₁).trans (ScanChain.single h_snt₃)
       have h_no_bom : (ScannerState.mk' (emit (.sequence style items tag anchor))).peek?
@@ -1810,10 +1955,20 @@ lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
         unfold ScannerState.emit ScannerState.mk'
         dsimp only []
         decide
+      have h_np₃ : crossedPropsExcessIdx? s₃.tokens = none :=
+        crossedPropsExcess_none_of_close_pin (s₁tok := s₁.tokens) (block := []) (body := [])
+          h_filt₃ (by simp) (by rw [h_filt₁]) rfl h_tok_fse_val rfl rfl
+          (by intro v hv; cases hv)
+      have h_dn₃ : scanLoop_checkDanglingNode s₃ = .ok () :=
+        scanLoop_checkDanglingNode_ok_of_sentinel_stack _
+          (by rw [h_ids₃, h_ids₁]; rfl) h_np₃
+      have h_fv₃ : scanLoop_checkFlowValueIndent s₃ = .ok () :=
+        scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _
+          (by rw [h_ids₃, h_ids₁]; rfl)
       have h_tok_eq : Scanner.scanFiltered (emit (.sequence style items tag anchor)) =
           .ok ((s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
         scanFiltered_tokens_eq_of_chain_short_stack (emit (.sequence style items tag anchor))
-          _ s₃ _ rfl h_no_bom h_chain_all h_eof h_fl₃ h_dp₃
+          _ s₃ _ rfl h_no_bom h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
           (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
           h_indents_small
       have h_tokens_eq : tokens
@@ -1869,11 +2024,11 @@ lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
         rw [h_chars, h_list]; rfl
       obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
               _h_inflow₁, _h_indent₁, _h_ek₁, _h_line₁, _h_atol₁, _h_endline₁, _h_sk₁, h_filt₁,
-              _h_sync₁, _h_ska₁, _h_ssv₁⟩ :=
+              _h_sync₁, _h_ska₁, _h_ssv₁, _h_last₁, h_push₁⟩ :=
         scanNextToken_flow_open_mapping_init (emit (.mapping style pairs tag anchor)) ['}'] h_toList
       obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
         scanNextToken_flow_close_mapping_outermost_ext s₁ h_corr₁ _h_inflow₁ _h_indent₁
-          (by rw [h_col₁]; omega) h_fl₁ h_dp₁
+          (by rw [h_col₁]; omega) h_fl₁ h_dp₁ h_push₁.1
       have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
       have h_chain_all := (ScanChain.single h_snt₁).trans (ScanChain.single h_snt₃)
       have h_no_bom : (ScannerState.mk' (emit (.mapping style pairs tag anchor))).peek?
@@ -1888,10 +2043,20 @@ lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
         unfold ScannerState.emit ScannerState.mk'
         dsimp only []
         decide
+      have h_np₃ : crossedPropsExcessIdx? s₃.tokens = none :=
+        crossedPropsExcess_none_of_close_pin (s₁tok := s₁.tokens) (block := []) (body := [])
+          h_filt₃ (by simp) (by rw [h_filt₁]) rfl h_tok_fme_val rfl rfl
+          (by intro v hv; cases hv)
+      have h_dn₃ : scanLoop_checkDanglingNode s₃ = .ok () :=
+        scanLoop_checkDanglingNode_ok_of_sentinel_stack _
+          (by rw [h_ids₃, h_ids₁]; rfl) h_np₃
+      have h_fv₃ : scanLoop_checkFlowValueIndent s₃ = .ok () :=
+        scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _
+          (by rw [h_ids₃, h_ids₁]; rfl)
       have h_tok_eq : Scanner.scanFiltered (emit (.mapping style pairs tag anchor)) =
           .ok ((s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
         scanFiltered_tokens_eq_of_chain_short_stack (emit (.mapping style pairs tag anchor))
-          _ s₃ _ rfl h_no_bom h_chain_all h_eof h_fl₃ h_dp₃
+          _ s₃ _ rfl h_no_bom h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
           (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
           h_indents_small
       have h_tokens_eq : tokens
@@ -1941,55 +2106,227 @@ lemma scanFiltered_emit_tokvals (v : YamlValue) {inFlow : Bool}
       rw [h_main]
       simp [emitTokVals]
 
+
+/-! ## G. Item 180: acceptance riders and the relocated Step-1 theorem
+
+`emit_produces_valid_yaml` lived in `ScanChainGrowth.lean` on the weak chain
+products, whose close steps cannot see that the scanned run is property-free —
+which §9.2's crossed-block clause now asks.  The value-determined pins can,
+so the theorem rides them: the two riders below are the §F replays stopped at
+their own `h_tok_eq`. -/
+
+/-- The §F sequence replay, packaged as ACCEPTANCE. -/
+lemma scanFiltered_emitSeq_ok
+    (items : List YamlValue) (h_ne : items ≠ [])
+    (h_all : ∀ v ∈ items, EmitScansTokVals v) :
+    ∃ tokens, Scanner.scanFiltered ("[" ++ emit.emitList items ++ "]")
+      = .ok tokens := by
+  let input := "[" ++ emit.emitList items ++ "]"
+  have h_toList : input.toList = '[' :: (emit.emitList items).toList ++ [']'] := by
+    simp only [input, String.toList_append]; rfl
+  -- ═══ Step 1: open bracket → s₁ ═══
+  obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, h_filt₁,
+          h_sync₁, _h_ska₁, _h_ssv₁, h_last_s₁, h_push₁⟩ :=
+    scanNextToken_flow_open_init input ((emit.emitList items).toList ++ [']']) h_toList
+  -- ═══ Step 2: body scan via emitList_scans_tokvals → s₂ and body block ═══
+  obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, _h_ek₂, h_col₂, h_inflow₂,
+          h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂, h_fmc₂, h_block_eq₂, h_pin⟩ :=
+    emitList_scans_tokvals items h_ne h_all s₁ [']']
+      h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_sync₁ h_dp₁ h_last_s₁
+  -- ═══ Step 3: close bracket → s₃ ═══
+  obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fse, h_tok_fse_val, h_filt₃⟩⟩ :=
+    scanNextToken_flow_close_seq_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
+      (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      (by rw [h_fmc₂.flowStack_eq rfl h_fl₂]; exact h_push₁)
+  -- ═══ Step 4: chain composition + token equation ═══
+  have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
+  have h_chain_all := (ScanChain.single h_snt₁).trans
+    (h_chain₂.toScanChain.trans (ScanChain.single h_snt₃))
+  have h_no_bom : (ScannerState.mk' input).peek? ≠ some '﻿' := by
+    have h_chars := chars_from_zero_toList input
+    rw [h_toList] at h_chars
+    have h_corr0 := initial_corr input _ h_chars
+    have ⟨h_pk, _⟩ := peek_of_chars_cons _ '[' ((emit.emitList items).toList ++ [']']) 0 h_corr0
+    rw [h_pk]; decide
+  have h_indents_small : s₃.indents.size ≤ 1 := by
+    rw [h_ids₃, h_ids₂, h_ids₁]
+    unfold ScannerState.emit ScannerState.mk'
+    dsimp only []
+    decide
+  -- §9.2 dangling-node check (item 133): the same chain gives the stack itself
+  -- — and (item 180) the pinned run is property-free.
+  have h_np₃ : crossedPropsExcessIdx? s₃.tokens = none :=
+    crossedPropsExcess_none_of_close_pin h_filt₃ h_block_eq₂
+      (by rw [h_filt₁]) h_pin h_tok_fse_val rfl rfl
+      (seqTokVals_no_props items)
+  have h_dn₃ : scanLoop_checkDanglingNode s₃ = .ok () :=
+    scanLoop_checkDanglingNode_ok_of_sentinel_stack _
+      (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl) h_np₃
+  have h_fv₃ : scanLoop_checkFlowValueIndent s₃ = .ok () :=
+    scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _ (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl)
+  have h_tok_eq : Scanner.scanFiltered input =
+      .ok ((s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
+    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
+      h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
+      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
+      h_indents_small
+  exact ⟨_, h_tok_eq⟩
+
+/-- The §F mapping replay, packaged as ACCEPTANCE. -/
+lemma scanFiltered_emitMap_ok
+    (pairs : List (YamlValue × YamlValue)) (h_ne : pairs ≠ [])
+    (h_all_k : ∀ p ∈ pairs, EmitScansSavedKeyTokVals p.1)
+    (h_all_v : ∀ p ∈ pairs, EmitScansTokVals p.2) :
+    ∃ tokens, Scanner.scanFiltered ("{" ++ emit.emitPairList pairs ++ "}")
+      = .ok tokens := by
+  let input := "{" ++ emit.emitPairList pairs ++ "}"
+  have h_toList : input.toList = '{' :: (emit.emitPairList pairs).toList ++ ['}'] := by
+    simp only [input, String.toList_append]; rfl
+  -- ═══ Step 1: open brace → s₁ ═══
+  obtain ⟨s₁, h_snt₁, h_corr₁, h_fl₁, h_dp₁, h_ids₁, h_col₁,
+          h_inflow₁, h_indent₁, h_ek₁, h_line₁, h_atol₁, h_endline₁, _h_sk₁, h_filt₁,
+          h_sync₁, h_ska₁, _h_ssv₁, h_last_s₁, h_push₁⟩ :=
+    scanNextToken_flow_open_mapping_init input ((emit.emitPairList pairs).toList ++ ['}']) h_toList
+  -- ═══ Step 2: body scan via emitPairList_scans_tokvals → s₂ and body block ═══
+  obtain ⟨_n₂, s₂, block, h_chain₂, h_corr₂, h_fl₂, h_dp₂, h_ids₂, _h_ek₂, h_col₂, h_inflow₂,
+          h_indent₂, _h_line₂, _h_atol₂, _h_endline₂, _h_stack₂, h_fmc₂, h_block_eq₂, h_pin, _h_n3⟩ :=
+    emitPairList_scans_tokvals pairs h_ne h_all_k h_all_v s₁ ['}']
+      h_corr₁ h_inflow₁ (by rw [h_fl₁]; omega) h_indent₁ (by rw [h_col₁]; omega)
+      h_ek₁ (h_line₁ ▸ h_atol₁) h_endline₁ h_ska₁ h_sync₁ h_dp₁ h_last_s₁ h_push₁.2.2
+  -- ═══ Step 3: close brace → s₃ ═══
+  obtain ⟨s₃, h_snt₃, h_fl₃, h_dp₃, h_peek₃, h_ids₃, ⟨tok_fme, h_tok_fme_val, h_filt₃⟩⟩ :=
+    scanNextToken_flow_close_mapping_outermost_ext s₂ h_corr₂ h_inflow₂ h_indent₂ h_col₂
+      (by rw [h_fl₂, h_fl₁]) (by rw [h_dp₂, h_dp₁])
+      (by rw [h_fmc₂.flowStack_eq rfl h_fl₂]; exact h_push₁.1)
+  -- ═══ Step 4: chain composition + token equation ═══
+  have h_eof : scanNextToken s₃ = .ok none := scanNextToken_eof s₃ h_peek₃
+  have h_chain_all := (ScanChain.single h_snt₁).trans
+    (h_chain₂.toScanChain.trans (ScanChain.single h_snt₃))
+  have h_no_bom : (ScannerState.mk' input).peek? ≠ some '﻿' := by
+    have h_chars := chars_from_zero_toList input
+    rw [h_toList] at h_chars
+    have h_corr0 := initial_corr input _ h_chars
+    have ⟨h_pk, _⟩ :=
+      peek_of_chars_cons _ '{' ((emit.emitPairList pairs).toList ++ ['}']) 0 h_corr0
+    rw [h_pk]; decide
+  have h_indents_small : s₃.indents.size ≤ 1 := by
+    rw [h_ids₃, h_ids₂, h_ids₁]
+    unfold ScannerState.emit ScannerState.mk'
+    dsimp only []
+    decide
+  -- §9.2 dangling-node check (item 133): the same chain gives the stack itself
+  -- — and (item 180) the pinned run is property-free.
+  have h_np₃ : crossedPropsExcessIdx? s₃.tokens = none :=
+    crossedPropsExcess_none_of_close_pin h_filt₃ h_block_eq₂
+      (by rw [h_filt₁]) h_pin h_tok_fme_val rfl rfl
+      (mapTokVals_no_props pairs)
+  have h_dn₃ : scanLoop_checkDanglingNode s₃ = .ok () :=
+    scanLoop_checkDanglingNode_ok_of_sentinel_stack _
+      (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl) h_np₃
+  have h_fv₃ : scanLoop_checkFlowValueIndent s₃ = .ok () :=
+    scanLoop_checkFlowValueIndent_ok_of_sentinel_stack _ (by rw [h_ids₃, h_ids₂, h_ids₁]; rfl)
+  have h_tok_eq : Scanner.scanFiltered input =
+      .ok ((s₃.emit .streamEnd).tokens.filter (fun t => t.val != .placeholder)) :=
+    scanFiltered_tokens_eq_of_chain_short_stack input _ s₃ _ rfl h_no_bom
+      h_chain_all h_eof h_fl₃ h_dp₃ h_dn₃ h_fv₃
+      (ScanChain.fuel_bound _ _ _ _ rfl h_chain_all h_eof)
+      h_indents_small
+  exact ⟨_, h_tok_eq⟩
+
+/-- **Main theorem** (Step 1 of the universal round-trip): the scanner accepts
+    any canonical emitter output.  Relocated from `ScanChainGrowth.lean` at
+    item 180 — see the section header above. -/
+lemma emit_produces_valid_yaml (v : YamlValue) {inFlow : Bool}
+    (hg : Grammable v inFlow) :
+    ∃ tokens, Scanner.scanFiltered (emit v) = .ok tokens := by
+  cases hg with
+  | scalar sc iF hsc => exact scan_accepts_emitScalar sc.content
+  | sequence style items tag anchor iF h =>
+    change ∃ tokens,
+      Scanner.scanFiltered ("[" ++ emit.emitList items.toList ++ "]") = .ok tokens
+    match h_list : items.toList with
+    | [] =>
+      simp only [emit.emitList]
+      exact scanFiltered_exists_of_isOk (by native_decide)
+    | w :: ws =>
+      have h_all : ∀ u ∈ items.toList, EmitScansTokVals u := fun u hu => by
+        have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hu
+        have h_sz : i < items.size := by rwa [Array.length_toList] at hi
+        exact h_eq ▸ emit_scans_tokvals _ (h ⟨i, h_sz⟩)
+      have h_ne : items.toList ≠ [] := by rw [h_list]; exact List.cons_ne_nil _ _
+      rw [← h_list]
+      exact scanFiltered_emitSeq_ok items.toList h_ne h_all
+  | mapping style pairs tag anchor iF hk hv =>
+    change ∃ tokens,
+      Scanner.scanFiltered ("{" ++ emit.emitPairList pairs.toList ++ "}") = .ok tokens
+    match h_list : pairs.toList with
+    | [] =>
+      simp only [emit.emitPairList]
+      exact scanFiltered_exists_of_isOk (by native_decide)
+    | p :: ps =>
+      have h_all_k : ∀ q ∈ pairs.toList, EmitScansSavedKeyTokVals q.1 := fun q hq => by
+        have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq
+        have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+        exact h_eq ▸ emit_scans_saved_key_tokvals _ (hk ⟨i, h_sz⟩)
+      have h_all_v : ∀ q ∈ pairs.toList, EmitScansTokVals q.2 := fun q hq => by
+        have ⟨i, hi, h_eq⟩ := List.getElem_of_mem hq
+        have h_sz : i < pairs.size := by rwa [Array.length_toList] at hi
+        exact h_eq ▸ emit_scans_tokvals _ (hv ⟨i, h_sz⟩)
+      have h_ne : pairs.toList ≠ [] := by rw [h_list]; exact List.cons_ne_nil _ _
+      rw [← h_list]
+      exact scanFiltered_emitMap_ok pairs.toList h_ne h_all_k h_all_v
+
 /-! ## Axiom audit -/
 
 /--
 info: 'L4YAML.Proofs.EmitterScannability.emit_scans_tokvals_both' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_15,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_18,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_27,
- escapeChar_hex_structure._native.native_decide.ax_1_1,
- escapeChar_hex_structure._native.native_decide.ax_1_2,
- escapeChar_hex_structure._native.native_decide.ax_1_3,
- escapeTag_not_linebreak._native.native_decide.ax_1_10,
- escapeTag_not_linebreak._native.native_decide.ax_1_11,
- escapeTag_not_linebreak._native.native_decide.ax_1_12,
- escapeTag_not_linebreak._native.native_decide.ax_1_2,
- escapeTag_not_linebreak._native.native_decide.ax_1_3,
- escapeTag_not_linebreak._native.native_decide.ax_1_4,
- escapeTag_not_linebreak._native.native_decide.ax_1_5,
- escapeTag_not_linebreak._native.native_decide.ax_1_6,
- escapeTag_not_linebreak._native.native_decide.ax_1_7,
- escapeTag_not_linebreak._native.native_decide.ax_1_8,
- escapeTag_not_linebreak._native.native_decide.ax_1_9,
- hexNibble_is_hex._native.native_decide.ax_1_1,
- hexNibble_lt128._native.native_decide.ax_1_1,
- hex_foldl_roundtrip._native.native_decide.ax_1_1,
- hex_two_foldl_bound._native.native_decide.ax_1_1,
- escapeTag_roundtrip._native.native_decide.ax_1_10,
- escapeTag_roundtrip._native.native_decide.ax_1_11,
- escapeTag_roundtrip._native.native_decide.ax_1_12,
- escapeTag_roundtrip._native.native_decide.ax_1_13,
- escapeTag_roundtrip._native.native_decide.ax_1_14,
- escapeTag_roundtrip._native.native_decide.ax_1_15,
- escapeTag_roundtrip._native.native_decide.ax_1_16,
- escapeTag_roundtrip._native.native_decide.ax_1_17,
- escapeTag_roundtrip._native.native_decide.ax_1_18,
- escapeTag_roundtrip._native.native_decide.ax_1_19,
- escapeTag_roundtrip._native.native_decide.ax_1_2,
- escapeTag_roundtrip._native.native_decide.ax_1_20,
- escapeTag_roundtrip._native.native_decide.ax_1_21,
- escapeTag_roundtrip._native.native_decide.ax_1_22,
- escapeTag_roundtrip._native.native_decide.ax_1_23,
- escapeTag_roundtrip._native.native_decide.ax_1_3,
- escapeTag_roundtrip._native.native_decide.ax_1_4,
- escapeTag_roundtrip._native.native_decide.ax_1_5,
- escapeTag_roundtrip._native.native_decide.ax_1_6,
- escapeTag_roundtrip._native.native_decide.ax_1_7,
- escapeTag_roundtrip._native.native_decide.ax_1_8,
- escapeTag_roundtrip._native.native_decide.ax_1_9]
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_10,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_11,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_12,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_13,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_14,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_15,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_16,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_17,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_18,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_19,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_20,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_21,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_22,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_23,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_4,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_5,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_6,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_7,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_8,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_9,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_15,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_18,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_27,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_10,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_11,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_12,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_4,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_5,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_6,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_7,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_8,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_9,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hexNibble_is_hex._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hexNibble_lt128._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hex_foldl_roundtrip._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hex_two_foldl_bound._native.native_decide.ax_1_1]
 -/
 #guard_msgs in
 #print axioms emit_scans_tokvals_both
@@ -2014,53 +2351,55 @@ info: 'L4YAML.Proofs.EmitterScannability.scanFiltered_emitMap_tokvals' depends o
 info: 'L4YAML.Proofs.EmitterScannability.scanFiltered_emit_tokvals' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_15,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_18,
- collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_27,
- emitScalar_toList._native.native_decide.ax_1_1,
- emitScalar_utf8ByteSize_ge._native.native_decide.ax_1_1,
- escapeChar_hex_structure._native.native_decide.ax_1_1,
- escapeChar_hex_structure._native.native_decide.ax_1_2,
- escapeChar_hex_structure._native.native_decide.ax_1_3,
- escapeTag_not_linebreak._native.native_decide.ax_1_10,
- escapeTag_not_linebreak._native.native_decide.ax_1_11,
- escapeTag_not_linebreak._native.native_decide.ax_1_12,
- escapeTag_not_linebreak._native.native_decide.ax_1_2,
- escapeTag_not_linebreak._native.native_decide.ax_1_3,
- escapeTag_not_linebreak._native.native_decide.ax_1_4,
- escapeTag_not_linebreak._native.native_decide.ax_1_5,
- escapeTag_not_linebreak._native.native_decide.ax_1_6,
- escapeTag_not_linebreak._native.native_decide.ax_1_7,
- escapeTag_not_linebreak._native.native_decide.ax_1_8,
- escapeTag_not_linebreak._native.native_decide.ax_1_9,
- hexNibble_is_hex._native.native_decide.ax_1_1,
- hexNibble_lt128._native.native_decide.ax_1_1,
- hex_foldl_roundtrip._native.native_decide.ax_1_1,
- hex_two_foldl_bound._native.native_decide.ax_1_1,
- escapeTag_roundtrip._native.native_decide.ax_1_10,
- escapeTag_roundtrip._native.native_decide.ax_1_11,
- escapeTag_roundtrip._native.native_decide.ax_1_12,
- escapeTag_roundtrip._native.native_decide.ax_1_13,
- escapeTag_roundtrip._native.native_decide.ax_1_14,
- escapeTag_roundtrip._native.native_decide.ax_1_15,
- escapeTag_roundtrip._native.native_decide.ax_1_16,
- escapeTag_roundtrip._native.native_decide.ax_1_17,
- escapeTag_roundtrip._native.native_decide.ax_1_18,
- escapeTag_roundtrip._native.native_decide.ax_1_19,
- escapeTag_roundtrip._native.native_decide.ax_1_2,
- escapeTag_roundtrip._native.native_decide.ax_1_20,
- escapeTag_roundtrip._native.native_decide.ax_1_21,
- escapeTag_roundtrip._native.native_decide.ax_1_22,
- escapeTag_roundtrip._native.native_decide.ax_1_23,
- escapeTag_roundtrip._native.native_decide.ax_1_3,
- escapeTag_roundtrip._native.native_decide.ax_1_4,
- escapeTag_roundtrip._native.native_decide.ax_1_5,
- escapeTag_roundtrip._native.native_decide.ax_1_6,
- escapeTag_roundtrip._native.native_decide.ax_1_7,
- escapeTag_roundtrip._native.native_decide.ax_1_8,
- escapeTag_roundtrip._native.native_decide.ax_1_9]
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_10,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_11,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_12,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_13,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_14,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_15,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_16,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_17,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_18,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_19,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_20,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_21,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_22,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_23,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_4,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_5,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_6,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_7,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_8,
+ _private.L4YAML.Proofs.RoundTrip.RoundTrip.0.L4YAML.Proofs.RoundTrip.escapeTag_roundtrip._native.native_decide.ax_1_9,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_15,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_18,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.collectDoubleQuotedLoop_escapeString_succeeds._native.native_decide.ax_1_27,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeChar_hex_structure._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_10,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_11,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_12,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_2,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_3,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_4,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_5,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_6,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_7,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_8,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.escapeTag_not_linebreak._native.native_decide.ax_1_9,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hexNibble_is_hex._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hexNibble_lt128._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hex_foldl_roundtrip._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.EscapeProperties.0.L4YAML.Proofs.EmitterScannability.hex_two_foldl_bound._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.ScannerAcceptance.0.L4YAML.Proofs.EmitterScannability.emitScalar_toList._native.native_decide.ax_1_1,
+ _private.L4YAML.Proofs.Output.EmitterScannability.ScannerAcceptance.0.L4YAML.Proofs.EmitterScannability.emitScalar_utf8ByteSize_ge._native.native_decide.ax_1_1]
 -/
 #guard_msgs in
 #print axioms scanFiltered_emit_tokvals
 
 end L4YAML.Proofs.EmitterScannability
+
+end Blanket

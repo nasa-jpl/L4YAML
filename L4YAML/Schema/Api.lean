@@ -1,6 +1,10 @@
-import L4YAML.Schema.Schema
-import L4YAML.Schema.FromToYaml
-import L4YAML.Parser.IndexedComposition
+module
+
+public import L4YAML.Schema.Schema
+public import L4YAML.Schema.FromToYaml
+public import L4YAML.Parser.IndexedComposition
+
+@[expose] public section Blanket
 
 /-
 Copyright (c) 2026. All rights reserved.
@@ -48,3 +52,5 @@ def parseTyped (s : String) : Except ScanError Schema.YamlType := do
   pure (Schema.resolve yaml)
 
 end L4YAML
+
+end Blanket

@@ -2,7 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedPrims
+
+module
+
+public import L4YAML.Proofs.Scanner.IndexedScannerCorrectness.OrderedPrims
+public import L4YAML.Proofs.Scanner.CloseStaleExplicitKeyIx
+
+@[expose] public section Blanket
 
 /-! # `IndexedScannerCorrectness.OrderedDispatch` — §8.7–§8.8
 
@@ -19,6 +25,8 @@ Split out of `IndexedScannerCorrectness.lean` (Reflection 112). -/
 set_option autoImplicit false
 
 namespace L4YAML.Proofs.Indexed.ScannerCorrectness
+
+open L4YAML.Proofs.CloseStaleExplicitKeyIx
 
 open L4YAML
 open L4YAML.Indexed
@@ -202,11 +210,13 @@ lemma scanFlowMappingEndIx_preserves_AllKeysValidIx {input : String}
 lemma scanFlowEntryIx_preserves_AllKeysValidIx {input : String}
     (s s' : ScannerStateIx input) (h_akv : AllKeysValidIx s)
     (h_ok : scanFlowEntryIx s = .ok s') : AllKeysValidIx s' := by
-  apply AllKeysValidIx_mono s s' h_akv
-    (scanFlowEntryIx_preserves_simpleKey s s' h_ok)
-    (scanFlowEntryIx_preserves_simpleKeyStack s s' h_ok)
-    (scanFlowEntryIx_tokens_size_le h_ok)
-    (fun i hi => scanFlowEntryIx_preserves_prefix s s' h_ok i hi)
+  -- item 9q: the `,` clears the current key; the stack is untouched
+  exact AllKeysValidIx_of_cleared s'
+    (scanFlowEntryIx_clears_simpleKey s s' h_ok)
+    (SimpleKeyStackValidIx_mono s s' h_akv.2
+      (scanFlowEntryIx_preserves_simpleKeyStack s s' h_ok)
+      (scanFlowEntryIx_tokens_size_le h_ok)
+      (fun i hi => scanFlowEntryIx_preserves_prefix s s' h_ok i hi))
 
 /-! #### §8.7.3  Block entry / key preservation. -/
 
@@ -219,7 +229,13 @@ lemma scanBlockEntryIx_preserves_ScanInvIx {input : String}
   · -- !s.inFlow = true: tab check active
     split at h_ok
     · simp at h_ok
-    · simp only [Except.ok.injEq] at h_ok; subst h_ok
+    · -- item 48 same-line check
+      split at h_ok
+      · simp at h_ok
+      -- `scanBlockEntryValidateIx` (item 134)
+      split at h_ok
+      · simp at h_ok
+      simp only [Except.ok.injEq] at h_ok; subst h_ok
       have h1 := pushSequenceIndentIx_preserves_ScanInvIx s s.cursor.pos.col h
       have h2 := emit_preserves_ScanInvIx _ YamlToken.blockEntry h1
       have h3 := advance_preserves_ScanInvIx _ h2
@@ -245,7 +261,10 @@ lemma scanKeyIx_preserves_ScanInvIx {input : String}
   unfold scanKeyIx at h_ok
   simp only [bind, Except.bind] at h_ok
   split at h_ok
-  · split at h_ok
+  · -- `scanKeyValidate`'s indexed twin (item 131), then the pushMappingIndent if
+    split at h_ok
+    · simp at h_ok
+    split at h_ok
     · split at h_ok
       · simp at h_ok
       · simp only [Except.ok.injEq] at h_ok; subst h_ok
@@ -382,7 +401,9 @@ lemma scanDocumentEndIx_preserves_ScanInvIx {input : String}
         simpleKey := { cursor := IxCursor.start input } }
       : ScannerStateIx input).emit YamlToken.documentEnd).advanceN 3) with
         simpleKeyAllowed := true, allowDirectives := true,
-        directivesPresent := false, definedAnchors := #[] } h_adv rfl rfl
+        directivesPresent := false, definedAnchors := #[],
+        -- Item 317: the marker ends the explicit-key register (`scanDocumentEndIx`).
+        explicitKeyLine := none, explicitKeyCol := -1 } h_adv rfl rfl
   unfold scanDocumentEndIx at h_ok
   simp only [bind, Except.bind] at h_ok
   repeat (any_goals (split at h_ok))
@@ -560,6 +581,8 @@ lemma scanValueIx_preserves_ScanInvIx {input : String}
     (h_ok : scanValueIx s = .ok s') : ScanInvIx s' := by
   unfold scanValueIx at h_ok
   simp only [bind, Except.bind] at h_ok
+  -- Three guards since item 31: validate, indent-tab check, tab check
+  split at h_ok <;> try contradiction
   split at h_ok <;> try contradiction
   split at h_ok <;> try contradiction
   simp only [Except.ok.injEq] at h_ok; subst h_ok
@@ -576,6 +599,8 @@ lemma scanValueIx_preserves_AllKeysValidIx {input : String}
     (h_ok : scanValueIx s = .ok s') : AllKeysValidIx s' := by
   unfold scanValueIx at h_ok
   simp only [bind, Except.bind] at h_ok
+  -- Three guards since item 31: validate, indent-tab check, tab check
+  split at h_ok <;> try contradiction
   split at h_ok <;> try contradiction
   split at h_ok <;> try contradiction
   simp only [Except.ok.injEq] at h_ok; subst h_ok
@@ -699,10 +724,10 @@ lemma scanYamlDirectiveIx_new_token_start {input : String}
     (s'.tokens[s.tokens.size]'hj).start = startPos := by
   unfold scanYamlDirectiveIx at h_ok
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
-  · rw [if_neg hd] at h_ok
+  · rw [ite_eq_left hd] at h_ok; simp [Bind.bind, Except.bind] at h_ok
+  · rw [ite_eq_right hd] at h_ok
     simp only [] at h_ok
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h_ok
     repeat' split at h_ok
     all_goals first
@@ -721,7 +746,7 @@ lemma scanTagDirectiveIx_new_token_start {input : String}
     (hj : s.tokens.size < s'.tokens.size) :
     (s'.tokens[s.tokens.size]'hj).start = startPos := by
   unfold scanTagDirectiveIx at h_ok
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h_ok
   repeat' split at h_ok
   all_goals first
@@ -794,10 +819,10 @@ lemma scanYamlDirectiveIx_tokens_size_le_succ {input : String}
     s'.tokens.size ≤ s.tokens.size + 1 := by
   unfold scanYamlDirectiveIx at h
   by_cases hd : s.seenYamlDirective = true
-  · rw [if_pos hd] at h; simp [Bind.bind, Except.bind] at h
-  · rw [if_neg hd] at h
+  · rw [ite_eq_left hd] at h; simp [Bind.bind, Except.bind] at h
+  · rw [ite_eq_right hd] at h
     simp only [] at h
-    simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+    simp only [Bind.bind, Except.bind, throw, throwThe,
       MonadExceptOf.throw] at h
     repeat' split at h
     all_goals first
@@ -811,7 +836,7 @@ lemma scanTagDirectiveIx_tokens_size_le_succ {input : String}
     (h : scanTagDirectiveIx s cAfterWS startPos hStart = .ok s') :
     s'.tokens.size ≤ s.tokens.size + 1 := by
   unfold scanTagDirectiveIx at h
-  simp only [Bind.bind, Except.bind, pure, Except.pure, throw, throwThe,
+  simp only [Bind.bind, Except.bind, throw, throwThe,
     MonadExceptOf.throw] at h
   repeat' split at h
   all_goals first
@@ -1009,6 +1034,28 @@ lemma _scalar_emitAt_preserves_AllKeysValidIx {input : String}
     show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
     exact Array.getElem_push_lt hi
 
+/-- Block-scalar twin of `_scalar_emitAt_preserves_AllKeysValidIx`. The
+    block-scalar arm's post-state *clears* the pending simple key and re-allows
+    one (a block scalar ends at the start of a line — the legacy post-state from
+    `scanBlockScalarBody`), so `simpleKey` is not preserved and the `_mono` route
+    does not apply. A cleared key makes `SimpleKeyValidIx` vacuous, and the
+    stack side still goes through `SimpleKeyStackValidIx_mono` unchanged.
+
+    Stated over an arbitrary `s'` with the three facts the conclusion needs
+    rather than over the literal record update: the arm's post-state reaches the
+    goal as a fully-expanded field-by-field literal, which unifies with the
+    hypotheses below but not with a `with`-update written here. -/
+lemma _blockScalar_preserves_AllKeysValidIx {input : String}
+    (s s' : ScannerStateIx input) (h_akv : AllKeysValidIx s)
+    (h_clear : s'.simpleKey.possible = false)
+    (h_stack : s'.simpleKeyStack = s.simpleKeyStack)
+    (h_size : s.tokens.tokens.size ≤ s'.tokens.tokens.size)
+    (h_pref : ∀ i (h : i < s.tokens.tokens.size),
+      s'.tokens.tokens[i]'(by omega) = s.tokens.tokens[i]) :
+    AllKeysValidIx s' :=
+  AllKeysValidIx_of_cleared s' h_clear
+    (SimpleKeyStackValidIx_mono s s' h_akv.2 h_stack h_size h_pref)
+
 /-! #### §8.8.1  `scanNextTokenIx_preprocess` preservation.
 
 `preprocess` chains: `skipToContentS` (cursor-only) → optional
@@ -1023,6 +1070,9 @@ lemma scanNextTokenIx_preprocess_preserves_ScanInvIx {input : String}
   have h_skip := skipToContentS_preserves_ScanInvIx s h
   unfold scanNextTokenIx_preprocess at h_pre
   simp only at h_pre
+  -- Peel the §6.1/§6.6 strictness-walker guard (item 7).
+  split at h_pre
+  · simp at h_pre
   split at h_pre
   · simp at h_pre
   · split at h_pre
@@ -1040,7 +1090,7 @@ lemma scanNextTokenIx_preprocess_preserves_ScanInvIx {input : String}
               (s.skipToContentS.cursor.pos.col : Int) with needIndentCheck := false }
               : ScannerStateIx input) :=
             ScanInvIx_of_field_update _ _ h_unwind rfl rfl
-          exact saveSimpleKeyIx_preserves_ScanInvIx _ h_fld
+          exact ScanInvIx_of_field_update _ _ (saveSimpleKeyIx_preserves_ScanInvIx _ h_fld) (by simp) (by simp)
     · -- without indent check
       split at h_pre
       · simp at h_pre
@@ -1049,7 +1099,7 @@ lemma scanNextTokenIx_preprocess_preserves_ScanInvIx {input : String}
         · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
           obtain ⟨hs, _⟩ := h_pre
           subst hs
-          exact saveSimpleKeyIx_preserves_ScanInvIx _ h_skip
+          exact ScanInvIx_of_field_update _ _ (saveSimpleKeyIx_preserves_ScanInvIx _ h_skip) (by simp) (by simp)
 
 lemma scanNextTokenIx_preprocess_preserves_AllKeysValidIx {input : String}
     {s s' : ScannerStateIx input} {c : Char} (h_akv : AllKeysValidIx s)
@@ -1057,6 +1107,9 @@ lemma scanNextTokenIx_preprocess_preserves_AllKeysValidIx {input : String}
   have h_skip := skipToContentS_preserves_AllKeysValidIx s h_akv
   unfold scanNextTokenIx_preprocess at h_pre
   simp only at h_pre
+  -- Peel the §6.1/§6.6 strictness-walker guard (item 7).
+  split at h_pre
+  · simp at h_pre
   split at h_pre
   · simp at h_pre
   · split at h_pre
@@ -1076,7 +1129,8 @@ lemma scanNextTokenIx_preprocess_preserves_AllKeysValidIx {input : String}
             refine AllKeysValidIx_mono _ _ h_unwind rfl rfl ?_ ?_
             · exact Nat.le_refl _
             · intro i hi; rfl
-          exact saveSimpleKeyIx_preserves_AllKeysValidIx _ h_fld
+          exact AllKeysValidIx_mono _ _ (saveSimpleKeyIx_preserves_AllKeysValidIx _ h_fld) (by simp) (by simp)
+            (by simp) (by intro i hi; simp)
     · -- without indent check
       split at h_pre
       · simp at h_pre
@@ -1085,7 +1139,8 @@ lemma scanNextTokenIx_preprocess_preserves_AllKeysValidIx {input : String}
         · simp only [Except.ok.injEq, Option.some.injEq, Prod.mk.injEq] at h_pre
           obtain ⟨hs, _⟩ := h_pre
           subst hs
-          exact saveSimpleKeyIx_preserves_AllKeysValidIx _ h_skip
+          exact AllKeysValidIx_mono _ _ (saveSimpleKeyIx_preserves_AllKeysValidIx _ h_skip) (by simp) (by simp)
+            (by simp) (by intro i hi; simp)
 
 /-! #### §8.8.2  `scanNextTokenIx_dispatchStructural` preservation. -/
 
@@ -1167,69 +1222,97 @@ lemma scanNextTokenIx_dispatchContent_preserves_ScanInvIx {input : String}
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h_ok
-    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    rw [ite_eq_left hg1] at h_ok
+    try simp only [Bind.bind, Except.bind] at h_ok
+    split at h_ok   -- item 9e: the property-run guard
+    · cases h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
       rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok; subst h_ok
       exact scanAnchorOrAliasIx_preserves_ScanInvIx s v true h hA
-  · rw [if_neg hg1] at h_ok
+  · rw [ite_eq_right hg1] at h_ok
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h_ok
+      rw [ite_eq_left hg2] at h_ok
+      split at h_ok   -- item 9e: the property-run guard
+      · cases h_ok
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h_ok; cases h_ok
       | ok v =>
         rw [hA] at h_ok
+        -- item 9h: `aliasTrailingErrIx` is a CHECK — the state is untouched.
+        dsimp only [] at h_ok
+        split at h_ok
+        · cases h_ok
         simp only [Except.ok.injEq] at h_ok; subst h_ok
         exact scanAnchorOrAliasIx_preserves_ScanInvIx s v false h hA
-    · rw [if_neg hg2] at h_ok
+    · rw [ite_eq_right hg2] at h_ok
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h_ok
+        rw [ite_eq_left hg3] at h_ok
+        split at h_ok   -- item 9e: the property-run guard
+        · cases h_ok
         cases hT : scanTagIx s with
         | error e => rw [hT] at h_ok; cases h_ok
         | ok v =>
           rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact scanTagIx_preserves_ScanInvIx s v h hT
-      · rw [if_neg hg3] at h_ok
+      · rw [ite_eq_right hg3] at h_ok
         by_cases hg4 : (c == '|' || c == '>') = true
         · -- block scalar
-          rw [if_pos hg4] at h_ok
+          rw [ite_eq_left hg4] at h_ok
+          -- Peel the §6.7 header-newline guard: its throw arm cannot be `.ok`.
+          split at h_ok
+          · cases h_ok
+          -- Peel the §6.1/§8.1.3 body-validator guard (item 7 strictness).
+          split at h_ok
+          · cases h_ok
+          -- Peel the §6.1/§8.1.1 tab-stop guard (`blockScalarTabStopErrIx`).
+          split at h_ok
+          · cases h_ok
           split at h_ok
           · rename_i r hBS
             simp only [Except.ok.injEq] at h_ok; subst h_ok
             exact _scalar_emitAt_preserves_ScanInvIx s _ _
               (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h
           · cases h_ok
-        · rw [if_neg hg4] at h_ok
+        · rw [ite_eq_right hg4] at h_ok
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h_ok
+            rw [ite_eq_left hg5] at h_ok
+            -- Peel the quoted-scalar strictness guard (item 7).
+            split at h_ok
+            · cases h_ok
             split at h_ok
             · rename_i r hDQ
               simp only [Except.ok.injEq] at h_ok; subst h_ok
               exact _scalar_emitAt_preserves_ScanInvIx s _ _
                 (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h
             · cases h_ok
-          · rw [if_neg hg5] at h_ok
+          · rw [ite_eq_right hg5] at h_ok
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h_ok
+              rw [ite_eq_left hg6] at h_ok
+              -- Peel the quoted-scalar strictness guard (item 7).
+              split at h_ok
+              · cases h_ok
               split at h_ok
               · rename_i r hSQ
                 simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_ScanInvIx s _ _
                   (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h
               · cases h_ok
-            · rw [if_neg hg6] at h_ok
+            · rw [ite_eq_right hg6] at h_ok
               -- plain scalar (success) vs error: one small inner `if`
               split at h_ok
-              · simp only [Except.ok.injEq] at h_ok; subst h_ok
+              · -- item 50: the plain strictness walker's throw contradicts `.ok`
+                split at h_ok
+                · cases h_ok
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_ScanInvIx s _ _
                   (scanPlainScalarIx_offset_monotonic s.cursor _ _) h
               · cases h_ok
@@ -1243,71 +1326,105 @@ lemma scanNextTokenIx_dispatchContent_preserves_AllKeysValidIx {input : String}
   unfold scanNextTokenIx_dispatchContent at h_ok
   by_cases hg1 : (c == '&') = true
   · -- '&' anchor
-    rw [if_pos hg1] at h_ok
-    try simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
+    rw [ite_eq_left hg1] at h_ok
+    try simp only [Bind.bind, Except.bind] at h_ok
+    split at h_ok   -- item 9e: the property-run guard
+    · cases h_ok
     cases hA : scanAnchorOrAliasIx s true with
     | error e => rw [hA] at h_ok; cases h_ok
     | ok v =>
       rw [hA] at h_ok
       simp only [Except.ok.injEq] at h_ok; subst h_ok
       exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s v true h_akv hA
-  · rw [if_neg hg1] at h_ok
+  · rw [ite_eq_right hg1] at h_ok
     simp only [Bind.bind, Except.bind, Pure.pure, Except.pure] at h_ok
     by_cases hg2 : (c == '*') = true
     · -- '*' alias
-      rw [if_pos hg2] at h_ok
+      rw [ite_eq_left hg2] at h_ok
+      split at h_ok   -- item 9e: the property-run guard
+      · cases h_ok
       cases hA : scanAnchorOrAliasIx s false with
       | error e => rw [hA] at h_ok; cases h_ok
       | ok v =>
         rw [hA] at h_ok
+        -- item 9h: `aliasTrailingErrIx` is a CHECK — the state is untouched.
+        dsimp only [] at h_ok
+        split at h_ok
+        · cases h_ok
         simp only [Except.ok.injEq] at h_ok; subst h_ok
         exact scanAnchorOrAliasIx_preserves_AllKeysValidIx s v false h_akv hA
-    · rw [if_neg hg2] at h_ok
+    · rw [ite_eq_right hg2] at h_ok
       by_cases hg3 : (c == '!') = true
       · -- '!' tag
-        rw [if_pos hg3] at h_ok
+        rw [ite_eq_left hg3] at h_ok
+        split at h_ok   -- item 9e: the property-run guard
+        · cases h_ok
         cases hT : scanTagIx s with
         | error e => rw [hT] at h_ok; cases h_ok
         | ok v =>
           rw [hT] at h_ok
           simp only [Except.ok.injEq] at h_ok; subst h_ok
           exact scanTagIx_preserves_AllKeysValidIx s v h_akv hT
-      · rw [if_neg hg3] at h_ok
+      · rw [ite_eq_right hg3] at h_ok
         by_cases hg4 : (c == '|' || c == '>') = true
-        · -- block scalar
-          rw [if_pos hg4] at h_ok
+        · -- block scalar (clears the pending simple key, unlike the inline arms)
+          rw [ite_eq_left hg4] at h_ok
+          -- Peel the §6.7 header-newline guard: its throw arm cannot be `.ok`.
+          split at h_ok
+          · cases h_ok
+          -- Peel the §6.1/§8.1.3 body-validator guard (item 7 strictness).
+          split at h_ok
+          · cases h_ok
+          -- Peel the §6.1/§8.1.1 tab-stop guard (`blockScalarTabStopErrIx`).
+          split at h_ok
+          · cases h_ok
           split at h_ok
           · rename_i r hBS
             simp only [Except.ok.injEq] at h_ok; subst h_ok
-            exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
-              (scanBlockScalarIx_offset_monotonic s.cursor _ hBS) h_akv
+            refine _blockScalar_preserves_AllKeysValidIx s _ h_akv rfl rfl ?_ ?_
+            · show s.tokens.tokens.size ≤ (s.tokens.tokens.push _).size
+              rw [Array.size_push]; omega
+            · intro i hi
+              show (s.tokens.tokens.push _)[i]'_ = s.tokens.tokens[i]'hi
+              exact Array.getElem_push_lt hi
           · cases h_ok
-        · rw [if_neg hg4] at h_ok
+        · rw [ite_eq_right hg4] at h_ok
           by_cases hg5 : (c == '"') = true
           · -- double-quoted
-            rw [if_pos hg5] at h_ok
+            rw [ite_eq_left hg5] at h_ok
+            -- Peel the quoted-scalar strictness guard (item 7).
+            split at h_ok
+            · cases h_ok
             split at h_ok
             · rename_i r hDQ
               simp only [Except.ok.injEq] at h_ok; subst h_ok
               exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                 (Nat.le_of_lt (scanDoubleQuotedIx_offset_lt s.cursor hDQ)) h_akv
             · cases h_ok
-          · rw [if_neg hg5] at h_ok
+          · rw [ite_eq_right hg5] at h_ok
             by_cases hg6 : (c == '\'') = true
             · -- single-quoted
-              rw [if_pos hg6] at h_ok
+              rw [ite_eq_left hg6] at h_ok
+              -- Peel the quoted-scalar strictness guard (item 7).
+              split at h_ok
+              · cases h_ok
               split at h_ok
               · rename_i r hSQ
                 simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                   (Nat.le_of_lt (scanSingleQuotedIx_offset_lt s.cursor hSQ)) h_akv
               · cases h_ok
-            · rw [if_neg hg6] at h_ok
+            · rw [ite_eq_right hg6] at h_ok
               -- plain scalar (success) vs error: one small inner `if`
               split at h_ok
-              · simp only [Except.ok.injEq] at h_ok; subst h_ok
+              · -- item 50: the plain strictness walker's throw contradicts `.ok`
+                split at h_ok
+                · cases h_ok
+                simp only [Except.ok.injEq] at h_ok; subst h_ok
                 exact _scalar_emitAt_preserves_AllKeysValidIx s _ _
                   (scanPlainScalarIx_offset_monotonic s.cursor _ _) h_akv
               · cases h_ok
 
 end L4YAML.Proofs.Indexed.ScannerCorrectness
+
+end Blanket

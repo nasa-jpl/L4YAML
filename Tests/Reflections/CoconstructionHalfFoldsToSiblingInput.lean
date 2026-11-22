@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 487 — a folded co-construction half bottoms out at its SIBLING's output.
 
@@ -111,3 +116,5 @@ theorem carrier_everywhere (n : Nat) : Carrier n := (coconstruct n).1
 theorem rec_everywhere (n : Nat) : Rec n := (coconstruct n).2
 
 end CoconstructionHalfFoldsToSiblingInput
+
+end Blanket

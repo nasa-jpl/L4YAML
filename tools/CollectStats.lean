@@ -15,14 +15,19 @@
       these are kernel-accurate and use `Lean.collectAxioms` to follow
       transitive dependencies.
     * dynamic counts: parsed from the existing test-runner outputs in
-      `docs/reports/` (so `scripts/run-all-tests.sh` must have run first
+      `docs/reports/` (so `lake run run-all-tests` must have run first
       for those numbers to be present)
 
   Build-job totals are not derivable without running `lake build` — pass them
   via the `BUILD_JOBS_TOTAL` / `BUILD_JOBS_PASSED` env vars (CI sets these).
 -/
-import Lean
-import L4YAML
+
+module
+
+public import Lean
+public import L4YAML
+
+@[expose] public section Blanket
 
 open Lean (Json toJson)
 open System (FilePath)
@@ -108,7 +113,7 @@ def scanStatic (root : FilePath) : IO StaticStats := do
 /-! ## Test-runner output parsing -/
 
 /-- Parse a single `"N/M"` fragment into `(N, M)`. -/
-private def parseFraction (s : String) : Option (Nat × Nat) :=
+def parseFraction (s : String) : Option (Nat × Nat) :=
   let parts : List String := s.splitOn "/"
   match parts with
   | [pStr, mStr] =>
@@ -205,9 +210,8 @@ def gatherYamlTestSuite (reportsDir : FilePath) : IO (Option Json) := do
 /-- Lean's stock axioms (always present in any Lean program). Filtered out
     of `axioms_total` so the count reflects user-declared axioms only. -/
 def builtinAxioms : Lean.NameSet :=
-  ([`Classical.choice, `propext, `Quot.sound, `sorryAx,
-    `Lean.ofReduceBool, `Lean.ofReduceNat, `Lean.trustCompiler,
-    `Lean.trustReducibility].foldl (·.insert ·) Lean.NameSet.empty)
+  ([`Classical.choice, `propext, `Quot.sound,
+    `sorryAx].foldl (·.insert ·) Lean.NameSet.empty)
 
 /-- The `sorry` tactic compiles to `sorryAx`. -/
 def sorryAxName : Lean.Name := `sorryAx
@@ -252,8 +256,8 @@ def scanEnvAction (rootName : Lean.Name) : Lean.CoreM EnvStats := do
       -- A "custom axiom" here means a user-declared L4YAML axiom. We
       -- exclude `Name.isInternalDetail` to skip Lean's auto-generated
       -- `_native.native_decide.ax_*` axioms (one per `native_decide` call).
-      -- Those are stock kernel infrastructure trusted via `Lean.ofReduceBool`,
-      -- not project-declared axioms.
+      -- Each such axiom records that one `native_decide` call trusts the
+      -- compiler; none is a project-declared axiom.
       let customs := axs.filter fun a =>
         rootName.isPrefixOf a && !a.isInternalDetail
       if !customs.isEmpty then
@@ -435,3 +439,5 @@ unsafe def main (args : List String) : IO UInt32 := do
 end L4YAML.CollectStats
 
 unsafe def main (args : List String) : IO UInt32 := L4YAML.CollectStats.main args
+
+end Blanket

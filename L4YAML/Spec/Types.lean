@@ -2,7 +2,12 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Init
+
+module
+
+public import L4YAML.Init
+
+@[expose] public section Blanket
 
 /-!
 # YAML Value Types
@@ -569,27 +574,33 @@ where
     | (k, v) :: rest =>
       (k.adaptForFlowContext, v.adaptForFlowContext) :: adaptPairs rest
 
-/-- No node in the tree carries an anchor property.
+/-- No node in the tree carries an anchor property, and no node is an alias.
 
-Emitter output never carries anchors, so parsed-back trees in the
-round-trip proofs satisfy this; on such trees the order-aware
-resolution below coincides with the global table lookup of
-`YamlValue.resolveAliases`. -/
-def YamlValue.anchorFree (v : YamlValue) : Bool :=
+This is the predicate under which the two resolvers below agree.
+`resolveAliasesOrdered` resolves against the ordered environment alone
+(§3.2.2.2) while `resolveAliases` does a first-match lookup over a
+whole-document table, so they coincide exactly where there is nothing to
+resolve and no binding to record — no anchors and no aliases.
+
+Emitter output satisfies both halves: it writes no anchor for any value, and
+it routes `.alias` through `emitScalar`, which double-quotes unconditionally,
+so an alias leaves as the *string* `"*x"` and never parses back as an alias
+node. Parsed-back trees in the round-trip proofs therefore satisfy this. -/
+def YamlValue.anchorAliasFree (v : YamlValue) : Bool :=
   match v with
   | .scalar s => s.anchor.isNone
   | .sequence _ items _ anchor => anchor.isNone && goList items.toList
   | .mapping _ pairs _ anchor => anchor.isNone && goPairs pairs.toList
-  | .alias _ => true
+  | .alias _ => false
 where
   /-- Anchor-freedom for a list of values. -/
   goList : List YamlValue → Bool
     | [] => true
-    | v :: vs => v.anchorFree && goList vs
+    | v :: vs => v.anchorAliasFree && goList vs
   /-- Anchor-freedom for a list of key-value pairs. -/
   goPairs : List (YamlValue × YamlValue) → Bool
     | [] => true
-    | (k, v) :: rest => k.anchorFree && v.anchorFree && goPairs rest
+    | (k, v) :: rest => k.anchorAliasFree && v.anchorAliasFree && goPairs rest
 
 /--
 Resolve alias nodes **order-aware** (YAML 1.2.2 §7.1): an alias node
@@ -605,9 +616,19 @@ resolved, so an alias never sees the node it sits inside; bound values
 are cleaned exactly like `ParseState.addAnchor` cleans stored anchor
 values (anchors stripped, scalars adapted for flow contexts).
 
-Aliases with no preceding in-tree definition fall back to the
-parse-time table `anchors` with the original first-match lookup,
-preserving the old behavior for degenerate (cyclic) documents.
+An alias with no preceding in-tree definition is **preserved as
+`.alias`**. §3.2.2.2 defines resolution against the most recent
+preceding event and nothing else, so the walk consults `env` alone;
+the `anchors` parameter is carried for the signature's sake and no
+branch reads it. A first-match lookup over a whole-document table
+would answer a different question, and would mis-resolve exactly the
+rebound-anchor document this walk exists to get right.
+
+The one shape with no preceding definition at the alias's own
+position is a node that has itself as a descendant via the alias
+(§3.2.1.3): a collection's anchor binds only after its items are
+resolved, so its own interior alias cannot see it. That shape keeps
+its `.alias`, which `Scannable` admits and `Grammable` does not.
 -/
 def YamlValue.resolveAliasesOrdered (v : YamlValue) (anchors : Array (String × YamlValue))
     (env : List (String × YamlValue) := []) : YamlValue × List (String × YamlValue) :=
@@ -631,10 +652,7 @@ def YamlValue.resolveAliasesOrdered (v : YamlValue) (anchors : Array (String × 
   | .alias name =>
     match env.findSome? (fun (n, val) => if n == name then some val else none) with
     | some val => (val, env)
-    | none =>
-      match anchors.findSome? (fun (n, val) => if n == name then some val else none) with
-      | some val => (val, env)
-      | none => (v, env)  -- unresolved alias: preserve as-is
+    | none => (v, env)  -- unresolved alias: preserve as-is
 where
   /-- Resolve a list of values in order, threading the binding environment. -/
   goList (anchors : Array (String × YamlValue)) :
@@ -669,9 +687,10 @@ and produces a representation graph (all aliases resolved, no anchors).
 Alias resolution is **order-aware** (`resolveAliasesOrdered`): each
 alias binds to the most recent preceding definition of its anchor name
 (§7.1), so a document that rebinds an anchor name resolves each alias
-against the definition in scope at the alias's own position. The
-`anchors` parameter (the document's parse-time anchor map) only serves
-as a fallback for aliases with no preceding in-tree definition.
+against the definition in scope at the alias's own position. That
+ordered environment is the only thing resolution consults, which is
+what §3.2.2.2 specifies; the document's parse-time anchor map answers
+a different question and no branch reads it.
 -/
 def YamlDocument.compose (doc : YamlDocument) : YamlDocument :=
   { doc with
@@ -713,3 +732,5 @@ access `AnchorMap`, `AnchorMap.empty`, `AnchorMap.insert`,
 -/
 
 end L4YAML
+
+end Blanket

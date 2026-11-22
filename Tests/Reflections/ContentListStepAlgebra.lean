@@ -1,6 +1,10 @@
-import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
-import L4YAML.Output.Emitter
-import L4YAML.Scanner.Scanner
+module
+
+public import L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+public import L4YAML.Output.Emitter
+public import L4YAML.Scanner.Scanner
+
+@[expose] public section Blanket
 
 /-!
 # Reflection 579 — INHABITATION PROBE for Front B's brick-3 content-list step algebra (§5.9)
@@ -39,9 +43,9 @@ the lemma threads genuine style-blind content equality, not trivial syntactic eq
   where `contentEqList`'s recursive branch fires: the recovered `items''` / `pairs''` are size-matched
   AND pairwise content-equal at length 2, so the step algebra targets a TRUE residual at every length.
 
-The `#print axioms` audits certify the four source lemmas are `[propext]`-clean — sorry-free, no
-`Classical.choice` — which is what distinguishes this verified-but-unconsumed artifact from R578's
-sorry-carrying consumers.
+The `#print axioms` audits certify the four source lemmas are sorry-free on the standard three axioms,
+which is what distinguishes this verified-but-unconsumed artifact from R578's sorry-carrying consumers.
+Until Lean v4.35.0 they read `[propext]` alone; see the note at the audits.
 -/
 
 namespace ContentListStepAlgebra
@@ -148,25 +152,32 @@ def mapResidual2Holds : Bool :=
 theorem seqResidual2Holds_fires : seqResidual2Holds = true := by native_decide
 theorem mapResidual2Holds_fires : mapResidual2Holds = true := by native_decide
 
-/-! ## Axiom audit: the four §5.9 step lemmas are sorry-free (`[propext]` only)
+/-! ## Axiom audit: the four §5.9 step lemmas are sorry-free (the standard three axioms)
 
 Unlike R578's consuming lemmas (which retain `sorryAx`), these brick-3 prep lemmas are genuinely
-discharged — the audits certify `[propext]`, with no `Classical.choice` and no `sorryAx`. -/
+discharged — the audits certify no `sorryAx`.
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqList_append_singleton' depends on axioms: [propext] -/
-#guard_msgs in
+2026-11-22, Lean v4.36.0: `[propext]` → `[propext, Classical.choice, Quot.sound]` on all four, and no
+proof changed.  `BEq String` now resolves to `String.instLinearOrderPackage.toBEq` instead of
+`instBEqOfDecidableEq`, and that package carries the two axioms; they enter through the DEFINITION
+`contentEq` (its `==` on strings), which the four statements mention. -/
+
+/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqList_append_singleton' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
 #print axioms contentEqList_append_singleton
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqList_push' depends on axioms: [propext] -/
-#guard_msgs in
+/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqList_push' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
 #print axioms contentEqList_push
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqPairList_append_singleton' depends on axioms: [propext] -/
-#guard_msgs in
+/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqPairList_append_singleton' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
 #print axioms contentEqPairList_append_singleton
 
-/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqPairList_push' depends on axioms: [propext] -/
-#guard_msgs in
+/-- info: 'L4YAML.Proofs.EmitterScannability.contentEqPairList_push' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs (whitespace := lax) in
 #print axioms contentEqPairList_push
 
 end ContentListStepAlgebra
+
+end Blanket

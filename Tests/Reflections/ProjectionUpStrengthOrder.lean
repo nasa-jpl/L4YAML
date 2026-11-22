@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 348 — a carrier-free IH thread's descend edge re-enters its OWN window: the five→four projection runs UP the strength order, and the combined deliverable relocates the same-window cycle without breaking it
 
@@ -126,3 +131,5 @@ theorem descend_supplies_child_via_out (h1 : f_of_out) (h2 : out_needs_f) : ∀ 
   fun n h => h1 n (h2 n h)   -- identical to `same_window_loop`: descend's `F` route IS the cycle
 
 end Tests.Reflections.ProjectionUpStrengthOrder
+
+end Blanket

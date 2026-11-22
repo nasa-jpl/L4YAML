@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 449 — a SEVERED recursive edge (R448) does not cost ONE sibling navigator; it costs a
 # navigator PER nesting level.  When a deliverable stores a FLAT witness at its foreign-type
@@ -201,3 +206,5 @@ theorem r449_finding (f g : Flat) (b : SBody) (mb : RMBody) :
   ⟨⟨rfl, by rintro ⟨_, h⟩; exact absurd h (by decide)⟩, rfl, rfl, rfl, rfl⟩
 
 end Tests.Reflections.SeveranceRecursesByNestingDepth
+
+end Blanket

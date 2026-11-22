@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-! # Reflection 499 — a *unifying* consumer forces a *second, fuller* projection
 
 When a weaker-guard twin's CONSUMER **unifies** a residual the strong consumer **split**, the unified
@@ -67,3 +72,5 @@ theorem unit_cannot_serve_unified : unitProj [true, false] ∧ ¬ GoalAll [true,
   ⟨rfl, by intro h; exact absurd (h false (by simp)) (by decide)⟩
 
 end UnifiedResidualForcesSiblingProjection
+
+end Blanket

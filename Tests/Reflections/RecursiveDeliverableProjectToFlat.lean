@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Recursive deliverable, project-to-flat-first — runnable demonstration
 
@@ -245,3 +250,5 @@ theorem descendRoute {e interior : List Tok} {op cl : Tok}
 #guard decide (tot [Tok.leaf] = 0)   -- the recovered nested interior is balanced
 
 end RecursiveDeliverableProjectToFlat
+
+end Blanket

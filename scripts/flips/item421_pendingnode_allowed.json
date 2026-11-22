@@ -1,0 +1,45 @@
+{
+ "item": 421,
+ "tag": "PENDINGNODE-ALLOWED",
+ "rev": "8f5b8035",
+ "target": "L4YAML",
+ "log": "scratch/pendingnode_allowed.log",
+ "msgWidth": 110,
+ "rounds": 1,
+ "report": "bodies",
+ "files": [
+  {
+   "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+   "patches": [
+    {
+     "name": "pendingProps.h_col0",
+     "line": 2393,
+     "old": ["      (h_col0 : 0 < sp_scan.col)"],
+     "new": ["      (h_col0 : 0 < sp_scan.col ∧ sc.simpleKeyAllowed = true)"],
+     "count": 1
+    },
+    {
+     "name": "pendingDocEnd.h_arm",
+     "line": 2578,
+     "old": ["      (h_arm : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ 0 < sp_scan.col)"],
+     "new": ["      (h_arm : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ (0 < sp_scan.col ∧ sc.simpleKeyAllowed = true))"],
+     "count": 1
+    },
+    {
+     "name": "pendingFlow.h_arm",
+     "line": 2710,
+     "old": ["      (h_arm : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ 0 < sp_scan.col)"],
+     "new": ["      (h_arm : (sc.simpleKeyAllowed = true ∧ sc.simpleKey.possible = false) ∨ (0 < sp_scan.col ∧ sc.simpleKeyAllowed = true))"],
+     "count": 1
+    },
+    {
+     "name": "pendingBlockContent.h_arm",
+     "line": 2792,
+     "old": ["        0 < sp_scan.col)"],
+     "new": ["        (0 < sp_scan.col ∧ sc.simpleKeyAllowed = true))"],
+     "count": 1
+    }
+   ]
+  }
+ ]
+}

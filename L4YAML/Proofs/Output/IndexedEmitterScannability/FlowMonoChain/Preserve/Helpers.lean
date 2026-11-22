@@ -2,13 +2,17 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
-import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.DpInv
+
+module
+
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Basic
+public import L4YAML.Proofs.Output.IndexedEmitterScannability.FlowMonoChain.Preserve.DpInv
+
+@[expose] public section Blanket
 
 /-! # `FlowMonoChain.Preserve.Helpers` — Phase 3 Step 6f.3b3.flowmono.preserve.helpers
 
-**Sub-session 3 of `.flowmono.preserve`** (legacy
-`Proofs/Output/EmitterScannability.lean` lines 2747–~3330, ~580 LOC).
+**Sub-session 3 of `.flowmono.preserve`** (~580 legacy LOC).
 The *invariant carriers* that thread through `scanNextTokenIx` and
 the per-flow-dispatch primitives in the forthcoming `.maintenance`
 and `.sync` sub-sessions.
@@ -42,24 +46,24 @@ and `.sync` sub-sessions.
 
 ## Legacy mapping
 
-Mirrors `EmitterScannability.lean` lines 2747–3247 (skipping the
+Mirrors `EmitterScannability.lean` (skipping the
 init-state lemma; see below):
 
-  | Section | Legacy lines     | Indexed counterpart           |
-  | ------- | ---------------- | ----------------------------- |
-  | §1      | 2997–3013        | `AllTokensOnLineIx` family    |
-  | §2      | 2925–2974        | `saveSimpleKeyIx_*`           |
-  | §3      | 2978–2985        | `saveSimpleKeyIx_id_of_flow_…`|
-  | §4      | 2987–3047        | `scanValueValidateIx_ok_*`    |
-  | §5      | 3049–3059        | `saveSimpleKeyIx_filter_*`    |
-  | §6      | 3063–3125        | `AllTokensOnLineIx_{emit,…}`  |
-  | §7      | 3100–3115        | `EndLineOnLineIx_saveSimpleK…`|
-  | §8      | 3132–3239        | Per-dispatcher `…OnLineIx`    |
-  | §9      | 3147–3156        | `…_simpleKey_not_possible`    |
+  | Section | Indexed counterpart |
+  | ------- | ------------------- |
+  | §1      | `AllTokensOnLineIx` family    |
+  | §2      | `saveSimpleKeyIx_*`           |
+  | §3      | `saveSimpleKeyIx_id_of_flow_…` |
+  | §4      | `scanValueValidateIx_ok_*` |
+  | §5      | `saveSimpleKeyIx_filter_*` |
+  | §6      | `AllTokensOnLineIx_{emit,…}` |
+  | §7      | `EndLineOnLineIx_saveSimpleK…` |
+  | §8      | Per-dispatcher `…OnLineIx` |
+  | §9      | `…_simpleKey_not_possible` |
 
 ## Init-state lemma deferral (`.sync`)
 
-The legacy `scanNextToken_preprocess_init_state` (lines 3258–3329)
+The legacy `scanNextToken_preprocess_init_state`
 characterizes the result of `scanNextToken_preprocess` on the initial
 state `(ScannerState.mk' input).emit .streamStart`. The proof relies
 on `ScannerSurfCorr` infrastructure (`initial_corr`,
@@ -73,7 +77,7 @@ reductions from `IxCursor.peek?_of_input_toList_cons` (no such lemma
 exists today).
 
 The lemma is consumed only by the `scanNextTokenIx_emit*_init`
-family in `.sync` (legacy 4116+). Since `.sync` will need a
+family in `.sync`. Since `.sync` will need a
 non-trivial indexed surface-correspondence layer anyway, the init-
 state characterization moves there. This `.helpers` session ships
 the invariant carriers and per-dispatcher transfer lemmas that the
@@ -164,6 +168,18 @@ update and is unchanged by `emit`, the proof is `rfl` in all branches. -/
   · rfl
   · split <;> rfl
 
+@[simp] lemma saveSimpleKeyIx_explicitKeyCol (s : ScannerStateIx input) :
+    (saveSimpleKeyIx s).explicitKeyCol = s.explicitKeyCol := by
+  unfold saveSimpleKeyIx; split
+  · rfl
+  · split <;> rfl
+
+@[simp] lemma saveSimpleKeyIx_explicitKeyStack (s : ScannerStateIx input) :
+    (saveSimpleKeyIx s).explicitKeyStack = s.explicitKeyStack := by
+  unfold saveSimpleKeyIx; split
+  · rfl
+  · split <;> rfl
+
 @[simp] lemma saveSimpleKeyIx_directivesPresent (s : ScannerStateIx input) :
     (saveSimpleKeyIx s).directivesPresent = s.directivesPresent := by
   unfold saveSimpleKeyIx; split
@@ -208,54 +224,187 @@ lemma saveSimpleKeyIx_id_of_flow_ska_false_ek_none (s : ScannerStateIx input)
   simp only [h_flow, h_ek, show (none == some s.cursor.pos.line) = false from rfl,
              Bool.and_false, Bool.false_eq_true, ↓reduceIte, h_ska]
 
+/-! ## §3b  Entry-boundary layout (item 9r, indexed landing)
+
+The strictened T833 guard fires on the reservation LAYOUT — the token
+slot directly below `simpleKey.tokenIndex` — instead of on line
+positions. These are the indexed twins of `SavedKeyAtEntryBoundary` /
+`LastRawNotValue` (`Proofs/Output/EmitterScannability/ScanSteps.lean`,
+items 9p–9r), in the raw-prefix form only: the take-side bridge is not
+needed on this side, because the single `:` scan site
+(`scanNextToken_flow_valueIx`) receives the boundary ready-made from
+the key scan's conditional layout conjunct on `EmitScansInFlowIx`. -/
+
+/-- The pending simple key's reservation sits at an entry boundary:
+    the token slot directly below it is no `.value`. This is exactly
+    what the strictened `scanValueValidateIx` T833 guard reads.
+    Indexed twin of legacy `SavedKeyAtEntryBoundary`. -/
+def SavedKeyAtEntryBoundaryIx (s : ScannerStateIx input) : Prop :=
+  0 < s.simpleKey.tokenIndex →
+    ∀ tok, s.tokens.tokens[s.simpleKey.tokenIndex - 1]? = some tok →
+      tok.token ≠ .value
+
+/-- The raw array's last slot is no `.value` — the state of an entry
+    boundary (`{`, `[`, `,`), where the next save reserves. Indexed
+    twin of legacy `LastRawNotValue`. -/
+def LastRawNotValueIx (s : ScannerStateIx input) : Prop :=
+  ∀ tok, s.tokens.tokens[s.tokens.tokens.size - 1]? = some tok →
+    tok.token ≠ .value
+
+/-- A step whose token effect is one pushed non-`.value` token re-opens
+    the raw boundary: `{`, `[` and `,` all qualify. Indexed twin of
+    legacy `lastRawNotValue_of_push`. -/
+lemma lastRawNotValueIx_of_push {s s' : ScannerStateIx input} {tok : IxToken input}
+    (h_val : tok.token ≠ .value)
+    (h_eq : s'.tokens.tokens = s.tokens.tokens.push tok) :
+    LastRawNotValueIx s' := by
+  intro t ht
+  rw [h_eq] at ht
+  simp only [Array.size_push, Nat.add_sub_cancel, Array.getElem?_push_size,
+    Option.some.injEq] at ht
+  exact ht ▸ h_val
+
+/-- Token-stream equality transports the raw boundary. -/
+lemma LastRawNotValueIx.of_tokens_eq {s s' : ScannerStateIx input}
+    (h_toks : s'.tokens = s.tokens) (h : LastRawNotValueIx s) :
+    LastRawNotValueIx s' := by
+  intro tok htok
+  exact h tok (by rw [← h_toks]; exact htok)
+
+/-- **The entry-boundary bridge, prefix form.** A reservation at the
+    incoming array's end reads the incoming array's own last slot, and
+    a `getElem?`-prefix equation carries that slot forward. Stated on
+    `getElem?` prefixes so scenario lemmas can expose the prefix
+    without naming the tokens they push. Indexed counterpart of legacy
+    `savedKeyAtEntryBoundary_of_raw_prefix`. -/
+lemma savedKeyAtEntryBoundaryIx_of_prefix {s s' : ScannerStateIx input}
+    (h_tidx : s'.simpleKey.tokenIndex = s.tokens.tokens.size)
+    (h_pre : ∀ i, i < s.tokens.tokens.size →
+      s'.tokens.tokens[i]? = s.tokens.tokens[i]?)
+    (h_lrv : LastRawNotValueIx s) :
+    SavedKeyAtEntryBoundaryIx s' := by
+  intro hpos tok htok
+  rw [h_tidx] at hpos htok
+  rw [h_pre _ (by omega)] at htok
+  exact h_lrv tok htok
+
+/-- Simple-key equality + a `getElem?` prefix below the reservation
+    transport the boundary. -/
+lemma SavedKeyAtEntryBoundaryIx.of_eq {s s' : ScannerStateIx input}
+    (h_sk : s'.simpleKey = s.simpleKey)
+    (h_pre : ∀ i, i < s.simpleKey.tokenIndex →
+      s'.tokens.tokens[i]? = s.tokens.tokens[i]?)
+    (h : SavedKeyAtEntryBoundaryIx s) :
+    SavedKeyAtEntryBoundaryIx s' := by
+  intro hpos tok htok
+  rw [h_sk] at hpos htok
+  rw [h_pre _ (by omega)] at htok
+  exact h hpos tok htok
+
+/-- With `simpleKeyAllowed = true` and no pending explicit key,
+    `saveSimpleKeyIx` SAVES: the resulting pending key is `possible`
+    and reserves at the incoming array's end. The layout half of the
+    save, which the entry-boundary bridge consumes. -/
+lemma saveSimpleKeyIx_simpleKey_of_saved (s : ScannerStateIx input)
+    (h_ska : s.simpleKeyAllowed = true)
+    (h_ek : s.explicitKeyLine = none) :
+    (saveSimpleKeyIx s).simpleKey.possible = true ∧
+    (saveSimpleKeyIx s).simpleKey.tokenIndex = s.tokens.tokens.size := by
+  unfold saveSimpleKeyIx
+  simp only [h_ek, show (none == some s.cursor.pos.line) = false from rfl,
+             Bool.and_false, Bool.false_eq_true, ↓reduceIte, h_ska]
+  exact ⟨trivial, rfl⟩
+
+/-- `saveSimpleKeyIx` only pushes (zero or two placeholders): the
+    incoming array is a `getElem?` prefix of the result. -/
+lemma saveSimpleKeyIx_tokens_prefix (s : ScannerStateIx input) :
+    ∀ i, i < s.tokens.tokens.size →
+      (saveSimpleKeyIx s).tokens.tokens[i]? = s.tokens.tokens[i]? := by
+  intro i hi
+  unfold saveSimpleKeyIx
+  split
+  · rfl
+  · split
+    · show ((s.emit .placeholder).emit .placeholder).tokens.tokens[i]? = _
+      show ((s.tokens.tokens.push _).push _)[i]? = _
+      rw [Array.getElem?_push_lt (by simp only [Array.size_push]; omega),
+          Array.getElem_push_lt hi, Array.getElem?_eq_getElem hi]
+    · rfl
+
+/-- …and hence never shrinks the array. -/
+lemma saveSimpleKeyIx_tokens_size_ge (s : ScannerStateIx input) :
+    s.tokens.tokens.size ≤ (saveSimpleKeyIx s).tokens.tokens.size := by
+  unfold saveSimpleKeyIx
+  split
+  · exact Nat.le_refl _
+  · split
+    · show s.tokens.tokens.size ≤ ((s.emit .placeholder).emit .placeholder).tokens.tokens.size
+      show s.tokens.tokens.size ≤ ((s.tokens.tokens.push _).push _).size
+      simp only [Array.size_push]
+      omega
+    · exact Nat.le_refl _
+
 /-! ## §4  `scanValueValidateIx` success conditions
 
 `scanValueValidateIx` returns `.ok ()` when its five guards all
 short-circuit. Two specialized openings (the flow-context one is the
 key downstream consumer):
 
-  * §4.1 — `_ok_of_not_possible_ek_none`: when both
+  * §4.1 — `_ok_of_not_possible_ek_none`: in flow, when both
     `simpleKey.possible` and `explicitKeyLine` are absent, every
-    guard is `false`.
+    guard is `false` (item 48's same-line checks are `!inFlow`-gated).
   * §4.2 — `_ok_of_flow_allTokensOnLine`: in flow context with
-    `explicitKeyLine = none`, the missing-comma guard (`simpleKey +
-    flowSequence + tokens[idx-1] on a prior line`) is discharged from
-    `AllTokensOnLineIx` (every token is on the current line, so the
-    prior token cannot be on a *different* line). -/
+    `explicitKeyLine = none`, the strictened missing-comma guard
+    (item 9r: `simpleKey + tokens[idx-1] is a `.value``, whatever the
+    line) is discharged from `SavedKeyAtEntryBoundaryIx` — the
+    reservation sits at an entry boundary, so the slot below it is no
+    `.value`. (The name keeps its historical `allTokensOnLine` suffix
+    so the call sites read as one-argument edits, exactly like the
+    legacy landing.) -/
+
+/-- Indexed twin of `flowGluedCollectionValue_false_of_peekAt_blank`. -/
+lemma flowGluedCollectionValueIx_false_of_peekAt_blank {input : String}
+    (s : ScannerStateIx input) (h : s.peekAt? 1 = some ' ') :
+    flowGluedCollectionValueIx s = false := by
+  simp [flowGluedCollectionValueIx, h]
 
 lemma scanValueValidateIx_ok_of_not_possible_ek_none (s : ScannerStateIx input)
+    (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
-    (h_sk : s.simpleKey.possible = false) :
+    (h_sk : s.simpleKey.possible = false)
+    (h_glued : flowGluedCollectionValueIx s = false) :
     scanValueValidateIx s = .ok () := by
   unfold scanValueValidateIx
-  simp only [h_sk, Bool.false_and, ↓reduceIte, h_ek, reduceCtorEq]
+  simp only [h_glued, h_sk, h_flow, Bool.not_true, Bool.false_and, ↓reduceIte, h_ek,
+             reduceCtorEq]
   rfl
 
-/-- In flow context with all tokens on the current cursor line and
-    `EndLineOnLineIx s`, `scanValueValidateIx` succeeds. -/
+/-- In flow context with the pending reservation at an entry boundary
+    and `EndLineOnLineIx s`, `scanValueValidateIx` succeeds. Indexed
+    twin of the post-9r legacy `scanValueValidate_ok_of_flow_allTokensOnLine`. -/
 lemma scanValueValidateIx_ok_of_flow_allTokensOnLine (s : ScannerStateIx input)
     (h_flow : s.inFlow = true)
     (h_ek : s.explicitKeyLine = none)
-    (h_atol : AllTokensOnLineIx s s.cursor.pos.line)
-    (h_end : EndLineOnLineIx s) :
+    (h_entry : SavedKeyAtEntryBoundaryIx s)
+    (h_end : EndLineOnLineIx s)
+    (h_glued : flowGluedCollectionValueIx s = false) :
     scanValueValidateIx s = .ok () := by
-  unfold scanValueValidateIx EndLineOnLineIx at *
+  unfold scanValueValidateIx EndLineOnLineIx SavedKeyAtEntryBoundaryIx at *
   cases h_poss : s.simpleKey.possible
-  · simp only [h_flow, Bool.false_and, Bool.not_true, Bool.and_false,
+  · simp only [h_glued, h_flow, Bool.false_and, Bool.not_true, Bool.and_false,
                ↓reduceIte, h_ek, reduceCtorEq]
     rfl
   · have ⟨h_el, _⟩ := h_end h_poss
-    simp only [h_flow, h_el, h_ek, Bool.not_true, Bool.and_false, Bool.false_and,
+    simp only [h_glued, h_flow, h_el, h_ek, Bool.not_true, Bool.and_false, Bool.false_and,
                Bool.true_and, bne_self_eq_false, ↓reduceIte, reduceCtorEq]
     by_cases h_ti : s.simpleKey.tokenIndex > 0
     · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = true from decide_eq_true h_ti]
       cases h_tok : s.tokens.tokens[s.simpleKey.tokenIndex - 1]? with
       | none => rfl
       | some tok =>
-        have ⟨h_bound, h_eq⟩ := Array.getElem?_eq_some_iff.mp h_tok
-        have h_pos_line := h_atol (s.simpleKey.tokenIndex - 1) h_bound
-        have h_tok_line : tok.start.line = s.cursor.pos.line := h_eq ▸ h_pos_line
-        simp only [h_tok_line, bne_self_eq_false, Bool.and_false, ↓reduceIte]
+        have h_ne : tok.token ≠ .value := h_entry h_ti tok h_tok
+        simp only [show (tok.token == YamlToken.value) = false from
+                     beq_eq_false_iff_ne.mpr h_ne, ↓reduceIte]
         rfl
     · simp only [show (decide (s.simpleKey.tokenIndex > 0)) = false from
                    decide_eq_false (by omega)]
@@ -307,11 +456,10 @@ lemma AllTokensOnLineIx_emit (s : ScannerStateIx input)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx (s.emit tok) l := by
   intro i h_bound
-  -- `(s.emit tok).tokens.tokens` is `s.tokens.tokens.push (new token)`.
-  change ((s.tokens.tokens.push
-      (IxToken.mk' s.cursor.pos tok s.cursor.pos (Nat.le_refl _) s.cursor.posBound))[i]'
-    (by change i < (s.tokens.tokens.push _).size; exact h_bound)).start.line = l
-  rw [Array.getElem_push]
+  -- 4.33: unfold `emit` inside a simp call — the former `change` carried
+  -- `h_bound` (typed at the emit form) into the getElem slot, leaving the goal
+  -- ill-typed at reducible transparency, so `rw [Array.getElem_push]` refused.
+  simp only [ScannerStateIx.emit, TokenStream.push, Array.getElem_push]
   split
   · rename_i hlt; exact h_atol i hlt
   · -- the new token: start = s.cursor.pos, line = h_line.
@@ -332,10 +480,8 @@ lemma AllTokensOnLineIx_emitAt (s : ScannerStateIx input)
     (h_atol : AllTokensOnLineIx s l) (h_pos_line : startPos.line = l) :
     AllTokensOnLineIx (s.emitAt startPos tok hOrder) l := by
   intro i h_bound
-  change ((s.tokens.tokens.push
-      (IxToken.mk' startPos tok s.cursor.pos hOrder s.cursor.posBound))[i]'
-    (by change i < (s.tokens.tokens.push _).size; exact h_bound)).start.line = l
-  rw [Array.getElem_push]
+  -- 4.33: unfold `emitAt` inside a simp call — see AllTokensOnLineIx_emit.
+  simp only [ScannerStateIx.emitAt, TokenStream.push, Array.getElem_push]
   split
   · rename_i hlt; exact h_atol i hlt
   · exact h_pos_line
@@ -448,7 +594,7 @@ lemma AllTokensOnLineIx_scanFlowMappingEndIx (s : ScannerStateIx input) (l : Nat
 lemma AllTokensOnLineIx_scanFlowEntry_expr (s : ScannerStateIx input) (l : Nat)
     (h_atol : AllTokensOnLineIx s l) (h_line : s.cursor.pos.line = l) :
     AllTokensOnLineIx
-      ({ (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true }) l := by
+      ({ (s.emit YamlToken.flowEntry).advance with simpleKeyAllowed := true, explicitKeyLine := none, simpleKey := { possible := false } }) l := by
   intro i h_bound
   have h_emit := AllTokensOnLineIx_emit s YamlToken.flowEntry l h_atol h_line
   have h_adv := AllTokensOnLineIx_advance _ l h_emit
@@ -506,3 +652,5 @@ lemma scanFlowMappingStartIx_simpleKey_not_possible (s : ScannerStateIx input) :
   unfold scanFlowMappingStartIx; rfl
 
 end L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain
+
+end Blanket

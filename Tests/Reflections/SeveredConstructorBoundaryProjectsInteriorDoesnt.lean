@@ -1,3 +1,8 @@
+module
+
+
+@[expose] public section Blanket
+
 /-!
 # Reflection 455 — a constructor that SEVERS the recursion (storing only a weak balance predicate
 # in place of the recursive sub-structure) still admits the BOUNDARY projections (last-token facts)
@@ -115,3 +120,5 @@ theorem boundary_projects_interior_doesnt :
   ⟨fun _ h => h.last_not_bad, interior_not_derivable⟩
 
 end Tests.Reflections.SeveredConstructorBoundaryProjectsInteriorDoesnt
+
+end Blanket

@@ -2,8 +2,13 @@
 Copyright (c) 2026. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import L4YAML.Scanner.Scanner
-import L4YAML.Parser.TokenParser
+
+module
+
+public import L4YAML.Scanner.Scanner
+public import L4YAML.Parser.TokenParser
+
+@[expose] public section Blanket
 
 /-!
 # Parser — Pipeline Composition (Load = Parse + Compose)
@@ -212,3 +217,5 @@ def parseYamlWithComments (input : String) : Except ScanError (Array YamlDocumen
   | .error e => .error e
 
 end L4YAML.TokenParser
+
+end Blanket
