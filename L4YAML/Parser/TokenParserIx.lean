@@ -595,13 +595,16 @@ def parseDirectives {input : String} (ps : ParseStateIx input) :
 
 /-! ## Document Parsing -/
 
-/-- Prepare document state: parse directives, register tag handles,
+/-- Prepare document state: parse directives, reject duplicate `%TAG` handles,
+    register tag handles,
     consume optional `---`, and validate block-collection-on-same-line.
     Indexed twin of `L4YAML.TokenParser.prepareDocumentState`. -/
 @[yaml_spec "9.1.1" 202 "l-document-prefix"]
 def prepareDocumentState {input : String} (ps : ParseStateIx input) :
     Except ScanError (Array Directive × ParseStateIx input) := do
   let (dirs, ps) := parseDirectives ps
+  if !decide (TagDirectivesUnique dirs) then
+    throw .duplicateTagDirective
   let tagHandles := dirs.filterMap fun
     | .tag handle tagPrefix => some (handle, tagPrefix)
     | _ => none

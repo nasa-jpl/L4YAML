@@ -53,6 +53,22 @@ Layer Analysis for the full production classification.
 
 namespace L4YAML
 
+/-- Handles explicitly declared by a document's `%TAG` directives,
+    including explicit `!` and `!!` declarations. Implicit built-in
+    defaults are not entries in `dirs` and do not count as declarations. -/
+def TagDirectiveHandles (dirs : Array Directive) : List String :=
+  dirs.toList.filterMap fun
+    | .tag handle _ => some handle
+    | _ => none
+
+/-- YAML 1.2.2 §6.8.2 permits at most one `%TAG` directive per handle
+    in each document, even when two declarations have the same prefix. -/
+def TagDirectivesUnique (dirs : Array Directive) : Prop :=
+  (TagDirectiveHandles dirs).Nodup
+
+instance (dirs : Array Directive) : Decidable (TagDirectivesUnique dirs) :=
+  inferInstanceAs (Decidable (TagDirectiveHandles dirs).Nodup)
+
 /-! ## Token Position -/
 
 /--
@@ -484,6 +500,9 @@ inductive ScanError where
   | directiveTrailingContent (line col : Nat)
   /-- Duplicate `%YAML` directive in the same document — §6.8.1 violation. -/
   | duplicateYamlDirective (line : Nat)
+  /-- A `%TAG` handle is explicitly declared more than once in one document
+      — §6.8.2 violation, independently of whether its prefixes agree. -/
+  | duplicateTagDirective
   /-- `%YAML`/`%TAG` directive after document content without `...` — §6.8 violation. -/
   | directiveAfterContent (line : Nat)
   /-- Directives present but no document follows (`---` required) — §6.8 violation. -/
@@ -614,6 +633,7 @@ def ScanError.toString : ScanError → String
   | .fuelExhausted l c         => s!"scanner fuel exhausted at line {l}, column {c}"
   | .directiveTrailingContent l c => s!"unexpected content after directive at line {l}, column {c}"
   | .duplicateYamlDirective l   => s!"duplicate %YAML directive at line {l}"
+  | .duplicateTagDirective => "duplicate %TAG directive for the same handle within one document (§6.8.2)"
   | .directiveAfterContent l    => s!"directive after document content without document-end marker at line {l}"
   | .directiveWithoutDocument l => s!"directive(s) at line {l} with no following document"
   | .documentMarkerInScalar .doubleQuoted l => s!"document marker inside double-quoted scalar at line {l}"
