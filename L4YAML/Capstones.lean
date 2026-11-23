@@ -18,6 +18,23 @@ public import L4YAML.Proofs.Parser.IndexedCompleteness
 public import L4YAML.Proofs.Coupling.SurfaceCoupling
 public import L4YAML.Proofs.RoundTrip.RoundTrip
 
+-- Replay needs the actual axiom types and closed Boolean computations. Lean's
+-- exported dependency cache records private axiom names without loading their
+-- declarations; import their defining modules privately for this check only.
+import all L4YAML.Proofs.Output.EmitterScannability.TokValsPin
+import all L4YAML.Proofs.Scanner.ScannerPlainContent
+import all L4YAML.Proofs.Output.EmitterScannability.ContentFidelity
+import all L4YAML.Proofs.Output.EmitterScannability
+import all L4YAML.Proofs.Production.StreamAccum
+import all L4YAML.Proofs.Production.ScalarProduction
+import all L4YAML.Proofs.Scanner.ScannerProofs
+import all L4YAML.Proofs.Production.StructureProduction
+import all L4YAML.Proofs.Scanner.ScannerPlainScalar
+import all L4YAML.Proofs.RoundTrip.RoundTrip
+import all L4YAML.Proofs.Scanner.BlockScalarIndentFloor
+import all L4YAML.Proofs.Output.EmitterScannability.ScannerAcceptance
+import all L4YAML.Proofs.Output.EmitterScannability.EscapeProperties
+
 public meta import L4YAML.CapstoneAttr
 @[expose] public section Blanket
 
@@ -34,10 +51,11 @@ so that any drift **fails the build**:
   declarations allowed to use the `theorem` keyword);
 - the `#assert_capstone_axioms` pin freezes each capstone's **axiom
   profile** — `pure` = `propext`/`Classical.choice`/`Quot.sound` only,
-  `native` = additionally the per-call-site axiom each `native_decide`
-  reflected-decide leaf emits. Any `sorryAx` or project-declared axiom is a
-  hard error, and a capstone silently acquiring a `native_decide`
-  dependency flips its line and fails the pin;
+  `native` = additionally closed Boolean axioms validated by independent
+  replay. Lean 4.36 does not authenticate their historical tactic origin.
+  `sorryAx` and any unvalidated axiom are hard errors; private visibility
+  and generated-looking names are not exemptions. A capstone acquiring
+  a replay-validated axiom dependency flips its line and fails the pin;
 - the `#guard` sentinels are compile-time non-vacuity witnesses: the
   hypotheses of the parse capstones are inhabited on real inputs (the
   deep coverage lives in `Tests/AdversarialInstantiation.lean`).

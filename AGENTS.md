@@ -116,7 +116,7 @@ lake run check-gate-vocab            # gate names in prose resolve (pin: Tests/G
 lake run check-pack-births           # the pack producers' PackAlt writes (pin: expectedPackBirths; needs the library built)
 lake run census-dashboard            # every directed census: reading off the Tests/Guards pins, goal, distance left, what moves it (-- --check in CI; -- --md FILE; -- --diff REF = only the pins a branch moved, directed vs population — a PR body opens with its table)
 lake run check-scripts-lean          # Rule 9: every scripts/*.py and inline python3 site is on scripts/scripts-ledger.txt; the ledger only shrinks
-lake run check-hygiene -- docs/reports/stats.json   # zero sorries / custom axioms in the compiled environment, off collect-stats' stats.json
+lake run check-hygiene -- docs/reports/stats.json   # zero sorries / unvalidated axioms; raw and replayed counts are retained
 lake run run-all-tests               # every test exe; collects failures (portable: Lake `script`, no bash)
 lake exe suiterunner                 # matrix; items quote pass/fail/skip
 lake exe eventscore                  # event-axis score

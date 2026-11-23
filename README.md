@@ -34,7 +34,8 @@ Grammar and proofs live in [L4YAML/Spec/Grammar.lean](L4YAML/Spec/Grammar.lean) 
 ### 1. Machine-checked verification
 
 Every function in the core library is a total `def` — **no `partial def`, no
-`axiom`, no `sorry`** in the verified core. The proof development covers:
+authored custom `axiom`, no `sorry`** in the verified core source. The proof
+development covers:
 
 - **Soundness of parsing** — if `parseYaml` accepts an input, the output is a
   structurally valid YAML data model ([Proofs/Soundness.lean](L4YAML/Proofs/Soundness.lean),
@@ -82,12 +83,13 @@ row 6.1). It composes scanner acceptance,
 parser acceptance, single-document production, and per-node content fidelity —
 closing the round-trip cluster under [Proofs/Output/](L4YAML/Proofs/Output/).
 
-With it, the verified core carries **no `sorry`, no `axiom` declaration, and no
-`partial def`** anywhere: the scanner, token parser, schema, dumper, and every
+With it, the verified core source carries **no `sorry`, no authored custom
+`axiom` declaration, and no `partial def`**: the scanner, token parser, schema, dumper, and every
 theorem listed above (`#print axioms universal_roundtrip` reports no `sorryAx`).
 Beyond Lean's standard `propext` / `Classical.choice` / `Quot.sound`, a number of
 finite content-equivalence and character-class facts are discharged by
-`native_decide`, which additionally trusts Lean's compiled evaluator.
+`native_decide`, which generates Boolean axiom declarations and additionally
+trusts Lean's compiled evaluator.
 
 **Proof discipline.** The `theorem` keyword is reserved for the 25
 `@[capstone]`-tagged headline results (whitelist:
@@ -98,8 +100,13 @@ axiom profile (18 pure, 7 `native_decide`-backed) are pinned at build time by
 `#guard_msgs` in [L4YAML/Capstones.lean](L4YAML/Capstones.lean), and CI
 enforces the discipline with `lake run check-theorem-keyword`,
 `lake run check-import-closure`, and a kernel-accurate
-zero-`sorry`/zero-custom-axiom assertion in
+zero-`sorry`/zero-unvalidated-axiom assertion in
 [.github/workflows/test-coverage.yml](.github/workflows/test-coverage.yml).
+The gate admits the standard three axioms and independently replays other
+closed Boolean claims; private or generated-looking names are not exemptions.
+Its `native` profile records replay validation, not authenticated tactic origin.
+The statistics retain raw nonstandard axiom counts separately from replayed
+ones; the source discipline still prohibits authored custom assumptions.
 The rulebook is [Blueprint/06-discipline.md](Blueprint/06-discipline.md); the
 proof-status SSOT is [Blueprint/04-capstones.md](Blueprint/04-capstones.md).
 
