@@ -70,6 +70,12 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
 -- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
 -- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
+-- 2026-11-22 (Lean v4.36.0): population 14252 → 14253, def 2675 → 2676, unreached 6548 → 6549, A-campaign 1333 → 1334 —
+-- `SerializationWellFormed.decMemString`, the `List String` membership decision spelled out so the trace checker keeps
+-- its `[propext]` profile; an instance body, reached by no root (class (A)); B-roster unmoved.
+-- 2026-11-22 (item 531, β PR 4): population 14253 → 14260, thm 10215 → 10222, unreached 6549 → 6556 (thm 4624 → 4631),
+-- A-campaign 1334 → 1341 — StreamBridge's `content_step_routed` / `_docStart` / `_docEnd` / `_props`, `quoted_flowOut`,
+-- `TLYamlStream.suffixRoute` and `TCNsProperties.blockIn_of_flowOut`, unreached until the depth-0 fold spends the steps.
 -- #302 over item 529: the three additional unreached theorems enter class (A).
 -- Lean v4.36.0: native census population 14332 → 14333, def 2702 → 2703,
 -- unreached 6557 → 6558 and A-campaign 1333 → 1334. The new declaration is

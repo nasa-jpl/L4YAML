@@ -126,8 +126,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- re-pin) name the preprocess step's scanner lemma once more; the base read 521 against this pin.
 -- 2026-11-22: mentions 522 → 524 — item 529 (merged without the re-pin): the `DispatchPrice` and `ParkGapWidth` cause
 -- comments each name the content dispatch step whose per-function reading moved 186 → 187 (not spelled here: it would move `self`).
+-- 2026-11-22: mentions 524 → 526 — item 531: the `DispatchPrice` and `ParkGapWidth` cause comments each name the content
+-- dispatch step again (per-function reading 187 → 191).
 def expectedGateVocab : String :=
-  "names=115 mentions=524 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=526 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
