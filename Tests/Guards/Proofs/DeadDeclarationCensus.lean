@@ -79,7 +79,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- Lean v4.36.0 adds the unreached `SerializationWellFormed.decMemString` decision instance.
 -- The standalone native census must recheck this expectation before the PR is updated.
 def expectedDeadCensus : String :=
-  "population=14264 thm=10218 def=2683 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6556 thm=4627 A-campaign=1334 C-api=1405 D-test-only=473 B-roster=3344 thm=3066 cluster-roots=1456"
+  "population=14271 thm=10225 def=2683 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6563 thm=4634 A-campaign=1341 C-api=1405 D-test-only=473 B-roster=3344 thm=3066 cluster-roots=1456"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
