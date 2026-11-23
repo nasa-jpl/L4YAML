@@ -274,14 +274,23 @@ extern "C" {
 
 ## Building
 
+Build and install the library as described under [Building](../README.md#building) in the root README. The commands below compile against the installed tree: `l4yaml.h` and `l4yaml_raii.hpp` are in `<prefix>/include`, and `libl4yaml.so` is in the library directory CMake's `GNUInstallDirs` selects for the platform, `<prefix>/lib` or `<prefix>/lib64`. Set `L4YAML_LIBDIR` to the directory that holds `libl4yaml.so`:
+
+```bash
+L4YAML_PREFIX=/path/to/install
+L4YAML_LIBDIR=$L4YAML_PREFIX/lib   # or $L4YAML_PREFIX/lib64
+```
+
+`-Wl,-rpath` records where the program finds `libl4yaml.so` at run time; without it, set `LD_LIBRARY_PATH=$L4YAML_LIBDIR` when running, or the program stops with `error while loading shared libraries: libl4yaml.so`.
+
 ### C
 ```bash
-gcc -o myapp myapp.c -ll4yaml -I/path/to/install/include -L/path/to/install/lib
+gcc -o myapp myapp.c -ll4yaml -I$L4YAML_PREFIX/include -L$L4YAML_LIBDIR -Wl,-rpath,$L4YAML_LIBDIR
 ```
 
 ### C++
 ```bash
-g++ -o myapp myapp.cpp -ll4yaml -I/path/to/install/include -L/path/to/install/lib
+g++ -o myapp myapp.cpp -ll4yaml -I$L4YAML_PREFIX/include -L$L4YAML_LIBDIR -Wl,-rpath,$L4YAML_LIBDIR
 ```
 
 ## Further Documentation
