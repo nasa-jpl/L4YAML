@@ -126,9 +126,9 @@ lemma resolveImplicit_str {s : String}
 
 `resolveScalar` is a deterministic case-split on the optional tag.
 The two non-trivial behaviours are: explicit tags `null`/`str`
-short-circuit (they never look at the content); explicit
-`bool`/`int`/`float` parse the content with the classifier and
-fall back to `.str content` on failure. An absent tag delegates to
+short-circuit (they never look at the content); explicit `bool` uses
+its classifier, while explicit `int`/`float` use their independent
+numeric decoders, falling back to `.str content` on failure. An absent tag delegates to
 `resolveImplicit`.
 
 The lemmas are stated as `rfl` where the right-hand side is a
@@ -160,30 +160,30 @@ lemma resolveScalar_tag_bool_none {content : String}
 
 /-- **Explicit int tag with parseable content**. -/
 lemma resolveScalar_tag_int_some {content : String} {i : Int}
-    (h : isInt content = some i) :
+    (h : isIntL content.toList = some i) :
     resolveScalar content (some "tag:yaml.org,2002:int") = .int i := by
-  show (match isInt content with | some i => YamlType.int i | none => YamlType.str content) = .int i
+  show (match isIntL content.toList with | some i => YamlType.int i | none => YamlType.str content) = .int i
   rw [h]
 
 /-- **Explicit int tag with unparseable content** falls back to `.str`. -/
 lemma resolveScalar_tag_int_none {content : String}
-    (h : isInt content = none) :
+    (h : isIntL content.toList = none) :
     resolveScalar content (some "tag:yaml.org,2002:int") = .str content := by
-  show (match isInt content with | some i => YamlType.int i | none => YamlType.str content) = .str content
+  show (match isIntL content.toList with | some i => YamlType.int i | none => YamlType.str content) = .str content
   rw [h]
 
 /-- **Explicit float tag with parseable content**. -/
 lemma resolveScalar_tag_float_some {content : String} {f : FloatValue}
-    (h : isFloat content = some f) :
+    (h : parseExplicitFloat content = some f) :
     resolveScalar content (some "tag:yaml.org,2002:float") = .float f := by
-  show (match isFloat content with | some f => YamlType.float f | none => YamlType.str content) = .float f
+  show (match parseExplicitFloat content with | some f => YamlType.float f | none => YamlType.str content) = .float f
   rw [h]
 
 /-- **Explicit float tag with unparseable content** falls back to `.str`. -/
 lemma resolveScalar_tag_float_none {content : String}
-    (h : isFloat content = none) :
+    (h : parseExplicitFloat content = none) :
     resolveScalar content (some "tag:yaml.org,2002:float") = .str content := by
-  show (match isFloat content with | some f => YamlType.float f | none => YamlType.str content) = .str content
+  show (match parseExplicitFloat content with | some f => YamlType.float f | none => YamlType.str content) = .str content
   rw [h]
 
 /-- **No tag**: delegate to implicit resolution. -/
