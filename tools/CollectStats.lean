@@ -281,7 +281,9 @@ def scanEnvAction (rootName : Lean.Name) : Lean.CoreM EnvStats := (do
     on disk when Lake invokes us. -/
 unsafe def scanEnv (rootName : Lean.Name) : IO EnvStats := do
   Lean.initSearchPath (← Lean.findSysroot)
-  let env ← Lean.importModules #[{ module := rootName }] {} 0
+  -- Native replay needs imported compiler/attribute extension data, not only constants.
+  Lean.enableInitializersExecution
+  let env ← Lean.importModules #[{ module := rootName }] {} 0 (loadExts := true)
   let coreCtx : Lean.Core.Context :=
     { fileName := "<collect-stats>", fileMap := default }
   let coreState : Lean.Core.State := { env }
