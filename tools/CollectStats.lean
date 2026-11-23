@@ -265,7 +265,9 @@ def scanEnvAction (rootName : Lean.Name) : Lean.CoreM EnvStats := (do
         s := { s with thmsWithSorry := s.thmsWithSorry + 1 }
       -- Keep the legacy field name, but its meaning is unvalidated
       -- dependencies. A private or out-of-namespace assumption is not exempt.
-      let customs := (← L4YAML.unvalidatedAxioms name).filter (· != sorryAxName)
+      -- Reuse the dependency walk above; replay admission does not change it.
+      let customs := (← axs.filterM fun a => return !(← L4YAML.axiomAdmitted a)).filter
+        (· != sorryAxName)
       if !customs.isEmpty then
         s := { s with
           thmsWithCustomAxiom := s.thmsWithCustomAxiom + 1,
