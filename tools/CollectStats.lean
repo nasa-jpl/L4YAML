@@ -11,9 +11,11 @@
   Three data sources, no test-suite reruns:
     * source-scan counts: `theorems`, `lemmas`, `lines`, `partial_defs`, `guards`
     * environment-scan counts (after loading the compiled `L4YAML` environment):
-      `axioms_total`, `theorems_with_sorry`, `theorems_with_custom_axiom` —
-      these are kernel-accurate and use `Lean.collectAxioms` to follow
-      transitive dependencies.
+      unvalidated `axioms`, `raw_nonstandard_axioms`, `replay_validated_axioms`,
+      `theorems_with_transitive_sorry`, `theorems_with_custom_axiom` —
+      these use `Lean.collectAxioms` to follow transitive dependencies.
+      Raw nonstandard axiom counts are retained; closed Boolean axioms are
+      admitted only after independent replay by the shared capstone policy.
     * dynamic counts: parsed from the existing test-runner outputs in
       `docs/reports/` (so `lake run run-all-tests` must have run first
       for those numbers to be present)
@@ -207,8 +209,8 @@ def gatherYamlTestSuite (reportsDir : FilePath) : IO (Option Json) := do
   we load the compiled `L4YAML` environment via `importModules` and call
   `Lean.collectAxioms` on each theorem. -/
 
-/-- Lean's stock axioms (always present in any Lean program). Filtered out
-    of `axioms_total` so the count reflects user-declared axioms only. -/
+/-- Lean's stock axioms, excluded from the raw nonstandard-declaration count.
+    The separate theorem counters still reject every `sorryAx` dependency. -/
 def builtinAxioms : Lean.NameSet :=
   ([`Classical.choice, `propext, `Quot.sound,
     `sorryAx].foldl (·.insert ·) Lean.NameSet.empty)
@@ -217,31 +219,39 @@ def builtinAxioms : Lean.NameSet :=
 def sorryAxName : Lean.Name := `sorryAx
 
 structure EnvStats where
-  totalThms              : Nat := 0   -- theorems in L4YAML.* namespace
-  totalAxioms            : Nat := 0   -- user-declared axioms (excludes builtins)
+  totalThms              : Nat := 0   -- user-named theorems, including private names
+  totalAxioms            : Nat := 0   -- nonstandard axioms not admitted by replay
+  rawAxioms              : Nat := 0   -- all nonstandard axiom declarations in scope
+  replayValidatedAxioms  : Nat := 0   -- raw declarations independently replayed
   thmsWithDirectSorry    : Nat := 0   -- thms whose own proof term mentions sorryAx
   thmsWithSorry          : Nat := 0   -- thms whose proof transitively depends on sorryAx
-  thmsWithCustomAxiom    : Nat := 0   -- thms transitively depending on a user-declared axiom
-  customAxiomNames       : Array String := #[]  -- names of any custom axioms found
+  thmsWithCustomAxiom    : Nat := 0   -- legacy JSON key: unvalidated axiom deps
+  customAxiomNames       : Array String := #[]  -- unvalidated dependencies, any namespace
   deriving Inhabited
 
-/-- Run the env walk inside `CoreM` so we can call `Lean.collectAxioms`
-    (which needs `[MonadEnv m]`). -/
-def scanEnvAction (rootName : Lean.Name) : Lean.CoreM EnvStats := do
-  let env ← Lean.getEnv
+/-- Scan the selected namespace, decoding private-name prefixes before deciding
+    scope. The theorem population excludes generated internal/macro names, but
+    the axiom population does not. Transitive theorem dependencies are checked
+    regardless of namespace. Replay validates claims; it cannot authenticate
+    the historical tactic that produced an ordinary axiom declaration. -/
+def scanEnvAction (rootName : Lean.Name) : Lean.CoreM EnvStats := (do
+  let env := (← Lean.getEnv).setExporting false
   let mut s : EnvStats := {}
   for (name, info) in env.constants do
-    -- Only L4YAML.* declarations count; this excludes Std/Init/Lean.
-    if !rootName.isPrefixOf name then continue
-    -- Skip auto-generated equation lemmas (`._eq_1` etc.) and macro scopes.
-    if name.isInternal || name.hasMacroScopes then continue
+    let userName := Lean.privateToUserName name
+    if !rootName.isPrefixOf userName then continue
     match info with
     | .axiomInfo _ =>
       if !builtinAxioms.contains name then
-        s := { s with
-          totalAxioms      := s.totalAxioms + 1,
-          customAxiomNames := s.customAxiomNames.push name.toString }
+        s := { s with rawAxioms := s.rawAxioms + 1 }
+        if ← L4YAML.axiomAdmitted name then
+          s := { s with replayValidatedAxioms := s.replayValidatedAxioms + 1 }
+        else
+          s := { s with
+            totalAxioms      := s.totalAxioms + 1,
+            customAxiomNames := s.customAxiomNames.push name.toString }
     | .thmInfo thmInfo =>
+      if userName.isInternal || userName.hasMacroScopes then continue
       s := { s with totalThms := s.totalThms + 1 }
       -- Direct sorry: `sorryAx` appears in the theorem's own proof term.
       -- This matches Lean's "declaration uses sorry" warnings (one per
@@ -253,27 +263,27 @@ def scanEnvAction (rootName : Lean.Name) : Lean.CoreM EnvStats := do
       let axs ← Lean.collectAxioms name
       if axs.contains sorryAxName then
         s := { s with thmsWithSorry := s.thmsWithSorry + 1 }
-      -- A "custom axiom" here means a user-declared L4YAML axiom. We
-      -- exclude `Name.isInternalDetail` to skip Lean's auto-generated
-      -- `_native.native_decide.ax_*` axioms (one per `native_decide` call).
-      -- Each such axiom records that one `native_decide` call trusts the
-      -- compiler; none is a project-declared axiom.
-      let customs := axs.filter fun a =>
-        rootName.isPrefixOf a && !a.isInternalDetail
+      -- Keep the legacy field name, but its meaning is unvalidated
+      -- dependencies. A private or out-of-namespace assumption is not exempt.
+      -- Reuse the dependency walk above; replay admission does not change it.
+      let customs := (← axs.filterM fun a => return !(← L4YAML.axiomAdmitted a)).filter
+        (· != sorryAxName)
       if !customs.isEmpty then
         s := { s with
           thmsWithCustomAxiom := s.thmsWithCustomAxiom + 1,
           customAxiomNames    :=
             customs.foldl (fun acc a => acc.push a.toString) s.customAxiomNames }
     | _ => continue
-  return s
+  return s : L4YAML.AxiomReplayM EnvStats).run' {}
 
 /-- Load the compiled `L4YAML` environment and run the env walk. The exe
     was compiled with `import L4YAML`, so the .olean files are guaranteed
     on disk when Lake invokes us. -/
 unsafe def scanEnv (rootName : Lean.Name) : IO EnvStats := do
   Lean.initSearchPath (← Lean.findSysroot)
-  let env ← Lean.importModules #[{ module := rootName }] {} 0
+  -- Native replay needs imported compiler/attribute extension data, not only constants.
+  Lean.enableInitializersExecution
+  let env ← Lean.importModules #[{ module := rootName }] {} 0 (loadExts := true)
   let coreCtx : Lean.Core.Context :=
     { fileName := "<collect-stats>", fileMap := default }
   let coreState : Lean.Core.State := { env }
@@ -352,6 +362,8 @@ unsafe def buildJson (root : FilePath) : IO Json := do
   let envJson := Json.mkObj [
     ("theorems",                       toJson envS.totalThms),
     ("axioms",                         toJson envS.totalAxioms),
+    ("raw_nonstandard_axioms",          toJson envS.rawAxioms),
+    ("replay_validated_axioms",          toJson envS.replayValidatedAxioms),
     ("theorems_with_direct_sorry",     toJson envS.thmsWithDirectSorry),
     ("theorems_with_transitive_sorry", toJson envS.thmsWithSorry),
     ("theorems_with_custom_axiom",     toJson envS.thmsWithCustomAxiom),
@@ -361,7 +373,7 @@ unsafe def buildJson (root : FilePath) : IO Json := do
 
   let now ← IO.monoMsNow
   return Json.mkObj [
-    ("schema_version", toJson (2 : Nat)),
+    ("schema_version", toJson (3 : Nat)),
     ("generated_at_ms", toJson now),
     ("static",          staticJson),
     ("env",             envJson),

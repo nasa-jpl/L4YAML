@@ -284,7 +284,8 @@ jobs:
         #     ledger only shrinks; the gate is itself a Lean exe, built here.
         #   * sorry/axiom freedom — kernel-accurate (Lean.collectAxioms
         #     via collect-stats): zero theorems with (transitive) sorry,
-        #     zero custom axioms in the compiled environment.
+        #     zero unvalidated nonstandard axioms in the compiled environment,
+        #     retaining raw and independently replayed axiom counts.
         run: |
           lake run check-theorem-keyword
           lake run check-import-closure
@@ -586,7 +587,9 @@ jobs:
           PAGES_PUSH=1 bash scripts/publish-pages.sh
 
       - name: Comment on PR with coverage summary
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         with:
           script: |

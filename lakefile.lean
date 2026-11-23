@@ -297,6 +297,7 @@ lean_exe extractSpecExamples where
 lean_exe «collect-stats» where
   root := `CollectStats
   srcDir := "tools"
+  supportInterpreter := true  -- imported compiler extensions and native axiom replay
 
 
 lean_lib «Tests.SchemaDump» where
@@ -621,7 +622,8 @@ script «matrix-score» (args) do
     (prereqs := #["l4yaml-event", "l4yaml-json"])
 
 /-- Rule 9 phase 4 row 3: `lake run check-hygiene -- [STATS]` — zero theorems with a sorry,
-zero custom axioms in the compiled environment, read off `collect-stats`'s `stats.json`
+zero unvalidated nonstandard axioms in the compiled environment, with separate raw
+and replay-validated counts, read off `collect-stats`'s `stats.json`
 (was the `python3 - <<'EOF'` heredoc in CI and `generate-all.sh`). -/
 script «check-hygiene» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-check-hygiene" #[] args

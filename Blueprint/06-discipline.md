@@ -79,7 +79,13 @@ The library is `sorry`-free (since 2026-07-04), and this is
 [`test-coverage.yml`](../.github/workflows/test-coverage.yml) runs a
 kernel-accurate assertion (via `collect-stats`, which walks the
 compiled environment with `Lean.collectAxioms`) that there are
-**0 theorems with transitive `sorry` and 0 custom axioms**, and
+**0 theorems with transitive `sorry` and 0 unvalidated nonstandard axioms**,
+while retaining separate raw and replay-validated axiom counts. The standard
+foundations (`propext`, `Classical.choice`, `Quot.sound`) are admitted directly;
+other axiom claims must be closed Boolean equalities independently replayed
+by kernel checking or Lean's native evaluator. Neither private visibility nor
+a generated-looking name establishes tactic provenance. The source discipline
+continues to prohibit authored custom assumptions. In addition,
 [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean)'s
 `#assert_capstone_axioms` independently hard-fails the build if any
 capstone acquires a `sorryAx` dependency. (The lone `sorry` under
