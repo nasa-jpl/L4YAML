@@ -300,8 +300,10 @@ def expectedCensus : String :=
 -- 2026-11-19 (item 529, β PR 3): corrHyp 632 → 633 — `TPendingNode.content_step_noPending` (StreamBridge) holds `hcorr` / `hcorr'`,
 -- the twin of `content_dispatch_routed`'s line-start sites; unreached until the depth-0 fold.
 -- 2026-11-19 (item 528, β PR 2): corrHyp 630 → 632 — the structural steps split by source park (StreamBridge: five lemmas
+-- 2026-11-23 (item 532, β PR 5): corrHyp 637 → 638 — `content_leaf_at` (ContentBridge) reads the surface through `hcorr`:
+-- the value's leaf at the park's indentation, spent by `TPendingNode.content_step_props`.
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
-  "corrHyp=637 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=638 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

@@ -407,58 +407,68 @@ lemma content_step_docEnd {sp_start sp_block sp_scan sp_mid sp_prep sp_a : SurfP
   simpa using content_step_routed hS h_sep arm hcorr hcorr' hpeek h_depth h_dispatch
     (fun sp_m ev h => by simpa using TLYamlStream.suffixRoute hS.stream h_marker h_ssl sp_m ev h)
 
-/-- **The value behind a property run** (item 531, the twin of `accum_content_pending`'s two `n = 0`
-content sites in its `pendingProps` arm): a scalar is silent and the run DECORATES it — `[161]`'s
-`propsContent`, or `[198]`'s props slot for a block scalar — so the open events are unchanged and the
-park's own route takes the decorated node. -/
-lemma content_step_props {sp_start sp_block sp_scan sp_node sp_p sp_prep sp_a : SurfPos}
+/-- **The value behind a property run** (items 531 / 532, the twin of `accum_content_pending`'s five
+content sites in its `pendingProps` arm): a scalar is silent and the run DECORATES it at the run's own
+indentation `n` — `[161]`'s `propsContent` over `content_leaf_at`, or `[198]`'s props slot for a block
+scalar — so the open events are unchanged and the park's own route takes the decorated node.
+`h_floor` is the park's `IndentFloor`, read at the preprocessed state. -/
+lemma content_step_props {n : Nat} {sp_start sp_block sp_scan sp_node sp_p sp_prep sp_a : SurfPos}
     {s_prep s' : ScannerState} {c : Char} {ev_c ev_o ev_p : List Event}
     (hS : TSLYamlStream sp_start s_prep sp_block ev_c (ev_o ++ ev_p) [])
-    (h_sepP : SSeparate 0 .flowOut sp_node sp_p)
-    (h_props : TCNsProperties 0 .flowOut sp_p sp_scan ev_p)
-    (h_route : ∀ sp_m ev_n, TBlockNode 0 .blockIn sp_node sp_m ev_n →
+    (h_sepP : SSeparate n .flowOut sp_node sp_p)
+    (h_props : TCNsProperties n .flowOut sp_p sp_scan ev_p)
+    (h_route : ∀ sp_m ev_n, TBlockNode n .blockIn sp_node sp_m ev_n →
       TLYamlStream sp_start sp_m (ev_c ++ ev_o ++ ev_n))
-    (h_sep : SSeparate 0 .flowOut sp_scan sp_prep)
+    (h_sep : SSeparate n .flowOut sp_scan sp_prep)
     (arm : ContentArm s_prep s' c sp_prep sp_a)
     (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
     (hpeek : s_prep.peek? = some c)
     (h_depth : s_prep.flowLevel = 0)
     (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_not_doc : s_prep.col = 0 → atDocumentBoundary s_prep = false)
+    (h_floor : n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf s_prep)
     (h_value : c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*') :
     TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_p) [] ∧
       TPendingNode sp_start false sp_block sp_a ev_c (ev_o ++ ev_p) [] := by
   obtain ⟨ev_n, hpt, hdisj⟩ := accum_step_content_trace_out arm hcorr hpeek h_depth h_dispatch
-  have h_decorated : ∀ sp_gram sp_mid, TFlowContent 0 .flowOut sp_prep sp_gram [] →
-      SSLComments sp_gram sp_mid → TLYamlStream sp_start sp_mid (ev_c ++ (ev_o ++ ev_p)) :=
-    fun sp_gram sp_mid hT h_ssl => by
-      simpa [List.append_assoc] using h_route sp_mid (ev_p ++ [])
-        (.flowInBlock 0 .blockIn sp_node sp_p sp_gram sp_mid (ev_p ++ []) h_sepP
-          (.propsContent 0 .flowOut sp_p sp_scan sp_prep sp_gram ev_p [] h_props h_sep hT) h_ssl)
-  rcases hdisj with ⟨hev, sp_gram, hT, hws, -⟩ | ⟨hev, hc, -⟩ | ⟨hev, hc, -⟩ | ⟨hc, -⟩ | ⟨hc, -⟩ | ⟨hc, -⟩
-  · subst hev
-    exact ⟨⟨hS.stream, by rw [hpt.goOut_at [], hS.events]; simp⟩,
-      .pendingContent sp_block sp_a sp_gram ev_c (ev_o ++ ev_p)
-        (fun sp_mid h_ssl => h_decorated sp_gram sp_mid hT h_ssl) hws⟩
-  · subst hev
-    exact ⟨⟨hS.stream, by rw [hpt.goOut_at [], hS.events]; simp⟩,
-      .pendingContent sp_block sp_a sp_a ev_c (ev_o ++ ev_p)
-        (fun sp_mid h_ssl => h_decorated sp_a sp_mid (quoted_flowOut arm hc h_depth) h_ssl) (GStar.nil _)⟩
-  · subst hev
-    obtain ⟨sp_bs, -, hcorr_bs, h_absorb⟩ := dispatchContent_blockScalar_prod s_prep sp_prep hcorr hpeek hc h_dispatch
+  have hev : ev_n = [] := by
+    rcases hdisj with ⟨hev, -⟩ | ⟨hev, -⟩ | ⟨hev, -⟩ | ⟨hc, -⟩ | ⟨hc, -⟩ | ⟨hc, -⟩
+    · exact hev
+    · exact hev
+    · exact hev
+    · exact absurd hc h_value.1
+    · exact absurd hc h_value.2.1
+    · exact absurd hc h_value.2.2
+  subst hev
+  refine ⟨⟨hS.stream, by rw [hpt.goOut_at [], hS.events]; simp⟩, ?_⟩
+  by_cases hbs : c = '|' ∨ c = '>'
+  · obtain ⟨sp_bs, d, h_fl, -, hcorr_bs, h_absorb⟩ :=
+      L4YAML.Proofs.StreamAccum.dispatchContent_blockScalar_prod_at s_prep sp_prep hcorr hpeek hbs h_dispatch
     have heq := ScannerSurfCorr_unique hcorr_bs hcorr'
     rw [heq] at h_absorb
-    have h_slot : TOpt (TSeq (TCNsProperties 0 .blockIn) (Lift (SSeparate 0 .blockIn))) sp_p sp_prep (ev_p ++ []) :=
+    have hn : n ≤ d := by
+      unfold L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf at h_floor
+      exact Nat.le_trans h_floor h_fl
+    have h_slot : TOpt (TSeq (TCNsProperties n .blockIn) (Lift (SSeparate n .blockIn))) sp_p sp_prep (ev_p ++ []) :=
       TOpt.some _ _ _ (TSeq.mk sp_p sp_scan sp_prep ev_p [] (TCNsProperties.blockIn_of_flowOut h_props) ⟨h_sep, rfl⟩)
-    exact ⟨⟨hS.stream, by rw [hpt.goOut_at [], hS.events]; simp⟩,
-      .pendingContent sp_block sp_a sp_a ev_c (ev_o ++ ev_p)
-        (fun sp_mid h_ssl => by
-          simpa [List.append_assoc] using h_route sp_mid (ev_p ++ []) ((h_absorb sp_mid h_ssl).elim
-            (fun hl => .blockLiteral 0 .blockIn sp_node sp_p sp_prep sp_mid (ev_p ++ []) h_sepP h_slot hl)
-            (fun hf => .blockFolded 0 .blockIn sp_node sp_p sp_prep sp_mid (ev_p ++ []) h_sepP h_slot hf)))
-        (GStar.nil _)⟩
-  · exact absurd hc h_value.1
-  · exact absurd hc h_value.2.1
-  · exact absurd hc h_value.2.2
+    exact .pendingContent sp_block sp_a sp_a ev_c (ev_o ++ ev_p)
+      (fun sp_mid h_ssl => by
+        simpa [List.append_assoc] using h_route sp_mid (ev_p ++ []) ((h_absorb sp_mid h_ssl).elim
+          (fun hl => .blockLiteral n .blockIn sp_node sp_p sp_prep sp_mid (ev_p ++ []) h_sepP h_slot (hl n hn))
+          (fun hf => .blockFolded n .blockIn sp_node sp_p sp_prep sp_mid (ev_p ++ []) h_sepP h_slot (hf n hn))))
+      (GStar.nil _)
+  · obtain ⟨sp_gram, sp_res, hT, hws, hcorr_res⟩ :=
+      L4YAML.Proofs.Serialization.TraceOf.ContentBridge.content_leaf_at n hcorr hpeek
+        (by unfold ScannerState.inFlow; rw [h_depth]; rfl) h_not_doc
+        h_value.1 h_value.2.2 h_value.2.1 (fun h => hbs (Or.inl h)) (fun h => hbs (Or.inr h))
+        h_dispatch h_floor
+    obtain rfl : sp_res = sp_a := ScannerSurfCorr_unique hcorr_res hcorr'
+    exact .pendingContent sp_block sp_res sp_gram ev_c (ev_o ++ ev_p)
+      (fun sp_mid h_ssl => by
+        simpa [List.append_assoc] using h_route sp_mid (ev_p ++ [])
+          (.flowInBlock n .blockIn sp_node sp_p sp_gram sp_mid (ev_p ++ []) h_sepP
+            (.propsContent n .flowOut sp_p sp_scan sp_prep sp_gram ev_p [] h_props h_sep hT) h_ssl))
+      hws
 
 end TPendingNode
 
