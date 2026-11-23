@@ -36,7 +36,9 @@ def declaredGaps : List (Nat × String) :=
   [(18, "surrogate-hex-escapes-decoded-to-nul"),
    -- 442: the slot two concurrent lanes both took on 2026-11-06 — Row 19's entry became 443 and
    -- Row 12's (the (ω-negative) item) became 444; nothing was written as 442.
-   (442, "item-445-2026-11-06")]
+   (442, "item-445-2026-11-06"),
+   -- 530: claimed by the open PR that makes `A-orphan` the campaign class's directed census; delete this row when it lands.
+   (530, "item-531-2026-11-22")]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where
