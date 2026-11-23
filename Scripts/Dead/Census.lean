@@ -84,7 +84,9 @@ def isAux (env : Environment) (n : Name) : Bool :=
   || (Lean.Meta.Match.Extension.getMatcherInfo? env n).isSome
   || (privateToUserName n).components.any fun c => match c with
       | .str _ s => s.startsWith "proof_" || s.startsWith "match_" || s.startsWith "eq_"
-        || generatedComponent.contains s || generatedUnderscore.any (fun g => s.startsWith g)
+        || generatedComponent.any (fun g => s == g ||
+             (s.startsWith (g ++ "_") && (s.drop (g.length + 1)).length > 0 && (s.drop (g.length + 1)).all Char.isDigit))  -- `brecOn_1` (Lean 4.36's `CommitNode.brecOn_1.eq`), not `ofNat_eq_…`
+        || generatedUnderscore.any (fun g => s.startsWith g)
       | .num _ _ => true
       | _ => false
 
