@@ -454,7 +454,7 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     (h_depth : s_ad.flowLevel = 0)
     (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s') :
     ∃ ev_n, PushesTrace s_ad.tokens s'.tokens ev_n ∧
-      ((ev_n = [] ∧ ∃ sp_gram, TFlowNode 0 .flowOut sp_prep sp_gram [] ∧
+      ((ev_n = [] ∧ ∃ sp_gram, TFlowContent 0 .flowOut sp_prep sp_gram [] ∧
           GStar SSWhite sp_gram sp_a ∧ (sp_gram = sp_a → s'.peek? ≠ some '#')) ∨
        (ev_n = [] ∧ (c = '"' ∨ c = '\'') ∧ TFlowContent 0 .blockIn sp_prep sp_a []) ∨
        (ev_n = [] ∧ (c = '|' ∨ c = '>') ∧ (SCLLiteral 0 sp_prep sp_a ∨ SCLFolded 0 sp_prep sp_a)) ∨
@@ -477,7 +477,7 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     subst hsp_prep
     rcases SFlowNode_head_lift h_node ⟨h_amp, h_star, h_bang, hlb, hlc⟩ with
       ⟨-, -, hplain⟩ | ⟨h, -⟩ | ⟨h, -⟩
-    · exact .content _ _ _ _ _ (.plain _ _ _ _ hplain)
+    · exact .plain _ _ _ _ hplain
     · exact absurd h h_dq
     · exact absurd h h_sq
   | plainIn _ _ h_depth' => omega
