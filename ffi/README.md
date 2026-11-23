@@ -274,25 +274,23 @@ extern "C" {
 
 ## Building
 
-Build and install the library first (`ffi/CMakeLists.txt` compiles the C that `lake build L4YAML` generates, so run Lake before configuring), from the repository root:
+Build and install the library as described under [Building](../README.md#building) in the root README. The commands below compile against the installed tree: `l4yaml.h` and `l4yaml_raii.hpp` are in `<prefix>/include`, and `libl4yaml.so` is in the library directory CMake's `GNUInstallDirs` selects for the platform, `<prefix>/lib` or `<prefix>/lib64`. Set `L4YAML_LIBDIR` to the directory that holds `libl4yaml.so`:
 
 ```bash
-lake build L4YAML
-cmake -B ffi/out -S ffi
-cmake --build ffi/out
-cmake --install ffi/out --prefix /path/to/install
+L4YAML_PREFIX=/path/to/install
+L4YAML_LIBDIR=$L4YAML_PREFIX/lib   # or $L4YAML_PREFIX/lib64
 ```
 
-Then compile against the installed headers and `libl4yaml.so`. `-Wl,-rpath` records where the program finds `libl4yaml.so` at run time; without it, set `LD_LIBRARY_PATH=/path/to/install/lib` when running, or the program stops with `error while loading shared libraries: libl4yaml.so`.
+`-Wl,-rpath` records where the program finds `libl4yaml.so` at run time; without it, set `LD_LIBRARY_PATH=$L4YAML_LIBDIR` when running, or the program stops with `error while loading shared libraries: libl4yaml.so`.
 
 ### C
 ```bash
-gcc -o myapp myapp.c -ll4yaml -I/path/to/install/include -L/path/to/install/lib -Wl,-rpath,/path/to/install/lib
+gcc -o myapp myapp.c -ll4yaml -I$L4YAML_PREFIX/include -L$L4YAML_LIBDIR -Wl,-rpath,$L4YAML_LIBDIR
 ```
 
 ### C++
 ```bash
-g++ -o myapp myapp.cpp -ll4yaml -I/path/to/install/include -L/path/to/install/lib -Wl,-rpath,/path/to/install/lib
+g++ -o myapp myapp.cpp -ll4yaml -I$L4YAML_PREFIX/include -L$L4YAML_LIBDIR -Wl,-rpath,$L4YAML_LIBDIR
 ```
 
 ## Further Documentation
