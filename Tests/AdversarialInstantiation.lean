@@ -19414,11 +19414,12 @@ example (sp_start sp sp_p sp_scan sp_prep sp_a sp_mid : SurfPos) (s_prep s' : Sc
     (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
     (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
     (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_not_doc : s_prep.col = 0 → atDocumentBoundary s_prep = false)
     (h_value : c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*') (h_ssl : SSLComments sp_a sp_mid) :
     (goOut s'.tokens.toList []).1 = ev_p ∧ TLYamlStream sp_start sp_mid ev_p := by
   obtain ⟨hS', h_park⟩ := TPendingNode.content_step_props hS h_sepP h_props
     (fun sp_m ev h => by simpa using TLYamlStream.bareRoute h_nodoc sp_m ev h)
-    h_sep arm hcorr hcorr' hpeek h_depth h_dispatch h_value
+    h_sep arm hcorr hcorr' hpeek h_depth h_dispatch h_not_doc (Nat.zero_le _) h_value
   exact ⟨by simpa using congrArg Prod.fst hS'.events, by simpa using TPendingNode.close_with_ssl hS' h_park h_ssl⟩
 end Statements
 
@@ -19448,6 +19449,156 @@ def testContentProducerParks (state : IO.Ref TestCollector) : IO Unit := do
   check state "P139 the step appends to the open trace and leaves no handle (449 / 449)"
     (t.prefixOk == t.steps && t.handlesEmpty == t.steps)
 end P139Test
+
+namespace P140
+/-! **Priority 140 (item 532, S3 slice (4) PR 21): the value's leaf at the park's indentation.**  β PR 5 reads a
+depth-0 flow scalar as `TFlowContent n .flowOut` at every `n` under the scanner's content floor
+(`minContentIndentOf`), so `content_step_props` holds at the run's own indentation; the same leaf serves the
+`:` / `-` / `?` parks next.  Before stating it: at every depth-0 VALUE step (plain / quoted / block scalar)
+behind a `:` / `-` / `?` park or a property run that is not at the root, the floor after the step, whether
+the value spans lines, and — the text's word, not the scanner's — whether every non-blank continuation line
+of a multi-line value is indented at least to the floor.  Predictions: P1 ≈ 214 value steps (P139's grid: 116
+behind `:`, 62 behind `-`, 16 behind `?`, ≈ 20 behind a non-root run); P2 ≈ 185 on one line, ≈ 29 spanning
+lines (≈ 10 block scalars); P3 the floor is ≥ 1 at every step; P4 every continuation line clears the floor. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.PreprocessIndentStable (minContentIndentOf)
+
+structure Tally where
+  steps : Nat := 0
+  parks : List (String × Nat) := []
+  oneLine : Nat := 0
+  multiLine : Nat := 0
+  multiArm : List (String × Nat) := []
+  floorPos : Nat := 0
+  floors : List (String × Nat) := []
+  contLines : Nat := 0
+  contClear : Nat := 0
+  contTight : Nat := 0
+  contBad : List String := []
+  deriving Repr
+
+/-- The non-blank lines strictly after the token's first line, up to where the scanner stood after the step
+(the token's own `endPos` does not span a folded or block scalar's lines: first reading, 0 multi-line of 215). -/
+def continuationLines (s : String) (tk : L4YAML.Positioned L4YAML.YamlToken) (post : ScannerState) : List String :=
+  let lines := s.splitOn "\n"
+  let last := if post.col == 0 then post.line - 1 else post.line
+  ((lines.take (last + 1)).drop (tk.pos.line + 1)).filter fun l => !(l.toList.all fun ch => ch == ' ' || ch == '\t' || ch == '\r')
+
+def indentOf (l : String) : Nat := (l.toList.takeWhile (· == ' ')).length
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let park := P136.parkOf pre.tokens.toList
+        let behind := park == "pendingMapValue" || park == "pendingBlock" || park == "pendingKey" ||
+          (park == "pendingProps" && !P139.atRoot pre.tokens.toList)
+        if pre.flowLevel == 0 && post.flowLevel == 0 && behind then
+          let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
+          match pushed.reverse.head? with
+          | some back =>
+            let arm := P137.armOf back.val
+            if P139.isValueArm arm then
+              let floor := minContentIndentOf post
+              let cont := continuationLines s back post
+              let multi := !cont.isEmpty
+              let clear := cont.filter fun l => decide (floor ≤ indentOf l)
+              t := { t with steps := t.steps + 1, parks := bumpS t.parks park,
+                            oneLine := t.oneLine + (if multi then 0 else 1),
+                            multiLine := t.multiLine + (if multi then 1 else 0),
+                            multiArm := if multi then bumpS t.multiArm arm else t.multiArm,
+                            floorPos := t.floorPos + (if floor ≥ 1 then 1 else 0),
+                            floors := bumpS t.floors (toString floor),
+                            contLines := t.contLines + cont.length,
+                            contClear := t.contClear + clear.length,
+                            contTight := t.contTight + (cont.filter fun l => indentOf l == floor).length,
+                            contBad := if clear.length == cont.length then t.contBad
+                              else t.contBad ++ [s!"{park}/{arm} floor={floor} @{repr (String.ofList (s.toList.take 40))}"] }
+          | none => pure ()
+    | _, _ => pure ()
+  return t
+
+section Statements
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.Serialization.TraceOf.ContentBridge (content_leaf_at)
+open L4YAML.Proofs.StreamAccum (ContentArm)
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Surface
+
+/-- A plain scalar's `SFlowContent` is its T leaf at the same indentation, silent. -/
+example (n : Nat) (rest : List Char) (col : Nat) (m : SurfPos)
+    (h : SFlowContent n .flowOut ⟨'a' :: rest, col⟩ m) : TFlowContent n .flowOut ⟨'a' :: rest, col⟩ m [] :=
+  ContentBridge.TFlowContent.of_scalar h (by decide) (by decide)
+
+/-- …and a quoted one, in a key context too (the lift keeps `n` and `c`). -/
+example (rest : List Char) (m : SurfPos)
+    (h : SFlowContent 3 .blockKey ⟨'"' :: rest, 7⟩ m) : TFlowContent 3 .blockKey ⟨'"' :: rest, 7⟩ m [] :=
+  ContentBridge.TFlowContent.of_scalar h (by decide) (by decide)
+
+/-- The leaf at indentation 0 needs no floor (`0 ≤ minContentIndentOf`): the line-start reading. -/
+example (s_ad s' : ScannerState) (c : Char) (sp_prep : SurfPos)
+    (hcorr : ScannerSurfCorr s_ad sp_prep) (hpeek : s_ad.peek? = some c) (h_flow : s_ad.inFlow = false)
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_amp : c ≠ '&') (h_star : c ≠ '*') (h_bang : c ≠ '!') (h_pipe : c ≠ '|') (h_gt : c ≠ '>')
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s') :
+    ∃ sp_gram, TFlowNode 0 .flowOut sp_prep sp_gram [] := by
+  obtain ⟨sp_gram, _, hT, -, -⟩ := content_leaf_at 0 hcorr hpeek h_flow h_not_doc h_amp h_star h_bang h_pipe h_gt
+    h_dispatch (Nat.zero_le _)
+  exact ⟨sp_gram, .content _ _ _ _ _ hT⟩
+
+/-- The leaf at the floor itself (`n = minContentIndentOf`, the largest index the premise admits). -/
+example (s_ad s' : ScannerState) (c : Char) (sp_prep : SurfPos)
+    (hcorr : ScannerSurfCorr s_ad sp_prep) (hpeek : s_ad.peek? = some c) (h_flow : s_ad.inFlow = false)
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_amp : c ≠ '&') (h_star : c ≠ '*') (h_bang : c ≠ '!') (h_pipe : c ≠ '|') (h_gt : c ≠ '>')
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s') :
+    ∃ sp_gram sp', TFlowContent (minContentIndentOf s_ad) .flowOut sp_prep sp_gram [] ∧ ScannerSurfCorr s' sp' := by
+  obtain ⟨sp_gram, sp', hT, -, hc⟩ := content_leaf_at _ hcorr hpeek h_flow h_not_doc h_amp h_star h_bang h_pipe
+    h_gt h_dispatch (Nat.le_refl _)
+  exact ⟨sp_gram, sp', hT, hc⟩
+
+/-- A value behind a run at indentation `k + 1`, closed over its landing: the run's events alone follow the
+open ones, at the route the park holds for a node at that indentation. -/
+example (k : Nat) (sp_start sp_block sp_node sp_p sp_scan sp_prep sp_a sp_mid : SurfPos) (s_prep s' : ScannerState)
+    (c : Char) (ev_c ev_o ev_p : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp_block ev_c (ev_o ++ ev_p) [])
+    (h_sepP : SSeparate (k + 1) .flowOut sp_node sp_p) (h_props : TCNsProperties (k + 1) .flowOut sp_p sp_scan ev_p)
+    (h_route : ∀ sp_m ev_n, TBlockNode (k + 1) .blockIn sp_node sp_m ev_n →
+      TLYamlStream sp_start sp_m (ev_c ++ ev_o ++ ev_n))
+    (h_sep : SSeparate (k + 1) .flowOut sp_scan sp_prep) (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_not_doc : s_prep.col = 0 → atDocumentBoundary s_prep = false)
+    (h_floor : k + 1 ≤ minContentIndentOf s_prep)
+    (h_value : c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*') (h_ssl : SSLComments sp_a sp_mid) :
+    (goOut s'.tokens.toList []).1 = ev_c ++ (ev_o ++ ev_p) ∧
+      TLYamlStream sp_start sp_mid (ev_c ++ (ev_o ++ ev_p)) := by
+  obtain ⟨hS', h_park⟩ := TPendingNode.content_step_props hS h_sepP h_props h_route h_sep arm hcorr hcorr'
+    hpeek h_depth h_dispatch h_not_doc h_floor h_value
+  exact ⟨congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' h_park h_ssl⟩
+end Statements
+
+end P140
+
+namespace P140Test
+def testLeafAtIndentation (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P140.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P140 {repr t}"
+  check state "P140 215 depth-0 value steps behind `:` (116) / `-` (62) / `?` (16) / a non-root run (21)"
+    (t.steps == 215 && t.parks.lookup "pendingMapValue" == some 116 && t.parks.lookup "pendingBlock" == some 62 &&
+     t.parks.lookup "pendingKey" == some 16 && t.parks.lookup "pendingProps" == some 21)
+  check state "P140 200 values on one line, 15 spanning lines (8 block scalars, 7 plain; P2 said ≈ 29)"
+    (t.oneLine == 200 && t.multiLine == 15 && t.multiArm.lookup "blockScalar" == some 8 &&
+     t.multiArm.lookup "plain" == some 7)
+  check state "P140 the content floor is ≥ 1 at every step (floors 1 / 3 / 4 / 5)" (t.floorPos == t.steps)
+  check state "P140 every non-blank continuation line is indented at least to the floor (16 / 16), 3 exactly at it"
+    (t.contLines == 16 && t.contClear == 16 && t.contTight == 3 && t.contBad.isEmpty)
+end P140Test
 
 namespace P137Test
 def testContentStepEvents (state : IO.Ref TestCollector) : IO Unit := do
@@ -19748,6 +19899,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P137Test.testContentStepEvents state
   P138Test.testContentProducerLineStart state
   P139Test.testContentProducerParks state
+  P140Test.testLeafAtIndentation state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
