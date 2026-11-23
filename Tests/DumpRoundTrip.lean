@@ -410,6 +410,92 @@ def testFlowContextEdgeCases (state : IO.Ref TestCollector) : IO Unit := do
   check state "block map key: trailing colon quotes"
     (dumpRoundTrips (.mapping .block #[(.plainScalar "abc:", .plainScalar "v")]))
 
+/-! ## Expanded tag URI regressions (issue #369)
+
+`contentEq` deliberately ignores tags. These cases additionally compare every
+stored tag and the resolved Core value, so loss of type metadata cannot pass
+merely because scalar text survived. Style and anchor presentation are not part
+of this comparison. The parser has already expanded declared tag handles.
+-/
+
+def sameTags : YamlValue → YamlValue → Bool
+  | .scalar a, .scalar b => a.tag == b.tag
+  | .sequence _ as ta _, .sequence _ bs tb _ =>
+    ta == tb && as.size == bs.size && listTags as.toList bs.toList
+  | .mapping _ as ta _, .mapping _ bs tb _ =>
+    ta == tb && as.size == bs.size && pairTags as.toList bs.toList
+  | .alias a, .alias b => a == b
+  | _, _ => false
+where
+  listTags : List YamlValue → List YamlValue → Bool
+    | [], [] => true
+    | a :: as, b :: bs => sameTags a b && listTags as bs
+    | _, _ => false
+  pairTags : List (YamlValue × YamlValue) → List (YamlValue × YamlValue) → Bool
+    | [], [] => true
+    | (ka, va) :: as, (kb, vb) :: bs =>
+      sameTags ka kb && sameTags va vb && pairTags as bs
+    | _, _ => false
+
+def taggedRoundTrips (input : String) (cfg : DumpConfig) : Bool :=
+  match parseYamlSingle input with
+  | .error _ => false
+  | .ok before =>
+    match parseYamlSingle (dump before cfg) with
+    | .error _ => false
+    | .ok after => contentEq before after && sameTags before after &&
+        Schema.resolve before == Schema.resolve after
+
+def testExpandedTags (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Expanded tags: content, stored tags and resolved value"
+  let cases := #[
+    ("verbatim string", "!<tag:yaml.org,2002:str> true"),
+    ("custom URI", "!<tag:example.com,2000:widget> bar"),
+    ("HTTP URI", "!<https://example.com/types/widget> bar"),
+    ("relative URI", "!<widget> bar"),
+    ("declared handle", "%TAG !e! tag:example.com,2000:\n---\n!e!foo bar"),
+    ("declared primary", "%TAG ! tag:example.com,2000:\n---\n!foo bar"),
+    ("declared secondary", "%TAG !! tag:example.com,2000:\n---\n!!foo bar"),
+    ("flow sequence", "!<tag:yaml.org,2002:seq> [a, b]"),
+    ("block sequence", "!<tag:yaml.org,2002:seq>\n- a\n- b"),
+    ("flow mapping", "!<tag:yaml.org,2002:map> {k: v}"),
+    ("block mapping", "!<tag:yaml.org,2002:map>\nk: v"),
+    ("empty sequence", "!<tag:yaml.org,2002:seq> []"),
+    ("empty mapping", "!<tag:yaml.org,2002:map> {}"),
+    ("nested scalar", "{k: !<tag:example.com,2000:widget> bar}"),
+    ("sequence element", "[!<tag:example.com,2000:widget> bar]"),
+    ("mapping key", "{!<tag:example.com,2000:widget> k: v}"),
+    ("nested collection", "[!<tag:yaml.org,2002:seq> [a, b]]"),
+    ("local URI with bang", "!<!foo!bar> bar"),
+    ("local URI with comma", "!<!foo,bar> bar"),
+    ("URI with flow punctuation", "!<tag:example.com,2000:[a,b]> bar"),
+    ("literal percent escape", "!<tag:example.com,2000:50%25> bar"),
+    ("shorthand control", "!!str true"),
+    ("local control", "!foo bar"),
+    ("verbatim local control", "!<!foo> bar"),
+    ("non-specific control", "! true"),
+    ("untagged control", "{k: [a, b]}")]
+  let configs : Array (String × DumpConfig) := #[
+    ("default", {}),
+    ("keep core tags", { plainCoreScalars := false }),
+    ("flow", { defaultStyle := .flow }),
+    ("double quoted", { scalarStyle := .doubleQuoted }),
+    ("preserve style", { scalarStyle := .preserve, allowReservedPlain := true })]
+  for (configName, cfg) in configs do
+    for (name, input) in cases do
+      checkM state s!"{configName}: {name}" (taggedRoundTrips input cfg) input
+  -- The default intentionally elides a redundant numeric Core tag. The
+  -- opt-out must retain it using valid verbatim syntax for expanded URIs.
+  check state "expanded int: explicit tag retained when requested"
+    (taggedRoundTrips "!<tag:yaml.org,2002:int> 5" { plainCoreScalars := false })
+  check state "expanded int: default elision retains resolved value"
+    (match parseYamlSingle "!<tag:yaml.org,2002:int> 5" with
+     | .error _ => false
+     | .ok before => dump before == "5" &&
+       match parseYamlSingle (dump before) with
+       | .error _ => false
+       | .ok after => Schema.resolve before == Schema.resolve after)
+
 /-- Collect all dump round-trip test results. -/
 def collectTests : IO VerifiedSuiteResult := do
   let state ← IO.mkRef ({} : TestCollector)
@@ -419,6 +505,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testDumpRoundTrip state
   testDocumentDump state
   testFlowContextEdgeCases state
+  testExpandedTags state
   let results ← finish state
   return {
     name := "dumproundtrip"

@@ -70,6 +70,20 @@ open L4YAML L4YAML.Dump
 #guard dump (.scalar ⟨"value", .plain, none, some "a1", none⟩) == "&a1 value"
 #guard dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) == "42"
 #guard dump (.scalar ⟨"42", .plain, some "!!int", none, none⟩) { plainCoreScalars := false } == "!!int 42"
+-- Expanded URI tags must be valid node properties, including when the stored
+-- URI starts with `!` but contains characters forbidden in shorthand suffixes.
+#guard renderTag "tag:yaml.org,2002:int" == "!<tag:yaml.org,2002:int>"
+#guard renderTag "https://example.com/widget" == "!<https://example.com/widget>"
+#guard renderTag "!foo,bar" == "!<!foo,bar>"
+#guard renderTag "!foo!bar" == "!<!foo!bar>"
+#guard renderTag "!foo" == "!foo"
+#guard renderTag "!!str" == "!!str"
+#guard renderTag "!" == "!"
+#guard renderTag "!<tag:example.com,2000:widget>" == "!<tag:example.com,2000:widget>"
+#guard nodePrefix (some "tag:example.com,2000:widget") (some "a") ==
+  "!<tag:example.com,2000:widget> &a"
+#guard dump (.scalar ⟨"bar", .plain, some "tag:example.com,2000:widget", some "a", none⟩) ==
+  "!<tag:example.com,2000:widget> &a bar"
 #guard dump (.sequence .flow #[.plainScalar "a", .plainScalar "b"]) == "[a, b]"
 #guard dump (.mapping .flow #[(.plainScalar "k", .plainScalar "v")]) == "{k: v}"
 #guard dump (.sequence .flow #[]) == "[]"
