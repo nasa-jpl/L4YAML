@@ -84,7 +84,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- A-campaign 1341 → 1343 — ContentBridge's `TFlowContent.of_scalar` and `content_leaf_at`, spent by the unreached
 -- `TPendingNode.content_step_props` (now at every indentation).
 def expectedDeadCensus : String :=
-  "population=14340 thm=10269 def=2703 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6565 thm=4632 A-campaign=1341 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14342 thm=10271 def=2703 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6567 thm=4634 A-campaign=1343 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
