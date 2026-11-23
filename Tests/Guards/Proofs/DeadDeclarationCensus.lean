@@ -66,8 +66,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-22 (Lean v4.36.0): population 14252 → 14253, def 2675 → 2676, unreached 6548 → 6549, A-campaign 1333 → 1334 —
 -- `SerializationWellFormed.decMemString`, the `List String` membership decision spelled out so the trace checker keeps
 -- its `[propext]` profile; an instance body, reached by no root (class (A)); B-roster unmoved.
+-- 2026-11-23 (dump tag rendering, #369): population +1 / def +1 for `Dump.renderTag`,
+-- reached through the exported dumper; every unreached class and the B-roster are unchanged.
 def expectedDeadCensus : String :=
-  "population=14253 thm=10215 def=2676 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6549 thm=4624 A-campaign=1334 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14254 thm=10215 def=2677 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6549 thm=4624 A-campaign=1334 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

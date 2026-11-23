@@ -461,9 +461,23 @@ def dumpBlockScalar (content : String) (indicator : String)
     (bsMeta : Option BlockScalarMeta) (depth : Nat) (indentWidth : Nat) : String :=
   pushBlockScalar "" content indicator bsMeta depth indentWidth
 
+/-- Render a stored tag as a YAML node property (§6.9.1).
+
+The parser expands declared handles and strips the `!<...>` delimiters from
+verbatim tags. Such URIs need delimiters again on output. Keep the default
+`!!suffix` / local `!suffix` spellings when their suffix is a tag character
+sequence; a URI such as `!foo,bar` instead needs verbatim form. An explicitly
+stored verbatim spelling is already delimited and is kept as supplied. -/
+def renderTag (tag : String) : String :=
+  if tag.startsWith "!<" && tag.endsWith ">" then tag
+  else
+    let suffix := tag.toList.drop (if tag.startsWith "!!" then 2 else 1)
+    if tag.startsWith "!" && suffix.all CharPredicates.isTagCharBool then tag
+    else "!<" ++ tag ++ ">"
+
 /-- Build tag + anchor prefix for a node. No trailing space. -/
 def nodePrefix (tag : Option String) (anchor : Option String) : String :=
-  let t := match tag with | some t => t | none => ""
+  let t := match tag with | some t => renderTag t | none => ""
   let a := match anchor with | some n => "&" ++ n | none => ""
   match t.isEmpty, a.isEmpty with
   | true, true => ""
@@ -539,7 +553,7 @@ where
         -- A `toYaml`-style non-string primitive: bare, untagged, never quoted.
         pushAnchor acc s.anchor ++ s.content
       else
-        let acc := match s.tag with | some t => acc ++ t ++ " " | none => acc
+        let acc := match s.tag with | some t => acc ++ renderTag t ++ " " | none => acc
         let acc := pushAnchor acc s.anchor
         match chooseScalarStyle s cfg ctx with
         | .plain => acc ++ s.content
