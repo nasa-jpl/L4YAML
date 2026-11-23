@@ -81,7 +81,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- unreached 6557 → 6558 and A-campaign 1333 → 1334. The new declaration is
 -- `SerializationWellFormed.decMemString`; the B roster is unchanged.
 def expectedDeadCensus : String :=
-  "population=14333 thm=10262 def=2703 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6558 thm=4625 A-campaign=1334 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14340 thm=10269 def=2703 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6565 thm=4632 A-campaign=1341 C-api=1414 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
