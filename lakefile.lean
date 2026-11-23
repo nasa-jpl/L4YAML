@@ -297,6 +297,7 @@ lean_exe extractSpecExamples where
 lean_exe «collect-stats» where
   root := `CollectStats
   srcDir := "tools"
+  supportInterpreter := true  -- imported compiler extensions and native axiom replay
 
 
 lean_lib «Tests.SchemaDump» where
