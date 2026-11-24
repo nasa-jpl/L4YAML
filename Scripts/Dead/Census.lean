@@ -223,7 +223,12 @@ def classify (env : Environment) (blueprintRows : List BlueprintRow := []) : Rep
   let mut consumed : Std.HashSet Name := {}
   for (c, _) in env.constants.toList do
     for m in Scripts.Path.CapstonePath.rawRefs env c do
-      if m != c && campaignSet.contains m && !(isAux env c && m.isPrefixOf c) then consumed := consumed.insert m
+      -- a constructor's type names its own inductive (`TSeq3.mk : … → TSeq3`): not a spend of `TSeq3`
+      let ownCtor := match env.find? c with
+        | some (.ctorInfo ci) => ci.induct == m
+        | _ => false
+      if m != c && campaignSet.contains m && !(isAux env c && m.isPrefixOf c) && !ownCtor then
+        consumed := consumed.insert m
   -- derived instances (`instReprX`, `instDecidableEqY`) are generated with their type, not built for a spender
   let derivedInstance (n : Name) : Bool := match n with
     | .str _ s => s.startsWith "inst"
