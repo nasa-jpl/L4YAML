@@ -42,6 +42,7 @@ L4YAML/Proofs/RoundTrip/RoundTrip.lean:escapeTag_roundtrip
 # Group 7 — acceptance strictness
 L4YAML/Proofs/Production/DocumentProduction.lean:parse_strict_proof
 L4YAML/Proofs/Production/DocumentProduction.lean:scan_strict_proof
+L4YAML/Proofs/Serialization/ScannerShape.lean:scanFiltered_parseStream_ok_checkFrom_full
 # (reserved for 7.7 when it lands)
 # L4YAML/Proofs/Production/???.lean:parse_iff_grammar
 

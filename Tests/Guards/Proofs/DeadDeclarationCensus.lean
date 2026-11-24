@@ -72,8 +72,12 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-23 (item 532, β PR 5): population 14260 → 14262, thm 10222 → 10224, unreached 6556 → 6558 (thm 4631 → 4633),
 -- A-campaign 1341 → 1343 — ContentBridge's `TFlowContent.of_scalar` and `content_leaf_at`, spent by the unreached
 -- `TPendingNode.content_step_props` (now at every indentation).
+-- 2026-11-23 (item 533, capstone 7.8): roots capstone 26 → 27, blueprint 222 → 223; unreached 6558 → 6156 (thm 4633 → 4298),
+-- A-campaign 1343 → 1171, D-test-only 277 → 272, B-roster 3533 → 3308 (thm 3172 → 2961) — `scanFiltered_parseStream_ok_checkFrom_full`
+-- (ScannerShape) is a `@[capstone]`, so its proof's closure (S5(→): ParseCheckFrom, ScannerShape and the scanner lemmas
+-- they spend) is reached; population unmoved (no declaration added or removed).
 def expectedDeadCensus : String :=
-  "population=14262 thm=10224 def=2676 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6558 thm=4633 A-campaign=1343 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14262 thm=10224 def=2676 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6156 thm=4298 A-campaign=1171 C-api=1405 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
