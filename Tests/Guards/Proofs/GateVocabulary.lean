@@ -128,8 +128,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- comments each name the content dispatch step whose per-function reading moved 186 → 187 (not spelled here: it would move `self`).
 -- 2026-11-22: mentions 524 → 526 — item 531: the `DispatchPrice` and `ParkGapWidth` cause comments each name the content
 -- dispatch step again (per-function reading 187 → 191).
+-- 2026-11-24: mentions 526 → 527 — item 534: the `DispatchPrice` cause comment names the content dispatch step once more
+-- (per-function reading 192 → 195).
 def expectedGateVocab : String :=
-  "names=115 mentions=526 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=527 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

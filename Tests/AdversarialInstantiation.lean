@@ -19600,6 +19600,165 @@ def testLeafAtIndentation (state : IO.Ref TestCollector) : IO Unit := do
     (t.contLines == 16 && t.contClear == 16 && t.contTight == 3 && t.contBad.isEmpty)
 end P140Test
 
+namespace P141
+/-! **Priority 141 (item 534, S3 slice (4) PR 22): the content step behind `:` and `-`.**  β PR 6 routes a
+depth-0 content step at the park's own indentation (`content_step_at`: a scalar or an alias parks
+`pendingContent`, `&` / `!` park `pendingProps` at `n`), with `-` closing through `[185]`'s node branch
+(`content_step_block`) and `:` through `[189]`'s `.blockOut` slot (`content_step_mapValue`, off
+`TBlockNode.blockOut_of_blockIn`).  At every depth-0 content step (all six arms) behind a `:` / `-` / `?`
+park: the arm × park grid, whether the node starts on the park's line or a later one (`SSeparate`'s two
+shapes), whether the step closed a block first (a landing, not this PR's), and the content floor after it.
+Predictions (written after the three lemmas compiled, before this instrument ran): P1 229 steps (item
+531's figure); P2 parks ≈ 125 `:` / ≈ 85 `-` / ≈ 19 `?`; P3 arms ≈ 150 plain, ≈ 30 quoted, ≈ 14 block
+scalar, ≈ 15 anchor, ≈ 12 tag, ≈ 8 alias; P4 ≈ 205 on the park's line, ≈ 24 crossed; P5 ≈ 5 steps close a
+block first; P6 the floor is ≥ 1 at every step that closes none. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.PreprocessIndentStable (minContentIndentOf)
+
+structure Tally where
+  steps : Nat := 0
+  parks : List (String × Nat) := []
+  arms : List (String × Nat) := []
+  grid : List (String × Nat) := []
+  sameLine : Nat := 0
+  crossed : Nat := 0
+  crossedGrid : List (String × Nat) := []
+  closing : Nat := 0
+  closingGrid : List (String × Nat) := []
+  floorPos : Nat := 0
+  floorZero : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        let park := P136.parkOf pre.tokens.toList
+        let behind := park == "pendingMapValue" || park == "pendingBlock" || park == "pendingKey"
+        if pre.flowLevel == 0 && post.flowLevel == 0 && behind then
+          let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
+          let parkTok := (pre.tokens.toList.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head?
+          match pushed.reverse.head?, parkTok with
+          | some back, some pk =>
+            let arm := P137.armOf back.val
+            if arm != "other" then
+              let closes := pushed.any fun tk => match tk.val with
+                | .blockEnd => true
+                | _ => false
+              let same := back.pos.line == pk.pos.line
+              let cell := s!"{park}/{arm}"
+              let floor := minContentIndentOf post
+              t := { t with steps := t.steps + 1, parks := bumpS t.parks park, arms := bumpS t.arms arm,
+                            grid := bumpS t.grid cell,
+                            sameLine := t.sameLine + (if same then 1 else 0),
+                            crossed := t.crossed + (if same then 0 else 1),
+                            crossedGrid := if same then t.crossedGrid else bumpS t.crossedGrid cell,
+                            closing := t.closing + (if closes then 1 else 0),
+                            closingGrid := if closes then bumpS t.closingGrid cell else t.closingGrid,
+                            floorPos := t.floorPos + (if !closes && floor ≥ 1 then 1 else 0),
+                            floorZero := if closes || floor ≥ 1 then t.floorZero
+                              else t.floorZero ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] }
+          | _, _ => pure ()
+    | _, _ => pure ()
+  return t
+
+section Statements
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.StreamAccum (ContentArm)
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Surface
+
+/-- A top-level sequence (`n = 0`, where `seq-spaces` is the same in both contexts) re-labels with its `m`. -/
+example (s s' : SurfPos) (ev : List Event) (h : TBlockNode 0 .blockIn s s' ev) : TBlockNode 0 .blockOut s s' ev :=
+  TBlockNode.blockOut_of_blockIn h
+
+/-- …and a nested one (`n = k + 1`, where `.blockOut` reads one column less and `m` grows by one). -/
+example (k : Nat) (s s' : SurfPos) (ev : List Event) (h : TBlockNode (k + 1) .blockIn s s' ev) :
+    TBlockNode (k + 1) .blockOut s s' ev :=
+  TBlockNode.blockOut_of_blockIn h
+
+/-- A step behind a top-level `-` (`n = 0`, node at 1), closed over its landing: the park's open events,
+then the step's, at the route the park holds for `[185]`. -/
+example (sp_start sp_block sp_scan sp_prep sp_a sp_mid : SurfPos) (s_prep s' : ScannerState) (c : Char)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp_block ev_c ev_o [])
+    (h_close : ∀ sp_mid ev_n, TBlockIndented 0 .blockIn sp_scan sp_mid ev_n →
+      TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n))
+    (h_sep : SSeparate 1 .flowOut sp_scan sp_prep) (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_not_doc : s_prep.col = 0 → atDocumentBoundary s_prep = false)
+    (h_floor : 1 ≤ minContentIndentOf s_prep) (h_ssl : SSLComments sp_a sp_mid) :
+    ∃ ev_n, (goOut s'.tokens.toList []).1 = ev_c ++ (ev_o ++ ev_n) ∧
+      TLYamlStream sp_start sp_mid (ev_c ++ (ev_o ++ ev_n)) := by
+  obtain ⟨ev_n, hS', h_park⟩ := TPendingNode.content_step_block hS h_close h_sep arm hcorr hcorr' hpeek h_depth
+    h_dispatch h_not_doc h_floor
+  exact ⟨ev_n, congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' h_park h_ssl⟩
+
+/-- A step behind a nested `:` (`n = k + 1`, value at `k + 2`), closed over its landing. -/
+example (k : Nat) (sp_start sp_block sp_scan sp_prep sp_a sp_mid : SurfPos) (s_prep s' : ScannerState) (c : Char)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp_block ev_c ev_o [])
+    (h_close : ∀ sp_mid ev_n, TBlockNode (k + 2) .blockOut sp_scan sp_mid ev_n →
+      TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n))
+    (h_sep : SSeparate (k + 2) .flowOut sp_scan sp_prep) (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_not_doc : s_prep.col = 0 → atDocumentBoundary s_prep = false)
+    (h_floor : k + 2 ≤ minContentIndentOf s_prep) (h_ssl : SSLComments sp_a sp_mid) :
+    ∃ ev_n, (goOut s'.tokens.toList []).1 = ev_c ++ (ev_o ++ ev_n) ∧
+      TLYamlStream sp_start sp_mid (ev_c ++ (ev_o ++ ev_n)) := by
+  obtain ⟨ev_n, hS', h_park⟩ := TPendingNode.content_step_mapValue hS h_close h_sep arm hcorr hcorr' hpeek
+    h_depth h_dispatch h_not_doc h_floor
+  exact ⟨ev_n, congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' h_park h_ssl⟩
+
+/-- The routed step at indentation 0 is `content_step_routed`'s case (the floor premise is free there). -/
+example (sp_start sp_block sp_node sp_prep sp_a : SurfPos) (s_prep s' : ScannerState) (c : Char)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_prep sp_block ev_c ev_o [])
+    (h_sep : SSeparate 0 .flowOut sp_node sp_prep)
+    (h_route : ∀ sp_m ev_n, TBlockNode 0 .blockIn sp_node sp_m ev_n →
+      TLYamlStream sp_start sp_m (ev_c ++ ev_o ++ ev_n))
+    (arm : ContentArm s_prep s' c sp_prep sp_a)
+    (hcorr : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (hpeek : s_prep.peek? = some c) (h_depth : s_prep.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_prep c = .ok s')
+    (h_not_doc : s_prep.col = 0 → atDocumentBoundary s_prep = false) :
+    ∃ ev_n, TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_n) [] :=
+  let ⟨ev_n, hS', _⟩ := TPendingNode.content_step_at hS h_sep h_route arm hcorr hcorr' hpeek h_depth h_dispatch
+    h_not_doc (Nat.zero_le _)
+  ⟨ev_n, hS'⟩
+end Statements
+
+end P141
+
+namespace P141Test
+def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P141 {repr t}"
+  check state "P141 229 depth-0 content steps behind `:` (133) / `-` (77) / `?` (19)"
+    (t.steps == 229 && t.parks.lookup "pendingMapValue" == some 133 && t.parks.lookup "pendingBlock" == some 77 &&
+     t.parks.lookup "pendingKey" == some 19)
+  check state "P141 arms: 177 plain, 10 quoted, 7 block scalar, 13 anchor, 14 tag, 8 alias (P3 said 150 / 30 / 14 / 15 / 12 / 8)"
+    (t.arms.lookup "plain" == some 177 && t.arms.lookup "quoted" == some 10 &&
+     t.arms.lookup "blockScalar" == some 7 && t.arms.lookup "anchor" == some 13 &&
+     t.arms.lookup "tag" == some 14 && t.arms.lookup "alias" == some 8)
+  check state "P141 208 nodes on the park's line, 21 on a later one (18 plain + 2 anchors behind `:`, 1 plain behind `-`)"
+    (t.sameLine == 208 && t.crossed == 21 && t.crossedGrid.lookup "pendingMapValue/plain" == some 18 &&
+     t.crossedGrid.lookup "pendingMapValue/anchor" == some 2 && t.crossedGrid.lookup "pendingBlock/plain" == some 1)
+  check state "P141 no corpus step closes a block before its content (P5 said ≈ 5); the floor is ≥ 1 at all 229"
+    (t.closing == 0 && t.floorPos == t.steps && t.floorZero.isEmpty)
+  let h := P141.tally ["a:\n  b:\nc: d"]
+  IO.println s!"P141 hand row {repr h}"
+  check state "P141 the instrument sees a closing landing when there is one (`a:\\n  b:\\nc: d`)" (h.closing == 1)
+end P141Test
+
 namespace P137Test
 def testContentStepEvents (state : IO.Ref TestCollector) : IO Unit := do
   let t := P137.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -19900,6 +20059,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P138Test.testContentProducerLineStart state
   P139Test.testContentProducerParks state
   P140Test.testLeafAtIndentation state
+  P141Test.testContentBehindParks state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
