@@ -303,7 +303,9 @@ def expectedCensus : String :=
 -- 2026-11-23 (item 532, β PR 5): corrHyp 637 → 638 — `content_leaf_at` (ContentBridge) reads the surface through `hcorr`:
 -- the value's leaf at the park's indentation, spent by `TPendingNode.content_step_props`.
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
-  "corrHyp=638 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+-- item 535: corrHyp 638 → 630 — the eight dispatcher-arm corollaries of `ScannerShape` (`dispatchStructural_*_trace` ×3,
+-- `dispatchFlowIndicators_*_trace` ×5) are deleted: each held `ScannerSurfCorr`, no constant and no `example` referenced them.
+  "corrHyp=630 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

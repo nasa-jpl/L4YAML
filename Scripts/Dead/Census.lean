@@ -223,7 +223,7 @@ def classify (env : Environment) (blueprintRows : List BlueprintRow := []) : Rep
   let mut consumed : Std.HashSet Name := {}
   for (c, _) in env.constants.toList do
     for m in Scripts.Path.CapstonePath.rawRefs env c do
-      -- a constructor's type names its own inductive (`TSeq3.mk : … → TSeq3`): not a spend of `TSeq3`
+      -- a constructor's type names its own inductive (`T.mk : … → T`): not a spend of `T`
       let ownCtor := match env.find? c with
         | some (.ctorInfo ci) => ci.induct == m
         | _ => false

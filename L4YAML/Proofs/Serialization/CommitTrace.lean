@@ -62,10 +62,6 @@ mutual
     | node :: rest => yamlNodeEvents node ++ yamlNodesEvents rest
 end
 
-lemma yaml_anchor_commit_first (name : String) (content : CommitNode) :
-    yamlNodeEvents (.anchored name content) =
-      .defineAnchor name :: yamlNodeEvents content := rfl
-
 lemma yaml_enclosing_anchor_self_reference_allowed (name : String) :
     SerializationWellFormed (yamlNodeEvents (.anchored name (.alias name))) := by
   simp [yamlNodeEvents, SerializationWellFormed, WellFormedFrom, AliasAllowed]
@@ -74,13 +70,6 @@ lemma yaml_current_l4yaml_anchor_separator (name : String) :
     checkFrom {} (yamlNodeEvents (.anchored name (.alias name))) ≠
       checkFrom {} (l4yamlNodeEvents (.anchored name (.alias name))) := by
   simp [yamlNodeEvents, l4yamlNodeEvents, checkFrom, AliasAllowed]
-
-lemma l4yamlNodeEvents_anchor_commit_last (name : String) (content : CommitNode) :
-    l4yamlNodeEvents (.anchored name content) =
-      l4yamlNodeEvents content ++ [.defineAnchor name] := rfl
-
-lemma l4yamlNodesEvents_cons (node : CommitNode) (rest : List CommitNode) :
-    l4yamlNodesEvents (node :: rest) = l4yamlNodeEvents node ++ l4yamlNodesEvents rest := rfl
 
 lemma current_l4yaml_enclosing_anchor_self_reference_rejected (name : String) :
     ¬ SerializationWellFormed (l4yamlNodeEvents (.anchored name (.alias name))) := by
@@ -101,11 +90,6 @@ lemma anchored_then_rest_events
     l4yamlNodesEvents (.anchored name content :: rest) =
       l4yamlNodeEvents content ++ [.defineAnchor name] ++ l4yamlNodesEvents rest := by
   simp [l4yamlNodesEvents, l4yamlNodeEvents, List.append_assoc]
-
-lemma empty_anchor_then_alias (name : String) :
-    l4yamlNodesEvents [.anchored name .atom, .alias name] =
-      [.defineAnchor name, .useAlias name] := by
-  rfl
 
 end L4YAML.Proofs.Serialization.CommitTrace
 

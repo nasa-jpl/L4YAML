@@ -1352,17 +1352,6 @@ def DeadAt (ts : Toks) (k : Nat) : Prop :=
   deadTok (tok ts k) = true ∨
     (tok ts k = some .blockEntry ∧ 0 < k ∧ tok ts (k - 1) = some .blockEntry)
 
-lemma deadTok_emptyFollower (o : Option YamlToken) (h : deadTok o = true) :
-    emptyFollowerTok o = true := by
-  cases o with
-  | none => rfl
-  | some t => cases t <;> simp_all [deadTok, emptyFollowerTok]
-
-lemma StuckAt_of_DeadAt (ts : Toks) (k : Nat) (h : DeadAt ts k) : StuckAt ts k := by
-  rcases h with h | h
-  · exact Or.inl (deadTok_emptyFollower _ h)
-  · exact Or.inr h
-
 lemma deadTok_of_emptyFollower (o : Option YamlToken) (he : emptyFollowerTok o = true)
     (ha : ∀ n, o ≠ some (.anchor n)) (hl : ∀ n, o ≠ some (.alias n))
     (ht : ∀ h s, o ≠ some (.tag h s)) (hd : isDirectiveTok o = false)
@@ -1382,12 +1371,6 @@ lemma deadTok_of_emptyFollower (o : Option YamlToken) (he : emptyFollowerTok o =
 lemma peek_eq_of_cf {ps ps' : ParseState} (h : CF ps ps') (hpos : ps'.pos = ps.pos) :
     ps'.peek? = ps.peek? := by
   rw [peek_eq_tok, peek_eq_tok, h.1, hpos]
-
-/-- The stuck analysis for one node: a `parseNode` that consumes nothing sits
-at a `StuckAt` position. -/
-lemma declareAnchorOpt_pos (ps : ParseState) (o : Option String) :
-    (ps.declareAnchorOpt o).pos = ps.pos := by
-  cases o <;> simp [ParseState.declareAnchorOpt, ParseState.declareAnchor]
 
 /-- Node properties are consumed: an anchor or tag at the cursor advances it. S3 (β). -/
 lemma parseNodeProperties_progress (ps : ParseState) (props : NodeProperties) (ps' : ParseState)

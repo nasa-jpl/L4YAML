@@ -43,10 +43,6 @@ inductive TSeq (P Q : TRel) : TRel where
   | mk (s₁ s₂ s₃ : SurfPos) (e₁ e₂ : List Event) :
       P s₁ s₂ e₁ → Q s₂ s₃ e₂ → TSeq P Q s₁ s₃ (e₁ ++ e₂)
 
-inductive TSeq3 (P Q R : TRel) : TRel where
-  | mk (s₁ s₂ s₃ s₄ : SurfPos) (e₁ e₂ e₃ : List Event) :
-      P s₁ s₂ e₁ → Q s₂ s₃ e₂ → R s₃ s₄ e₃ → TSeq3 P Q R s₁ s₄ (e₁ ++ e₂ ++ e₃)
-
 inductive TAlt (P Q : TRel) : TRel where
   | left (s s' : SurfPos) (e : List Event) : P s s' e → TAlt P Q s s' e
   | right (s s' : SurfPos) (e : List Event) : Q s s' e → TAlt P Q s s' e

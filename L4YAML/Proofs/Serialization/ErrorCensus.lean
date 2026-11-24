@@ -91,14 +91,6 @@ lemma serialization_error_iff (e : ScanError) :
       (∃ handle line col, e = .undeclaredTagHandle handle line col) := by
   cases e <;> simp [isSerializationError, rejectionLayer]
 
-lemma undefinedAlias_is_serialization (name : String) (line col : Nat) :
-    isSerializationError (.undefinedAlias name line col) := by
-  simp [isSerializationError, rejectionLayer]
-
-lemma undeclaredTagHandle_is_serialization (handle : String) (line col : Nat) :
-    isSerializationError (.undeclaredTagHandle handle line col) := by
-  simp [isSerializationError, rejectionLayer]
-
 /-- Error classification only, not a reachability claim for parseYaml.
 `multipleDocuments` belongs to the single-document API. A future capstone
 about parseYamlSingle must also account for that API constraint. -/

@@ -35,19 +35,6 @@ lemma addAnchor_name_projection
       (ofParserAliases ps).anchors ++ [name] := by
   simp [ofParserAliases, ParseState.addAnchor, Array.toList_push]
 
-lemma addAnchor_authorizes_name
-    (ps : ParseState) (name : String) (val : YamlValue) :
-    AliasAllowed (ofParserAliases (ps.addAnchor name val)) name := by
-  simp [AliasAllowed, addAnchor_name_projection]
-
-lemma addAnchor_preserves_old_names
-    (ps : ParseState) (name old : String) (val : YamlValue)
-    (h : AliasAllowed (ofParserAliases ps) old) :
-    AliasAllowed (ofParserAliases (ps.addAnchor name val)) old := by
-  simp only [AliasAllowed] at h ⊢
-  rw [addAnchor_name_projection]
-  exact List.mem_append_left _ h
-
 /-- If finalization has an anchor property, the output parser state contains
 that anchor name.  This pins the current-L4YAML defineAnchor event to the actual
 executable node-completion operation. -/
