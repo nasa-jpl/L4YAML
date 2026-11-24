@@ -10,6 +10,7 @@ public import L4YAML.Proofs.Serialization.TraceOf.FlowBridge
 public import L4YAML.Proofs.Serialization.TraceOf.FlowWalk
 public import L4YAML.Proofs.Scanner.AliasTrailingContent
 import all L4YAML.Proofs.Serialization.TokenEvents
+public meta import L4YAML.CapstoneAttr
 
 @[expose] public section Blanket
 
@@ -215,7 +216,8 @@ lemma tokenEvents_dropLast_streamEnd (ts : Toks) (L : List YamlToken)
     no event (`go_append_streamEnd`), the checker's verdict on that prefix is its verdict on all of
     `ts`.  The loop's no-progress exit is an error since (γ2α), so there is no residue: the
     `LoopDead` / `DeadResidue` alternative of items 446–452 is gone. -/
-lemma scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
+@[capstone]
+theorem scanFiltered_parseStream_ok_checkFrom_full (input : String) (ts : Toks)
     (docs : Array YamlDocument) (hs : scanFiltered input = .ok ts)
     (h : parseStream ts = .ok docs) :
     checkFrom {} (tokenEvents ts) = true := by

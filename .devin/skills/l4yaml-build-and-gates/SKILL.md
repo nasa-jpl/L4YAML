@@ -78,7 +78,7 @@ Acceptable: `propext`, `Classical.choice`, `Quot.sound`, plus per-call-site
 failure even when the build is green (§8).  Some scripts delete
 `L4YAML/Scratch`; write the probe immediately before reading it (§9).
 
-## Module-system facts (Lean 4.35)
+## Module-system facts (Lean 4.36)
 
 - `requiresModuleSystem := true` on `L4YAML`: every library file starts with
   `module`; use `public import` for what downstream needs, `public section` /

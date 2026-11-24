@@ -50,11 +50,34 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- is reached, by `accum_step_block`); roster 3,556 and cluster-roots unmoved.
 -- 2026-11-17 (item 524, the deletion): the 23 `implicitValueLine` / `docStartLine` preservation lemmas item 520 listed for the
 -- owner's ruling deleted on his word — roster 3,556 → 3,533, population −23, unreached −23; class (A) and cluster-roots read below.
-def expectedDeadCensus : String :=
 -- 2026-11-18 (item 526, α): population 14,214 → 14,229 (thm +13), unreached 6,510 → 6,525, A-campaign 1,295 → 1,310 —
 -- `TSLYamlStream` (structure, two projections) and the eleven DocBridge §α lemmas, reached by no root until the fold
 -- spends them (class (A), as items 520 / 522); B-roster unmoved.
-  "population=14229 thm=10202 def=2675 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6525 thm=4611 A-campaign=1310 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+-- 2026-11-18 (item 527, β PR 1): population 14,229 → 14,242 (thm +8), unreached 6,525 → 6,538, A-campaign 1,310 → 1,323 —
+-- `TPendingNode` (type + four constructors) and StreamBridge's eight lemmas, reached by no root until the fold spends
+-- them (class (A), as items 520 / 522 / 526); B-roster unmoved.
+-- 2026-11-19 (item 528, β PR 2): population 14,242 → 14,249 (thm +2), unreached 6,538 → 6,545, A-campaign 1,323 → 1,330 —
+-- the five content-park constructors, `SSLComments_to_GStar_prefix` and the steps split by source park (five lemmas, were
+-- three), reached by no root until the fold spends them (class (A)); B-roster unmoved.
+-- 2026-11-19 (item 529, β PR 3): population 14249 → 14252, thm 10212 → 10215, unreached 6545 → 6548, A-campaign
+-- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
+-- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
+-- (P8 predicted +2 unreached: the reading lemma's consumer is itself unreached).
+-- 2026-11-22 (Lean v4.36.0): population 14252 → 14253, def 2675 → 2676, unreached 6548 → 6549, A-campaign 1333 → 1334 —
+-- `SerializationWellFormed.decMemString`, the `List String` membership decision spelled out so the trace checker keeps
+-- its `[propext]` profile; an instance body, reached by no root (class (A)); B-roster unmoved.
+-- 2026-11-22 (item 531, β PR 4): population 14253 → 14260, thm 10215 → 10222, unreached 6549 → 6556 (thm 4624 → 4631),
+-- A-campaign 1334 → 1341 — StreamBridge's `content_step_routed` / `_docStart` / `_docEnd` / `_props`, `quoted_flowOut`,
+-- `TLYamlStream.suffixRoute` and `TCNsProperties.blockIn_of_flowOut`, unreached until the depth-0 fold spends the steps.
+-- 2026-11-23 (item 532, β PR 5): population 14260 → 14262, thm 10222 → 10224, unreached 6556 → 6558 (thm 4631 → 4633),
+-- A-campaign 1341 → 1343 — ContentBridge's `TFlowContent.of_scalar` and `content_leaf_at`, spent by the unreached
+-- `TPendingNode.content_step_props` (now at every indentation).
+-- 2026-11-23 (item 533, capstone 7.8): roots capstone 26 → 27, blueprint 222 → 223; unreached 6558 → 6156 (thm 4633 → 4298),
+-- A-campaign 1343 → 1171, D-test-only 277 → 272, B-roster 3533 → 3308 (thm 3172 → 2961) — `scanFiltered_parseStream_ok_checkFrom_full`
+-- (ScannerShape) is a `@[capstone]`, so its proof's closure (S5(→): ParseCheckFrom, ScannerShape and the scanner lemmas
+-- they spend) is reached; population unmoved (no declaration added or removed).
+def expectedDeadCensus : String :=
+  "population=14262 thm=10224 def=2676 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=6156 thm=4298 A-campaign=1171 C-api=1405 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

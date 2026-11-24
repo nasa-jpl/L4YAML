@@ -54,6 +54,11 @@ open L4YAML.Proofs.StreamAccum (ContentArm FrameTail tailOf tailOf_push_prop Nex
 def PushesTrace (ts ts' : Array (Positioned YamlToken)) (ev : List Event) : Prop :=
   ∀ p, goOut ts'.toList p = ((goOut ts.toList p).1 ++ ev, (goOut ts.toList p).2)
 
+/-- `PushesTrace` read at one pending-handle state (the def's body is not exposed to importers). -/
+lemma PushesTrace.goOut_at {ts ts' : Array (Positioned YamlToken)} {ev : List Event}
+    (h : PushesTrace ts ts' ev) (p : List String) :
+    goOut ts'.toList p = ((goOut ts.toList p).1 ++ ev, (goOut ts.toList p).2) := h p
+
 lemma goOut_single (t : Positioned YamlToken) (p : List String)
     (hds : t.val ≠ .documentStart) (htd : ∀ h pfx, t.val ≠ .tagDirective h pfx) :
     goOut [t] p = ((tokenEvent t.val).toList, p) := by
@@ -141,6 +146,23 @@ lemma SFlowNode_head_lift {n : Nat} {c : YamlContext} {ch : Char} {rest : List C
       rename_i ha _
       obtain ⟨r, k, hk⟩ := anchor_head ha
       simp only [SurfPos.mk.injEq, List.cons.injEq] at hk; exact h_amp hk.1.1
+
+/-- An `SFlowContent` whose first character opens no flow collection is a scalar, and a scalar's
+    trace is empty: the T reading at the SAME indentation and context. -/
+lemma TFlowContent.of_scalar {n : Nat} {c : YamlContext} {ch : Char} {rest : List Char}
+    {col : Nat} {m : SurfPos}
+    (h : SFlowContent n c ⟨ch :: rest, col⟩ m) (h_lb : ch ≠ '[') (h_lc : ch ≠ '{') :
+    TFlowContent n c ⟨ch :: rest, col⟩ m [] := by
+  cases h with
+  | plain _ _ _ _ hp => exact .plain _ _ _ _ hp
+  | flowSeq _ _ _ _ hs =>
+    exfalso
+    cases hs <;> (rename_i hl; try (rename_i _ _ _ _ _); cases ‹GLit '[' _ _›; exact h_lb rfl)
+  | flowMap _ _ _ _ hm =>
+    exfalso
+    cases hm <;> (cases ‹GLit '{' _ _›; exact h_lc rfl)
+  | singleQ _ _ _ _ hq => exact .singleQ _ _ _ _ hq
+  | doubleQ _ _ _ _ hq => exact .doubleQ _ _ _ _ hq
 
 /-- The plain arm of the content dispatcher pushes one plain scalar
     (`scanPlainScalar_tokens` through the dispatcher's seven refusals). -/
@@ -449,7 +471,7 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     (h_depth : s_ad.flowLevel = 0)
     (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s') :
     ∃ ev_n, PushesTrace s_ad.tokens s'.tokens ev_n ∧
-      ((ev_n = [] ∧ ∃ sp_gram, TFlowNode 0 .flowOut sp_prep sp_gram [] ∧
+      ((ev_n = [] ∧ ∃ sp_gram, TFlowContent 0 .flowOut sp_prep sp_gram [] ∧
           GStar SSWhite sp_gram sp_a ∧ (sp_gram = sp_a → s'.peek? ≠ some '#')) ∨
        (ev_n = [] ∧ (c = '"' ∨ c = '\'') ∧ TFlowContent 0 .blockIn sp_prep sp_a []) ∨
        (ev_n = [] ∧ (c = '|' ∨ c = '>') ∧ (SCLLiteral 0 sp_prep sp_a ∨ SCLFolded 0 sp_prep sp_a)) ∨
@@ -472,7 +494,7 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     subst hsp_prep
     rcases SFlowNode_head_lift h_node ⟨h_amp, h_star, h_bang, hlb, hlc⟩ with
       ⟨-, -, hplain⟩ | ⟨h, -⟩ | ⟨h, -⟩
-    · exact .content _ _ _ _ _ (.plain _ _ _ _ hplain)
+    · exact .plain _ _ _ _ hplain
     · exact absurd h h_dq
     · exact absurd h h_sq
   | plainIn _ _ h_depth' => omega
@@ -525,6 +547,47 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     rw [htok]
     simpa [tokenEvent] using
       pushesTrace_push s_ad.tokens ⟨s_ad.currentPos, .alias name, s_ad.currentPos⟩ (by simp) (by simp)
+
+/-- **The value's leaf at the park's indentation** (item 532): a depth-0 flow scalar reads as
+    `TFlowContent n .flowOut` at every `n` under the scanner's content floor — the S arm's three
+    `…_prod_at` readings (double-quoted, single-quoted, plain) through `TFlowContent.of_scalar`. -/
+lemma content_leaf_at (n : Nat) {s_ad s' : ScannerState} {c : Char} {sp_prep : SurfPos}
+    (hcorr : ScannerSurfCorr s_ad sp_prep) (hpeek : s_ad.peek? = some c)
+    (h_flow : s_ad.inFlow = false)
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_amp : c ≠ '&') (h_star : c ≠ '*') (h_bang : c ≠ '!') (h_pipe : c ≠ '|') (h_gt : c ≠ '>')
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (hn : n ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf s_ad) :
+    ∃ sp_gram sp', TFlowContent n .flowOut sp_prep sp_gram [] ∧ GStar SSWhite sp_gram sp' ∧
+      ScannerSurfCorr s' sp' := by
+  obtain ⟨rest, hsp_prep⟩ := peek_some_sp hcorr hpeek
+  have hglue := L4YAML.Proofs.StreamAccum.content_not_glue h_dispatch
+  simp only [isFlowIndicatorBool, Bool.or_eq_false_iff, decide_eq_false_iff_not,
+    List.mem_cons, List.mem_nil_iff, or_false, not_or] at hglue
+  have hlb : c ≠ '[' := hglue.2.2.1
+  have hlc : c ≠ '{' := hglue.2.2.2.2.1
+  have hn_max : (n : Int) ≤ max 0 (s_ad.currentIndent + 1) := by
+    unfold L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf at hn
+    omega
+  by_cases hdq : c = '"'
+  · subst hdq
+    obtain ⟨sp', hg, -, hcorr'⟩ :=
+      L4YAML.Proofs.StreamAccum.dispatchContent_doubleQuoted_prod_at n s_ad sp_prep hcorr hpeek
+        h_dispatch hn_max
+    exact ⟨sp', sp', .doubleQ _ _ _ _
+      (L4YAML.Proofs.ScalarFoldAt.SCDoubleQuoted_multiCtx .flowOut (Or.inl rfl) hg), GStar.nil _, hcorr'⟩
+  · by_cases hsq : c = '\''
+    · subst hsq
+      obtain ⟨sp', hg, -, hcorr'⟩ :=
+        L4YAML.Proofs.StreamAccum.dispatchContent_singleQuoted_prod_at n s_ad sp_prep hcorr hpeek
+          h_dispatch hn_max
+      exact ⟨sp', sp', .singleQ _ _ _ _
+        (L4YAML.Proofs.ScalarFoldAt.SCSingleQuoted_multiCtx .flowOut (Or.inl rfl) hg), GStar.nil _, hcorr'⟩
+    · obtain ⟨sp_g, sp', hcont, hws, -, hcorr'⟩ :=
+        L4YAML.Proofs.StreamAccum.dispatchContent_plainScalar_content_prod_at n s_ad sp_prep hcorr hpeek
+          h_amp h_star h_bang h_pipe h_gt hdq hsq h_not_doc h_dispatch h_flow hn
+      subst hsp_prep
+      exact ⟨sp_g, sp', TFlowContent.of_scalar hcont hlb hlc, hws, hcorr'⟩
 
 /-! ## §5 The receive's premises, replayed from the core's inputs (item 487)
 

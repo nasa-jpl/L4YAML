@@ -124,8 +124,12 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- 2026-11-14 (item 491): mentions 519 → 520 — P119's docstring and item 491 name the key/value dispatcher and its checks.
 -- 2026-11-14 (item 492's rebase): mentions 520 → 521 — item 493's Priority 97 rows (merged without the
 -- re-pin) name the preprocess step's scanner lemma once more; the base read 521 against this pin.
+-- 2026-11-22: mentions 522 → 524 — item 529 (merged without the re-pin): the `DispatchPrice` and `ParkGapWidth` cause
+-- comments each name the content dispatch step whose per-function reading moved 186 → 187 (not spelled here: it would move `self`).
+-- 2026-11-22: mentions 524 → 526 — item 531: the `DispatchPrice` and `ParkGapWidth` cause comments each name the content
+-- dispatch step again (per-function reading 187 → 191).
 def expectedGateVocab : String :=
-  "names=115 mentions=522 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=526 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 

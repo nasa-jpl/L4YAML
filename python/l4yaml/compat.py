@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any, Iterator, NoReturn
 
@@ -55,6 +56,7 @@ _NULL_VALS: frozenset[str] = frozenset({"null", "Null", "NULL", "~", ""})
 _POS_INF: frozenset[str] = frozenset({".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF"})
 _NEG_INF: frozenset[str] = frozenset({"-.inf", "-.Inf", "-.INF"})
 _NAN_VALS: frozenset[str] = frozenset({".nan", ".NaN", ".NAN"})
+_EXPLICIT_INT = re.compile(r"[-+]?(?:0[oO][0-7]+|0[xX][0-9a-fA-F]+|[0-9]+)\Z")
 
 
 def _coerce_scalar(s: str) -> Any:
@@ -107,6 +109,46 @@ def _resolve_scalar(v: YamlValue, s: str) -> Any:
     so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.  The style
     is fetched only when the content would resolve to a non-string.
     """
+    # An explicit tag takes precedence over presentation style and implicit
+    # Core Schema inference.  The underlying Lean scalarType follows the same
+    # rule; preserve that decision across the C/Python conversion boundary.
+    tag = v.tag
+    if tag is not None:
+        if tag.startswith("!!"):
+            tag = "tag:yaml.org,2002:" + tag[2:]
+        elif tag.startswith("!<") and tag.endswith(">"):
+            tag = tag[2:-1]
+
+        if tag == "tag:yaml.org,2002:str":
+            return s
+        if tag == "tag:yaml.org,2002:null":
+            return None
+        if tag == "tag:yaml.org,2002:bool":
+            if s in _BOOL_TRUE:
+                return True
+            if s in _BOOL_FALSE:
+                return False
+            return s
+        if tag == "tag:yaml.org,2002:int":
+            if _EXPLICIT_INT.fullmatch(s):
+                try:
+                    return int(s, 0 if s.lstrip("+-").lower().startswith(("0x", "0o")) else 10)
+                except ValueError:
+                    pass
+            return s
+        if tag == "tag:yaml.org,2002:float":
+            if s in _POS_INF:
+                return math.inf
+            if s in _NEG_INF:
+                return -math.inf
+            if s in _NAN_VALS:
+                return math.nan
+            try:
+                return float(s)
+            except ValueError:
+                return s
+        return s  # Unknown explicit tags do not invoke implicit resolution.
+
     coerced: Any = _coerce_scalar(s)
     if coerced is s:
         return s
