@@ -19630,6 +19630,12 @@ structure Tally where
   indicator : Nat := 0
   parkFloor : Nat := 0
   parkNext : Nat := 0
+  levelKnown : Nat := 0
+  separated : Nat := 0
+  dedented : List String := []
+  parkKinds : List (String × Nat) := []
+  dashAtLevel : Nat := 0
+  dashOff : List String := []
   deriving Repr
 
 def tally (rows : List String) : Tally := Id.run do
@@ -19655,6 +19661,12 @@ def tally (rows : List String) : Tally := Id.run do
               let floor := minContentIndentOf post
               let indicatorPark := park != "pendingKey"
               let parkFloor := !pre.needIndentCheck && minContentIndentOf pre ≥ 1
+              let level := pre.currentIndent.toNat
+              let levelKnown := !pre.needIndentCheck && pre.currentIndent ≥ 0
+              let landCol := back.pos.col
+              let pkKind := P111.kindOf pk.val
+              let isDash := pkKind == P111.kindOf (.blockEntry)
+              let row := s!"{cell} @{repr (String.ofList (s.toList.take 40))}"
               let parkNext := match pre.peek? with
                 | none => true
                 | some ch => isBlankBool ch || ch == ',' || ch == ']' || ch == '}'
@@ -19669,6 +19681,12 @@ def tally (rows : List String) : Tally := Id.run do
                             indicator := t.indicator + (if indicatorPark then 1 else 0),
                             parkFloor := t.parkFloor + (if indicatorPark && parkFloor then 1 else 0),
                             parkNext := t.parkNext + (if indicatorPark && parkNext then 1 else 0),
+                            levelKnown := t.levelKnown + (if indicatorPark && levelKnown then 1 else 0),
+                            separated := t.separated + (if indicatorPark && landCol ≥ level + 1 then 1 else 0),
+                            dedented := if indicatorPark && landCol ≤ level then t.dedented ++ [row] else t.dedented,
+                            parkKinds := if indicatorPark then bumpS t.parkKinds pkKind else t.parkKinds,
+                            dashAtLevel := t.dashAtLevel + (if isDash && pk.pos.col == level then 1 else 0),
+                            dashOff := if isDash && pk.pos.col != level then t.dashOff ++ [row] else t.dashOff,
                             floorZero := if closes || floor ≥ 1 then t.floorZero
                               else t.floorZero ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] }
           | _, _ => pure ()
@@ -19872,6 +19890,13 @@ def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   check state "P141 the instrument sees a closing landing when there is one (`a:\\n  b:\\nc: d`)" (h.closing == 1)
   check state "P141 the fold step's park premises hold at every `-` / `:` step: 210 floors at the park (`IndentFloor sc 1`), 210 separators behind it (`NextIsSep sc`)"
     (t.indicator == 210 && t.parkFloor == 210 && t.parkNext == 210)
+  check state "P141 the park's index is the scanner's level at all 210 (`needIndentCheck = false`, `currentIndent ≥ 0`); the park tokens are 133 `:` and 77 `-`, and every `-` sits at the level's column (`[183]`'s `n`)"
+    (t.levelKnown == 210 && t.parkKinds.lookup "value" == some 133 && t.parkKinds.lookup "bEntry" == some 77 &&
+     t.dashAtLevel == 77 && t.dashOff.isEmpty)
+  check state "P141 the separation at `n + 1`, read off the token columns: 209 nodes land right of the level (`SSeparate (n + 1)`), 1 at it (`a:\\nb: c`, an empty value: `content_step_park`'s `DedentLanding` side, with no `blockEnd` to announce it)"
+    (t.separated == 209 && t.dedented.length == 1 && t.separated + t.dedented.length == t.indicator)
+  check state "P141 the hand row's closing step is a dedent too (2 separated, 1 at or left of the level)"
+    (h.separated == 2 && h.dedented.length == 1)
 end P141Test
 
 namespace P137Test
