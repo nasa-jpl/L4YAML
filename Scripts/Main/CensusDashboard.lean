@@ -6,12 +6,14 @@ public import Scripts.Docs.Nav
 @[expose] public section Blanket
 
 /-!
-# scripts-census-dashboard — `lake run census-dashboard [-- -C ROOT] [--check] [--md FILE] [--diff REF]`
+# scripts-census-dashboard — `lake run census-dashboard [-- -C ROOT] [--check] [--md FILE] [--html FILE] [--flat] [--diff REF]`
 
 DOCS item 514.  Every directed census — a pinned count the campaign drives to zero or up to a bound —
 with its current reading (read off the `def expected… :=` literals under `Tests/Guards/Proofs/`, the
 same values every full build checks against the environment), its goal, the distance left and what
-moves it; then every pinned reading that has no target.  `--check` exits 1 when a roster row names a
+moves it; then every pinned reading that has no target.  The report is grouped by census (one summary row per
+census, then its fields under its own heading); `--flat` gives the one table of every field;
+`--html FILE` writes the grouped report as a page whose census rows open onto their fields.  `--check` exits 1 when a roster row names a
 pin or field the guards no longer hold.  `--md FILE` writes the report as Markdown as well.
 -/
 
@@ -19,10 +21,12 @@ open Scripts.Census.Dashboard
 
 namespace Scripts.Main.CensusDashboard
 
-def usage : String := "usage: lake run census-dashboard -- [-C ROOT] [--check] [--md FILE] [--no-readings]
+def usage : String := "usage: lake run census-dashboard -- [-C ROOT] [--check] [--md FILE] [--html FILE] [--flat] [--no-readings] [--diff REF]
   -C ROOT         checkout root (default: the current directory)
   --check         exit 1 when a roster row resolves to no pin / field (the CI form)
   --md FILE       also write the report to FILE
+  --html FILE     also write the grouped report as a self-contained page (rows open onto their fields)
+  --flat          one table of every field instead of the report grouped by census
   --no-readings   omit the `readings without a target` section
   --diff REF      report only the pins that moved against git REF (e.g. origin/fix-a-grammar-completeness):
                   directed fields with goal distance before → after and a verdict, then population readings
@@ -33,6 +37,8 @@ structure Opts where
   check : Bool := false
   md : Option String := none
   readings : Bool := true
+  flat : Bool := false
+  html : Option String := none
   diff : Option String := none
 
 def parseOpts : List String → Opts → Except String Opts
@@ -41,6 +47,8 @@ def parseOpts : List String → Opts → Except String Opts
   | "-C" :: r :: rest, o => parseOpts rest { o with root := r }
   | "--check" :: rest, o => parseOpts rest { o with check := true }
   | "--md" :: f :: rest, o => parseOpts rest { o with md := some f }
+  | "--html" :: f :: rest, o => parseOpts rest { o with html := some f }
+  | "--flat" :: rest, o => parseOpts rest { o with flat := true }
   | "--no-readings" :: rest, o => parseOpts rest { o with readings := false }
   | "--diff" :: r :: rest, o => parseOpts rest { o with diff := some r }
   | a :: _, _ => .error s!"unknown argument `{a}`\n{usage}"
@@ -129,16 +137,26 @@ def run (args : List String) : IO UInt32 := do
     return 0
   out := out.push s!"# Census dashboard — tree `{← shortHead root}`"
   out := out.push ""
-  out := out ++ (← mandate root)
+  let context ← mandate root
+  out := out ++ context
   out := out.push s!"pins read: {pins.size} ({(pins.map (·.census)).toList.eraseDups.length} censuses)"
   out := out.push ""
   out := out.push "## Directed censuses — how far each is from its goal, and what moves it"
   out := out.push ""
   out := out.push "`left` is `|now − goal|`; `move` is what the guard enforces (a shrink-only pin that rises needs the owner's word); `status` HOLD is a reading kept at its goal by a gate."
   out := out.push ""
-  out := out ++ renderRows rows
-  out := out.push ""
-  out := out.push s!"**Totals:** {totals rows}"
+  if o.flat then
+    out := out ++ renderRows rows
+    out := out.push ""
+    out := out.push s!"**Totals:** {totals rows}"
+  else
+    out := out ++ renderSummary rows
+    out := out.push ""
+    out := out.push s!"**Totals:** {totals rows}"
+    out := out.push ""
+    out := out.push "A field marked ⊂ is a sub-count of another field of its census: shown, not counted."
+    out := out.push ""
+    out := out ++ renderGroups rows
   if !errs.isEmpty then
     out := out.push ""
     out := out.push s!"## Roster rows that do not resolve ({errs.size})"
@@ -150,11 +168,15 @@ def run (args : List String) : IO UInt32 := do
     out := out.push ""
     out := out.push "Pinned counts the roster gives no direction: snapshots (term sizes, thread lengths, the rows of a walk) and prices. A count here that the campaign drives somewhere belongs on the roster (`Scripts/Census/Dashboard.lean`)."
     out := out.push ""
-    out := out ++ renderReadings pins
+    out := out ++ renderReadings pins (grouped := !o.flat)
   let report := "\n".intercalate out.toList ++ "\n"
   IO.print report
   if let some f := o.md then
     IO.FS.writeFile f report
+    IO.eprintln s!"wrote {f}"
+  if let some f := o.html then
+    if let some parent := (System.FilePath.mk f).parent then IO.FS.createDirAll parent
+    IO.FS.writeFile f (html (← shortHead root) context rows pins)
     IO.eprintln s!"wrote {f}"
   if o.check then
     if !errs.isEmpty then
