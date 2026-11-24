@@ -19627,6 +19627,9 @@ structure Tally where
   closingGrid : List (String × Nat) := []
   floorPos : Nat := 0
   floorZero : List String := []
+  indicator : Nat := 0
+  parkFloor : Nat := 0
+  parkNext : Nat := 0
   deriving Repr
 
 def tally (rows : List String) : Tally := Id.run do
@@ -19650,6 +19653,11 @@ def tally (rows : List String) : Tally := Id.run do
               let same := back.pos.line == pk.pos.line
               let cell := s!"{park}/{arm}"
               let floor := minContentIndentOf post
+              let indicatorPark := park != "pendingKey"
+              let parkFloor := !pre.needIndentCheck && minContentIndentOf pre ≥ 1
+              let parkNext := match pre.peek? with
+                | none => true
+                | some ch => isBlankBool ch || ch == ',' || ch == ']' || ch == '}'
               t := { t with steps := t.steps + 1, parks := bumpS t.parks park, arms := bumpS t.arms arm,
                             grid := bumpS t.grid cell,
                             sameLine := t.sameLine + (if same then 1 else 0),
@@ -19658,6 +19666,9 @@ def tally (rows : List String) : Tally := Id.run do
                             closing := t.closing + (if closes then 1 else 0),
                             closingGrid := if closes then bumpS t.closingGrid cell else t.closingGrid,
                             floorPos := t.floorPos + (if !closes && floor ≥ 1 then 1 else 0),
+                            indicator := t.indicator + (if indicatorPark then 1 else 0),
+                            parkFloor := t.parkFloor + (if indicatorPark && parkFloor then 1 else 0),
+                            parkNext := t.parkNext + (if indicatorPark && parkNext then 1 else 0),
                             floorZero := if closes || floor ≥ 1 then t.floorZero
                               else t.floorZero ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] }
           | _, _ => pure ()
@@ -19734,6 +19745,60 @@ example (sp_start sp_block sp_node sp_prep sp_a : SurfPos) (s_prep s' : ScannerS
   let ⟨ev_n, hS', _⟩ := TPendingNode.content_step_at hS h_sep h_route arm hcorr hcorr' hpeek h_depth h_dispatch
     h_not_doc (Nat.zero_le _)
   ⟨ev_n, hS'⟩
+
+/-- One fold step behind a top-level `-` (`n = 0`), from the park's own state: the content lands at
+`s-separate(1)` and closes over its landing, or the landing is the dedent to column 0. -/
+example (sp_start sp_block sp_scan sp_prep sp_a sp_mid : SurfPos) (sc s_prep s' : ScannerState) (c : Char)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep) sp_block ev_c ev_o [])
+    (h_close : ∀ sp_mid ev_n, TBlockIndented 0 .blockIn sp_scan sp_mid ev_n →
+      TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n))
+    (h_floor : L4YAML.Proofs.PreprocessIndentStable.IndentFloor sc 1) (h_col : 1 ≤ sp_scan.col)
+    (h_next : L4YAML.Proofs.StreamAccum.NextIsSep sc) (h_corr : ScannerSurfCorr sc sp_scan)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (arm : ContentArm (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep) s' c sp_prep sp_a)
+    (h_depth : (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep).flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep) c = .ok s')
+    (h_not_doc : (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep).col = 0 →
+      atDocumentBoundary (if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep) = false)
+    (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep) (h_ssl : SSLComments sp_a sp_mid) :
+    (∃ ev_n, (goOut s'.tokens.toList []).1 = ev_c ++ (ev_o ++ ev_n) ∧
+        TLYamlStream sp_start sp_mid (ev_c ++ (ev_o ++ ev_n))) ∨
+      ∃ sp_l, SSLComments sp_scan sp_l ∧ sp_l.col = 0 ∧ sp_prep = sp_l := by
+  rcases TPendingNode.content_step_indicator hS (Or.inl h_close) rfl h_floor h_col h_next h_corr hcorr_prep
+      hcorr' h_preprocess arm h_depth h_dispatch h_not_doc h_src with ⟨ev_n, hS', h_park⟩ | ⟨sp_l, j, h_l, h_c, hj, h_ind⟩
+  · exact Or.inl ⟨ev_n, congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' h_park h_ssl⟩
+  · obtain rfl : j = 0 := by omega
+    exact Or.inr ⟨sp_l, h_l, h_c, by cases h_ind; rfl⟩
+
+/-- …and behind a nested `:` (`n = k + 1`), through the park's `.blockOut` route. -/
+example (k : Nat) (sp_start sp_block sp_scan sp_prep sp_a : SurfPos) (sc s_prep s_ad s' : ScannerState) (c : Char)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (h_close : ∀ sp_mid ev_n, TBlockNode (k + 2) .blockOut sp_scan sp_mid ev_n →
+      TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n))
+    (h_ad : s_ad = if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep)
+    (h_floor : L4YAML.Proofs.PreprocessIndentStable.IndentFloor sc (k + 2)) (h_col : k + 2 ≤ sp_scan.col)
+    (h_next : L4YAML.Proofs.StreamAccum.NextIsSep sc) (h_corr : ScannerSurfCorr sc sp_scan)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (arm : ContentArm s_ad s' c sp_prep sp_a) (h_depth : s_ad.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep)
+    (h_no_dedent : ¬ L4YAML.Proofs.FlowIndexLift.DedentLanding (k + 2) sp_scan sp_prep) :
+    ∃ ev_n, TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_n) [] :=
+  (TPendingNode.content_step_indicator hS (Or.inr h_close) h_ad h_floor h_col h_next h_corr hcorr_prep
+      hcorr' h_preprocess arm h_depth h_dispatch h_not_doc h_src).elim (fun ⟨ev_n, hS', _⟩ => ⟨ev_n, hS'⟩)
+    (fun h => absurd h h_no_dedent)
 end Statements
 
 end P141
@@ -19757,6 +19822,8 @@ def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let h := P141.tally ["a:\n  b:\nc: d"]
   IO.println s!"P141 hand row {repr h}"
   check state "P141 the instrument sees a closing landing when there is one (`a:\\n  b:\\nc: d`)" (h.closing == 1)
+  check state "P141 the fold step's park premises hold at every `-` / `:` step: 210 floors at the park (`IndentFloor sc 1`), 210 separators behind it (`NextIsSep sc`)"
+    (t.indicator == 210 && t.parkFloor == 210 && t.parkNext == 210)
 end P141Test
 
 namespace P137Test

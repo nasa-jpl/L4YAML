@@ -630,6 +630,96 @@ lemma content_step_mapValue {n : Nat} {sp_start sp_block sp_scan sp_prep sp_a : 
   content_step_at hS h_sep (fun sp_m ev h => h_close sp_m ev (TBlockNode.blockOut_of_blockIn h))
     arm hcorr hcorr' hpeek h_depth h_dispatch h_not_doc h_floor
 
+
+/-- **The separation a content step lands with, off preprocessing** (item 534, the fold's half of the
+indicator parks): `indentedValue_reads_at_any_indent`'s five readings, folded to the two the trace side
+spends — `s-separate(m)` from the park to the landing with the content floor at the dispatch state
+(`preprocess_some_floor_at_landing`), or the DEDENT, where the value is not this park's. -/
+lemma content_sep_of_preprocess {m : Nat} {sc s_prep s_ad s' : ScannerState} {c : Char}
+    {sp_scan sp_prep sp_a : SurfPos}
+    (h_ad : s_ad = if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep)
+    (h_floor : L4YAML.Proofs.PreprocessIndentStable.IndentFloor sc m)
+    (h_col : m ≤ sp_scan.col) (h_col0 : 0 < sp_scan.col)
+    (h_next : L4YAML.Proofs.StreamAccum.NextIsSep sc)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_flow : s_ad.inFlow = false)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep) :
+    (SSeparate m .flowOut sp_scan sp_prep ∧
+        m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf s_ad) ∨
+      L4YAML.Proofs.FlowIndexLift.DedentLanding m sp_scan sp_prep := by
+  subst h_ad
+  have h_fl : ∀ {cc : YamlContext}, SSeparate m cc sp_scan sp_prep →
+      m ≤ L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf
+        (if s_prep.allowDirectives then
+          { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep) := by
+    intro cc h
+    have h1 := L4YAML.Proofs.StreamAccum.preprocess_some_floor_at_landing h_preprocess h_floor.2
+      (by rw [← hcorr_prep.col_eq]; exact L4YAML.Proofs.StreamAccum.separate_col_ge h h_col)
+    rw [L4YAML.Proofs.PreprocessIndentStable.minContentIndentOf_congr
+      (t := s_prep) (by split <;> rfl)]
+    exact h1
+  rcases L4YAML.Proofs.StreamAccum.indentedValue_reads_at_any_indent (h_src := h_src) sc sp_scan m
+      s_prep s' c sp_prep sp_a h_floor h_col0 h_next hcorr_prep hcorr' h_corr h_preprocess h_not_doc
+      h_flow h_dispatch with
+    ⟨_, h_sep, -⟩ | ⟨_, _, h_sep, -⟩ | ⟨-, -, h_sep, -⟩ | ⟨_, -, -, -, h_sep, -⟩ | h_ded
+  · exact Or.inl ⟨h_sep, h_fl h_sep⟩
+  · have h : SSeparate m .flowOut sp_scan sp_prep := by unfold SSeparate; exact h_sep
+    exact Or.inl ⟨h, h_fl h⟩
+  · have h : SSeparate m .flowOut sp_scan sp_prep := by unfold SSeparate at h_sep ⊢; exact h_sep
+    exact Or.inl ⟨h, h_fl h⟩
+  · exact Or.inl ⟨h_sep, h_fl h_sep⟩
+  · exact Or.inr (h_ded h_floor)
+
+/-- **The content step off an indicator park, one fold step** (item 534, the twin of
+`accum_content_pending`'s `pendingBlock` / `pendingMapValue` arms): from the park's own state `sc` —
+its floor at `n + 1`, its column, the separator behind it — preprocessing lands the content at
+`s-separate(n + 1)` and the park's route takes the node (`content_step_block` behind `-`,
+`content_step_mapValue` behind `:`); or the landing is the DEDENT and the park is not this step's. -/
+lemma content_step_indicator {n : Nat} {sp_start sp_block sp_scan sp_prep sp_a : SurfPos}
+    {sc s_prep s_ad s' : ScannerState} {c : Char} {ev_c ev_o : List Event}
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (h_close :
+      (∀ sp_mid ev_n, TBlockIndented n .blockIn sp_scan sp_mid ev_n →
+        TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n)) ∨
+      (∀ sp_mid ev_n, TBlockNode (n + 1) .blockOut sp_scan sp_mid ev_n →
+        TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n)))
+    (h_ad : s_ad = if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep)
+    (h_floor : L4YAML.Proofs.PreprocessIndentStable.IndentFloor sc (n + 1))
+    (h_col : n + 1 ≤ sp_scan.col)
+    (h_next : L4YAML.Proofs.StreamAccum.NextIsSep sc)
+    (h_corr : ScannerSurfCorr sc sp_scan)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (arm : ContentArm s_ad s' c sp_prep sp_a)
+    (h_depth : s_ad.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep) :
+    (∃ ev_n, TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_n) [] ∧
+        TPendingNode sp_start false sp_block sp_a ev_c (ev_o ++ ev_n) []) ∨
+      L4YAML.Proofs.FlowIndexLift.DedentLanding (n + 1) sp_scan sp_prep := by
+  have hcorr_ad : ScannerSurfCorr s_ad sp_prep := by
+    rw [h_ad]; exact L4YAML.Proofs.StreamAccum.corr_of_allowDirectives_update hcorr_prep
+  have hpeek : s_ad.peek? = some c := by
+    rw [h_ad]
+    have := L4YAML.Proofs.StreamAccum.preprocess_some_peek h_preprocess
+    split <;> exact this
+  rcases content_sep_of_preprocess h_ad h_floor h_col (by omega) h_next h_corr hcorr_prep hcorr'
+      h_preprocess h_not_doc (by unfold ScannerState.inFlow; rw [h_depth]; rfl) h_dispatch h_src with
+    ⟨h_sep, h_fl⟩ | h_ded
+  · refine Or.inl ?_
+    rcases h_close with h_close | h_close
+    · exact content_step_block hS h_close h_sep arm hcorr_ad hcorr' hpeek h_depth h_dispatch
+        h_not_doc h_fl
+    · exact content_step_mapValue hS h_close h_sep arm hcorr_ad hcorr' hpeek h_depth h_dispatch
+        h_not_doc h_fl
+  · exact Or.inr h_ded
 end TPendingNode
 
 /-- The bare-document route at the first document's line start: a completed `TBlockNode` at the park is

@@ -82,7 +82,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- (`_default` structure-field defaults; Lean 4.36's numbered auxiliaries `brecOn_1.eq`) — a reclassification, not a deletion
 -- (the numbers below are the rebased tree's `--write`).
 def expectedDeadCensus : String :=
-  "population=14092 thm=10211 def=2519 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5990 thm=4285 A-campaign=1166 A-orphan=145 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14094 thm=10213 def=2519 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5992 thm=4287 A-campaign=1168 A-orphan=144 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
