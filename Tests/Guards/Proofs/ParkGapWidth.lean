@@ -554,7 +554,7 @@ corrBlock=0 corrScan=1 via="]
 -- deleted with the 23 preservation lemmas on the owner's ruling (item 520's roster); edges / chains unmoved.
 -- 2026-11-22 (item 531, β PR 4): `scanNextToken_dispatchContent` holders 187 → 191 — the four content steps off the parks
 -- (`TPendingNode.content_step_routed` / `_docStart` / `_docEnd` / `_props`).
--- 2026-11-24 (item 534, β PR 6): the content dispatch's holders 192 → 197, preprocessing's 259 → 261 (edge 17 → 18, chain 3 → 4) — the fold step `content_sep_of_preprocess` / `content_step_indicator` and `content_step_at` / `_block` / `_mapValue` (StreamBridge).
+-- 2026-11-24 (item 534, β PR 6): the content dispatch's holders 192 → 197, preprocessing's 259 → 261 (edge 17 → 18, chain 3 → 4) — the fold step `content_sep_of_preprocess` / `content_step_park` and `content_step_at` / `_block` / `_mapValue` (StreamBridge).
 -- 2026-11-23 (item 532, β PR 5): the content dispatch's holders 191 → 192 — `content_leaf_at` (ContentBridge).
 -- 2026-11-19 (item 529, β PR 3): `scanNextToken_dispatchContent` holders 186 → 187 — `TPendingNode.content_step_noPending`
 -- (StreamBridge) holds the content dispatch's `.ok`; edge / chain unmoved.

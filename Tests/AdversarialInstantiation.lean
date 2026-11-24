@@ -19772,7 +19772,7 @@ example (sp_start sp_block sp_scan sp_prep sp_a sp_mid : SurfPos) (sc s_prep s' 
     (∃ ev_n, (goOut s'.tokens.toList []).1 = ev_c ++ (ev_o ++ ev_n) ∧
         TLYamlStream sp_start sp_mid (ev_c ++ (ev_o ++ ev_n))) ∨
       ∃ sp_l, SSLComments sp_scan sp_l ∧ sp_l.col = 0 ∧ sp_prep = sp_l := by
-  rcases TPendingNode.content_step_indicator hS (Or.inl h_close) rfl h_floor h_col h_next h_corr hcorr_prep
+  rcases TPendingNode.content_step_park hS (.block 0 ev_o h_close) rfl h_floor h_col h_col h_next h_corr hcorr_prep
       hcorr' h_preprocess arm h_depth h_dispatch h_not_doc h_src with ⟨ev_n, hS', h_park⟩ | ⟨sp_l, j, h_l, h_c, hj, h_ind⟩
   · exact Or.inl ⟨ev_n, congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' h_park h_ssl⟩
   · obtain rfl : j = 0 := by omega
@@ -19796,9 +19796,57 @@ example (k : Nat) (sp_start sp_block sp_scan sp_prep sp_a : SurfPos) (sc s_prep 
     (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep)
     (h_no_dedent : ¬ L4YAML.Proofs.FlowIndexLift.DedentLanding (k + 2) sp_scan sp_prep) :
     ∃ ev_n, TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_n) [] :=
-  (TPendingNode.content_step_indicator hS (Or.inr h_close) h_ad h_floor h_col h_next h_corr hcorr_prep
+  (TPendingNode.content_step_park hS (.mapValue (k + 1) ev_o h_close) h_ad h_floor h_col (by omega) h_next h_corr hcorr_prep
       hcorr' h_preprocess arm h_depth h_dispatch h_not_doc h_src).elim (fun ⟨ev_n, hS', _⟩ => ⟨ev_n, hS'⟩)
     (fun h => absurd h h_no_dedent)
+
+/-- Behind `---` the reading index is 0, where no dedent exists: the step always routes. -/
+example (sp_start sp_block sp_scan sp_prep sp_a : SurfPos) (sc s_prep s_ad s' : ScannerState) (c : Char)
+    (ev_c ed : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c (.beginDocument :: ed) [])
+    (h_doc_route : ∀ sp_end eb, TLExplicitBody sp_scan sp_end eb →
+      TLYamlStream sp_start sp_end (ev_c ++ .beginDocument :: ed ++ eb))
+    (h_ad : s_ad = if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep)
+    (h_nic : sc.needIndentCheck = false) (h_col0 : 0 < sp_scan.col)
+    (h_next : L4YAML.Proofs.StreamAccum.NextIsSep sc) (h_corr : ScannerSurfCorr sc sp_scan)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (arm : ContentArm s_ad s' c sp_prep sp_a) (h_depth : s_ad.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep) :
+    ∃ ev_n, TSLYamlStream sp_start s' sp_block ev_c (.beginDocument :: ed ++ ev_n) [] :=
+  (TPendingNode.content_step_park hS (.docStart ed h_doc_route) h_ad
+      (L4YAML.Proofs.PreprocessIndentStable.IndentFloor.zero h_nic) (Nat.zero_le _) h_col0 h_next h_corr
+      hcorr_prep hcorr' h_preprocess arm h_depth h_dispatch h_not_doc h_src).elim
+    (fun ⟨ev_n, hS', _⟩ => ⟨ev_n, by simpa using hS'⟩)
+    (fun ⟨_, j, _, _, hj, _⟩ => absurd hj (Nat.not_lt_zero j))
+
+/-- Behind a property run at `k + 1` a silent value leaves the open events as they were. -/
+example (k : Nat) (sp_start sp_block sp_scan sp_node sp_p sp_prep sp_a : SurfPos)
+    (sc s_prep s_ad s' : ScannerState) (c : Char) (ev_c ev_o ev_p : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c (ev_o ++ ev_p) [])
+    (h_sepP : SSeparate (k + 1) .flowOut sp_node sp_p)
+    (h_props : TCNsProperties (k + 1) .flowOut sp_p sp_scan ev_p)
+    (h_route : ∀ sp_m ev_n, TBlockNode (k + 1) .blockIn sp_node sp_m ev_n →
+      TLYamlStream sp_start sp_m (ev_c ++ ev_o ++ ev_n))
+    (h_value : c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*')
+    (h_ad : s_ad = if s_prep.allowDirectives then
+        { s_prep with allowDirectives := false, documentEverStarted := true } else s_prep)
+    (h_floor : L4YAML.Proofs.PreprocessIndentStable.IndentFloor sc (k + 1)) (h_col : k + 1 ≤ sp_scan.col)
+    (h_next : L4YAML.Proofs.StreamAccum.NextIsSep sc) (h_corr : ScannerSurfCorr sc sp_scan)
+    (hcorr_prep : ScannerSurfCorr s_prep sp_prep) (hcorr' : ScannerSurfCorr s' sp_a)
+    (h_preprocess : scanNextToken_preprocess sc = .ok (some (s_prep, c)))
+    (arm : ContentArm s_ad s' c sp_prep sp_a) (h_depth : s_ad.flowLevel = 0)
+    (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s')
+    (h_not_doc : s_ad.col = 0 → atDocumentBoundary s_ad = false)
+    (h_src : L4YAML.Proofs.StreamAccum.SlotGateAt s_prep)
+    (h_no_dedent : ¬ L4YAML.Proofs.FlowIndexLift.DedentLanding (k + 1) sp_scan sp_prep) :
+    ∃ ev_n, TSLYamlStream sp_start s' sp_block ev_c (ev_o ++ ev_p ++ ev_n) [] :=
+  (TPendingNode.content_step_park hS (.props (k + 1) sp_node sp_p ev_o ev_p h_sepP h_props h_route h_value)
+      h_ad h_floor h_col (by omega) h_next h_corr hcorr_prep hcorr' h_preprocess arm h_depth h_dispatch
+      h_not_doc h_src).elim (fun ⟨ev_n, hS', _⟩ => ⟨ev_n, hS'⟩) (fun h => absurd h h_no_dedent)
 end Statements
 
 end P141

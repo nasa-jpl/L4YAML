@@ -406,7 +406,7 @@ def expectedSteps : String :=
 -- `ScannerSurfCorr` ends (`hcorr` / `hcorr'`), as `content_dispatch_routed` does; P7 predicted stepHolders only.
 -- 2026-11-19 (item 528, β PR 2): stepHolders 2104 → 2105 — `directive_step_noPending` / `_run` / `docEnd_step` (StreamBridge)
 -- hold a step's `.ok` hypothesis (three, were two).
--- 2026-11-24 (item 534, β PR 6): stepHolders 2111 → 2116, dispHolders 432 → 437, dispTwoCorr 37 → 42 — the fold step `content_sep_of_preprocess` / `content_step_indicator` and `content_step_at` /
+-- 2026-11-24 (item 534, β PR 6): stepHolders 2111 → 2116, dispHolders 432 → 437, dispTwoCorr 37 → 42 — the fold step `content_sep_of_preprocess` / `content_step_park` and `content_step_at` /
 -- `content_step_block` / `content_step_mapValue` (StreamBridge) hold the content dispatch's `.ok` with both `ScannerSurfCorr` ends.
 -- 2026-11-23 (item 532, β PR 5): stepHolders 2110 → 2111, dispHolders 431 → 432 — `content_leaf_at` (ContentBridge) holds the
 -- content dispatch's `.ok` with one `ScannerSurfCorr` end as a hypothesis (the other is its conclusion's).

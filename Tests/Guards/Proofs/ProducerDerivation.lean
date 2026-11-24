@@ -295,7 +295,7 @@ def expectedCensus : String :=
 -- read the surface through a `ScannerSurfCorr` hypothesis; they conclude the T stream prefix, not `SLYamlStream`.
 -- 2026-11-18 (item 527, β PR 1): corrHyp 627 → 630 — `TPendingNode.directive_step` / `docStart_step` / `docEnd_step`
 -- (StreamBridge) read the surface through a `ScannerSurfCorr` hypothesis and conclude the T pair, not `SLYamlStream`.
--- 2026-11-24 (item 534, β PR 6): corrHyp 638 → 643 — the fold step `content_sep_of_preprocess` / `content_step_indicator` and `content_step_at` / `content_step_block` / `content_step_mapValue`
+-- 2026-11-24 (item 534, β PR 6): corrHyp 638 → 643 — the fold step `content_sep_of_preprocess` / `content_step_park` and `content_step_at` / `content_step_block` / `content_step_mapValue`
 -- (StreamBridge) hold the content step's `hcorr` / `hcorr'`; none concludes a stream or a pair on the S side.
 -- 2026-11-23 (item 532, β PR 5): corrHyp 637 → 638 — `content_leaf_at` (ContentBridge) reads the surface through `hcorr`:
 -- the value's leaf at the park's indentation, spent by `TPendingNode.content_step_props`.
