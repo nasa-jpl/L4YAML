@@ -119,6 +119,9 @@ def run (args : List String) : IO UInt32 := do
   let (rows, errs) := resolveAll pins
   let mut out : Array String := #[]
   if let some ref := o.diff then
+    if o.html.isSome then
+      IO.eprintln "CENSUS-DASHBOARD: `--html` writes the full report; it does not combine with `--diff`"
+      return 2
     if !(← refExists root ref) then
       IO.eprintln s!"CENSUS-DASHBOARD: `{ref}` is not a commit here (mistyped, or not fetched)"
       return 2
@@ -176,7 +179,7 @@ def run (args : List String) : IO UInt32 := do
     IO.eprintln s!"wrote {f}"
   if let some f := o.html then
     if let some parent := (System.FilePath.mk f).parent then IO.FS.createDirAll parent
-    IO.FS.writeFile f (html (← shortHead root) context rows pins)
+    IO.FS.writeFile f (html (← shortHead root) context rows pins errs o.readings)
     IO.eprintln s!"wrote {f}"
   if o.check then
     if !errs.isEmpty then

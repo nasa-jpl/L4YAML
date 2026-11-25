@@ -765,19 +765,24 @@ def sectionRows (title rollup : String) (parts : List Part) (opened : Bool) : St
 def sectionFlat (title : String) (parts : List Part) : String :=
   s!"<h2>{title}</h2>\n" ++ String.join (parts.map fun p => s!"<h3>{p.title}</h3>\n{p.body}")
 
-/-- The page.  `tree` is the commit read; `context` the latest item and its mandate, one line each. -/
-def html (tree : String) (context : Array String) (rows : Array Row) (pins : Array Pin) : String :=
+/-- The page.  `tree` is the commit read; `context` the latest item and its mandate, one line each;
+    `errs` the roster rows that resolve to no pin; `readings := false` leaves the un-targeted pins out. -/
+def html (tree : String) (context : Array String) (rows : Array Row) (pins : Array Pin)
+    (errs : Array String := #[]) (readings : Bool := true) : String :=
   let directed := "Directed censuses: how far each is from its goal, and what moves it"
-  let readings := "Readings without a target"
   let dParts := censusParts rows
   let rParts := readingParts pins
-  let sections := [(directed, tallyPills rows, dParts, true),
-                   (readings, s!"<span class=\"count\">{plural rParts.length "census" "censuses"}</span>", rParts, false)]
+  let sections := (directed, tallyPills rows, dParts, true) ::
+    (if readings then [("Readings without a target", s!"<span class=\"count\">{plural rParts.length "census" "censuses"}</span>", rParts, false)] else [])
+  let unresolved := if errs.isEmpty then "" else
+    s!"<h2>Roster rows that do not resolve ({errs.size})</h2>\n<p>These directed fields are missing from the page below: the roster names a pin or field this tree does not have.</p>\n<ul>" ++
+    String.join (errs.toList.map fun e => s!"<li>{prose e}</li>") ++ "</ul>\n"
   "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" ++
   s!"<title>L4YAML census dashboard</title><style>{style}</style></head><body>\n<h1>L4YAML census dashboard</h1>\n" ++
   s!"<p>Tree <code>{esc tree}</code>. Every figure is read off a <code>def expected… :=</code> literal under <code>Tests/Guards/Proofs/</code>, the values every full build checks against the environment.</p>\n" ++
   String.join (context.toList.map fun l => s!"<p>{prose (l.replace "**" "")}</p>\n") ++
   "<p><code>left</code> is |now &minus; goal|; <code>move</code> is what the guard enforces (a shrink-only pin that rises needs the owner's word); HOLD is a reading kept at its goal by a gate. A sub-count is part of another field of its census: shown, not counted in the roll-up.</p>\n" ++
+  unresolved ++
   "<p class=\"interactive\">A row opens onto what it rolls up: a census onto its fields.</p>\n" ++
   "<div class=\"interactive\">\n" ++ String.join (sections.map fun (t, r, ps, o) => sectionRows t r ps o) ++ "</div>\n" ++
   "<div class=\"flat\">\n" ++ String.join (sections.map fun (t, _, ps, _) => sectionFlat t ps) ++ "</div>\n" ++
