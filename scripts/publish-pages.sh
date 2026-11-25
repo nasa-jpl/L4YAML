@@ -8,7 +8,9 @@
 #   PAGES_PUSH=1 ./scripts/publish-pages.sh    # also force-pushes gh-pages (CI publishes this way)
 #   PAGES_ONLY="reports/census-dashboard.html" ./scripts/publish-pages.sh
 #       # partial publish: the site as published, with only the named docs/ files replaced
-#       # (the integration branch refreshes the census dashboard this way between releases)
+#       # (the integration branch refreshes the census dashboard this way between releases);
+#       # with PAGES_PUSH=1 it pushes only if gh-pages is still the commit it read, and
+#       # rebuilds on the new one otherwise, so it never replaces a release published meanwhile
 #
 # GitHub Pages serves it from the branch root (Settings -> Pages -> Deploy from a branch ->
 # gh-pages -> / (root)). Each publish *replaces* gh-pages, so it is always force-pushed:
@@ -54,7 +56,8 @@ export GIT_INDEX_FILE="$TMP_DIR/index"
 if [ -n "${PAGES_ONLY:-}" ]; then
   # Partial publish: start from the published tree and replace only the named files.
   git --git-dir="$GIT_DIR_ABS" fetch --depth 1 "$REMOTE" "$BRANCH"
-  git --git-dir="$GIT_DIR_ABS" read-tree FETCH_HEAD
+  BASE="$(git --git-dir="$GIT_DIR_ABS" rev-parse FETCH_HEAD)"
+  git --git-dir="$GIT_DIR_ABS" read-tree "$BASE"
   for p in $PAGES_ONLY; do
     if [ ! -f "$SITE/$p" ]; then
       echo "error: $SITE/$p not found — nothing to publish for it" >&2
@@ -79,7 +82,21 @@ echo "Published $(git --git-dir="$GIT_DIR_ABS" ls-tree -r --name-only "$COMMIT" 
 
 if [ "${PAGES_PUSH:-0}" = "1" ]; then
   echo "Force-pushing $BRANCH to $REMOTE ..."
-  git --git-dir="$GIT_DIR_ABS" push --force "$REMOTE" "$BRANCH"
+  if [ -n "${PAGES_ONLY:-}" ]; then
+    # Push only if the remote is still the commit this was built on ($BASE), so a release
+    # published in between is never replaced; on a lost race, rebuild on the new site.
+    if ! git --git-dir="$GIT_DIR_ABS" push --force-with-lease="$BRANCH:$BASE" "$REMOTE" "$BRANCH"; then
+      TRY="${PAGES_TRY:-1}"
+      if [ "$TRY" -ge 3 ]; then
+        echo "error: $REMOTE/$BRANCH moved during each of $TRY partial publishes — not pushed" >&2
+        exit 1
+      fi
+      echo "$REMOTE/$BRANCH moved since it was read; rebuilding on the new site (attempt $((TRY + 1)))" >&2
+      PAGES_TRY=$((TRY + 1)) exec bash "${BASH_SOURCE[0]}"
+    fi
+  else
+    git --git-dir="$GIT_DIR_ABS" push --force "$REMOTE" "$BRANCH"
+  fi
   echo "Published to $REMOTE/$BRANCH."
 else
   echo "Local branch written. Push it with:  git push --force $REMOTE $BRANCH"
