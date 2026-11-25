@@ -717,6 +717,13 @@ script «run-all-tests» (args) do
     IO.FS.writeFile (out / s!"{name}.txt") (s!"=== {name} ===\n" ++ text)
     if r.exitCode != 0 then failed := failed.push name
     IO.println ""
+  -- the coverage index links the census dashboard only when the page is beside it
+  let dash ← try
+      IO.Process.output { cmd := "lake", args := #["run", "census-dashboard", "--", "--html", (out / "census-dashboard.html").toString], cwd := some root }
+    catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
+  if dash.exitCode != 0 then
+    IO.eprint dash.stderr
+    IO.eprintln "warning: census dashboard not written; the coverage index will not link it"
   IO.println "=== Generating HTML coverage reports ==="
   let h ← try
       IO.Process.output { cmd := (bin / "suiterunner").toString, args := #["--html", out.toString ++ "/"], cwd := some root }
