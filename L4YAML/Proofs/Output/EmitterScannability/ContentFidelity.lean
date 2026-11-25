@@ -822,6 +822,8 @@ lemma parseDocument_flowSeqStart_produces_sequence (ps : ParseState)
   have h_prep : prepareDocumentState ps = .ok (#[], { ps with tagHandles := #[] }) := by
     unfold prepareDocumentState
     rw [h_pd]
+    simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+      Bool.false_eq_true, ↓reduceIte]
     simp only [Array.filterMap_empty]
     -- 4.33: rewrite via simp (congruence), not `rw` — kabstract's motive over the
     -- ite tree is not type correct once the condition is abstracted.
@@ -861,6 +863,8 @@ lemma parseDocument_flowMapStart_produces_mapping (ps : ParseState)
   have h_prep : prepareDocumentState ps = .ok (#[], { ps with tagHandles := #[] }) := by
     unfold prepareDocumentState
     rw [h_pd]
+    simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+      Bool.false_eq_true, ↓reduceIte]
     simp only [Array.filterMap_empty]
     -- 4.33: rewrite via simp (congruence), not `rw` — kabstract's motive over the
     -- ite tree is not type correct once the condition is abstracted.
@@ -1095,6 +1099,8 @@ lemma parseStream_flowSeqStart_loop_witness
     -- conditions but skips their Decidable instance args, and the diverged goal
     -- then breaks the next rewrite's motive; `rw` (kabstract) reaches both.
     dsimp only []  -- uniform iota: substitute the directives match, instances included
+    simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+      Bool.false_eq_true, ↓reduceIte]
     rw [Array.filterMap_empty]
     rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by
       rw [h_th_peek]; decide]
@@ -1229,6 +1235,8 @@ lemma parseStream_flowMapStart_loop_witness
     -- conditions but skips their Decidable instance args, and the diverged goal
     -- then breaks the next rewrite's motive; `rw` (kabstract) reaches both.
     dsimp only []  -- uniform iota: substitute the directives match, instances included
+    simp only [show (!decide (TagDirectivesUnique #[])) = false from rfl,
+      Bool.false_eq_true, ↓reduceIte]
     rw [Array.filterMap_empty]
     rw [show (ps_th.peek? == some YamlToken.documentStart) = false from by
       rw [h_th_peek]; decide]

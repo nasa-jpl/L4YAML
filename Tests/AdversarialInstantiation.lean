@@ -8,6 +8,7 @@ public import L4YAML.Parser.Composition
 public import L4YAML.Parser.IndexedComposition
 public import L4YAML.Proofs.Parser.ParserGrammableBase
 public import L4YAML.Proofs.Parser.TokenGrammar
+public import Tests.Guards.Proofs.TagDirectiveRepair
 public import L4YAML.Proofs.Serialization.TokenEvents
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Serialization.TraceOf.FlowWalk
@@ -7266,7 +7267,9 @@ extractors on the guard inputs of `Tests/Guards/Proofs/TokenEventExtractors.lean
 row runs the parser (`parseStream`), `checkTokenGrammar`, the OLD state verdict
 (the retired checkTokenState over tokenEventsOf, recorded as literals), the NEW one
 (`checkFrom {} (tokenEvents ts)`, over `TokenEvents.tokenEvents`) and whether the two traces
-are equal.  Scanner rows: parser and both verdicts agree on all 32, the traces agree on 31 —
+are equal. Scanner rows pin parser acceptance separately from the serialization
+verdict: the duplicate TAG row is refused by the independent §6.8.2 requirement.
+Historically parser and both verdicts agreed on all 32, the traces agreed on 31 —
 the scanner-reachable witness `%TAG !h …⏎--- !h x` is the one trace seam (verdicts still
 agree).  Token rows pin the gaps A/D/D'/E (old true, new false except D'), the no-progress
 and post-`streamEnd` shapes B1/B2/C, and R1–R6: on R1/R3 `checkTokenGrammar` ∧ new verdict
@@ -7285,7 +7288,7 @@ def testTokenEventExtractorsSeam (state : IO.Ref TestCollector) : IO Unit := do
       ("--- a\n...\n--- b\n", true, true, true), ("a\n---\nb", true, true, true),
       ("%TAG !t! tag:x,2000:\n--- !t!a b", true, true, true),
       ("%TAG !t! tag:x,2000:\n%TAG !u! tag:y,2000:\n--- !u!a b", true, true, true),
-      ("%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b", true, true, true),
+      ("%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b", false, true, true),
       ("%YAML 1.2\n%TAG !t! tag:x,2000:\n--- !t!a b", true, true, true),
       ("%TAG !t! tag:x,2000:\n%YAML 1.2\n--- !t!a b", true, true, true),
       ("%TAG !t! tag:x,2000:\n--- !t!a b\n...\n%TAG !t! tag:y,2000:\n--- !t!c d", true, true, true),
@@ -7431,6 +7434,22 @@ run — vacuous for `parseStream_accepts`), D' stays true, and R1/R3 flip false 
 the parser REFUSING — the refutation of the restatement under the un-narrowed `TG.DocStart`,
 closed by narrowing `DocStart` to spec [209] (`---` after a non-empty directive run), which
 this grid pins as `TG = false` on R1/R3. -/
+def testTagDirectiveUniqueness (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "Priority 55: YAML 6.8.2 explicit TAG uniqueness — independent requirement across six public APIs"
+  for src in L4YAML.Tests.Guards.TagDirectiveRepair.positiveControls do
+    checkM state s!"TAG legal control: {repr src}"
+      ((L4YAML.Tests.Guards.TagDirectiveRepair.apiVerdicts src).all id)
+      "one of classic/indexed raw/composed/comment APIs refused a legal control"
+  for src in L4YAML.Tests.Guards.TagDirectiveRepair.duplicateControls do
+    checkM state s!"TAG duplicate error: {repr src}"
+      ((L4YAML.Tests.Guards.TagDirectiveRepair.apiDuplicateErrors src).all id)
+      "one public API did not report duplicateTagDirective"
+  for (src, expected) in L4YAML.Tests.Guards.TagDirectiveRepair.directivePairs do
+    checkM state s!"TAG scoped handle pair: {repr src}, expected={expected}"
+      ((L4YAML.Tests.Guards.TagDirectiveRepair.apiVerdicts src).all (· == expected) &&
+        (expected || (L4YAML.Tests.Guards.TagDirectiveRepair.apiDuplicateErrors src).all id))
+      "public API disagreed with independently labelled handle/document-scope requirement"
+
 def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "Priority 53: S5 slice 2 — TokenStateOk over tokenEvents: parser / TG / old / new verdicts on the %TAG seam, the ---less directive run (R1–R6) and A/D/D'/E"
   let newV (ts : Array (Positioned YamlToken)) : Bool :=
@@ -7442,7 +7461,7 @@ def testTokenStateOkRestatement (state : IO.Ref TestCollector) : IO Unit := do
     [ ("", true, true), ("a", true, true), ("--- a\n", true, true), ("--- a\n...\n--- b\n", true, true), ("a\n---\nb", true, true),
       ("%TAG !t! tag:x,2000:\n--- !t!a b", true, true),
       ("%TAG !t! tag:x,2000:\n%TAG !u! tag:y,2000:\n--- !u!a b", true, true),
-      ("%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b", true, true),
+      ("%TAG !t! tag:x,2000:\n%TAG !t! tag:y,2000:\n--- !t!a b", false, true),
       ("%YAML 1.2\n%TAG !t! tag:x,2000:\n--- !t!a b", true, true),
       ("%TAG !t! tag:x,2000:\n%YAML 1.2\n--- !t!a b", true, true),
       ("%TAG !t! tag:x,2000:\n--- !t!a b\n...\n%TAG !t! tag:y,2000:\n--- !t!c d", true, true),
@@ -20147,6 +20166,7 @@ def collectTests : IO VerifiedSuiteResult := do
   testParseNodeCF state
   testBlockScalarTailEof state
   testTokenEventExtractorsSeam state
+  testTagDirectiveUniqueness state
   testTagHandleShape state
   testTokenStateOkRestatement state
   testAlignLemmas state

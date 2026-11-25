@@ -156,6 +156,17 @@ induction over two derivations.
   `directiveWithoutDocument`, `directiveTrailingContent`, `invalidBareDocument`
   stay in `ExactSurfaceLanguage` (5a(ii)'s worklist), where they are shape,
   not state.
+- **Explicit TAG-declaration uniqueness (§6.8.2).** At most one explicit TAG
+  directive may name a given handle in one document, even with equal prefixes.
+  This includes `!` and `!!`; their implicit availability is not a declaration.
+  The token grammar now carries `DirectiveHandlesUnique` on each document's
+  directive span, and the actual `parseStream_accepts` proof derives the runtime
+  guard through exact handle-list correspondence with `parseDirectives`.
+  `duplicateTagDirective` belongs to directive/surface validity. Its absence
+  from the earlier executable error census did not remove the external rule:
+  a census of implemented rejection cases is not an exhaustive inventory of
+  YAML requirements. The future exact-source bridge must supply this condition
+  independently of serialization events, which erase builtin declarations.
 
 ## 6. Open questions (defaults in bold)
 
