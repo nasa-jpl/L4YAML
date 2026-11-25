@@ -295,15 +295,17 @@ def expectedCensus : String :=
 -- read the surface through a `ScannerSurfCorr` hypothesis; they conclude the T stream prefix, not `SLYamlStream`.
 -- 2026-11-18 (item 527, β PR 1): corrHyp 627 → 630 — `TPendingNode.directive_step` / `docStart_step` / `docEnd_step`
 -- (StreamBridge) read the surface through a `ScannerSurfCorr` hypothesis and conclude the T pair, not `SLYamlStream`.
+-- 2026-11-24 (item 534, β PR 6): corrHyp 638 → 643 — the fold step `content_sep_of_preprocess` / `content_step_park` and `content_step_at` / `content_step_block` / `content_step_mapValue`
+-- (StreamBridge) hold the content step's `hcorr` / `hcorr'`; none concludes a stream or a pair on the S side.
+-- 2026-11-23 (item 532, β PR 5): corrHyp 637 → 638 — `content_leaf_at` (ContentBridge) reads the surface through `hcorr`:
+-- the value's leaf at the park's indentation, spent by `TPendingNode.content_step_props`.
 -- 2026-11-22 (item 531, β PR 4): corrHyp 633 → 637 — `TPendingNode.content_step_routed` / `_docStart` / `_docEnd` / `_props`
 -- (StreamBridge) hold `hcorr` / `hcorr'`, the twins of `accum_content_pending`'s `---` / `...` / property-run arms; unreached until the fold.
 -- 2026-11-19 (item 529, β PR 3): corrHyp 632 → 633 — `TPendingNode.content_step_noPending` (StreamBridge) holds `hcorr` / `hcorr'`,
 -- the twin of `content_dispatch_routed`'s line-start sites; unreached until the depth-0 fold.
 -- 2026-11-19 (item 528, β PR 2): corrHyp 630 → 632 — the structural steps split by source park (StreamBridge: five lemmas
--- 2026-11-23 (item 532, β PR 5): corrHyp 637 → 638 — `content_leaf_at` (ContentBridge) reads the surface through `hcorr`:
--- the value's leaf at the park's indentation, spent by `TPendingNode.content_step_props`.
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
-  "corrHyp=638 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=643 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

@@ -406,9 +406,11 @@ def expectedSteps : String :=
 -- `ScannerSurfCorr` ends (`hcorr` / `hcorr'`), as `content_dispatch_routed` does; P7 predicted stepHolders only.
 -- 2026-11-19 (item 528, β PR 2): stepHolders 2104 → 2105 — `directive_step_noPending` / `_run` / `docEnd_step` (StreamBridge)
 -- hold a step's `.ok` hypothesis (three, were two).
+-- 2026-11-24 (item 534, β PR 6): stepHolders 2111 → 2116, dispHolders 432 → 437, dispTwoCorr 37 → 42 — the fold step `content_sep_of_preprocess` / `content_step_park` and `content_step_at` /
+-- `content_step_block` / `content_step_mapValue` (StreamBridge) hold the content dispatch's `.ok` with both `ScannerSurfCorr` ends.
 -- 2026-11-23 (item 532, β PR 5): stepHolders 2110 → 2111, dispHolders 431 → 432 — `content_leaf_at` (ContentBridge) holds the
 -- content dispatch's `.ok` with one `ScannerSurfCorr` end as a hypothesis (the other is its conclusion's).
-  "stepHolders=2111 dispHolders=432 dispTwoCorr=37 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
+  "stepHolders=2116 dispHolders=437 dispTwoCorr=42 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -428,11 +430,13 @@ def expectedSteps : String :=
 -- 2026-11-19 (item 529, β PR 3): TYPED edge 23 → 24, chain 4 → 5 — `TPendingNode.content_step_noPending` holds
 -- `scanNextToken_dispatchContent … = .ok s'` typed at the preprocessed state, one more rung on the content dispatch's
 -- ladder (the twin of `content_dispatch_routed`); the per-function reading `scanNextToken_dispatchContent` decls 186 → 187.
+-- 2026-11-24 (item 534, β PR 6): TYPED edge 28 → 31, chain 9 → 12 — `content_step_at` / `_block` / `_mapValue` hold the dispatch
+-- typed at the preprocessed state with its output correspondence a hypothesis; `scanNextToken_dispatchContent` decls 192 → 195.
 -- 2026-11-23 (item 532, β PR 5): the ladder unmoved — `content_leaf_at` holds the content dispatch typed at the preprocessed
 -- state but its output correspondence is a CONCLUSION, so it is no edge; the per-function reading's decls 191 → 192.
 def expectedLadder : List String :=
-  ["TYPED edge=28 chain=9 fnEdge=4 fnChain=2",
-   "SURF edge=20 chain=3 fnEdge=3 fnChain=2",
+  ["TYPED edge=33 chain=14 fnEdge=4 fnChain=2",
+   "SURF edge=21 chain=4 fnEdge=3 fnChain=2",
    "SPEC edge=4 chain=1 fnEdge=2 fnChain=1"]
 
 /-- The six that carry a Surface path across a scanner step.  Five are
@@ -442,7 +446,9 @@ def expectedLadder : List String :=
 -- `tab_refutes_dispatch` now read the park's `sp_gram` edge directly (no chain across the step); the
 -- `_inline` twin still chains.
 def expectedChainSurf : List Name :=
-  [`L4YAML.Proofs.StreamAccum.indentedValue_reads_at_any_indent,
+  -- item 534 (the fold step): `content_sep_of_preprocess` re-carries `indentedValue_reads_at_any_indent`'s separator across the step.
+  [`L4YAML.Proofs.Serialization.TraceOf.StreamBridge.TPendingNode.content_sep_of_preprocess,
+   `L4YAML.Proofs.StreamAccum.indentedValue_reads_at_any_indent,
    `L4YAML.Proofs.StreamAccum.preprocess_flow_thread,
    `L4YAML.Proofs.StreamAccum.tab_refutes_dispatch_inline]
 
@@ -521,8 +527,8 @@ def expectedPerFn : List String :=
   -- its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
   -- 2026-11-14: `StructDepth.DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling, items 446–452); 2026-11-15 (item 512): +1 / +1, `marks_step_content`
   -- 2026-11-15 (item 517): +1 / +1, `content_km_transport_any` (`TraceOf/ContentBridge`) — the T mask's content-step transport.
-  ["scanNextToken_dispatchContent decls=192 chain=1",
-   "scanNextToken_preprocess decls=259 chain=3"]
+  ["scanNextToken_dispatchContent decls=197 chain=1",
+   "scanNextToken_preprocess decls=261 chain=4"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it
