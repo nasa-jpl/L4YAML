@@ -592,7 +592,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          PAGES_PUSH=1 PAGES_ONLY="reports/census-dashboard.html" bash scripts/publish-pages.sh
+          PAGES_PUSH=1 PAGES_ONLY="reports/census-dashboard.html" PAGES_IF_TIP="fix-a-grammar-completeness" bash scripts/publish-pages.sh
 
       - name: Comment on PR with coverage summary
         if: github.event_name == 'pull_request'

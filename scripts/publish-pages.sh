@@ -10,7 +10,9 @@
 #       # partial publish: the site as published, with only the named docs/ files replaced
 #       # (the integration branch refreshes the census dashboard this way between releases);
 #       # with PAGES_PUSH=1 it pushes only if gh-pages is still the commit it read, and
-#       # rebuilds on the new one otherwise, so it never replaces a release published meanwhile
+#       # rebuilds on the new one otherwise, so it never replaces a release published meanwhile;
+#       # PAGES_IF_TIP=<branch> also skips the publish unless HEAD is that remote branch's tip
+#       # (checked on every attempt), so an older run never replaces a newer run's page
 #
 # GitHub Pages serves it from the branch root (Settings -> Pages -> Deploy from a branch ->
 # gh-pages -> / (root)). Each publish *replaces* gh-pages, so it is always force-pushed:
@@ -54,6 +56,14 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 export GIT_INDEX_FILE="$TMP_DIR/index"
 
 if [ -n "${PAGES_ONLY:-}" ]; then
+  if [ -n "${PAGES_IF_TIP:-}" ]; then
+    # An older run must not replace a newer run's page: publish only from the branch's tip.
+    TIP="$(git --git-dir="$GIT_DIR_ABS" ls-remote "$REMOTE" "refs/heads/$PAGES_IF_TIP" | cut -f1)"
+    if [ "$TIP" != "$(git --git-dir="$GIT_DIR_ABS" rev-parse HEAD)" ]; then
+      echo "Not published: HEAD ($SRC_REF) is not the tip of $REMOTE/$PAGES_IF_TIP (${TIP:0:12}); the tip's run publishes."
+      exit 0
+    fi
+  fi
   # Partial publish: start from the published tree and replace only the named files.
   git --git-dir="$GIT_DIR_ABS" fetch --depth 1 "$REMOTE" "$BRANCH"
   BASE="$(git --git-dir="$GIT_DIR_ABS" rev-parse FETCH_HEAD)"
@@ -92,6 +102,9 @@ if [ "${PAGES_PUSH:-0}" = "1" ]; then
         exit 1
       fi
       echo "$REMOTE/$BRANCH moved since it was read; rebuilding on the new site (attempt $((TRY + 1)))" >&2
+      # `exec` does not run the EXIT trap: drop this attempt's index here.
+      rm -rf "$TMP_DIR"
+      unset GIT_INDEX_FILE
       PAGES_TRY=$((TRY + 1)) exec bash "${BASH_SOURCE[0]}"
     fi
   else
