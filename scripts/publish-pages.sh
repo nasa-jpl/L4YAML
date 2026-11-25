@@ -6,6 +6,9 @@
 #
 #   ./scripts/publish-pages.sh                 # writes the LOCAL gh-pages branch; does NOT push
 #   PAGES_PUSH=1 ./scripts/publish-pages.sh    # also force-pushes gh-pages (CI publishes this way)
+#   PAGES_ONLY="reports/census-dashboard.html" ./scripts/publish-pages.sh
+#       # partial publish: the site as published, with only the named docs/ files replaced
+#       # (the integration branch refreshes the census dashboard this way between releases)
 #
 # GitHub Pages serves it from the branch root (Settings -> Pages -> Deploy from a branch ->
 # gh-pages -> / (root)). Each publish *replaces* gh-pages, so it is always force-pushed:
@@ -48,17 +51,31 @@ TMP_DIR="$(mktemp -d -t ghpages-idx.XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 export GIT_INDEX_FILE="$TMP_DIR/index"
 
-cd "$SITE"
-# The root .gitignore's `/docs` rule does not apply here: with --work-tree=docs, git treats
-# docs/ as the tree root and never reads gitignore files above it, so the whole site is staged.
-git --git-dir="$GIT_DIR_ABS" --work-tree="$SITE" add -A .
+if [ -n "${PAGES_ONLY:-}" ]; then
+  # Partial publish: start from the published tree and replace only the named files.
+  git --git-dir="$GIT_DIR_ABS" fetch --depth 1 "$REMOTE" "$BRANCH"
+  git --git-dir="$GIT_DIR_ABS" read-tree FETCH_HEAD
+  for p in $PAGES_ONLY; do
+    if [ ! -f "$SITE/$p" ]; then
+      echo "error: $SITE/$p not found — nothing to publish for it" >&2
+      exit 1
+    fi
+    BLOB="$(git --git-dir="$GIT_DIR_ABS" hash-object -w "$SITE/$p")"
+    git --git-dir="$GIT_DIR_ABS" update-index --add --cacheinfo "100644,$BLOB,$p"
+  done
+else
+  cd "$SITE"
+  # The root .gitignore's `/docs` rule does not apply here: with --work-tree=docs, git treats
+  # docs/ as the tree root and never reads gitignore files above it, so the whole site is staged.
+  git --git-dir="$GIT_DIR_ABS" --work-tree="$SITE" add -A .
+fi
 TREE="$(git --git-dir="$GIT_DIR_ABS" write-tree)"
 # No -p parent: a root commit, so gh-pages stays a single flat commit across publishes.
 COMMIT="$(printf 'Publish L4YAML documentation site (source %s)\n' "$SRC_REF" \
   | git --git-dir="$GIT_DIR_ABS" commit-tree "$TREE")"
 git --git-dir="$GIT_DIR_ABS" branch -f "$BRANCH" "$COMMIT"
 
-echo "Published $(find "$SITE" -type f | wc -l) files to branch '$BRANCH' (orphan commit ${COMMIT:0:12})."
+echo "Published $(git --git-dir="$GIT_DIR_ABS" ls-tree -r --name-only "$COMMIT" | wc -l) files to branch '$BRANCH' (orphan commit ${COMMIT:0:12})."
 
 if [ "${PAGES_PUSH:-0}" = "1" ]; then
   echo "Force-pushing $BRANCH to $REMOTE ..."

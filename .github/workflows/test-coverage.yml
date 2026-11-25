@@ -585,6 +585,15 @@ jobs:
           # Assemble docs/ as a single orphan commit on gh-pages and force-push it.
           PAGES_PUSH=1 bash scripts/publish-pages.sh
 
+      # The full site is a release artifact (the step above).  The census dashboard tracks the
+      # integration branch, so a push there refreshes that one page on the published site.
+      - name: Publish the census dashboard to gh-pages (integration branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix-a-grammar-completeness'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          PAGES_PUSH=1 PAGES_ONLY="reports/census-dashboard.html" bash scripts/publish-pages.sh
+
       - name: Comment on PR with coverage summary
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7

@@ -77,8 +77,11 @@ Read in order on first visit:
    — how far each directed census (a pinned count the campaign drives to
    zero or up to a bound) is from its goal and what moves it, one row per
    census opening onto its fields. CI writes it on every run with
-   `lake run census-dashboard -- --html docs/reports/census-dashboard.html`;
-   the same command gives the page for a local tree.
+   `lake run census-dashboard -- --html docs/reports/census-dashboard.html`
+   and republishes that page on every push to
+   `fix-a-grammar-completeness`, so it reads the integration branch's
+   latest tree (the page names the commit); the same command gives the
+   page for a local tree.
 
 ## Relationship to existing documentation
 
