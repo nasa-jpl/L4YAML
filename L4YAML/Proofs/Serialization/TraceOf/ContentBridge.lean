@@ -472,7 +472,8 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     (h_dispatch : scanNextToken_dispatchContent s_ad c = .ok s') :
     ∃ ev_n, PushesTrace s_ad.tokens s'.tokens ev_n ∧
       ((ev_n = [] ∧ ∃ sp_gram, TFlowContent 0 .flowOut sp_prep sp_gram [] ∧
-          GStar SSWhite sp_gram sp_a ∧ (sp_gram = sp_a → s'.peek? ≠ some '#')) ∨
+          GStar SSWhite sp_gram sp_a ∧ (sp_gram = sp_a → s'.peek? ≠ some '#') ∧
+          (c ≠ '&' ∧ c ≠ '!' ∧ c ≠ '*')) ∨
        (ev_n = [] ∧ (c = '"' ∨ c = '\'') ∧ TFlowContent 0 .blockIn sp_prep sp_a []) ∨
        (ev_n = [] ∧ (c = '|' ∨ c = '>') ∧ (SCLLiteral 0 sp_prep sp_a ∨ SCLFolded 0 sp_prep sp_a)) ∨
        (c = '&' ∧ TCNsAnchorProperty sp_prep sp_a ev_n ∧ NextIsSep s') ∨
@@ -490,7 +491,7 @@ lemma accum_step_content_trace_out {s_ad s' : ScannerState} {c : Char} {sp_prep 
     obtain ⟨str, htok⟩ :=
       dispatchContent_plain_tokens h_dispatch h_amp h_star h_bang h_pipe h_gt h_dq h_sq
     refine ⟨[], by rw [htok]; exact pushesTrace_push_scalar _ _ rfl,
-      Or.inl ⟨rfl, sp_gram, ?_, h_ws, h_hash⟩⟩
+      Or.inl ⟨rfl, sp_gram, ?_, h_ws, h_hash, h_amp, h_bang, h_star⟩⟩
     subst hsp_prep
     rcases SFlowNode_head_lift h_node ⟨h_amp, h_star, h_bang, hlb, hlc⟩ with
       ⟨-, -, hplain⟩ | ⟨h, -⟩ | ⟨h, -⟩
