@@ -73,6 +73,15 @@ Read in order on first visit:
 7. [`09-scripts-in-lean.md`](09-scripts-in-lean.md) — Rule 9's plan:
    the ledger of every `scripts/*.py`, its class, what Lean facility
    replaces it, the conversion phases and the open questions.
+8. The [census dashboard](https://nasa-jpl.github.io/L4YAML/reports/census-dashboard.html)
+   — how far each directed census (a pinned count the campaign drives to
+   zero or up to a bound) is from its goal and what moves it, one row per
+   census opening onto its fields. CI writes it on every run with
+   `lake run census-dashboard -- --html docs/reports/census-dashboard.html`
+   and republishes that page on every push to
+   `fix-a-grammar-completeness`, so it reads the integration branch's
+   latest tree (the page names the commit); the same command gives the
+   page for a local tree.
 
 ## Relationship to existing documentation
 
