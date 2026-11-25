@@ -733,15 +733,26 @@ def fieldTable (rs : Array Row) : String :=
     s!"<td>{prose r.target.serves}</td><td>{prose r.target.moves}</td><td>{prose r.target.basis}</td></tr>\n") ++
   "</tbody></table>\n"
 
+/-- Where a census is computed and pinned: its guard file, or the ledger for `scripts-ledger`. -/
+def sourcePath (census : String) : String :=
+  if census == "scripts-ledger" then "scripts/scripts-ledger.txt" else s!"Tests/Guards/Proofs/{census}.lean"
+
+#guard sourcePath "ParkBill" == "Tests/Guards/Proofs/ParkBill.lean"
+
+/-- The line that opens a census: a link to its source at the commit read. -/
+def definedIn (tree census : String) : String :=
+  let path := sourcePath census
+  s!"<p class=\"src\">Computed and pinned in <a href=\"https://github.com/nasa-jpl/L4YAML/blob/{esc tree}/{esc path}\"><code>{esc path}</code></a>.</p>\n"
+
 /-- One part per census: the roll-up names the open fields and what each has left. -/
-def censusParts (rows : Array Row) : List Part :=
+def censusParts (tree : String) (rows : Array Row) : List Part :=
   (censusOrder rows).toList.map fun c =>
     let rs := censusRows rows c
     let left := openFields rs
-    ⟨s!"<code>{esc c}</code>", tallyPills rs ++ (if left == "—" then "" else s!" <span class=\"count\">left: {prose left}</span>"), fieldTable rs⟩
+    ⟨s!"<code>{esc c}</code>", tallyPills rs ++ (if left == "—" then "" else s!" <span class=\"count\">left: {prose left}</span>"), definedIn tree c ++ fieldTable rs⟩
 
 /-- One part per census that pins readings without a target. -/
-def readingParts (pins : Array Pin) : List Part := Id.run do
+def readingParts (tree : String) (pins : Array Pin) : List Part := Id.run do
   let mut parts : Array Part := #[]
   for c in (pins.map (·.census)).foldl (fun acc c => if acc.contains c then acc else acc.push c) #[] do
     let mut items := #[]
@@ -751,7 +762,7 @@ def readingParts (pins : Array Pin) : List Part := Id.run do
       if fs.isEmpty then continue
       items := items.push s!"<li><code>{esc p.name}</code>: {esc (" ".intercalate (fs.map (fun (k, v) => s!"{k}={v}")).toList)}</li>\n"
     if items.isEmpty then continue
-    parts := parts.push ⟨s!"<code>{esc c}</code>", s!"<span class=\"count\">{plural items.size "pin" "pins"}</span>", "<ul>\n" ++ String.join items.toList ++ "</ul>\n"⟩
+    parts := parts.push ⟨s!"<code>{esc c}</code>", s!"<span class=\"count\">{plural items.size "pin" "pins"}</span>", definedIn tree c ++ "<ul>\n" ++ String.join items.toList ++ "</ul>\n"⟩
   return parts.toList
 
 /-- A section as a row that opens onto its parts, each a row that opens onto its content. -/
@@ -770,8 +781,8 @@ def sectionFlat (title : String) (parts : List Part) : String :=
 def html (tree : String) (context : Array String) (rows : Array Row) (pins : Array Pin)
     (errs : Array String := #[]) (readings : Bool := true) : String :=
   let directed := "Directed censuses: how far each is from its goal, and what moves it"
-  let dParts := censusParts rows
-  let rParts := readingParts pins
+  let dParts := censusParts tree rows
+  let rParts := readingParts tree pins
   let sections := (directed, tallyPills rows, dParts, true) ::
     (if readings then [("Readings without a target", s!"<span class=\"count\">{plural rParts.length "census" "censuses"}</span>", rParts, false)] else [])
   let unresolved := if errs.isEmpty then "" else
@@ -779,7 +790,7 @@ def html (tree : String) (context : Array String) (rows : Array Row) (pins : Arr
     String.join (errs.toList.map fun e => s!"<li>{prose e}</li>") ++ "</ul>\n"
   "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" ++
   s!"<title>L4YAML census dashboard</title><style>{style}</style></head><body>\n<h1>L4YAML census dashboard</h1>\n" ++
-  s!"<p>Tree <code>{esc tree}</code>. Every figure is read off a <code>def expected… :=</code> literal under <code>Tests/Guards/Proofs/</code>, the values every full build checks against the environment.</p>\n" ++
+  s!"<p>Tree <code>{esc tree}</code>. Every figure is read off a <code>def expected… :=</code> literal under <code>Tests/Guards/Proofs/</code>, the values every full build checks against the environment. Each census opens with a link to the guard file that computes its counts.</p>\n" ++
   String.join (context.toList.map fun l => s!"<p>{prose (l.replace "**" "")}</p>\n") ++
   "<p><code>left</code> is |now &minus; goal|; <code>move</code> is what the guard enforces (a shrink-only pin that rises needs the owner's word); HOLD is a reading kept at its goal by a gate. A sub-count is part of another field of its census: shown, not counted in the roll-up.</p>\n" ++
   unresolved ++

@@ -13,6 +13,10 @@
 #       # rebuilds on the new one otherwise, so it never replaces a release published meanwhile;
 #       # PAGES_IF_TIP=<branch> also skips the publish unless HEAD is that remote branch's tip
 #       # (checked on every attempt), so an older run never replaces a newer run's page
+#       # PAGES_SED=<sed script> PAGES_SED_FILES="<paths>" PAGES_SED_UNLESS=<text> also rewrites
+#       # those *published* files with the script, skipping a file that already contains the
+#       # text (scripts/pages-census-link.sed adds the dashboard links to a site released
+#       # before its sources carried them)
 #
 # GitHub Pages serves it from the branch root (Settings -> Pages -> Deploy from a branch ->
 # gh-pages -> / (root)). Each publish *replaces* gh-pages, so it is always force-pushed:
@@ -75,6 +79,25 @@ if [ -n "${PAGES_ONLY:-}" ]; then
     fi
     BLOB="$(git --git-dir="$GIT_DIR_ABS" hash-object -w "$SITE/$p")"
     git --git-dir="$GIT_DIR_ABS" update-index --add --cacheinfo "100644,$BLOB,$p"
+  done
+  # Rewrite published files in place (read from $BASE, so a retry re-reads the new site).
+  for p in ${PAGES_SED_FILES:-}; do
+    if ! git --git-dir="$GIT_DIR_ABS" cat-file -e "$BASE:$p" 2>/dev/null; then
+      echo "note: $p is not on $REMOTE/$BRANCH — not rewritten" >&2
+      continue
+    fi
+    git --git-dir="$GIT_DIR_ABS" show "$BASE:$p" > "$TMP_DIR/page"
+    if [ -n "${PAGES_SED_UNLESS:-}" ] && grep -qF -- "$PAGES_SED_UNLESS" "$TMP_DIR/page"; then
+      continue
+    fi
+    sed -f "$PAGES_SED" "$TMP_DIR/page" > "$TMP_DIR/page.new"
+    if [ -n "${PAGES_SED_UNLESS:-}" ] && ! grep -qF -- "$PAGES_SED_UNLESS" "$TMP_DIR/page.new"; then
+      echo "::warning::$PAGES_SED left $p unchanged (anchor not found)"
+      continue
+    fi
+    BLOB="$(git --git-dir="$GIT_DIR_ABS" hash-object -w "$TMP_DIR/page.new")"
+    git --git-dir="$GIT_DIR_ABS" update-index --add --cacheinfo "100644,$BLOB,$p"
+    echo "Rewrote $p with $PAGES_SED."
   done
 else
   cd "$SITE"
