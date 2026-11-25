@@ -39,7 +39,7 @@ This manual documents the project's architecture, verification
 strategy, security model, and FFI bindings for C, Python, and Rust.
 
 Progress of the proof campaign — each census count, its goal, and the
-distance left — is on the [census dashboard](reports/census-dashboard.html).
+distance left — is on the [census dashboard](https://nasa-jpl.github.io/L4YAML/reports/census-dashboard.html).
 
 {include 0 Doc.L4YAML.Overview}
 

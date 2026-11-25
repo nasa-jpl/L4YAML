@@ -30,7 +30,7 @@ The interactive coverage dashboard is available at
 [reports/index.html](reports/index.html).
 
 The proof campaign's census counts, each with its goal and the distance
-left, are on the [census dashboard](reports/census-dashboard.html); CI
+left, are on the [census dashboard](https://nasa-jpl.github.io/L4YAML/reports/census-dashboard.html); CI
 refreshes that page on every push to the integration branch.
 
 # yaml-test-suite Coverage
