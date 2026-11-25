@@ -67,6 +67,10 @@ rust/.cargo/config.toml
 # The theorem dependency graphs under doc/Doc/L4YAML/graphs/ are committed (refreshed
 # from L4YAML.FGM); only the import graph is rendered by CI.
 doc/Doc/L4YAML/graphs/import-graph.*
+# HTML pages a local scripts/generate-all.sh run leaves beside the graphs
+doc/Doc/L4YAML/graphs/*.html
+doc/Doc/L4YAML/graphs/group/
+doc/Doc/L4YAML/graphs/module/
 # pixi project-local env (LeanCopilot native runtime deps)
 .pixi/
 # scratch files
