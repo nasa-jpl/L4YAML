@@ -4,6 +4,8 @@ public import L4YAML.Schema.Schema
 
 public meta import L4YAML.Schema.Schema
 public import L4YAML.Spec.Types
+public import L4YAML.Spec.CoreSchema
+public import L4YAML.Proofs.Schema.CoreRecognizerBridge
 
 @[expose] public section Blanket
 
@@ -20,8 +22,8 @@ Formal verification of Core Schema (YAML 1.2.2 §10.3) resolution properties.
 ## Proof Inventory
 
 ### §1 — `isNull` / `isBool` / `isInt` / `isFloat` specifications
-Concrete correctness theorems linking each resolution function to its
-specification in the YAML 1.2.2 standard.
+Concrete correctness theorems for selected YAML 1.2.2 spellings. These do not
+by themselves establish equivalence with the complete Core Schema table.
 
 ### §2 — `resolveImplicit` completeness and determinism
 Every string resolves to exactly one `YamlType`.
@@ -39,6 +41,80 @@ namespace L4YAML.Proofs.SchemaResolution
 
 open L4YAML.Schema
 open L4YAML
+
+/-! ## The external Core Schema correspondence obligation
+
+`Spec.CoreSchema.tag` transcribes the ordered §10.3.2 regex table independently
+of the implementation's numeric value converters. `scalarTag?` deliberately
+forgets the value: conformance of numerical *values* is a different requirement.
+
+The proof separates recognition, converter success, and output tagging.
+`CoreRecognizerBridge` proves universal success of integer and float parsing
+on every allowed spelling, while numeric **value** fidelity remains separate.
+-/
+
+/-- The tag of a constructed scalar, absent for collections. -/
+def scalarTag? : YamlType → Option Spec.CoreSchema.Tag
+  | .null => some .null
+  | .bool _ => some .bool
+  | .int _ => some .int
+  | .float _ => some .float
+  | .str _ => some .str
+  | .seq _ | .map _ => none
+
+/-- The per-input assurance obligation for a plain, implicitly tagged scalar. -/
+def coreTagCorrespondence (s : String) : Prop :=
+  scalarTag? (resolveImplicit s) = some (Spec.CoreSchema.tag s)
+
+lemma coreNullRecognizer_matches_spec (s : String) :
+    isNull s = Spec.CoreSchema.nullSpelling s := by
+  simp [isNull, Spec.CoreSchema.nullSpelling, Bool.or_comm, Bool.or_left_comm]
+
+lemma coreBoolRecognizer_matches_spec (s : String) :
+    (isBool s).isSome = Spec.CoreSchema.boolSpelling s := by
+  unfold isBool
+  split <;> simp_all [Spec.CoreSchema.boolSpelling]
+
+/-- Compositional bridge for the external §10.3.2 table; numeric converter
+    success is supplied by `CoreRecognizerBridge` in the capstone below. -/
+lemma coreTagCorrespondence_at_of_recognizers (s : String)
+    (hint : Spec.CoreSchema.integerSpelling s = true → (isInt s).isSome = true)
+    (hfloat : Spec.CoreSchema.floatSpelling s = true → (isFloat s).isSome = true) :
+    coreTagCorrespondence s := by
+  have hnull := coreNullRecognizer_matches_spec s
+  have hbool := coreBoolRecognizer_matches_spec s
+  have hi : (isInt s).isSome = Spec.CoreSchema.integerSpelling s := by
+    cases h : Spec.CoreSchema.integerSpelling s with
+    | false => simp [isInt, h]
+    | true => exact hint h
+  have hf : (isFloat s).isSome = Spec.CoreSchema.floatSpelling s := by
+    cases h : Spec.CoreSchema.floatSpelling s with
+    | false => simp [isFloat, h]
+    | true => exact hfloat h
+  cases hn : Spec.CoreSchema.nullSpelling s <;>
+    cases hb : isBool s <;>
+    cases hi' : isInt s <;>
+    cases hf' : isFloat s <;>
+    simp_all [coreTagCorrespondence, scalarTag?, resolveImplicit,
+      Spec.CoreSchema.tag, Option.isSome]
+
+/-- Intermediate lemma: universal tag correspondence reduces to the two
+    successful-conversion premises. -/
+lemma coreTagCorrespondenceAll_of_recognizers
+    (hint : ∀ s : String, Spec.CoreSchema.integerSpelling s = true → (isInt s).isSome = true)
+    (hfloat : ∀ s : String, Spec.CoreSchema.floatSpelling s = true → (isFloat s).isSome = true) :
+    ∀ s : String, coreTagCorrespondence s := by
+  intro s
+  exact coreTagCorrespondence_at_of_recognizers s (hint s) (hfloat s)
+
+/-- For every implicitly tagged plain scalar, `resolveImplicit` chooses the
+    first matching YAML 1.2.2 Core Schema §10.3.2 tag. This does not claim
+    correctly rounded numeric values or fidelity at an FFI boundary. -/
+@[capstone]
+theorem coreTagCorrespondenceAll : ∀ s : String, coreTagCorrespondence s := by
+  exact coreTagCorrespondenceAll_of_recognizers
+    CoreRecognizerBridge.int_some_of_integerSpelling
+    CoreRecognizerBridge.float_some_of_floatSpelling
 
 /-! ## §1 — Resolution Function Specifications -/
 
