@@ -49,15 +49,6 @@ def PendingAnchorWitness (s s' : SurfPos) (name : String) : Prop :=
     s.chars = '&' :: (name.toList ++ tail) ∧
     s'.chars = tail
 
-/-- A named surface tag property carries a custom handle use. -/
-def NamedTagEventWitness (s s' : SurfPos) (handle : String) : Prop :=
-  SCNsTagProperty s s' ∧
-  ∃ body suffix tail : List Char,
-    body ≠ [] ∧
-    handle = "!" ++ String.ofList body ++ "!" ∧
-    s.chars = '!' :: (body ++ '!' :: (suffix ++ tail)) ∧
-    s'.chars = tail
-
 lemma alias_surface_has_event
     (c : Char) (cs tail : List Char) (col : Nat)
     (hc : L4YAML.Proofs.Serialization.SourceEvents.isAnchorCharBool c = true)
@@ -106,13 +97,6 @@ def yamlCommitAnchor (anchor : Option String) (contentEvents : List Event) : Lis
 lemma yaml_anchor_authorizes_inner_alias (name : String) :
     SerializationWellFormed (yamlCommitAnchor (some name) [.useAlias name]) := by
   simp [yamlCommitAnchor, SerializationWellFormed, WellFormedFrom, AliasAllowed]
-
-lemma commit_pending_anchor_some (name : String) (events : List Event) :
-    l4yamlCommitPendingAnchor (some name) events =
-      events ++ [.defineAnchor name] := rfl
-
-lemma commit_pending_anchor_none (events : List Event) :
-    l4yamlCommitPendingAnchor none events = events := rfl
 
 /-- The structured commitment operation reproduces the semantic skeleton's
 anchored-node order exactly. -/

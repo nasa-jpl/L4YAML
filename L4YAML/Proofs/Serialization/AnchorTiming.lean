@@ -37,13 +37,6 @@ lemma self_reference_before_commit_rejected
     ¬ SerializationWellFormed [.useAlias name, .defineAnchor name] := by
   simp [SerializationWellFormed, WellFormedFrom, AliasAllowed]
 
-/-- Once an anchored node has completed and its anchor is committed, a later
-alias use is well-formed. -/
-lemma later_alias_after_commit_allowed
-    (name : String) :
-    SerializationWellFormed [.defineAnchor name, .useAlias name] := by
-  simp [SerializationWellFormed, WellFormedFrom, AliasAllowed]
-
 /-- The two orderings are observably different.  This is the current runtime/spec mismatch, not a normative YAML restriction. -/
 lemma anchor_commit_order_separator
     (name : String) :

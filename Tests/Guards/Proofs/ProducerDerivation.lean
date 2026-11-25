@@ -305,7 +305,9 @@ def expectedCensus : String :=
 -- the twin of `content_dispatch_routed`'s line-start sites; unreached until the depth-0 fold.
 -- 2026-11-19 (item 528, β PR 2): corrHyp 630 → 632 — the structural steps split by source park (StreamBridge: five lemmas
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
-  "corrHyp=643 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+-- 2026-11-24 (item 535): corrHyp 643 → 635 — the eight dispatcher-arm corollaries of `ScannerShape` (`dispatchStructural_*_trace` ×3,
+-- `dispatchFlowIndicators_*_trace` ×5) are deleted: each held `ScannerSurfCorr`, no constant and no `example` referenced them.
+  "corrHyp=635 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

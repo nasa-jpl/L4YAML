@@ -81,8 +81,11 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- directed row for the class (`A-campaign` is a population reading now).  Same item: generated names leave the population
 -- (`_default` structure-field defaults; Lean 4.36's numbered auxiliaries `brecOn_1.eq`) — a reclassification, not a deletion
 -- (the numbers below are the rebased tree's `--write`).
+-- 2026-11-24 (item 535, the deletion ruling): population 14099 → 14050 (thm 10213 → 10170, def 2519 → 2513), unreached 5997 → 5948
+-- (thm 4287 → 4244), A-campaign 1173 → 1124, A-orphan 142 → 103 — 49 campaign declarations nothing referenced are deleted
+-- (46 of the list before item 534, and 3 of the 10 the deletion freed); roster and cluster-roots unmoved.
 def expectedDeadCensus : String :=
-  "population=14099 thm=10213 def=2519 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5997 thm=4287 A-campaign=1173 A-orphan=142 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14050 thm=10170 def=2513 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5948 thm=4244 A-campaign=1124 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

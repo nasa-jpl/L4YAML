@@ -190,38 +190,6 @@ lemma sflowLinePrefix_skip {n : Nat} {a m : SurfPos} (h : SFlowLinePrefix n a m)
       rename_i h
       exact sepInLine_skip h
 
-lemma slEmpty_skip {n : Nat} {c : YamlContext} {a m : SurfPos} (h : SLEmpty n c a m) :
-    skipSep a = skipSep m := by
-  cases h with
-  | block =>
-    rename_i h₁ h₂
-    refine Eq.trans ?_ (sbbreak_skip h₂)
-    cases h₁ with
-    | none => rfl
-    | some =>
-      rename_i h
-      obtain ⟨_, _, h⟩ := h; exact sindent_skip h
-  | flow =>
-    rename_i h₁ h₂
-    refine Eq.trans ?_ (sbbreak_skip h₂)
-    cases h₁ with
-    | none => rfl
-    | some =>
-      rename_i h
-      exact sflowLinePrefix_skip h
-  | flowLt =>
-    rename_i h₁ h₂
-    obtain ⟨_, _, h₁⟩ := h₁
-    exact (sindent_skip h₁).trans (sbbreak_skip h₂)
-
-lemma gstar_slEmpty_skip {n : Nat} {c : YamlContext} {a m : SurfPos}
-    (h : GStar (SLEmpty n c) a m) : skipSep a = skipSep m := by
-  induction h with
-  | nil => rfl
-  | cons =>
-    rename_i h₁ _ ih
-    exact (slEmpty_skip h₁).trans ih
-
 lemma sepLines_skip {n : Nat} {a m : SurfPos} (h : SSeparateLines n a m) :
     skipSep a = skipSep m := by
   cases h with
@@ -795,17 +763,6 @@ lemma fstop_tagStop {n : Nat} {c : YamlContext} {m : SurfPos} (h : FStop n c m) 
 /-- `'` cannot be the next character. -/
 def NotQuote (m : SurfPos) : Prop := ∀ rest col, m ≠ ⟨'\'' :: rest, col⟩
 
-lemma fstop_notQuote {n : Nat} {c : YamlContext} {m : SurfPos} (h : FStop n c m) : NotQuote m := by
-  intro rest col heq
-  subst heq
-  obtain ⟨t, hopt, hl⟩ := h
-  cases hopt with
-  | none => simp [LitStop] at hl
-  | some =>
-    rcases sep_shape ‹SSeparate n c _ _› with heq | hh
-    · subst heq; simp [LitStop] at hl
-    · simp [SepHead] at hh
-
 /-! ## Single-quoted scalars -/
 
 def sqScan : List Char → Nat → SurfPos
@@ -1177,33 +1134,9 @@ lemma sepHead_colonFollow {rest : List Char} {col : Nat} (h : SepHead ⟨rest, c
     rcases h with rfl | rfl | rfl | rfl | ⟨-, h⟩
     all_goals first | (simp at h) | simp
 
-/-- A mandatory separator right after `:` validates the colon. -/
-lemma colonFollow_of_sep {n : Nat} {c : YamlContext} {rest : List Char} {col : Nat} {t : SurfPos}
-    (h : SSeparate n c ⟨rest, col + 1⟩ t) : ColonFollow rest := by
-  rcases sep_shape' h with ⟨-, hc⟩ | hh
-  · simp at hc
-  · exact sepHead_colonFollow hh
-
-/-- An optional separator then `,` `]` `}` right after `:` validates the colon. -/
-lemma colonFollow_of_estop {n : Nat} {c : YamlContext} {rest : List Char} {col : Nat} {t : SurfPos}
-    (ho : GOpt (SSeparate n c) ⟨rest, col + 1⟩ t) (he : EStop t) : ColonFollow rest := by
-  cases ho with
-  | none =>
-    cases rest with
-    | nil => simp [EStop] at he
-    | cons d ds =>
-      simp only [EStop] at he
-      simp only [ColonFollow]
-      rcases he with rfl | rfl | rfl <;> simp [isFlowIndicatorProp]
-  | some => exact colonFollow_of_sep ‹SSeparate n c _ _›
-
 /-- The follow-set hypothesis for nodes: equal ends, or both ends legally followed. -/
 def Follow (n : Nat) (c : YamlContext) (m₁ m₂ : SurfPos) : Prop :=
   m₁ = m₂ ∨ (FlowCtx c ∧ FStop n c m₁ ∧ FStop n c m₂)
-
-lemma follow_of_efollow {n : Nat} {c : YamlContext} (hc : FlowCtx c) {m₁ m₂ : SurfPos}
-    (h₁ : EFollow n c m₁) (h₂ : EFollow n c m₂) : Follow n c m₁ m₂ :=
-  Or.inr ⟨hc, efollow_fstop h₁, efollow_fstop h₂⟩
 
 /-- A key followed by an optional separator and a validated `:` has a legal follow. -/
 lemma fstop_of_colon {n : Nat} {c : YamlContext} {m t : SurfPos} {rest : List Char} {col : Nat}
@@ -1836,10 +1769,6 @@ lemma props_head {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
   | tagFirst _ _ _ _ _ ht _ => exact Or.inl (tag_head ht.1)
   | anchorFirst _ _ _ _ _ ha _ => exact Or.inr (anchor_head ha.1)
 
-lemma props_sepStop {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
-    (h : TCNsProperties n c a m ev) : SepStop a := by
-  rcases props_head h with ⟨r, cl, rfl⟩ | ⟨r, cl, rfl⟩ <;> simp [SepStop]
-
 /-- Heads of a flow node: alias, property, or content. -/
 lemma node_head {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
     (h : TFlowNode n c a m ev) :
@@ -1873,13 +1802,6 @@ lemma jsonNode_head {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event
   cases h with
   | content _ _ _ _ _ hc => exact Or.inr (Or.inr (jsonContent_head hc))
   | propsContent _ _ _ _ _ _ _ _ hp _ _ => exact (props_head hp).imp id Or.inl
-
-lemma jsonNode_sepStop {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
-    (h : TCFlowJsonNode n c a m ev) : SepStop a := by
-  rcases jsonNode_head h with ⟨r, cl, rfl⟩ | ⟨r, cl, rfl⟩ | hc
-  · simp [SepStop]
-  · simp [SepStop]
-  · exact contentHead_sepStop hc
 
 /-! ## Follow-sets for the induction, and strictness of spans -/
 
@@ -2074,14 +1996,6 @@ lemma content_len {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
   | singleQ _ _ _ _ hx => exact sq_len hx
   | doubleQ _ _ _ _ hx => exact dq_len hx
 
-lemma jsonContent_len {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
-    (h : TCFlowJsonContent n c a m ev) : m.chars.length < a.chars.length := by
-  cases h with
-  | flowSeq _ _ _ _ _ hx => exact seq_len hx
-  | flowMap _ _ _ _ _ hx => exact map_len hx
-  | singleQ _ _ _ _ hx => exact sq_len hx
-  | doubleQ _ _ _ _ hx => exact dq_len hx
-
 lemma props_len {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
     (h : TCNsProperties n c a m ev) : m.chars.length < a.chars.length := by
   have hs := (tprops_suffix h).length_le
@@ -2106,22 +2020,6 @@ lemma props_len {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
         have := (sSeparate_suffix hsp.1).length_le
         have := tag_len ht.1
         omega
-
-lemma node_len {n : Nat} {c : YamlContext} {a m : SurfPos} {ev : List Event}
-    (h : TFlowNode n c a m ev) : m.chars.length < a.chars.length := by
-  cases h with
-  | alias _ _ _ _ _ ha =>
-    cases ha.1 with
-    | mk =>
-      have := gchar_run_len (gplus_star ‹GPlus (GChar isNsAnchorChar) _ _›)
-      simp at this ⊢; omega
-  | content _ _ _ _ _ hc => exact content_len hc
-  | propsContent _ _ _ _ _ _ _ _ hp hs hc =>
-    have := props_len hp
-    have := (sSeparate_suffix hs).length_le
-    have := content_len hc
-    omega
-  | propsEmpty _ _ _ _ _ hp => exact props_len hp
 
 /-- Same-end form of property determinism: one span, one trace. -/
 lemma props_det_eq {n : Nat} {c : YamlContext} {s M : SurfPos} {ev₁ ev₂ : List Event}
