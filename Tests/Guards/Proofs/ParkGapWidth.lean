@@ -554,6 +554,7 @@ corrBlock=0 corrScan=1 via="]
 -- deleted with the 23 preservation lemmas on the owner's ruling (item 520's roster); edges / chains unmoved.
 -- 2026-11-22 (item 531, β PR 4): `scanNextToken_dispatchContent` holders 187 → 191 — the four content steps off the parks
 -- (`TPendingNode.content_step_routed` / `_docStart` / `_docEnd` / `_props`).
+-- 2026-11-24 (item 534, β PR 6): the content dispatch's holders 192 → 197, preprocessing's 259 → 261 (edge 17 → 18, chain 3 → 4) — the fold step `content_sep_of_preprocess` / `content_step_park` and `content_step_at` / `_block` / `_mapValue` (StreamBridge).
 -- 2026-11-23 (item 532, β PR 5): the content dispatch's holders 191 → 192 — `content_leaf_at` (ContentBridge).
 -- 2026-11-19 (item 529, β PR 3): `scanNextToken_dispatchContent` holders 186 → 187 — `TPendingNode.content_step_noPending`
 -- (StreamBridge) holds the content dispatch's `.ok`; edge / chain unmoved.
@@ -589,13 +590,13 @@ def expectedLadder : List String :=
    -- 2026-11-14 (item 490): 184 → 185 — `accum_step_content_pairK` holds `h_dispatch`.
    -- 2026-11-15 (item 517): dispatchContent 185 → 186, preprocess 256 → 257 — `content_km_transport_any`
    -- (`TraceOf/ContentBridge`) holds `hok` / `h_pre`: the T mask's content-step transport, route (μ).
-   "scanNextToken_dispatchContent holders=192 edge=3 chain=1",
+   "scanNextToken_dispatchContent holders=197 edge=3 chain=1",
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): preprocess holders 251 → 254 — `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK`.
    -- 2026-11-13 (item 489): 254 → 255 — `accum_step_content_pairB` holds `h_preprocess`.
    -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
    -- 2026-11-15 (item 520): preprocess 257 → 259 — `accum_step_flow_pairK` and `dispatchFlow_km_faces` hold
    -- `h_preprocess` (the flow fold's two steps); dispatchContent / dispatchBlockIndicators unmoved.
-   "scanNextToken_preprocess holders=259 edge=17 chain=3"]
+   "scanNextToken_preprocess holders=261 edge=18 chain=4"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
