@@ -307,7 +307,9 @@ def expectedCensus : String :=
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
 -- 2026-11-24 (item 535): corrHyp 643 → 635 — the eight dispatcher-arm corollaries of `ScannerShape` (`dispatchStructural_*_trace` ×3,
 -- `dispatchFlowIndicators_*_trace` ×5) are deleted: each held `ScannerSurfCorr`, no constant and no `example` referenced them.
-  "corrHyp=635 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+-- 2026-11-25 (item 537, β PR 7): corrHyp 635 → 636 — `TPendingNode.question_step` (StreamBridge) holds `hcorr`: the `?` step,
+-- the twin of `question_open_map`; unreached until the depth-0 fold.
+  "corrHyp=636 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

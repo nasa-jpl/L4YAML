@@ -19869,6 +19869,122 @@ end Statements
 
 end P141
 
+namespace P142
+/-! **Priority 142 (item 537, S3 slice (4) PR 23): the `?` park.**  The S side parks `?` in
+`pendingMapValue k` (`question_open_map`), so the T twin is `TPendingNode.pendingMapValue` and the step
+behind it is `content_step_mapValue`; `question_step` is the `?` step itself.  At P141's 19 content steps
+behind `?`: the park token, the `?`'s column against the scanner's level, the node's column (the
+separation at `k + 1`), the park's floor, and the token that follows the key's content.
+Predictions (written before this instrument ran): P1 19 steps; P2 the park token is `key` at all 19 and
+the `?` sits at the level's column at all 19; P3 18 nodes right of the level, 1 at or left of it; P4 the
+next token is `value` at ≈ 15, something else at ≈ 4; P5 the floor (`IndentFloor sc (k + 1)`) and
+`NextIsSep` hold at all 19. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.PreprocessIndentStable (minContentIndentOf)
+
+structure Tally where
+  steps : Nat := 0
+  parkKinds : List (String × Nat) := []
+  keyAtLevel : Nat := 0
+  keyOff : List String := []
+  separated : Nat := 0
+  dedented : List String := []
+  floor : Nat := 0
+  next : Nat := 0
+  closers : List (String × Nat) := []
+  arms : List (String × Nat) := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      let final := (sts.getLast?.map (·.2.tokens.toList)).getD []
+      for (pre, post) in sts do
+        if pre.flowLevel == 0 && post.flowLevel == 0 && P136.parkOf pre.tokens.toList == "pendingKey" then
+          let pushed := (post.tokens.toList.drop pre.tokens.size).filter fun tk => !P119.isPlaceholder tk.val
+          let parkTok := (pre.tokens.toList.reverse.dropWhile fun tk => P119.isPlaceholder tk.val).head?
+          match pushed.reverse.head?, parkTok with
+          | some back, some pk =>
+            let arm := P137.armOf back.val
+            if arm != "other" then
+              let level := pre.currentIndent.toNat
+              let row := s!"{arm} @{repr (String.ofList (s.toList.take 40))}"
+              let floorOk := !pre.needIndentCheck && pre.currentIndent ≥ 0 && minContentIndentOf pre ≥ level + 1
+              let nextOk := match pre.peek? with
+                | none => true
+                | some ch => isBlankBool ch || ch == ',' || ch == ']' || ch == '}'
+              let closer := match ((final.drop post.tokens.size).filter fun tk => !P119.isPlaceholder tk.val).head? with
+                | some tk => P111.kindOf tk.val
+                | none => "end"
+              t := { t with steps := t.steps + 1, parkKinds := bumpS t.parkKinds (P111.kindOf pk.val),
+                            keyAtLevel := t.keyAtLevel + (if pk.pos.col == level then 1 else 0),
+                            keyOff := if pk.pos.col == level then t.keyOff else t.keyOff ++ [row],
+                            separated := t.separated + (if back.pos.col ≥ level + 1 then 1 else 0),
+                            dedented := if back.pos.col ≥ level + 1 then t.dedented else t.dedented ++ [row],
+                            floor := t.floor + (if floorOk then 1 else 0),
+                            next := t.next + (if nextOk then 1 else 0),
+                            closers := bumpS t.closers closer, arms := bumpS t.arms arm }
+          | _, _ => pure ()
+    | _, _ => pure ()
+  return t
+
+section Statements
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.DocBridge
+open L4YAML.Proofs.Serialization.TraceOf.StreamBridge L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.StreamAccum (ContentArm)
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Surface
+
+/-- A top-level `?` (`k = 0`): the step parks, and a key node at 1 closes the entry into the stream. -/
+example (sp_start sp_block sp_ind sp_mid : SurfPos) (s_ad s' : ScannerState) (ev_c ev_o ev_n : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some '?')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad '?' = .ok (some s'))
+    (h_route : ∀ sp_k ev, TBlockMapEntry 0 sp_ind sp_k ev → TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev))
+    (h_node : ∀ sp', GLit '?' sp_ind sp' → TBlockNode 1 .blockOut sp' sp_mid ev_n) :
+    (goOut s'.tokens.toList []).1 = ev_c ++ ev_o ∧ TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n) := by
+  obtain ⟨sp', h_lit, _, hS', _⟩ := TPendingNode.question_step hS hcorr hpeek h_dispatch h_route
+  exact ⟨congrArg Prod.fst hS'.events,
+    h_route _ _ (.explicitEmpty 0 _ _ _ _ h_lit (.node 0 .blockOut _ _ _ (h_node _ h_lit)))⟩
+
+/-- A nested `?` (`k + 1`): the park is `pendingMapValue`, so the content step behind it is
+`ContentPark.mapValue`'s. -/
+example (k : Nat) (sp_start sp_block sp_ind : SurfPos) (s_ad s' : ScannerState) (c : Char)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some '?')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad '?' = .ok (some s'))
+    (h_route : ∀ sp_k ev, TBlockMapEntry (k + 1) sp_ind sp_k ev →
+      TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev)) :
+    ∃ sp', ScannerSurfCorr s' sp' ∧ TPendingNode.ContentPark sp_start sp' c ev_c (k + 2) ev_o := by
+  obtain ⟨sp', h_lit, hcorr', _, _⟩ := TPendingNode.question_step hS hcorr hpeek h_dispatch h_route
+  exact ⟨sp', hcorr', .mapValue (k + 1) ev_o fun sp_mid ev_n h =>
+    h_route _ _ (.explicitEmpty (k + 1) _ _ _ _ h_lit (.node (k + 1) .blockOut _ _ _ h))⟩
+
+end Statements
+end P142
+
+namespace P142Test
+def testQuestionPark (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P142.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P142 {repr t}"
+  check state "P142 P1: 19 content steps behind `?`, by arm: 14 plain, 2 anchor, 1 tag, 1 quoted, 1 block scalar"
+    (t.steps == 19 && t.arms.lookup "plain" == some 14 && t.arms.lookup "anchor" == some 2 &&
+     t.arms.lookup "tag" == some 1 && t.arms.lookup "quoted" == some 1 && t.arms.lookup "blockScalar" == some 1)
+  check state "P142 P2: the park token is `key` at all 19 and every `?` sits at the scanner's level (`question_step`'s `k`)"
+    (t.parkKinds == [("key", 19)] && t.keyAtLevel == 19 && t.keyOff.isEmpty)
+  check state "P142 P3 (refuted, predicted 18 / 1): all 19 key nodes land right of the level (`SSeparate (k + 1)`); no dedent landing behind `?` in the corpus"
+    (t.separated == 19 && t.dedented.isEmpty)
+  check state "P142 P4 (refuted, predicted about 15 `value`): after the key's first token come 9 `value`, 5 end of input, 3 `blockEnd`, 2 `plain` (the node behind an anchor or tag)"
+    (t.closers.lookup "value" == some 9 && t.closers.lookup "end" == some 5 &&
+     t.closers.lookup "bEnd" == some 3 && t.closers.lookup "plain" == some 2)
+  check state "P142 P5: the floor at `k + 1` and the separator after the `?` hold at all 19"
+    (t.floor == 19 && t.next == 19)
+end P142Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20200,6 +20316,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P139Test.testContentProducerParks state
   P140Test.testLeafAtIndentation state
   P141Test.testContentBehindParks state
+  P142Test.testQuestionPark state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
