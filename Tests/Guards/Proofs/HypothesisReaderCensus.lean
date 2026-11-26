@@ -644,6 +644,9 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 -- 2026-11-17 (item 524, the deletion): constants 1763 → 1760, decls 1393 → 1391, RELAY 2917 → 2913 — the three `StreamAccum`
 -- preservation lemmas deleted on the owner's ruling (item 520's roster); eta / FIELD / READ unmoved.
+-- 2026-11-26: RELAY +1 measured by the compiler: the existing h_sound
+-- invariant is passed from accum_block_pending to accum_block_on_noPending
+-- to pay the root key-slot supply. No declaration or UNUSED count changes.
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -655,7 +658,7 @@ def expectedModuleTally : String :=
   -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else. The thirteen are generated equation lemmas
   -- v4.35.0 realized in this module and v4.36.0 does not: `FrameTail.leadFree.match_1.eq_1..4`,
   -- `propertyScanFollowerOk.match_1.eq_1..2`, `SNbDoubleText.match_1.eq_1..6`, `propsBlockLineCrossLoop.eq_def`.
-  "constants=1747 decls=1391 eta=611 FIELD=175 READ=1422 RELAY=2913 RETURN=56 \
+  "constants=1747 decls=1391 eta=611 FIELD=175 READ=1422 RELAY=2914 RETURN=56 \
 UNUSED=27"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.

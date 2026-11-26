@@ -261,7 +261,7 @@ def expectedSummary : String :=
 -- Item 519: inrTrivial 497 → 495 — the two flow-close `h_vpack` `Or.inr trivial` arms are PAID from `vslot`
 -- (the `h_framesV` arms keep their `[]` cover decline); shrink-only.
 -- Item 519 (review round): inrTrivial 495 → 496, see the writers' row for `accum_flow_open_depth0`.
-  "positions=253 top=162 nested=91 True=177 PackAlt=67 PackAltG=9 modules=2 supply: paid=24 relayed=119 declined-only=0 never-supplied=0 unresolved=8 conclusions=9 consumers: spent=102 relayed=13 unused=0 unreadable=36 writers=37 inrTrivial=460"
+  "positions=253 top=162 nested=91 True=177 PackAlt=67 PackAltG=9 modules=2 supply: paid=25 relayed=118 declined-only=0 never-supplied=0 unresolved=8 conclusions=9 consumers: spent=102 relayed=13 unused=0 unreadable=36 writers=37 inrTrivial=460"
 
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`,
 -- so its `h_nodeS` / `h_nodeSF` positions read [31] / [32] (were [30] / [31]) — an index shift, not a
@@ -548,7 +548,7 @@ def expectedSupply : List String :=
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[16].h_seqF relayed [DECLINE=3 SPLIT=3]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[17].h_kslotUp relayed [SPLIT=6]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[18].h_closeFV relayed [SPLIT=6]",
-  "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot relayed [DECLINE=1 SPLIT=6]",
+  "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot paid [PAY=1 SPLIT=6]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF paid [PAY=5 SPLIT=2]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF paid [DECLINE=5 PAY=2]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp relayed [DECLINE=1 SPLIT=6]",

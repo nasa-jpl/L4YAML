@@ -1153,6 +1153,8 @@ def expectedDoor : List String :=
 -- Item 508 (2026-11-14): nodes 124521 → 124529 — the two entry producers took the `h_dead`
 -- premise (one binder each on the walked headers); every other field unchanged.
 -- 2026-11-17 (item 520, rebased over item 521 + review round 1): nodes 123,560 → 125,681 (round 2: the stamp witnesses and their readers gone) — `accum_step_flow_pairK`'s proof term joins the walk; the base-mask witness reads each arm's own stamps (round 1); every structural field unmoved.
+-- 2026-11-26: nodes 125681 → 125693, measured after the root key-slot
+-- payment from actual marked columns. All structural fields and cover rows match.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529 (walked-term total; the `elim[punt|punt]` face rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total).
@@ -1169,7 +1171,7 @@ def expectedLine : String :=
   -- `closeThenBlock`'s `ResumeFrames.strict` read off the empty-value close; no row of this guard moved.
 -- Item 519: `nodes` 124487 → 124358 (123677 before the review round: the `pendingBlock` / `pendingMapValue` writers keep the ancestors' covers and `h_expl` as fallback funders, read in order) — the depth-0 open's three `frameChainUnion` ladders are gone
 -- (`FlowBaseRoutes.vslot` every-mark); no row, door or leaf moved.
-  "positions=24 ctorFields=7 lemParams=23 lemmas=19 walked=26 doors=9 rows=125 ctorRows=49 lemRows=47 localRows=4 fnRows=19 fnpRows=4 valRows=2 coverTypes=5 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=9 doorForgotten=17 doorDropped=23 doorsOther=5 nodes=125681"
+  "positions=24 ctorFields=7 lemParams=23 lemmas=19 walked=26 doors=9 rows=125 ctorRows=49 lemRows=47 localRows=4 fnRows=19 fnpRows=4 valRows=2 coverTypes=5 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=9 doorForgotten=17 doorDropped=23 doorsOther=5 nodes=125693"
 
 /-! ## §6 The reading -/
 
