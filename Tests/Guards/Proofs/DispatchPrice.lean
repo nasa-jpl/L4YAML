@@ -412,7 +412,7 @@ def expectedSteps : String :=
 -- content dispatch's `.ok` with one `ScannerSurfCorr` end as a hypothesis (the other is its conclusion's).
 -- 2026-11-24 (item 535): stepHolders 2116 → 2108, dispHolders 437 → 429 — the eight unreferenced dispatcher-arm corollaries of `ScannerShape`
 -- (`dispatchStructural_*_trace` ×3, `dispatchFlowIndicators_*_trace` ×5) are deleted; each held a dispatcher's `.ok`.
--- 2026-11-25 (item 537, β PR 7): stepHolders 2108 → 2109, dispHolders 429 → 430 — `TPendingNode.question_step` (StreamBridge) holds the
+-- 2026-11-25 (item 538, β PR 7): stepHolders 2108 → 2109, dispHolders 429 → 430 — `TPendingNode.question_step` (StreamBridge) holds the
 -- block-indicator dispatch's `.ok` at `?`.
   "stepHolders=2109 dispHolders=430 dispTwoCorr=42 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
