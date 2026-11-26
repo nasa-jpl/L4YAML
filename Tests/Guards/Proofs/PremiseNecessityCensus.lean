@@ -386,6 +386,9 @@ declarations' own binders and not by a rescoring of an existing one.
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 -- 2026-11-17 (item 524, the deletion): constants 1763 → 1760, decls 1393 → 1391, RELAY 2709 → 2705 — the three `StreamAccum`
 -- preservation lemmas (`allowDirectives_update_implicitValueLine`, `ad_implicitValueLine`, `ad_docStartLine`) deleted on the owner's ruling.
+-- 2026-11-26: RELAY +1 measured by the compiler: the existing h_sound
+-- invariant is passed from accum_block_pending to accum_block_on_noPending
+-- to pay the root key-slot supply. No declaration or UNUSED count changes.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -411,7 +414,7 @@ def expectedModuleTallyP : String :=
 -- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
   -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else — the thirteen generated equation lemmas
   -- `HypothesisReaderCensus.expectedModuleTally` names, seen through this peel.
-  "constants=1747 decls=1391 eta=611 FIELD=201 READ=1487 RELAY=2706 RETURN=176 UNUSED=27"
+  "constants=1747 decls=1391 eta=611 FIELD=201 READ=1485 RELAY=2706 RETURN=175 UNUSED=27"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and

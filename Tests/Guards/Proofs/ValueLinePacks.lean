@@ -848,7 +848,7 @@ def expectedWriters : List String :=
    "colon_fires_implicit_key #1 param:colon_open_map_implicit.h_kslotD idx=— := step(param:colon_fires_implicit_key.h_key) ns=— spend=— holds=[h✝:tail(k)←SBlockMapEntry(k); h✝:tail(k)←SBlockMapEntry(k); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_kslot_pk:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_rfr_pk:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_rfrV_pk:tail(k)←SBlockMapEntry(k); h_rseq_pk:tail(k)←SBlockMapEntry(k)] ⊢ —",
    "colon_fires_props_key #1 param:colon_open_map_props.h_kslotD idx=— := step(param:colon_fires_props_key.h_key) ns=— spend=— holds=[left✝:tail(k)←SBlockMapEntry(k); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_kslot_pk:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_resF_pk:tail(k)←SBlockMapEntry(k); h_resFV_pk:tail(k)←SBlockMapEntry(k)] ⊢ —",
    "accum_block_on_noPending #1 ctor:pendingBlock.h_kslot idx=k := paid:other ns=— spend=absurd holds=[] ⊢ none",
-   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslotUp idx=k := empty ns=[] spend=— holds=[] ⊢ —",
+   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslotUp idx=k := punt ns=— spend=— holds=[] ⊢ —",
    "accum_block_on_noPending #1 param:indicator_open_map.h_explUp_chain idx=— := punt ns=— spend=— holds=[] ⊢ —",
    "accum_block_pending #3 param:accum_block_on_closeThenBlock.h_vpack idx=— := punt ns=— spend=— holds=[] ⊢ —",
    "accum_block_pending #3 param:accum_block_on_closeThenBlock.h_vslot idx=— := stamp ns=— spend=— holds=[] ⊢ —",
@@ -1022,51 +1022,52 @@ def expectedWriters : List String :=
 -- on the alternative and spend `empty` on its `inr` arm), touched 1 → 6.
 -- 2026-10-30 (item 405): per-position writer classes follow `expectedWriters` (head-form chain; declines of ruling "405 a").
 -- 2026-10-30 (item 405, Rule 8 fix): the `h_kslot` positions' writers are classed `other`/`held` (the projection `markedCols sc` is no level variable) and the `h_nodeV`/`h_explUp_chain` relays read `levelVar` for the `markedCols sc` argument.
-def expectedPerPos : List String :=   ["param:colon_open_map_implicit.h_kslotD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:colon_open_map_props.h_kslotD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:entryKeyPack_of_dispatch.h_nodeV writers=4 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=4",
-   "param:entryPropsKeyPack_of_dispatch.h_nodeV writers=2 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=2",
+def expectedPerPos : List String :=
+  ["ctor:pendingContent.h_vpack writers=12 punt=2 stamp=0 empty=0 relay=0 step=0 via=3 chain=7 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=10 none=0 touched=10",
    "ctor:pendingProps.h_kslot writers=6 punt=2 stamp=0 empty=0 relay=0 step=3 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=4",
    "ctor:pendingProps.h_kslotE writers=6 punt=3 stamp=0 empty=0 relay=0 step=2 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=1 touched=3",
    "ctor:pendingBlockContent.h_kslot writers=6 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=6 touched=6",
    "ctor:pendingBlockContent.h_kslotUp writers=6 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=6 none=0 touched=6",
    "ctor:pendingBlock.h_kslot writers=7 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=7 alt=0 held=1 levelVar=0 none=6 touched=7",
+   "ctor:pendingBlock.h_kslotUp writers=7 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=6 none=0 touched=6",
    "ctor:pendingMapValue.h_ivl writers=6 punt=0 stamp=3 empty=0 relay=1 step=0 via=0 chain=1 route=1 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=1 touched=6",
+   "ctor:pendingMapValue.h_expl writers=6 punt=0 stamp=4 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=0 touched=6",
    "ctor:pendingMapValue.h_vslot writers=6 punt=0 stamp=3 empty=0 relay=1 step=0 via=0 chain=1 route=1 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=1 touched=6",
+   "ctor:pendingMapValue.h_kslot writers=6 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=3 route=0 frames=0 tail=1 other=0 alt=0 held=1 levelVar=3 none=0 touched=4",
    "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=4 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=1 levelVar=1 none=0 touched=6",
+   "param:accum_block_on_closeThenBlock.h_vpack writers=11 punt=3 stamp=0 empty=0 relay=1 step=0 via=1 chain=3 route=0 frames=3 tail=0 other=0 alt=0 held=1 levelVar=6 none=0 touched=8",
    "param:accum_block_on_closeThenBlock.h_vslot writers=11 punt=0 stamp=10 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=1 held=1 levelVar=0 none=0 touched=11",
    "param:accum_block_on_pendingBlock.h_kslot writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
+   "param:accum_block_on_pendingBlock.h_kslotUp writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_block_on_pendingBlockContent.h_kslot writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
+   "param:accum_block_on_pendingBlockContent.h_kslotUp writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_block_on_pendingContent.h_vpack writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_content_on_pendingBlock_indented.h_kslotUp_old writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_content_on_pendingBlock_indented.h_kslot_old writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
+   "param:accum_content_on_pendingMapValue_indented.h_expl writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_content_on_pendingMapValue_indented.h_ivl_mv writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_content_on_pendingMapValue_indented.h_kslot writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_content_on_pendingMapValue_indented.h_vslot writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
+   "param:colon_open_map.h_explUp_chainD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:colon_open_map_explicit.hvp writers=3 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=3",
+   "param:colon_open_map_implicit.h_kslotD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
+   "param:colon_open_map_props.h_kslotD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
+   "param:compact_open_map.h_chainUp writers=2 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=2",
+   "param:entryChainMap.up writers=6 punt=0 stamp=0 empty=0 relay=4 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=6",
    "param:entryKeyPack_of_dispatch.h_compact writers=4 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=4",
    "param:entryKeyPack_of_dispatch.h_ivl writers=4 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=4",
+   "param:entryKeyPack_of_dispatch.h_nodeV writers=4 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=4",
    "param:entryPropsKeyPack_of_dispatch.h_compact writers=2 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=2",
    "param:entryPropsKeyPack_of_dispatch.h_ivl writers=2 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=2",
-   "param:flowKeyPack_of_close.h_key writers=2 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=2",
-   "param:indicator_open_map.h_explUp_chain writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=1 none=1 touched=2",
-   "param:question_open_map.h_explUp_chain writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:slotChainMap.up writers=4 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=3 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=3 none=0 touched=4",
-   "ctor:pendingBlock.h_kslotUp writers=7 punt=0 stamp=0 empty=1 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=6 none=0 touched=7",
-   "param:accum_block_on_pendingBlock.h_kslotUp writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:accum_block_on_pendingBlockContent.h_kslotUp writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:entryChainMap.up writers=6 punt=0 stamp=0 empty=0 relay=4 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=6",
-   "param:colon_open_map.h_explUp_chainD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:indicator_open_map.h_explUp_chainD writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=2 none=0 touched=2",
-   "ctor:pendingMapValue.h_kslot writers=6 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=3 route=0 frames=0 tail=1 other=0 alt=0 held=1 levelVar=3 none=0 touched=4",
-   "param:accum_block_on_closeThenBlock.h_vpack writers=11 punt=3 stamp=0 empty=0 relay=1 step=0 via=1 chain=3 route=0 frames=3 tail=0 other=0 alt=0 held=1 levelVar=6 none=0 touched=8",
-   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=1 other=0 alt=0 held=0 levelVar=2 none=0 touched=2",
-   "ctor:pendingMapValue.h_expl writers=6 punt=0 stamp=4 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=0 touched=6",
-   "param:accum_content_on_pendingMapValue_indented.h_expl writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:compact_open_map.h_chainUp writers=2 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=2",
+   "param:entryPropsKeyPack_of_dispatch.h_nodeV writers=2 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=2",
    "param:explEntryChain_of_keyContent.up writers=4 punt=0 stamp=0 empty=0 relay=4 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=4",
+   "param:flowKeyPack_of_close.h_key writers=2 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=2",
+   "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=1 other=0 alt=0 held=0 levelVar=2 none=0 touched=2",
+   "param:indicator_open_map.h_explUp_chain writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=1 none=1 touched=2",
+   "param:indicator_open_map.h_explUp_chainD writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=2 none=0 touched=2",
+   "param:question_open_map.h_explUp_chain writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:question_open_map.h_explUp_chainD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "ctor:pendingContent.h_vpack writers=12 punt=2 stamp=0 empty=0 relay=0 step=0 via=3 chain=7 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=10 none=0 touched=10"]
+   "param:slotChainMap.up writers=4 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=3 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=3 none=0 touched=4"]
 -- 2026-10-18 (item 284): `nodes` 12296 → 12374 and nothing else.  The walk
 -- counts nodes only while it follows a value-line pack, so this is item 284's
 -- additions inside pack-carrying terms; the old `pendingFlow` arm restored alone
@@ -1146,7 +1147,7 @@ def expectedLine : String :=
   -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
 -- Item 519: punt 21 → 19, chain 53 → 55, levelVar 51 → 53, touched 147 → 149 — the two flow-close `h_vpack`
 -- punts are PAID chains from `FlowBaseRoutes.vslot` (every mark of the open state, read at the close).
-  "packs=12 framesOn=7 params=33 paramLemmas=20 apps=51 rows=168 ctorRows=80 paramRows=88 punt=17 stamp=24 empty=1 relay=35 step=11 via=4 chain=55 route=2 frames=3 tail=2 other=7 alt=7 held=8 levelVar=56 none=16 spendTail=10 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=151 nodes=14494"
+  "packs=12 framesOn=7 params=33 paramLemmas=20 apps=51 rows=168 ctorRows=80 paramRows=88 punt=18 stamp=24 empty=0 relay=35 step=11 via=4 chain=55 route=2 frames=3 tail=2 other=7 alt=7 held=8 levelVar=56 none=16 spendTail=10 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=150 nodes=14503"
 
 /-! ## §4 The reading -/
 
@@ -1298,3 +1299,5 @@ run_cmd Lean.Elab.Command.liftTermElabM do
     throwError "ValueLinePacks moved:\n  got      {line}\n  expected {expectedLine}"
 
 end Tests.Guards.ValueLinePacks
+
+-- 2026-11-26: snapshots remeasured after the root key-slot payment from actual scanner columns.
