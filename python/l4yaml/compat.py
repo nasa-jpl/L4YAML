@@ -58,6 +58,16 @@ _NEG_INF: frozenset[str] = frozenset({"-.inf", "-.Inf", "-.INF"})
 _NAN_VALS: frozenset[str] = frozenset({".nan", ".NaN", ".NAN"})
 _EXPLICIT_INT = re.compile(r"[-+]?(?:0[oO][0-7]+|0[xX][0-9a-fA-F]+|[0-9]+)\Z")
 
+# Exactly the YAML 1.2.2 §10.3.2 Core Schema numeric spelling classes.
+# Do not use Python's int/float as lexers: they accept underscores, signed
+# hexadecimal/octal numbers, and other forms YAML resolves as strings.
+_CORE_DECIMAL_INT = re.compile(r"[-+]?[0-9]+\Z")
+_CORE_OCTAL_INT = re.compile(r"0o[0-7]+\Z")
+_CORE_HEX_INT = re.compile(r"0x[0-9a-fA-F]+\Z")
+_CORE_FLOAT = re.compile(
+    r"[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?\Z"
+)
+
 
 def _coerce_scalar(s: str) -> Any:
     """Convert a YAML scalar string to the appropriate Python type.
@@ -73,12 +83,17 @@ def _coerce_scalar(s: str) -> Any:
     if s in _BOOL_FALSE:
         return False
 
-    # Integer: decimal, 0o octal, 0x hex
-    if s and s[0] in "+-0123456789":
+    # Apply the YAML spelling grammar *before* conversion. In particular, 012
+    # is a decimal integer (12), not a Python base-0 literal or a float.
+    if _CORE_DECIMAL_INT.fullmatch(s):
         try:
-            return int(s, 0)
-        except (ValueError, TypeError):
-            pass
+            return int(s, 10)
+        except ValueError as exc:  # e.g. Python's large-int digit limit
+            raise LimitError("Core decimal integer cannot be represented") from exc
+    if _CORE_OCTAL_INT.fullmatch(s):
+        return int(s[2:], 8)
+    if _CORE_HEX_INT.fullmatch(s):
+        return int(s[2:], 16)
 
     # Float: inf, nan, and decimal floats
     if s in _POS_INF:
@@ -87,11 +102,8 @@ def _coerce_scalar(s: str) -> Any:
         return -math.inf
     if s in _NAN_VALS:
         return math.nan
-    if s and s[0] in "+-.0123456789":
-        try:
-            return float(s)
-        except (ValueError, TypeError):
-            pass
+    if _CORE_FLOAT.fullmatch(s):
+        return float(s)
 
     return s
 
@@ -104,10 +116,10 @@ def _scalar_to_python(v: YamlValue) -> Any:
 def _resolve_scalar(v: YamlValue, s: str) -> Any:
     """Resolve the content ``s`` of the scalar node ``v``.
 
-    Core Schema resolution applies to PLAIN scalars only
-    (YAML 1.2 §10.3.2): a quoted or block scalar is always a string,
-    so ``"42"`` stays ``"42"`` while ``42`` becomes ``int``.  The style
-    is fetched only when the content would resolve to a non-string.
+    Explicit tags take precedence over style. Otherwise, Core Schema
+    inference applies only to PLAIN scalars (YAML 1.2 §10.3.2).
+    Quoted and block scalars return their content before numeric conversion,
+    including when that content exceeds Python's integer-conversion limit.
     """
     # An explicit tag takes precedence over presentation style and implicit
     # Core Schema inference.  The underlying Lean scalarType follows the same
@@ -149,10 +161,9 @@ def _resolve_scalar(v: YamlValue, s: str) -> Any:
                 return s
         return s  # Unknown explicit tags do not invoke implicit resolution.
 
-    coerced: Any = _coerce_scalar(s)
-    if coerced is s:
+    if v._style_id != _PLAIN:
         return s
-    return coerced if v._style_id == _PLAIN else s
+    return _coerce_scalar(s)
 
 
 # ── Recursive conversion ─────────────────────────────────────────────
