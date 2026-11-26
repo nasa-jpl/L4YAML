@@ -1,0 +1,153 @@
+{
+  "item": 538,
+  "tag": "PRICE-538-BLOCK-SLOT-ROUTES",
+  "rev": "2ebc4740",
+  "target": "L4YAML",
+  "log": "scratch/price538_block_slot.log",
+  "msgWidth": 110,
+  "rounds": 6,
+  "report": "bodies",
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Production/StreamAccum.lean",
+      "patches": [
+        {
+          "name": "L2744.pendingBlockContent.h_kslot",
+          "line": 2744,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L2968.pendingBlock.h_kslot",
+          "line": 2968,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34528.entryKeyPack.h_nodeV",
+          "line": 34528,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34548.h_cp_chain",
+          "line": 34548,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L34569.h_cp_chain",
+          "line": 34569,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35231.entryPropsKeyPack.h_nodeV",
+          "line": 35231,
+          "old": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)"
+          ],
+          "new": [
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35244.h_cp_chain",
+          "line": 35244,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)) ∨ True)"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))) ∨ True)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35332.h_cp_chain",
+          "line": 35332,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)))"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v))))"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L35813.content_dispatch_routed.h_chainUp",
+          "line": 35813,
+          "old": [
+            "    (h_alt : PackAlt s_prep)"
+          ],
+          "new": [
+            "    (h_alt : PackAlt s_prep)",
+            "    (h_chainUp : ∃ ns : List Nat, RegisterWitness.MarkedColsIn s_prep ns ∧ ∀ nv ∈ ns,",
+            "      ∀ sp_i sp_c : SurfPos, SIndent nv sp_prep sp_i → GLit ':' sp_i sp_c →",
+            "      ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →",
+            "      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L3208.pendingMapValue.h_expl.inner",
+          "line": 3208,
+          "old": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)"
+          ],
+          "new": [
+            "          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w))) ∨ NotQuestionPark sc)"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L27340.closeThenBlock.h_vslot.hkv",
+          "line": 27340,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc) ∧"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v)) ∧"
+          ],
+          "count": 1
+        },
+        {
+          "name": "L27347.closeThenBlock.h_vslot.hkvUp",
+          "line": 27347,
+          "old": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nvU] sp_v) ∨ PackAlt sc)) ∨"
+          ],
+          "new": [
+            "        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nvU] sp_v))) ∨"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
