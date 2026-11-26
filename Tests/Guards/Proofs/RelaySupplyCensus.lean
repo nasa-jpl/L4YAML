@@ -971,6 +971,9 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
+  -- 2026-11-26 (root-slot payment): DECLINE 237 → 236, PAY 50 → 51 —
+  -- `accum_block_on_noPending` pays the root `pendingBlock.h_kslot` from the
+  -- actual empty marked-column domain; this tally counts that construction once.
   "edges=640 skipped=41 [DECLINE=236, FIELD=60, LOCAL=26, PAY=51, RELAY=64, \
 SPLIT=175, VIA=28]"
 
@@ -1441,6 +1444,9 @@ def expectedDeclineReach : String :=
 -- 2026-10-30 (item 405): the `?`-park chain PAID through its ladder (see `expectedTally`).
 -- 2026-11-02 (item 422): 37 → 37 rows — retired `h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=6 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY`; `h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=2 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY`; new `h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=4 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY`; `h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=1 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY`:
 -- the five `h_outer` splits are gone (both arms pay; see `expectedTally`).
+-- 2026-11-26 (root-slot payment): `accum_block_on_pendingBlock#13` and
+-- `accum_content_on_pendingBlock_indented#13` both read `pendingBlock.h_kslot`;
+-- each chase now reaches PAY at the root birth instead of its former DECLINE.
 def expectedBranchSupply : List String :=
   ["h_closeF99 :: accum_content_on_pendingMapValue_indented#18 :: splits=7 sup=1 [FIELD=1] ⇐ PendingNode.pendingMapValue.h_closeF ⇒ PAY+brDECLINE+brPAY",
    "h_closeFV108 :: accum_content_on_pendingMapValue_indented#20 :: splits=4 sup=1 [FIELD=1] ⇐ PendingNode.pendingMapValue.h_closeFV ⇒ DECLINE+brDECLINE+brPAY",
@@ -1514,6 +1520,12 @@ def expectedBranchSupply : List String :=
 -- `colon_open_map_explicit` 1 → 7, `compact_open_map` 1 → 7: the `Classical.em … |>.elim` decisions in the
 -- value-line / flow lanes were one `VIA` each; their declining arms are DECLINE leaves written at the site now.
 -- 2026-10-29 (item 394): the two flow closes' `h_framesS` declines became `valueF` relays (accum_step_flow 10 → 8); the seven declining flow-open births write `fun _ _ => Or.inr trivial` for `valueF`.
+-- 2026-11-26 (root-slot payment): `accum_block_on_noPending` 13 → 11 —
+-- `PendingKeySound.Sound` supplies `MarkedColsIn sc []` for the root
+-- `pendingBlock.h_kslot`. The one retired DECLINE ended two FIELD chases:
+-- `accum_block_on_pendingBlock#13` and `accum_content_on_pendingBlock_indented#13`.
+-- `expectedTally` counts its construction once; this writer census counts
+-- each chase that formerly ended there, so the writer count falls by two.
 def expectedDeclineWriters : List String :=
   ["10 colon_open_map_implicit",
    "10 colon_open_map_props",
