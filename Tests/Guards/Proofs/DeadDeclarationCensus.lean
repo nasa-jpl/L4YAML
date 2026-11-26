@@ -95,8 +95,12 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-24 (item 535, the deletion ruling): population 14099 → 14050 (thm 10213 → 10170, def 2519 → 2513), unreached 5997 → 5948
 -- (thm 4287 → 4244), A-campaign 1173 → 1124, A-orphan 142 → 103 — 49 campaign declarations nothing referenced are deleted
 -- (46 of the list before item 534, and 3 of the 10 the deletion freed); roster and cluster-roots unmoved.
+-- 2026-11-25 (item 538, β PR 7): population 14050 → 14051, unreached 5948 → 5949, A-campaign 1124 → 1125 — `TPendingNode.question_step`
+-- (StreamBridge), the `?` step; A-orphan unmoved (Priority 142's examples spend it; the fold is its consumer).
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedDeadCensus : String :=
-  "population=14130 thm=10217 def=2540 roots=capstone:28+export:37+blueprint:224(unresolved=5) unreached=5957 thm=4245 A-campaign=1124 A-orphan=103 C-api=1253 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14131 thm=10218 def=2540 roots=capstone:28+export:37+blueprint:224(unresolved=5) unreached=5958 thm=4246 A-campaign=1125 A-orphan=103 C-api=1253 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
