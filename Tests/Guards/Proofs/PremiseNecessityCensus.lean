@@ -180,7 +180,7 @@ def chaseP (env : Environment) (fuel : Nat) (c : Name) (i : Nat) : Std.HashSet S
 
 /-! ## §2  The calibration, and what the peel does NOT move
 
-Item 224's eight rebuild verdicts are still the ground truth, and the peeled
+The surviving item 224 rebuild verdicts are still the ground truth, and the peeled
 walk reproduces item 225's sixteen rows exactly.  A peel that moved the
 calibration would be a peel that changed the answer, not the instrument. -/
 
@@ -188,7 +188,7 @@ run_cmd do
   let env ← getEnv
   let got := expectedCalibration.length
   let rows : List (Name × Nat) :=
-    [ (``block_dispatch_deferred, 5), (``block_dispatch_deferred_stamp_offcol, 8),
+    [ (``block_dispatch_deferred, 5),
       (``block_dispatch_deferred_stamp_nopack, 7), (``block_dispatch_deferred_inline, 7),
       (``accum_block_on_closeThenBlock, 17), (``colon_fires_implicit_key, 11),
       (``accum_block_on_pendingContent, 23), (``accum_block_on_pendingBlockContent, 25),
@@ -386,6 +386,8 @@ declarations' own binders and not by a rescoring of an existing one.
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 -- 2026-11-17 (item 524, the deletion): constants 1763 → 1760, decls 1393 → 1391, RELAY 2709 → 2705 — the three `StreamAccum`
 -- preservation lemmas (`allowDirectives_update_implicitValueLine`, `ad_implicitValueLine`, `ad_docStartLine`) deleted on the owner's ruling.
+-- 2026-11-26 (actual marked-column correspondence):
+-- Retain actual marked-column coverage through the two value-pack interfaces; remove the retired wrapper calibration, keeping the peel unchanged.
 def expectedModuleTallyP : String :=
   -- 2026-10-24 (item 350): constants 1424 → 1430, decls 1132 → 1137, READ 1207 → 1209, RELAY 2233 → 2237,
   -- RETURN 139 → 140 — `NotQuestionPark` and its three lemmas; `explFrameValueLine`'s split alternative.
@@ -411,7 +413,7 @@ def expectedModuleTallyP : String :=
 -- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
   -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else — the thirteen generated equation lemmas
   -- `HypothesisReaderCensus.expectedModuleTally` names, seen through this peel.
-  "constants=1747 decls=1391 eta=611 FIELD=201 READ=1485 RELAY=2705 RETURN=175 UNUSED=27"
+  "constants=1745 decls=1389 eta=611 FIELD=201 READ=1484 RELAY=2700 RETURN=175 UNUSED=24"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
@@ -713,6 +715,8 @@ def aliveSet (g : Graph) : Std.HashSet String := Id.run do
 -- promised-step binders shift with the new park fields.
 -- 2026-10-24 (B3 [66] col-0 threading): re-read on the item-354 base.
 def expectedDead : List String :=
+  -- Item 519: `accum_step_flow`'s `h_mono` — its only readers were the four flow-close `Classical.em` splits, PAID from `vslot`; the parameter stays for the family's uniformity (its deletion is owed with the callers).
+  -- Item 409 (2026-10-30): `entryPropsKeyPack_of_dispatch.h_dispatch` is read now (the `MarkedColsIn` transport).
   ["L4YAML.Proofs.StreamAccum.PackAlt.ofGateClose#2 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.PackAlt.ofRefused#1 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.PackAlt.step_blockEntry#3 (_h_preprocess) [lane stub]",
@@ -731,20 +735,15 @@ def expectedDead : List String :=
    "L4YAML.Proofs.StreamAccum.PackAlt.step_value#6 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.PackAltG.ofPark#2 (_h) [lane stub]",
    "L4YAML.Proofs.StreamAccum.accum_content_on_noPending#18 (h_alt) [family uniformity]",
-   -- Item 519: `accum_step_flow`'s `h_mono` — its only readers were the four flow-close `Classical.em` splits, PAID from `vslot`; the parameter stays for the family's uniformity (its deletion is owed with the callers).
    "L4YAML.Proofs.StreamAccum.accum_step_flow#15 (h_mono) [family uniformity]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline#12 (_h_res) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#10 (_h_src) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#11 (_h_indent) [class marker]",
    "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack#12 (_h_park) [class marker]",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#11 (_h_src) [class marker]",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#12 (_h_indent) [class marker]",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol#13 (_h_ne) [class marker]",
    "L4YAML.Proofs.StreamAccum.content_dispatch_after_close#23 (h_alt) [promised step]",
    "L4YAML.Proofs.StreamAccum.content_dispatch_routed#29 (h_alt) [promised step]",
    "L4YAML.Proofs.StreamAccum.entryKeyPack_of_dispatch#29 (h_alt) [promised step]",
    "L4YAML.Proofs.StreamAccum.entryPropsKeyPack_of_dispatch#32 (h_alt) [promised step]",
-   -- Item 409 (2026-10-30): `entryPropsKeyPack_of_dispatch.h_dispatch` is read now (the `MarkedColsIn` transport).
    "L4YAML.Proofs.StreamAccum.flowKeyPack_of_close#11 (_) [conclusion binder]",
    "L4YAML.Proofs.StreamAccum.park_gate_of_peek#2 (_) [family uniformity]",
    "L4YAML.Proofs.StructureCoupling.scanTagDirective_corr#2 (_hcorr) [family uniformity]"]
@@ -808,7 +807,7 @@ def deadReason : String → String
 -- 2026-10-24 (B3 [66] col-0 threading): dead 33 → 32 — `content_dispatch_routed#29 (h_alt)` is read on the item-354 base.
 -- 2026-11-14 (item 508): dead 30 → 32, RELAY 3 → 5 — `content_dispatch_routed#29 (h_alt)` is no longer read at the
 -- `k = 0` payment (the root write pays with the empty domain) and `content_dispatch_after_close#23 (h_alt)` only relays it.
-def expectedDeadTally : String := "dead=33 RELAY=5 UNUSED=28 RELAY=5"
+def expectedDeadTally : String := "dead=30 RELAY=5 UNUSED=25 RELAY=5"
 
 run_cmd do
   let env ← getEnv

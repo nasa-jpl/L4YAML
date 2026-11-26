@@ -629,6 +629,8 @@ perturbed by `perturb.sh`, and each perturbation must throw. -/
 -- `SCompactMapTail` tail and its `h_closeFV`/`h_framesV` are built from the bound tail route.
 -- 2026-10-29 (item 388): the mapping park's `h_close` / `h_closeF` sites read `SBlockNode(_+1,blockOut)` — the
 -- grammar's `[187]` context; segments and compositions unchanged.
+-- 2026-11-26 (actual marked-column correspondence):
+-- The off-column escape calls are gone; composition counts follow the resulting stream-producing terms.
 def expectedSites : List String :=
   [ "question_open_map:pendingMapValue.h_close [SBlockNode(_+1,blockOut) ⇒ Stream] segments=2 comps=1",
     "question_open_map:pendingMapValue.h_ivl [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream] segments=2 comps=1",
@@ -798,7 +800,7 @@ def expectedLine : String :=
   -- 2026-11-14 (item 490, the ∀-floor fold): dead 7 → 7, predicted 8 and REFUTED by the build — the fold
   -- `accum_step_content_pairK` composes `accum_step_content`, but `dead` counts `absurd`/`False.elim` ends on the
   -- walked segments, and the fold's refutations sit inside the `_in`/`_in_props` twins it calls, not on its own walk.
-  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=16 new=5 missing=1 prevStyle=16 prevStyleOff=0 newVsStyle=5 styleOnly=1 segHops=11 segAbsorb=3 single=0 dropClose=1 directive=1 hops=13 hopMax=4 approx=37 dead=8 opaque=0 unmarked=157 reach=38"
+  "sites=20 genuine=20 pairs=20 viaSites=0 segments=40 genuineSegs=39 facts=1 stacked=0 comps=14 byCtor=11 byFull=39 shapes=14 shapeComps=20 shapeCompsNoDrop=18 obtainedSites=8 approxSites=0 prev=16 new=5 missing=1 prevStyle=16 prevStyleOff=0 newVsStyle=5 styleOnly=1 segHops=11 segAbsorb=3 single=0 dropClose=1 directive=1 hops=13 hopMax=4 approx=37 dead=8 opaque=0 unmarked=156 reach=37"
 
 /-! ## §5 The reading -/
 

@@ -81,6 +81,8 @@ them typechecks, and it survives β.5 when `stream_refl` alone does it. -/
 
 /-- The four modules the census does not read.  They are reported rather than
     assumed: a census names what it could not see. -/
+-- 2026-11-26 (actual marked-column correspondence):
+-- Recount the authored surface after adding the consumed actual-column lemma and retiring the two unused library helpers.
 def expectedUnread : List Name :=
   [`L4YAML.Output.Events, `L4YAML.Output.EventsIx,
    `L4YAML.Output.Json, `L4YAML.Output.JsonIx]
@@ -117,7 +119,7 @@ def expectedClosure : String := "modulesSeen=281"  -- -1 on 2026-11-14: `Proofs.
 -- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 def expectedCensus : String :=
-  "theorems=111 headYaml=5 headStream=35 nestedConcl=63 hypOnly=8 free=17 \
+  "theorems=110 headYaml=5 headStream=35 nestedConcl=62 hypOnly=8 free=17 \
 survivesBeta5=2 yamlInHypothesis=0"
 
 /-- Every free theorem, with the route that closes it.  A count alone would not

@@ -251,39 +251,19 @@ partial def walk (prods : Std.HashSet Name) (decl : Name) (e : Expr) : W Unit :=
     244 read as unreached have no chain.  (DOCS item 287 traded the two
     `accum_block_on_*` inline sites for `accum_block_pending`'s and the two `:`
     consumers'; `ParkGapWidth` reads the same trade.) -/
+-- 2026-11-26 (actual marked-column correspondence):
+-- The three off-column application paths and the retired wrapper's own
+-- NOSPEND row leave the producer thread; the remaining escape paths stay visible.
 def expectedPaths : List String :=
-  ["L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack \
-step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol \
-step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack \
-step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol \
-step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack \
-step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol \
-step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
-   "L4YAML.Proofs.StreamAccum.accum_block_pending <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline NOSPEND",
-   "L4YAML.Proofs.StreamAccum.accum_content_pending <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
-   "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline NOSPEND",
-   "L4YAML.Proofs.StreamAccum.colon_fires_props_key <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline NOSPEND"]
+  ["L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
+   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
+   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack step=scanNextToken_dispatchBlockIndicators len=1 ends=GStar(SSWhite)+SIndent",
+   "L4YAML.Proofs.StreamAccum.accum_block_pending <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline NOSPEND",
+   "L4YAML.Proofs.StreamAccum.accum_content_pending <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
+   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
+   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred NOSPEND",
+   "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline NOSPEND",
+   "L4YAML.Proofs.StreamAccum.colon_fires_props_key <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline NOSPEND"]
 
 /-- **How far a `GLit` is below the stream's own alphabet.**  A stream's right
     endpoint moves by `SLDocumentPrefix`, `SLAnyDocument` or `SLDocumentSuffix`;
@@ -407,10 +387,7 @@ def expectedEndsLit : List String :=
 -- 2026-11-14 (item 499, KeyArm): prods 174 → 175, ctors 330 → 336, endsLit 42 → 48, question 2 → 3, colon 21 → 26 —
 -- `StreamAccum.KeyArm`, six constructors each ending in its indicator literal (`?` once, `:` five times); the park rows unchanged.
 def expectedLine : String :=
-  "pop=10 sites=13 spend=6 nospend=7 len1=6 ends=GStar(SSWhite)+SIndent \
-depth=3 prods=175 ctors=336 \
-endsLit=48 minus=1 question=3 colon=26 chainEnds=0 blockArms=1 seqArms=10 \
-mapArms=10 streamArms=4 streamHonest=3"
+  "pop=9 sites=9 spend=3 nospend=6 len1=3 ends=GStar(SSWhite)+SIndent depth=3 prods=175 ctors=336 endsLit=48 minus=1 question=3 colon=26 chainEnds=0 blockArms=1 seqArms=10 mapArms=10 streamArms=4 streamHonest=3"
 
 /-- The non-circularity check items 242, 243 and 244 also carry: a measurement
     of what the escape costs may not route through the escape.  `glit=true`

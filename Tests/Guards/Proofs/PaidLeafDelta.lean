@@ -217,6 +217,8 @@ partial def scanFloors (st : IO.Ref FS) (lem : Name) (stk : Stack) (e : Expr) : 
 -- arm's `pendingBlock.h_closeF` relay of `h_closeF_old`.
 -- 2026-10-29 (item 388): cover-punt 3 → 4 (none) and 5 → 6 (R4) on both trees — the `nv ≤ k` arm's `Or.inr trivial`
 -- cover (frames `[]`); the deltas are unchanged.
+-- 2026-11-26 (actual marked-column correspondence):
+-- The off-column wrapper is retired and its stream funnel leaves the inventory; the remaining proof trees are remeasured.
 def expectedTrees255 : List String :=
     ["none merged=true",
    "R4 merged=true",
@@ -410,7 +412,7 @@ def expectedLine : String :=
   -- 2026-11-14 (item 500): floorNodes 31603 → 31499 — the producers' three dead `if hlt : n < w` splits on the nested branch deleted; no leaf delta row moved.
 -- Item 519: `nodes` 124487 → 124358 (123677 before the review round: the `pendingBlock` / `pendingMapValue` writers keep the ancestors' covers and `h_expl` as fallback funders, read in order), `floorNodes` 35190 → 35353 (35252 before the review round) — the depth-0 open's three `frameChainUnion`
 -- ladders are gone and the closes' `vslot` reads are new floor terms; rows / payments / leaves unmoved.
-  "rows=125 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=101 own=12 lit=6 var=83 ownLemmas=2 scanned=36 monoIndex=11 monoIndexLemmas=7 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=14 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=125681 floorNodes=34958"
+  "rows=125 payments=1 literal=0 relay=1 scenarios=2 baseContent=17/6/13/4/2 allContent=19/6/12/6/2 baseEntry=17/6/13/4/2 allEntry=19/6/12/6/2 turnedPaidContent=0 turnedPaidEntry=0 originsBaseContent=6 originsAllContent=6 originsBaseEntry=6 originsAllEntry=6 puntContent=-1 puntEntry=-1 coverPuntContent=+2 coverPuntEntry=+2 mergedBase=true mergedAll=true floorLits=101 own=12 lit=6 var=83 ownLemmas=2 scanned=36 monoIndex=11 monoIndexLemmas=7 floorCons=4 floorConsLemmas=2 floorPopTo=1 floorPopToLemmas=1 leOfMem=0 coveredPopTo=1 coveredPopToLemmas=1 raiseFloor=0 dedupHead=2 dedupHeadLemmas=2 coveredCons=14 rootMonoCaller=1 rootMonoSite=1 rootNtop=1 nodes=126539 floorNodes=34960"
 
 /-! ## §4 The reading -/
 
@@ -475,7 +477,7 @@ run_cmd Lean.Elab.Command.liftTermElabM do
         cd := { cd with lemParams := cd.lemParams.insert n ps, consts := cd.consts.insert n }
     | _ => pure ()
   for (l, p) in [(``indicator_open_map, `h_stream_land), (``colon_open_map_explicit, `h_stream_mid),
-      (``block_dispatch_deferred_stamp_offcol, `h_stream), (``block_dispatch_deferred_stamp_nopack, `h_stream)] do
+      (``block_dispatch_deferred_stamp_nopack, `h_stream)] do
     let some ci := env.find? l | throwError "{l}: missing"
     let some idx := ci.type.getForallBinderNames.toArray.findIdx? (· == p) | throwError "{l}.{p}: missing"
     cd := { cd with funnels := cd.funnels.insert l (idx, p), consts := cd.consts.insert l }

@@ -42,7 +42,6 @@ weakened lemmas which feed each other cannot mask one another — it reads:
 | tight consumer | self-errors | verdict |
 |---|---|---|
 | `block_dispatch_deferred` | 1 | CONDUIT → `PendingNode.pendingFlow`'s field |
-| `block_dispatch_deferred_stamp_offcol` | 1 | CONDUIT → `block_dispatch_deferred` |
 | `block_dispatch_deferred_stamp_nopack` | 1 | CONDUIT → `block_dispatch_deferred` |
 | `block_dispatch_deferred_inline` | 1 | CONDUIT → `block_dispatch_deferred` |
 | `accum_block_on_closeThenBlock` | 2 | PLUMBING — a stale `Or.imp_left` and its `refine` |
@@ -191,32 +190,32 @@ def armEdges (anchor : Name) : CommandElabM (Array Edge × Nat) := do
 -- alternative `PackAltG g`); `h_park` is the same binder one index later.
 -- 2026-10-24 (B3 [66] col-0 threading): nine binder indices shift, no row changes class — the
 -- parks gain `sp_gram`/`h_run`/`h_gate`/`h_next` and the step frames read from `sp_gram`.
+-- 2026-11-26 (actual marked-column correspondence):
+-- The off-column wrapper leaves the library after its three callers use actual marks; its loose-arm and payment rows leave this census.
 def expectedBinders : List String :=
-  [ "loose accum_block_on_noPending#14 (h_arm)",
-    "loose block_dispatch_deferred#9 (h_live0)",
-    "loose block_dispatch_deferred_stamp_nopack#14 (h_live0)",
-    "loose block_dispatch_deferred_stamp_offcol#15 (h_live0)",
-    "loose content_live0#4 (h_live0)",
-    "loose flowKeyRoute_of_open#15 (h_park)",
-    "loose flowKeyRoute_of_root#11 (h_park)",
-    "loose keyctx_of_preprocess#15 (h_park)",
-    "loose landing_or_park_save#6 (h_park)",
-    "loose landing_or_park_ska#6 (h_park)",
-    "loose pendingFlow#8 (h_live0)",
-    "loose preprocess_flow_thread#10 (h_park)",
-    "loose preprocess_possible_of_live0#3 (h_live0)",
-    "tight accum_block_on_closeThenBlock#16 (h_park)",
-    "tight accum_block_on_pendingBlockContent#24 (h_park)",
-    "tight accum_block_on_pendingContent#24 (h_park)",
-    "tight block_dispatch_deferred#5 (h_arm)",
-    "tight block_dispatch_deferred_stamp_nopack#7 (h_arm)",
-    "tight block_dispatch_deferred_stamp_offcol#8 (h_arm)",
-    "tight colon_fires_implicit_key#11 (h_arm)",
-    "tight noPending#4 (h_arm)",
-    "tight pendingBlockContent#11 (h_arm)",
-    "tight pendingContent#10 (h_arm)",
-    "tight pendingDocEnd#6 (h_arm)",
-    "tight pendingFlow#5 (h_arm)" ]
+  ["loose accum_block_on_noPending#14 (h_arm)",
+   "loose block_dispatch_deferred#9 (h_live0)",
+   "loose block_dispatch_deferred_stamp_nopack#14 (h_live0)",
+   "loose content_live0#4 (h_live0)",
+   "loose flowKeyRoute_of_open#15 (h_park)",
+   "loose flowKeyRoute_of_root#11 (h_park)",
+   "loose keyctx_of_preprocess#15 (h_park)",
+   "loose landing_or_park_save#6 (h_park)",
+   "loose landing_or_park_ska#6 (h_park)",
+   "loose pendingFlow#8 (h_live0)",
+   "loose preprocess_flow_thread#10 (h_park)",
+   "loose preprocess_possible_of_live0#3 (h_live0)",
+   "tight accum_block_on_closeThenBlock#16 (h_park)",
+   "tight accum_block_on_pendingBlockContent#24 (h_park)",
+   "tight accum_block_on_pendingContent#24 (h_park)",
+   "tight block_dispatch_deferred#5 (h_arm)",
+   "tight block_dispatch_deferred_stamp_nopack#7 (h_arm)",
+   "tight colon_fires_implicit_key#11 (h_arm)",
+   "tight noPending#4 (h_arm)",
+   "tight pendingBlockContent#11 (h_arm)",
+   "tight pendingContent#10 (h_arm)",
+   "tight pendingDocEnd#6 (h_arm)",
+   "tight pendingFlow#5 (h_arm)"]
 
 /-- The payments, by kind.  **PAY=8** is every literal `Or.inl` that funds an
     arm anywhere in `StreamAccum`; a term census sees those and nothing else,
@@ -282,7 +281,7 @@ def expectedBinders : List String :=
 -- arm's shape (`simpleKeyAllowed = true ∧ … ∨ KeyAfterValueLayout sc`); `accum_step_flow` forwards the gap tuple's
 -- `h_klay` into it at the two nested-open sites, which the census reads as a DECLINE (no `Or.inl` written).
 def expectedTally : String :=
-  "edges=110 skipped=41 DECLINE=22 FIELD=7 PAY=17 RELAY=32 VIA=32"
+  "edges=102 skipped=41 DECLINE=22 FIELD=7 PAY=14 RELAY=30 VIA=29"
 
 run_cmd do
   let env ← getEnv
