@@ -19985,6 +19985,41 @@ def testQuestionPark (state : IO.Ref TestCollector) : IO Unit := do
     (t.floor == 19 && t.next == 19)
 end P142Test
 
+/-! ## P143 — the root's empty domain (item 540, row 12)
+
+Item 540 pays three `pendingBlock` fields and two pack fields at the stream's seed with the
+EMPTY domain: `MarkedColsIn s' []` after the seed's `-`, `MarkedColsIn s_prep []` at the
+seed's content landing.  **Risk:** a first step that marks a slot (only `?` may), at any
+landing column, behind comments, a BOM or a directive.
+-/
+namespace P143Test
+/-- The marked columns after the FIRST `scanNextToken` from the seed (`none` = no step). -/
+def seedMarks (input : String) : Option (List Nat) :=
+  match scanNextToken (ScannerState.mk' input) with
+  | .ok (some s') => some (markedColsOf s'.pendingKeys s'.indentColumns)
+  | _ => none
+
+def testRootEmptyDomain (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P143: the root's empty domain (item 540)"
+  let seed := ScannerState.mk' "x"
+  check state "P143 the seed itself holds no mark"
+    (markedColsOf seed.pendingKeys seed.indentColumns == [])
+  -- `-` at columns 0 / 2 / 4, nested, empty, behind comments; content at columns 0 / 2
+  -- (the pack's `k ≠ 0` branch), every content arm; flow; markers; directive.
+  let unmarked : List String :=
+    ["- a", "-", "-\n", "  - a", "    - a\n", "- - a", "- ? a", "# c\n- a", "\n\n  - a", "- a: 1",
+     "a", "a: 1", "  a: 1", "  &x a: 1", "  !t a: 1", "&x a", "!t a", "'a': 1", "\"a\"", "|\n a",
+     "# c\n  a: 1", ": v", "  : v", "[a]", "{a: 1}", "--- a", "---\n- a", "%YAML 1.2\n---\n- a"]
+  for input in unmarked do
+    check state s!"P143 {repr input}: no mark after the seed's step" (seedMarks input == some [])
+  -- No step at all (a scanner error): the statement is vacuous there.
+  for input in ["*x", "\ufeff- a"] do
+    check state s!"P143 {repr input}: the seed's step errors" (seedMarks input == none)
+  -- the `c ≠ '?'` premise is needed: the seed's `?` marks its own column.
+  check state "P143 `? a` marks column 0" (seedMarks "? a" == some [0])
+  check state "P143 `  ? a` marks column 2" (seedMarks "  ? a" == some [2])
+end P143Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20317,6 +20352,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P140Test.testLeafAtIndentation state
   P141Test.testContentBehindParks state
   P142Test.testQuestionPark state
+  P143Test.testRootEmptyDomain state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",

@@ -847,8 +847,8 @@ def expectedWriters : List String :=
    "accum_content_on_pendingMapValue_indented #2 param:entryKeyPack_of_dispatch.h_nodeV idx=— := relay:chain(param:accum_content_on_pendingMapValue_indented.h_kslot) ns=— spend=— holds=[h_expl:tail(n)←SBlockMapEntry(n); h_kslot:frames(map(…) :: [])←SBlockIndented(nv); h_closeF99:frames(map(…) :: ks)←SBlockNode(n + 1); h_frames99:frames(ks)←landing; h_closeFV108:frames(ks)@ExplValueLine(nv)←SBlockNode(n + 1); h_framesV108:frames(ks)@ExplValueLine(nv)←landing; h_seqF168:tail(n)←SBlockNode(n + 1); h_ivl_pack:frames(map(…) :: [])←SBlockIndented(nv); h_compact_vslot:frames(map(…) :: [])←SBlockIndented(nv)] ⊢ —",
    "colon_fires_implicit_key #1 param:colon_open_map_implicit.h_kslotD idx=— := step(param:colon_fires_implicit_key.h_key) ns=— spend=— holds=[h✝:tail(k)←SBlockMapEntry(k); h✝:tail(k)←SBlockMapEntry(k); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_kslot_pk:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_rfr_pk:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_rfrV_pk:tail(k)←SBlockMapEntry(k); h_rseq_pk:tail(k)←SBlockMapEntry(k)] ⊢ —",
    "colon_fires_props_key #1 param:colon_open_map_props.h_kslotD idx=— := step(param:colon_fires_props_key.h_key) ns=— spend=— holds=[left✝:tail(k)←SBlockMapEntry(k); h✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_kslot_pk:tail(k)←SBlockMapEntry(k); right✝:tail(k)←SBlockMapEntry(k); h_resF_pk:tail(k)←SBlockMapEntry(k); h_resFV_pk:tail(k)←SBlockMapEntry(k)] ⊢ —",
-   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslot idx=k := punt ns=— spend=— holds=[] ⊢ —",
-   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslotUp idx=k := punt ns=— spend=— holds=[] ⊢ —",
+   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslot idx=k := paid:other ns=— spend=absurd holds=[] ⊢ none",
+   "accum_block_on_noPending #1 ctor:pendingBlock.h_kslotUp idx=k := empty ns=[] spend=— holds=[] ⊢ —",
    "accum_block_on_noPending #1 param:indicator_open_map.h_explUp_chain idx=— := punt ns=— spend=— holds=[] ⊢ —",
    "accum_block_pending #3 param:accum_block_on_closeThenBlock.h_vpack idx=— := punt ns=— spend=— holds=[] ⊢ —",
    "accum_block_pending #3 param:accum_block_on_closeThenBlock.h_vslot idx=— := stamp ns=— spend=— holds=[] ⊢ —",
@@ -1030,7 +1030,7 @@ def expectedPerPos : List String :=   ["param:colon_open_map_implicit.h_kslotD w
    "ctor:pendingProps.h_kslotE writers=6 punt=3 stamp=0 empty=0 relay=0 step=2 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=1 touched=3",
    "ctor:pendingBlockContent.h_kslot writers=6 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=6 touched=6",
    "ctor:pendingBlockContent.h_kslotUp writers=6 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=6 none=0 touched=6",
-   "ctor:pendingBlock.h_kslot writers=7 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=6 alt=0 held=1 levelVar=0 none=5 touched=6",
+   "ctor:pendingBlock.h_kslot writers=7 punt=0 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=7 alt=0 held=1 levelVar=0 none=6 touched=7",
    "ctor:pendingMapValue.h_ivl writers=6 punt=0 stamp=3 empty=0 relay=1 step=0 via=0 chain=1 route=1 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=1 touched=6",
    "ctor:pendingMapValue.h_vslot writers=6 punt=0 stamp=3 empty=0 relay=1 step=0 via=0 chain=1 route=1 frames=0 tail=0 other=0 alt=0 held=1 levelVar=0 none=1 touched=6",
    "ctor:pendingMapValue.h_explUp writers=6 punt=0 stamp=4 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=1 levelVar=1 none=0 touched=6",
@@ -1052,7 +1052,7 @@ def expectedPerPos : List String :=   ["param:colon_open_map_implicit.h_kslotD w
    "param:indicator_open_map.h_explUp_chain writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=1 none=1 touched=2",
    "param:question_open_map.h_explUp_chain writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:slotChainMap.up writers=4 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=3 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=3 none=0 touched=4",
-   "ctor:pendingBlock.h_kslotUp writers=7 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=6 none=0 touched=6",
+   "ctor:pendingBlock.h_kslotUp writers=7 punt=0 stamp=0 empty=1 relay=0 step=0 via=0 chain=6 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=6 none=0 touched=7",
    "param:accum_block_on_pendingBlock.h_kslotUp writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:accum_block_on_pendingBlockContent.h_kslotUp writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:entryChainMap.up writers=6 punt=0 stamp=0 empty=0 relay=4 step=0 via=0 chain=2 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=2 none=0 touched=6",
@@ -1146,7 +1146,7 @@ def expectedLine : String :=
   -- 2026-10-28 (item 386): nodes 13665 → 13675 — the `-` opener's `h_lvl_old` beside the value-line packs it walks; no pack/row moved.
 -- Item 519: punt 21 → 19, chain 53 → 55, levelVar 51 → 53, touched 147 → 149 — the two flow-close `h_vpack`
 -- punts are PAID chains from `FlowBaseRoutes.vslot` (every mark of the open state, read at the close).
-  "packs=12 framesOn=7 params=33 paramLemmas=20 apps=51 rows=168 ctorRows=80 paramRows=88 punt=19 stamp=24 empty=0 relay=35 step=11 via=4 chain=55 route=2 frames=3 tail=2 other=6 alt=7 held=8 levelVar=56 none=15 spendTail=10 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=149 nodes=14492"
+  "packs=12 framesOn=7 params=33 paramLemmas=20 apps=51 rows=168 ctorRows=80 paramRows=88 punt=17 stamp=24 empty=1 relay=35 step=11 via=4 chain=55 route=2 frames=3 tail=2 other=7 alt=7 held=8 levelVar=56 none=16 spendTail=10 lemmas=21 helpers=[frameChainUnion,frameChainUnionD] touched=151 nodes=14494"
 
 /-! ## §4 The reading -/
 

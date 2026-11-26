@@ -45,13 +45,13 @@ def expectedSummary : String :=
 -- Item 519: off-honest 92 → 91, off-unread 55 → 56, on 8 → 6, off 43 → 41, unrooted-arms 89 → 93, arms 238 → 237 —
 -- the four flow-close `Classical.em` splits are gone (PAID from `vslot`), the open's three ladders with them; shrink-only.
 -- Item 519 (review round): arms 237 → 239 (the two fallback `match`es at the `vslot` writers), off-honest 91 → 92 / off-unread 56 → 55 (`pendingBlock.h_kslotUp` read again at the open).
-  "positions=253 on=7 off=179 unresolved=67 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=90 off-unread=55 off-conclusion=19 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=15 nested-unresolved=67 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=122 PackAlt=50 PackAltG=7 pack-declines: on=6 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1152/1262 unrooted-arms=94 arms=235 relays=138 drop-set=8/8"
+  "positions=253 on=7 off=179 unresolved=67 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=90 off-unread=55 off-conclusion=19 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=15 nested-unresolved=67 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=122 PackAlt=50 PackAltG=7 pack-declines: on=5 off=39 consumed=scan_content_gives_stream_v2 streamAccum-reached=1152/1262 unrooted-arms=94 arms=235 relays=138 drop-set=8/8"
 
 def expectedOn : List String :=
   -- Item 519: the four flow-close splits are PAID from `vslot` (shrink: `pendingContent.h_vpack` on-relay DECLINE 4 → 2).
   ["L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack top ∨ PackAlt on-relay DECLINE=2",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[12].h_kslot top ∨ PackAlt on-relay",
-   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot top ∨ PackAlt on-relay DECLINE=1",
+   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot top ∨ PackAlt on-relay",
    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[10].h_vpack top ∨ PackAlt on-drop DECLINE=3",
    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[13].h_kslot top ∨ PackAlt on-drop",
    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[15].h_kslot top ∨ PackAlt on-drop",
@@ -105,9 +105,9 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[11].h_closeF nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[13].h_seqF top ∨ True off-unread DECLINE=5",
   -- Item 519 (review round): `pendingBlock.h_kslotUp` off-unread → off-honest — read again at the depth-0 open as the `vslot` writer's fallback funder.
-   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp top ∨ PackAlt off-honest DECLINE=1",
-   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV top ∨ PackAlt off-unread DECLINE=1",
-   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV nested ∨ True nested-unresolved DECLINE=1",
+   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[14].h_kslotUp top ∨ PackAlt off-honest",
+   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV top ∨ PackAlt off-unread",
+   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[15].h_closeFV nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[11].h_expl nested ∨ PackAlt off-honest-nested",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[15].h_ncol top ∨ True off-unread DECLINE=2",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[16].h_kslot top ∨ PackAlt off-honest DECLINE=2",
