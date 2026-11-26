@@ -19974,7 +19974,7 @@ def testQuestionPark (state : IO.Ref TestCollector) : IO Unit := do
   check state "P142 P1: 19 content steps behind `?`, by arm: 14 plain, 2 anchor, 1 tag, 1 quoted, 1 block scalar"
     (t.steps == 19 && t.arms.lookup "plain" == some 14 && t.arms.lookup "anchor" == some 2 &&
      t.arms.lookup "tag" == some 1 && t.arms.lookup "quoted" == some 1 && t.arms.lookup "blockScalar" == some 1)
-  check state "P142 P2: the park token is `key` at all 19 and every `?` sits at the scanner's level (`question_step`'s `k`)"
+  check state "P142 P2: every `?` sits at the scanner's level (`question_step`'s `k`); the park token `key` holds by construction (the selector keeps only `pendingKey` prefixes), so it is not a test of the dispatch"
     (t.parkKinds == [("key", 19)] && t.keyAtLevel == 19 && t.keyOff.isEmpty)
   check state "P142 P3 (refuted, predicted 18 / 1): all 19 key nodes land right of the level (`SSeparate (k + 1)`); no dedent landing behind `?` in the corpus"
     (t.separated == 19 && t.dedented.isEmpty)

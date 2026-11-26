@@ -54048,7 +54048,7 @@ The relays pay with the field, as item 501 read them: `accum_block_on_pendingBlo
 | | Prediction | Reading | |
 |---|---|---|---|
 | P1 | 19 content steps behind `?` | 19: 14 plain, 2 anchor, 1 tag, 1 quoted, 1 block scalar | HELD |
-| P2 | the park token is `key` at all 19; the `?` sits at the scanner's level at all 19 | 19 / 19 | HELD |
+| P2 | the park token is `key` at all 19; the `?` sits at the scanner's level at all 19 | 19 / 19 | HELD for the level; the `key` half holds BY CONSTRUCTION (the tally selects only prefixes whose last real token is `key`, so it cannot see a `?` dispatch emitting another token) and is not scored — a per-`?` selector (`pre.peek? = some '?'`) is (β) PR 8's first measurement |
 | P3 | 18 key nodes land right of the level, 1 at or left of it | 19 / 0 | REFUTED — the corpus has no empty explicit key followed by a content step at the level (P141's one dedent, `a:⏎b: c`, is behind `:`); `content_step_park`'s `DedentLanding` side is unexercised behind `?` |
 | P4 | the token after the key's first token is `value` at about 15 | `value` 9, end of input 5, `blockEnd` 3, `plain` 2 | REFUTED — 8 of the 19 explicit keys have no `:` at all (`[191]`'s `explicitEmpty` route is the common close, not the exception); the 2 `plain` are the node behind an anchor or a tag |
 | P5 | the floor at `k + 1` (`minContentIndentOf`) and the separator after `?` hold at all 19 | 19 / 19 | HELD |
