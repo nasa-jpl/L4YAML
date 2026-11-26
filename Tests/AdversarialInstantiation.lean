@@ -19993,15 +19993,22 @@ seed's content landing.  **Risk:** a first step that marks a slot (only `?` may)
 landing column, behind comments, a BOM or a directive.
 -/
 namespace P143Test
-/-- The marked columns after the FIRST `scanNextToken` from the seed (`none` = no step). -/
+/-- `scan`'s seed: `streamStart` emitted and a leading BOM consumed, as `scan` does before its loop. -/
+def scanSeed (input : String) : ScannerState :=
+  let s := (ScannerState.mk' input).emit .streamStart
+  match s.peek? with
+  | some '\uFEFF' => s.consumeBOM
+  | _ => s
+
+/-- The marked columns after the FIRST `scanNextToken` from `scan`'s seed (`none` = no step). -/
 def seedMarks (input : String) : Option (List Nat) :=
-  match scanNextToken (ScannerState.mk' input) with
+  match scanNextToken (scanSeed input) with
   | .ok (some s') => some (markedColsOf s'.pendingKeys s'.indentColumns)
   | _ => none
 
 def testRootEmptyDomain (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "P143: the root's empty domain (item 540)"
-  let seed := ScannerState.mk' "x"
+  let seed := scanSeed "x"
   check state "P143 the seed itself holds no mark"
     (markedColsOf seed.pendingKeys seed.indentColumns == [])
   -- `-` at columns 0 / 2 / 4, nested, empty, behind comments; content at columns 0 / 2
@@ -20009,15 +20016,17 @@ def testRootEmptyDomain (state : IO.Ref TestCollector) : IO Unit := do
   let unmarked : List String :=
     ["- a", "-", "-\n", "  - a", "    - a\n", "- - a", "- ? a", "# c\n- a", "\n\n  - a", "- a: 1",
      "a", "a: 1", "  a: 1", "  &x a: 1", "  !t a: 1", "&x a", "!t a", "'a': 1", "\"a\"", "|\n a",
-     "# c\n  a: 1", ": v", "  : v", "[a]", "{a: 1}", "--- a", "---\n- a", "%YAML 1.2\n---\n- a"]
+     "# c\n  a: 1", ": v", "  : v", "[a]", "{a: 1}", "--- a", "---\n- a", "%YAML 1.2\n---\n- a",
+     "\ufeff- a", "\ufeff  a: 1"]
   for input in unmarked do
     check state s!"P143 {repr input}: no mark after the seed's step" (seedMarks input == some [])
-  -- No step at all (a scanner error): the statement is vacuous there.
-  for input in ["*x", "\ufeff- a"] do
-    check state s!"P143 {repr input}: the seed's step errors" (seedMarks input == none)
+  -- No step at all (end of input, or `undefinedAlias`): the statement is vacuous there.
+  for input in ["", "\ufeff", "*x"] do
+    check state s!"P143 {repr input}: the seed takes no step" (seedMarks input == none)
   -- the `c ≠ '?'` premise is needed: the seed's `?` marks its own column.
   check state "P143 `? a` marks column 0" (seedMarks "? a" == some [0])
   check state "P143 `  ? a` marks column 2" (seedMarks "  ? a" == some [2])
+  check state "P143 a BOM then `? a` marks column 0" (seedMarks "\ufeff? a" == some [0])
 end P143Test
 
 namespace P141Test
