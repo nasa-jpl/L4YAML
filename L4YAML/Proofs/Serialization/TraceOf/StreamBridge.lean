@@ -6,6 +6,7 @@ module
 public import L4YAML.Proofs.Production.StreamAccum
 public import L4YAML.Proofs.Serialization.TraceOf.DocBridge
 public import L4YAML.Proofs.Serialization.TraceOf.ContentBridge
+public import L4YAML.Proofs.Serialization.TraceOf.FlowBridge
 public import L4YAML.Proofs.Foundation.SurfaceSpan
 
 /-!
@@ -751,6 +752,44 @@ lemma content_step_park {m : Nat} {sp_start sp_block sp_scan sp_prep sp_a : Surf
       have h0 : SSeparateLines 0 sp_scan sp_prep := by unfold SSeparate at h_sep; exact h_sep
       simpa using content_step_docStart hS h_doc_route h0 arm hcorr_ad hcorr' hpeek h_depth h_dispatch
   · exact Or.inr h_ded
+
+/-- **`?`**, the first block-indicator step on this side.  The S side has no park of its own for the
+explicit key: `question_open_map` parks it in `pendingMapValue k`, closed through `[191]`'s key slot
+(`explicitEmpty` over `TBlockIndented.node`).  `scanKey` pushes `blockMappingStart` (when it opens the
+mapping) and `key`, both silent, so the open trace does not move. -/
+lemma question_step {k : Nat} {sp_start sp_block sp_ind : SurfPos} {s_ad s' : ScannerState}
+    {ev_c ev_o : List Event}
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some '?')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad '?' = .ok (some s'))
+    (h_route : ∀ sp_k ev, TBlockMapEntry k sp_ind sp_k ev →
+      TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev)) :
+    ∃ sp', GLit '?' sp_ind sp' ∧ ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c ev_o [] ∧
+      TPendingNode sp_start false sp_block sp' ev_c ev_o [] := by
+  obtain ⟨sp', h_lit, hcorr'⟩ :=
+    L4YAML.Proofs.StreamAccum.dispatchBlockKey_full_prod _ sp_ind hcorr hpeek h_dispatch
+  have hk := L4YAML.Proofs.StreamAccum.dispatchBlock_question_scanKey h_dispatch
+  have key : ∀ (t : ScannerState) (v : YamlToken), tokenEvent v = none → v ≠ .documentStart →
+      (∀ h pfx, v ≠ .tagDirective h pfx) → ∀ e, goOut t.tokens.toList [] = (e, []) →
+      goOut (t.emit v).tokens.toList [] = (e, []) := by
+    intro t v hv hds hdir e he
+    have htok : (t.emit v).tokens.toList = t.tokens.toList ++ [FlowBridge.indicatorTok t v] := by
+      simp [ScannerState.emit, FlowBridge.indicatorTok]
+    rw [htok, goOut_append, he, FlowBridge.goOut_indicator t v hv [] hds hdir]; simp
+  have hpm : goOut (pushMappingIndent s_ad s_ad.col).tokens.toList [] = (ev_c ++ ev_o, []) := by
+    unfold pushMappingIndent
+    split
+    · exact key s_ad .blockMappingStart rfl (by simp) (by simp) _ hS.events
+    · exact hS.events
+  have hev : goOut s'.tokens.toList [] = (ev_c ++ ev_o, []) := by
+    rw [L4YAML.Proofs.DirectiveRuns.scanKey_tokens s_ad s' hk]
+    split
+    · exact key _ .key rfl (by simp) (by simp) _ hpm
+    · exact key _ .key rfl (by simp) (by simp) _ hS.events
+  exact ⟨sp', h_lit, hcorr', ⟨hS.stream, hev⟩,
+    .pendingMapValue _ _ k _ _ fun sp_mid ev_n h =>
+      h_route _ _ (.explicitEmpty k _ _ _ _ h_lit (.node k .blockOut _ _ _ h))⟩
 
 end TPendingNode
 
