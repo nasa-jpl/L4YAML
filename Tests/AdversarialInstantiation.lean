@@ -19938,17 +19938,17 @@ open L4YAML.Proofs.Serialization.TokenEvents (goOut)
 open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
 open L4YAML.Surface
 
-/-- A top-level `?` (`k = 0`): the step parks, and a key node at 1 closes the entry into the stream. -/
-example (sp_start sp_block sp_ind sp_mid : SurfPos) (s_ad s' : ScannerState) (ev_c ev_o ev_n : List Event)
+/-- A top-level `?` (`k = 0`): the step parks, and the RETURNED park (not `h_route` directly) closes an
+empty key into the stream through `TPendingNode.close_with_ssl`. -/
+example (sp_start sp_block sp_ind sp_mid : SurfPos) (s_ad s' : ScannerState) (ev_c ev_o : List Event)
     (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
     (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some '?')
     (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad '?' = .ok (some s'))
     (h_route : ∀ sp_k ev, TBlockMapEntry 0 sp_ind sp_k ev → TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev))
-    (h_node : ∀ sp', GLit '?' sp_ind sp' → TBlockNode 1 .blockOut sp' sp_mid ev_n) :
-    (goOut s'.tokens.toList []).1 = ev_c ++ ev_o ∧ TLYamlStream sp_start sp_mid (ev_c ++ ev_o ++ ev_n) := by
-  obtain ⟨sp', h_lit, _, hS', _⟩ := TPendingNode.question_step hS hcorr hpeek h_dispatch h_route
-  exact ⟨congrArg Prod.fst hS'.events,
-    h_route _ _ (.explicitEmpty 0 _ _ _ _ h_lit (.node 0 .blockOut _ _ _ (h_node _ h_lit)))⟩
+    (h_ssl : ∀ sp', GLit '?' sp_ind sp' → SSLComments sp' sp_mid) :
+    (goOut s'.tokens.toList []).1 = ev_c ++ ev_o ∧ TLYamlStream sp_start sp_mid (ev_c ++ ev_o) := by
+  obtain ⟨sp', h_lit, _, hS', hP⟩ := TPendingNode.question_step hS hcorr hpeek h_dispatch h_route
+  exact ⟨congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' hP (h_ssl _ h_lit)⟩
 
 /-- A nested `?` (`k + 1`): the park is `pendingMapValue`, so the content step behind it is
 `ContentPark.mapValue`'s. -/
