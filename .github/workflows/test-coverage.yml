@@ -295,7 +295,7 @@ jobs:
           lake run check-scripts-lean
           lake run check-pack-births
           lake run dead-census -- --check
-          lake run census-dashboard -- --check
+          lake run census-dashboard -- --check --html docs/reports/census-dashboard.html
           lake run check-hygiene -- docs/reports/stats.json
 
       # -------------------------------------------------------
@@ -585,10 +585,21 @@ jobs:
           # Assemble docs/ as a single orphan commit on gh-pages and force-push it.
           PAGES_PUSH=1 bash scripts/publish-pages.sh
 
-      - name: Comment on PR with coverage summary
-        if: >-
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
+      # The full site is a release artifact (the step above).  The census dashboard tracks the
+      # integration branch, so a push there refreshes that one page on the published site.
+      - name: Publish the census dashboard to gh-pages (integration branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/fix-a-grammar-completeness'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # The landing page and the reports index of a site released before their sources
+          # linked the dashboard get the link added in place; a later release carries its own.
+          PAGES_PUSH=1 PAGES_ONLY="reports/census-dashboard.html" PAGES_IF_TIP="fix-a-grammar-completeness" \
+            PAGES_SED="scripts/pages-census-link.sed" PAGES_SED_FILES="index.html reports/index.html" \
+            PAGES_SED_UNLESS="census-dashboard.html" bash scripts/publish-pages.sh
+
+      # The token of a fork-origin PR is read-only, so only a same-repository PR gets the comment.
+      - name: Write coverage summary (step summary; PR comment for same-repository PRs)
         uses: actions/github-script@v7
         with:
           script: |
@@ -618,9 +629,15 @@ jobs:
               }
             } catch (e) {}
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## L4YAML Documentation & Test Coverage\n\n\`\`\`\n${coverageLine}\n\`\`\`${pythonSummary}${crossLangSummary}\n\n📄 [Download documentation artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
-            });
+            const body = `## L4YAML Documentation & Test Coverage\n\n\`\`\`\n${coverageLine}\n\`\`\`${pythonSummary}${crossLangSummary}\n\n📄 [Download documentation artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            await core.summary.addRaw(body, true).write();
+
+            const pr = context.payload.pull_request;
+            if (pr?.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }

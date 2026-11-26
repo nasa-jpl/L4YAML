@@ -76,17 +76,6 @@ lemma prepareDocumentState_tagHandles_exact
       _ = tagTableOfDirectives dirs :=
         congrArg tagTableOfDirectives hdirs)
 
-/-- The minimal semantic projection after successful document preparation
-therefore contains exactly the names declared in the current document. -/
-lemma prepareDocumentState_tag_projection_exact
-    (ps : L4YAML.TokenParser.ParseState)
-    (dirs : Array Directive)
-    (ps' : L4YAML.TokenParser.ParseState)
-    (h_ok : L4YAML.TokenParser.prepareDocumentState ps = .ok (dirs, ps')) :
-    (ofParserTags ps').tagHandles =
-      (tagTableOfDirectives dirs).toList.map Prod.fst := by
-  rw [ofParserTags, prepareDocumentState_tagHandles_exact ps dirs ps' h_ok]
-
 /-! ## Directive order and document reset
 
 `beginDocument` is a semantic scope-start, not the lexical `---` position.

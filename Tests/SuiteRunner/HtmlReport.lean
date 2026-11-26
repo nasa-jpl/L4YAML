@@ -761,7 +761,8 @@ def consoleStats (results : Array ReportResult) : Nat × Nat × Nat :=
 
 /-- Generate the index page linking to all reports. -/
 def generateIndexHtml (results : Array ReportResult)
-    (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none) : String :=
+    (verifiedSuites : Option (Array Tests.VerifiedSuiteResult) := none)
+    (censusDashboard : Bool := false) : String :=
   let stats := CoverageStats.fromResults results
   let pctStr := formatPct stats.successRate
 
@@ -848,6 +849,12 @@ def generateIndexHtml (results : Array ReportResult)
     "      <a href=\"coverage-all.html\">Full Coverage Report</a>\n",
     s!"      <div class=\"description\">All {stats.total} unique test cases with filtering &amp; sorting</div>\n",
     "    </div>\n",
+    -- only when the page is there: `lake run run-all-tests` writes it, a bare `--html` run does not
+    (if censusDashboard then String.join [
+      "    <div class=\"link-box\">\n",
+      "      <a href=\"census-dashboard.html\">Census Dashboard</a>\n",
+      "      <div class=\"description\">Proof-campaign censuses: each count, its goal, and the distance left</div>\n",
+      "    </div>\n"] else ""),
     "  </div>\n\n",
     "  <h2>Coverage by Stage</h2>\n",
     "  <div class=\"links\">\n",
@@ -1147,6 +1154,7 @@ def writeReports (results : Array ReportResult) (outDir : String)
 
   -- Write index
   let indexHtml := generateIndexHtml results (verifiedSuites := verifiedSuites)
+    (censusDashboard := ← System.FilePath.pathExists s!"{dir}/census-dashboard.html")
   IO.FS.writeFile s!"{dir}/index.html" indexHtml
   IO.println s!"  wrote {dir}/index.html"
 

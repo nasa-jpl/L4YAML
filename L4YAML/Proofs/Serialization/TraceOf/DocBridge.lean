@@ -261,19 +261,6 @@ lemma declaredHandle_some_shape (L : List Char) (hd : String) (h : declaredHandl
     obtain ⟨e, tl⟩ := pr
     exact namedTagDeclarationAt_some_shape L e tl hN
 
-lemma not_white_of_wordOrBang (c : Char) (h : (isWordCharBool c || c == '!') = true) :
-    isWhiteSpaceBool c = false := by
-  simp only [Bool.or_eq_true, beq_iff_eq] at h
-  rcases h with h | rfl
-  · simp only [isWordCharBool, decide_eq_true_eq] at h
-    unfold isWordCharProp isAsciiLetterProp at h
-    by_cases h1 : c = ' '
-    · subst h1; simp at h
-    · by_cases h2 : c = '\t'
-      · subst h2; simp at h
-      · simp [isWhiteSpaceBool, isSpaceBool, isTabBool, h1, h2]
-  · decide
-
 /-- **The lexer on a scanner-accepted `%TAG` line.**  With `c` the separating white, `ws`
 further whites, `run` the handle the scanner collected (maximal: `tail` does not start with a
 word char or `!`) and `hd` shaped, `declaredHandle` names `hd` iff it is named. -/

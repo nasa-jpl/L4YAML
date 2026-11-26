@@ -74,8 +74,24 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-23 (item 532, β PR 5): population 14260 → 14262, thm 10222 → 10224, unreached 6556 → 6558 (thm 4631 → 4633),
 -- A-campaign 1341 → 1343 — ContentBridge's `TFlowContent.of_scalar` and `content_leaf_at`, spent by the unreached
 -- `TPendingNode.content_step_props` (now at every indentation).
+-- 2026-11-23 (item 533, capstone 7.8): roots capstone 26 → 27, blueprint 222 → 223; unreached 6558 → 6156 (thm 4633 → 4298),
+-- A-campaign 1343 → 1171, D-test-only 277 → 272, B-roster 3533 → 3308 (thm 3172 → 2961) — `scanFiltered_parseStream_ok_checkFrom_full`
+-- (ScannerShape) is a `@[capstone]`, so its proof's closure (S5(→): ParseCheckFrom, ScannerShape and the scanner lemmas
+-- they spend) is reached; population unmoved (no declaration added or removed).
+-- 2026-11-24 (item 530, the owner's word on #359; rebased over items 531–533): the summary gains `A-orphan` — campaign
+-- declarations no constant of the environment (library or test module) references: built, never spent; the dashboard's
+-- directed row for the class (`A-campaign` is a population reading now).  Same item: generated names leave the population
+-- (`_default` structure-field defaults; Lean 4.36's numbered auxiliaries `brecOn_1.eq`) — a reclassification, not a deletion
+-- (the numbers below are the rebased tree's `--write`).
+-- 2026-11-24 (item 535, the deletion ruling): population 14099 → 14050 (thm 10213 → 10170, def 2519 → 2513), unreached 5997 → 5948
+-- (thm 4287 → 4244), A-campaign 1173 → 1124, A-orphan 142 → 103 — 49 campaign declarations nothing referenced are deleted
+-- (46 of the list before item 534, and 3 of the 10 the deletion freed); roster and cluster-roots unmoved.
+-- 2026-11-25 (item 538, β PR 7): population 14050 → 14051, unreached 5948 → 5949, A-campaign 1124 → 1125 — `TPendingNode.question_step`
+-- (StreamBridge), the `?` step; A-orphan unmoved (Priority 142's examples spend it; the fold is its consumer).
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedDeadCensus : String :=
-  "population=14263 thm=10224 def=2677 roots=capstone:26+export:37+blueprint:222(unresolved=5) unreached=6558 thm=4633 A-campaign=1343 C-api=1405 D-test-only=277 B-roster=3533 thm=3172 cluster-roots=1459"
+  "population=14052 thm=10171 def=2514 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5949 thm=4245 A-campaign=1125 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

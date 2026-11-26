@@ -277,10 +277,14 @@ def roster : List Target := [
     serves := "Rule 1: no theorem without a capstone",
     moves := "each roster name is deleted (item 506 deleted 87 unreached scanner facts on the owner's word) or reached by a capstone chain (`DeadDeclarationRoster.lean` lists them)",
     basis := "items 476 / 477 (`lake run dead-census -- --check`)" },
-  { census := "DeadDeclarationCensus", pin := "expectedDeadCensus", field := "A-campaign", goal := .zero, move := .shrinkOnly,
-    serves := "Rule 1: declarations the campaign built that no root reaches YET",
-    moves := "lands when the lane's capstone chain composes them (S3's `scan_trace`, Row 19's step (3), R12's fixpoint); what is left when a lane closes moves to the (B) roster",
-    basis := "item 476 (class (A) campaign in progress)" },
+  -- Item 530 (the owner's word on #359): `A-campaign` — unreached-from-a-root — is the capstone's
+  -- distance, 0 only when the lane's chain lands, so every build-ahead item read AWAY; it is a
+  -- population reading now.  The directed census for the class is the ORPHANS: campaign
+  -- declarations no constant of the environment (library or test) references — built, never spent.
+  { census := "DeadDeclarationCensus", pin := "expectedDeadCensus", field := "A-orphan", goal := .zero, move := .shrinkOnly,
+    serves := "Rule 1: campaign declarations that no declaration anywhere consumes — built and never spent",
+    moves := "deleted on the owner's ruling (`lake run dead-census` lists them by name), or spent by the consumer they were built for (a fold, a Rule 2 instantiation)",
+    basis := "item 530 (`A-orphan`; `A-campaign` demoted to population)" },
   { census := "DeadDeclarationCensus", pin := "expectedDeadCensus", field := "unresolved", goal := .zero, move := .shrinkOnly,
     serves := "Blueprint/04 rows whose root name resolves to no constant",
     moves := "fix the row in `Blueprint/04-capstones.md` / `scripts/blueprint-capstones.txt` or restore the constant",
@@ -584,17 +588,216 @@ def totals (rows : Array Row) : String :=
   let left := open_.foldl (fun acc r => acc + r.left) 0
   s!"directed={rows.size} work={work.size} open={open_.size} done={work.size - open_.size} holds={rows.size - work.size} left={left} components={comps.size} (shown, not summed)"
 
-/-- Every field of every pin not named by the roster, one line per pin; a `Nat` pin reads `value=N`. -/
-def renderReadings (pins : Array Pin) : Array String := Id.run do
+/-! ## Grouped by census
+
+A census pins several directed fields (`ParkBill`: `sorried`, `arms`, `Tp`, …); the grouped report
+gives one summary row per census, then the census's fields under its own heading. -/
+
+/-- The censuses of `rows`, each once, in roster order of first appearance. -/
+def censusOrder (rows : Array Row) : Array String :=
+  rows.foldl (fun acc r => if acc.contains r.target.census then acc else acc.push r.target.census) #[]
+
+/-- One census's rows, in roster order. -/
+def censusRows (rows : Array Row) (census : String) : Array Row :=
+  rows.filter (·.target.census == census)
+
+/-- `(open, done, holds)` over the rows that are not components. -/
+def tally (rows : Array Row) : Nat × Nat × Nat :=
+  let rows := rows.filter (!·.target.component)
+  let work := rows.filter (·.target.move != .hold)
+  let open_ := (work.filter (·.left != 0)).size
+  (open_, work.size - open_, rows.size - work.size)
+
+/-- A field's name within its census `rs`, with its pin (`expectedWide.T`) when two pins share the name. -/
+def fieldLabel (rs : Array Row) (r : Row) : String :=
+  if rs.any (fun q => q.target.field == r.target.field && q.target.pin != r.target.pin)
+  then s!"{r.target.pin}.{r.target.field}" else r.target.field
+
+/-- The open fields of a census with what each has left: `sorried 13, arms 1`. -/
+def openFields (rows : Array Row) : String :=
+  let open_ := rows.filter fun r => !r.target.component && r.target.move != .hold && r.left != 0
+  if open_.isEmpty then "—" else ", ".intercalate (open_.map fun r => s!"`{fieldLabel rows r}` {r.left}").toList
+
+/-- One row per census: how many of its fields are open, done or held, and what the open ones have left. -/
+def renderSummary (rows : Array Row) : Array String := Id.run do
+  let mut out := #["| census | fields | open | done | hold | left, per open field |", "|---|---:|---:|---:|---:|---|"]
+  for c in censusOrder rows do
+    let rs := censusRows rows c
+    let (o, d, h) := tally rs
+    out := out.push s!"| `{c}` | {o + d + h} | {o} | {d} | {h} | {openFields rs} |"
+  return out
+
+/-- Every census under its own heading, its fields in a table without the census column. -/
+def renderGroups (rows : Array Row) : Array String := Id.run do
   let mut out := #[]
+  for c in censusOrder rows do
+    let rs := censusRows rows c
+    let (o, d, h) := tally rs
+    out := out ++ #[s!"### `{c}` — open={o} done={d} hold={h}", "",
+      "| field | now | goal | left | move | status | serves | what moves it | basis |",
+      "|---|---:|---:|---:|---|---|---|---|---|"]
+    for r in rs do
+      let field := if r.target.component then s!"`{fieldLabel rs r}` ⊂" else s!"`{fieldLabel rs r}`"
+      out := out.push s!"| {field} | {r.nowText} | {r.goalText} | {r.left} | {r.target.move.render} | {r.status} | {cell r.target.serves} | {cell r.target.moves} | {cell r.target.basis} |"
+    out := out.push ""
+  return out.pop
+
+private def demoRow (census field : String) (now : Nat) (move : Move := .shrinkOnly) (component := false) : Row :=
+  { target := { census, pin := "p", field, goal := .zero, move, serves := "", moves := "", basis := "", component },
+    nowText := s!"{now}", now, goal := 0 }
+
+private def demoRows : Array Row :=
+  #[demoRow "A" "x" 3, demoRow "B" "y" 0, demoRow "A" "z" 0 .hold, demoRow "A" "x1" 2 (component := true)]
+
+#guard censusOrder demoRows == #["A", "B"]
+#guard tally (censusRows demoRows "A") == (1, 0, 1)
+#guard tally (censusRows demoRows "B") == (0, 1, 0)
+#guard openFields (censusRows demoRows "A") == "`x` 3"
+#guard (renderSummary demoRows)[2]! == "| `A` | 2 | 1 | 0 | 1 | `x` 3 |"
+
+/-- Every field of every pin not named by the roster, one line per pin; a `Nat` pin reads `value=N`.
+    `grouped` nests the pins of a census under one bullet. -/
+def renderReadings (pins : Array Pin) (grouped : Bool := false) : Array String := Id.run do
+  let mut out := #[]
+  let mut last := ""
   for p in pins do
     let fs := pinFields p.literal
     let fs := fs.filter fun (k, v) => (count? v).isSome &&
       !(roster.any fun t => t.census == p.census && t.pin == p.name && t.field == k)
     if fs.isEmpty then continue
     let body := " ".intercalate (fs.map (fun (k, v) => s!"{k}={v}")).toList
-    out := out.push s!"- `{p.census}.{p.name}`: {body}"
+    if !grouped then
+      out := out.push s!"- `{p.census}.{p.name}`: {body}"
+      continue
+    if p.census != last then
+      out := out.push s!"- `{p.census}`"
+      last := p.census
+    out := out.push s!"  - `{p.name}`: {body}"
   return out
+
+/-! ## The page (`--html FILE`)
+
+The grouped report as one self-contained HTML page: a census is a row that opens onto its fields,
+a reading census a row that opens onto its pins.  Print shows every row opened. -/
+
+def esc (s : String) : String :=
+  s.foldl (fun acc c => match c with
+    | '<' => acc ++ "&lt;" | '>' => acc ++ "&gt;" | '&' => acc ++ "&amp;" | '"' => acc ++ "&quot;" | c => acc.push c) ""
+
+/-- Escaped text with `` `code` `` spans as `<code>`. -/
+def prose (s : String) : String :=
+  let parts := s.splitOn "`"
+  String.join ((List.range parts.length).zip parts |>.map fun (i, p) =>
+    if i % 2 = 1 then s!"<code>{esc p}</code>" else esc p)
+
+#guard prose "a `b<c` d" == "a <code>b&lt;c</code> d"
+
+def style : String :=
+  "body{font:15px/1.45 system-ui,sans-serif;margin:2rem auto;max-width:92rem;padding:0 1.5rem;color:#1b1f24;background:#fff}" ++
+  "h1{font-size:1.6rem}h2{font-size:1.25rem;margin-top:2.5rem;border-bottom:1px solid #d0d7de;padding-bottom:.3rem}h3{font-size:1rem;margin-top:1.6rem}" ++
+  "table{border-collapse:collapse;width:100%;margin:.6rem 0}th,td{border-bottom:1px solid #d0d7de;padding:.35rem .6rem;text-align:left;vertical-align:top}" ++
+  "th{font-size:.8rem;text-transform:uppercase;letter-spacing:.03em;color:#57606a}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}" ++
+  "small{color:#57606a}code{font-size:.85em;background:#eff1f3;padding:0 .2em;border-radius:3px}" ++
+  ".st{white-space:nowrap;font-weight:600;font-size:.85rem}.st.open{color:#9a6700}.st.done,.st.hold{color:#1a7f37}" ++
+  "details>summary{cursor:pointer;list-style:none;display:flex;gap:.4rem;align-items:baseline;flex-wrap:wrap;padding:.4rem .5rem;border-bottom:1px solid #d0d7de}" ++
+  "summary h2,summary h3{margin:0;padding:0;border:0;font:inherit}" ++
+  "details>summary::-webkit-details-marker{display:none}details>summary::before{content:\"\\25B8\";color:#57606a}details[open]>summary::before{content:\"\\25BE\"}" ++
+  "details.section>summary{font-size:1.15rem;font-weight:600;background:#f6f8fa;margin-top:.5rem}details.part{margin-left:1.4rem}details.part>summary{font-weight:600}" ++
+  "details.part>table,details.part>p,details.part>ul{margin-left:1.4rem;width:auto}" ++
+  ".rollup{margin-left:auto;padding-left:1rem;font-weight:400;font-size:.8rem}.count{color:#57606a}.pill{border:1px solid;border-radius:1em;padding:0 .5em;margin-left:.3rem;white-space:nowrap}" ++
+  ".pill.at{color:#1a7f37}.pill.off{color:#9a6700}.pill.free{color:#57606a}" ++
+  ".flat{display:none}@media print{.interactive{display:none}.flat{display:block}}" ++
+  "@media(prefers-color-scheme:dark){body{color:#e6edf3;background:#0d1117}th,td,h2{border-color:#30363d}th,small,.count,.pill.free,details>summary::before{color:#8b949e}code{background:#21262d}details>summary{border-color:#30363d}details.section>summary{background:#161b22}a{color:#58a6ff}" ++
+  ".st.done,.st.hold,.pill.at{color:#3fb950;border-color:#3fb950}.st.open,.pill.off{color:#d29922}}"
+
+/-- A row that opens: its heading, the roll-up shown beside it, its content. -/
+structure Part where
+  title : String
+  rollup : String
+  body : String
+
+def plural (n : Nat) (one many : String) : String := s!"{n} {if n = 1 then one else many}"
+
+/-- The roll-up of a census's rows: how many fields, then how many are open, done or held. -/
+def tallyPills (rows : Array Row) : String :=
+  let (o, d, h) := tally rows
+  let pill (n : Nat) (cls word : String) := if n = 0 then "" else s!" <span class=\"pill {cls}\">{n} {word}</span>"
+  s!"<span class=\"count\">{plural (o + d + h) "field" "fields"}</span>" ++ pill o "off" "open" ++ pill d "at" "done" ++ pill h "free" "held"
+
+def fieldTable (rs : Array Row) : String :=
+  "<table><thead><tr><th>Field</th><th class=\"n\">Now</th><th class=\"n\">Goal</th><th class=\"n\">Left</th><th>Move</th><th>Status</th><th>Serves</th><th>What moves it</th><th>Basis</th></tr></thead><tbody>\n" ++
+  String.join (rs.toList.map fun r =>
+    let sub := if r.target.component then " <small>&sub; sub-count</small>" else ""
+    s!"<tr><td><code>{esc (fieldLabel rs r)}</code>{sub}</td><td class=\"n\">{esc r.nowText}</td><td class=\"n\">{prose r.goalText}</td><td class=\"n\">{r.left}</td>" ++
+    s!"<td>{r.target.move.render}</td><td><span class=\"st {r.status.toLower}\">{r.status}</span></td>" ++
+    s!"<td>{prose r.target.serves}</td><td>{prose r.target.moves}</td><td>{prose r.target.basis}</td></tr>\n") ++
+  "</tbody></table>\n"
+
+/-- Where a census is computed and pinned: its guard file, or the ledger for `scripts-ledger`. -/
+def sourcePath (census : String) : String :=
+  if census == "scripts-ledger" then "scripts/scripts-ledger.txt" else s!"Tests/Guards/Proofs/{census}.lean"
+
+#guard sourcePath "ParkBill" == "Tests/Guards/Proofs/ParkBill.lean"
+
+/-- The line that opens a census: a link to its source at the commit read. -/
+def definedIn (tree census : String) : String :=
+  let path := sourcePath census
+  s!"<p class=\"src\">Computed and pinned in <a href=\"https://github.com/nasa-jpl/L4YAML/blob/{esc tree}/{esc path}\"><code>{esc path}</code></a>.</p>\n"
+
+/-- One part per census: the roll-up names the open fields and what each has left. -/
+def censusParts (tree : String) (rows : Array Row) : List Part :=
+  (censusOrder rows).toList.map fun c =>
+    let rs := censusRows rows c
+    let left := openFields rs
+    ⟨s!"<code>{esc c}</code>", tallyPills rs ++ (if left == "—" then "" else s!" <span class=\"count\">left: {prose left}</span>"), definedIn tree c ++ fieldTable rs⟩
+
+/-- One part per census that pins readings without a target. -/
+def readingParts (tree : String) (pins : Array Pin) : List Part := Id.run do
+  let mut parts : Array Part := #[]
+  for c in (pins.map (·.census)).foldl (fun acc c => if acc.contains c then acc else acc.push c) #[] do
+    let mut items := #[]
+    for p in pins.filter (·.census == c) do
+      let fs := (pinFields p.literal).filter fun (k, v) => (count? v).isSome &&
+        !(roster.any fun t => t.census == p.census && t.pin == p.name && t.field == k)
+      if fs.isEmpty then continue
+      items := items.push s!"<li><code>{esc p.name}</code>: {esc (" ".intercalate (fs.map (fun (k, v) => s!"{k}={v}")).toList)}</li>\n"
+    if items.isEmpty then continue
+    parts := parts.push ⟨s!"<code>{esc c}</code>", s!"<span class=\"count\">{plural items.size "pin" "pins"}</span>", definedIn tree c ++ "<ul>\n" ++ String.join items.toList ++ "</ul>\n"⟩
+  return parts.toList
+
+/-- A section as a row that opens onto its parts, each a row that opens onto its content. -/
+def sectionRows (title rollup : String) (parts : List Part) (opened : Bool) : String :=
+  let row (h title rollup : String) := s!"<summary><{h} class=\"title\">{title}</{h}><span class=\"rollup\">{rollup}</span></summary>\n"
+  s!"<details class=\"section\"{if opened then " open" else ""}>{row "h2" title rollup}" ++
+  String.join (parts.map fun p => s!"<details class=\"part\">{row "h3" p.title p.rollup}{p.body}</details>\n") ++
+  "</details>\n"
+
+/-- Print cannot open a row: the same section with every part in full under its heading. -/
+def sectionFlat (title : String) (parts : List Part) : String :=
+  s!"<h2>{title}</h2>\n" ++ String.join (parts.map fun p => s!"<h3>{p.title}</h3>\n{p.body}")
+
+/-- The page.  `tree` is the commit read; `context` the latest item and its mandate, one line each;
+    `errs` the roster rows that do not resolve, each with its reason; `readings := false` leaves the un-targeted pins out. -/
+def html (tree : String) (context : Array String) (rows : Array Row) (pins : Array Pin)
+    (errs : Array String := #[]) (readings : Bool := true) : String :=
+  let directed := "Directed censuses: how far each is from its goal, and what moves it"
+  let dParts := censusParts tree rows
+  let rParts := readingParts tree pins
+  let sections := (directed, tallyPills rows, dParts, true) ::
+    (if readings then [("Readings without a target", s!"<span class=\"count\">{plural rParts.length "census" "censuses"}</span>", rParts, false)] else [])
+  let unresolved := if errs.isEmpty then "" else
+    s!"<h2>Roster rows that do not resolve ({errs.size})</h2>\n<p>These directed fields are missing from the page below; each line gives its own reason (no such pin, no such field, or a value that is not a count).</p>\n<ul>" ++
+    String.join (errs.toList.map fun e => s!"<li>{prose e}</li>") ++ "</ul>\n"
+  "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" ++
+  s!"<title>L4YAML census dashboard</title><style>{style}</style></head><body>\n<h1>L4YAML census dashboard</h1>\n" ++
+  s!"<p>Tree <code>{esc tree}</code>. Every figure is read off a <code>def expected… :=</code> literal under <code>Tests/Guards/Proofs/</code>, the values every full build checks against the environment. Each census opens with a link to the guard file that computes its counts.</p>\n" ++
+  String.join (context.toList.map fun l => s!"<p>{prose (l.replace "**" "")}</p>\n") ++
+  "<p><code>left</code> is |now &minus; goal|; <code>move</code> is what the guard enforces (a shrink-only pin that rises needs the owner's word); HOLD is a reading kept at its goal by a gate. A sub-count is part of another field of its census: shown, not counted in the roll-up.</p>\n" ++
+  unresolved ++
+  "<p class=\"interactive\">A row opens onto what it rolls up: a census onto its fields.</p>\n" ++
+  "<div class=\"interactive\">\n" ++ String.join (sections.map fun (t, r, ps, o) => sectionRows t r ps o) ++ "</div>\n" ++
+  "<div class=\"flat\">\n" ++ String.join (sections.map fun (t, _, ps, _) => sectionFlat t ps) ++ "</div>\n" ++
+  "</body></html>\n"
 
 /-! ## Moves between two trees (`--diff REF`, DOCS item 523)
 
