@@ -11,12 +11,9 @@ namespace L4YAML.Tests.Guards.DeadDeclarationRoster
 def expectedDeadRoster : String := r"
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.saveSimpleKeyIx_flowLevel_eq thm
 L4YAML.Proofs.EmitterScannability.FlowBodyContentDeep.headContentStart thm
-L4YAML.Proofs.ScannerAllowDirectives.skipToEndOfLineLoop_preserves_allowDirectives thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_scanFlowMappingStartIx thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_gt thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanValueClearKey_preserves_directivesPresent thm
 L4YAML.Proofs.NodeProduction.PendingFlowSeqEntry.explicitColonPending ctor
-L4YAML.Proofs.DirectiveRuns.KeyOK_set_one thm
 _private.L4YAML.Proofs.Production.IndexedScannerPlainScalarValid.0.L4YAML.Proofs.Indexed.ScannerPlainScalarValid.emitBlockEndPop_flowLevel thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanValuePrepareIx_indents_of_inFlow thm
 L4YAML.Proofs.Acceptance.peek_none_of_nil thm
@@ -27,7 +24,6 @@ L4YAML.Proofs.Indexed.WfaProofs.handleBlockMappingValueEntry_tok thm
 L4YAML.Proofs.TokenGrammar.isTag_iff thm
 L4YAML.Proofs.RoundTrip.contentEq_refl_hello thm
 L4YAML.Proofs.SchemaDump.roundTrip_nat_42 thm
-L4YAML.Proofs.DirectiveRuns.dispatchContent_shape thm
 L4YAML.Proofs.ScannerProofs.isIndicator_digit thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.emitAt_preserves_ScanInvIx thm
 L4YAML.Proofs.Indexed.NodeProofs.applyNodeFinalization_aad thm
@@ -41,7 +37,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_checkDan
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx.flowLevel_ge_start thm
 L4YAML.Proofs.RoundTrip.contentEq_refl_scalar thm
 L4YAML.Proofs.Acceptance.scanFlowMappingEnd_accepts thm
-L4YAML.Proofs.DirectiveRuns.DirInv_skipToContent thm
 L4YAML.Proofs.CommentRoundTrip.emitWithComments_empty_comments thm
 L4YAML.Scanner.Indexed.ScannerStateIx.skipSpacesS_offset_monotonic thm
 L4YAML.Proofs.EmitterScannability.dispatchBlockIndicators_maintains_FlowNoOverwriteAt thm
@@ -60,13 +55,10 @@ L4YAML.Proofs.SurfaceCoupling.GSeq_col thm
 L4YAML.Proofs.ScannerDoubleQuoted.escapeHex2_no_cr thm
 L4YAML.Proofs.ScannerDirectivesPresent.ite_pushMappingIndent_directivesPresent thm
 L4YAML.Proofs.Acceptance.SQCharOk.plain ctor
-L4YAML.Proofs.DirectiveRuns.keyLen_of_AllKeysValid thm
 L4YAML.Proofs.DocumentProduction.eof_comments thm
 L4YAML.Proofs.RoundTrip.escapeChar_cr thm
-L4YAML.Proofs.DirectiveRuns.vals_emit thm
 L4YAML.Proofs.ScannerProofs.scannerEscapeChar_deterministic thm
 L4YAML.Proofs.Indexed.Composition.parseYamlRawIx_scan_error thm
-L4YAML.Proofs.DirectiveRuns.DirInv_scanDirective thm
 L4YAML.Proofs.LineOpenGuard.col0_or_lineNoOpen thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_plain_world thm
 L4YAML.Proofs.StructureProduction.isWordCharOrBang_ascii thm
@@ -79,7 +71,6 @@ L4YAML.Proofs.ScannerCoupling.consumeNewline_cr_corr thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_maintains_SimpleKeyAboveIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_flowStack_step thm
 L4YAML.Proofs.SchemaDump.roundTrip_string_colonspace thm
-L4YAML.Proofs.DirectiveRuns.DirInv_consumeBOM thm
 L4YAML.Proofs.EmitterScannability.seqWindowFacts_of_emit_and_primitives_map thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScannerSurfCorrIx.input_prefix thm
 L4YAML.Proofs.Acceptance.lineBreak_cases thm
@@ -91,9 +82,7 @@ L4YAML.Proofs.DumpRoundTrip.isPlainSafe_true thm
 L4YAML.Proofs.Indexed.WfaProofs.parseFlowMappingValue_wfa thm
 _private.L4YAML.Proofs.Production.FlowIndexLift.0.L4YAML.Proofs.FlowIndexLift.plainMulti_at thm
 L4YAML.Proofs.EmitterScannability.recseqentry_window_dispatch_seq thm
-L4YAML.Proofs.DirectiveRuns.scanFlowSequenceStart_vals thm
 L4YAML.Proofs.EscapeResolution.escape_bell_not_printable thm
-L4YAML.Proofs.DirectiveRuns.vals_length thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.node_after_entry_empty thm
 L4YAML.Proofs.Indexed.WellBehaved.parseNodeProperties_pos_mono_ix thm
 L4YAML.Proofs.CommentProperties.emitWithComments_stripPositions_eq thm
@@ -122,7 +111,6 @@ L4YAML.Proofs.EntryBoundaryLayout.KeyAfterValueLayout.transport thm
 L4YAML.Proofs.TagResolution.resolveTag_declared thm
 L4YAML.Proofs.NodeProduction.PendingFlowMapEntry.explicitKeyPending ctor
 L4YAML.Proofs.ScannerDocument.with_tagDirective_flags_preserves_wellFormed thm
-L4YAML.Proofs.DirectiveRuns.unwindIndents_preserves_AllKeysValid thm
 L4YAML.Proofs.CommentRoundTrip.Classification.classify_inline_same_line thm
 L4YAML.Proofs.Acceptance.DQCharOk.hexEscape4 ctor
 L4YAML.Proofs.CommentProperties.stripPositions_anchors_eq thm
@@ -138,7 +126,6 @@ L4YAML.Proofs.Indexed.NodeProofs.parseFlowMappingValue_aad thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.advanceN_preserves_simpleKey thm
 L4YAML.Proofs.TokenGrammar.TG.flowMapValue_none ctor
 L4YAML.Proofs.Completeness.parseYaml_sq_hello thm
-L4YAML.Proofs.ScannerDirectivesPresent.dispatchBlockIndicators_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanValuePrepareIx_flow_pointwise thm
 L4YAML.Proofs.Acceptance.corr_of_emit_key thm
 L4YAML.Proofs.Completeness.decEqYamlValue def
@@ -160,9 +147,7 @@ L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.emit_scans_in_flowIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_checkNoPendingDirectives_ok thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx.zero ctor
 L4YAML.Proofs.RoundTripComposition.roundtrip_quoted_42 thm
-L4YAML.Proofs.ScannerAllowDirectives.scanFlowEntry_preserves_allowDirectives thm
 L4YAML.Proofs.PreprocessProduction.noWhitespace_ssbcomment_col0 thm
-L4YAML.Proofs.DirectiveRuns.keyCleared_ok thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.Array_filter_prefix_of_raw_prefix thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyValidIx_mono_pos thm
 L4YAML.Proofs.DocumentContracts.default_handles_include_primary thm
@@ -181,7 +166,6 @@ L4YAML.Proofs.Acceptance.ChompOk.toSCChompingIndicator thm
 L4YAML.Proofs.EmitterScannability.scanFiltered_of_chain thm
 L4YAML.Proofs.TokenGrammar.isKey_iff thm
 L4YAML.Proofs.ScannerPlainContent.hash_not_blank thm
-L4YAML.Proofs.DirectiveRuns.take_append_of_le thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_preserves_lastRealTokenValIx_ne_flow thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.advance_non_newline_corrIx thm
 L4YAML.Proofs.EmitterScannability.mapWindow_mapBodyProps_general thm
@@ -212,7 +196,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScanChainIx.fuel_bound thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.scanFilteredIx_boundary_tokens thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.get_pos thm
 L4YAML.Proofs.Indexed.WellBehaved.parseExplicitKey_tokens_preserved_ix thm
-L4YAML.Proofs.DirectiveRuns.PostInv.ofDirInv thm
 L4YAML.Proofs.Acceptance.SCSingleQuotedOk.mk ctor
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_head_pos thm
 L4YAML.Proofs.DocumentProduction.empty_yaml_stream thm
@@ -222,14 +205,11 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanDocumentEndIx_preser
 L4YAML.Proofs.FlowKeyLift.flowMapping_toKey thm
 L4YAML.Proofs.DocumentContracts.comment_with_ws thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.saveSimpleKeyIx_maintains_SimpleKeyAboveIx thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipToContentComment_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_prefix_and_SKAFIx_inv thm
 L4YAML.Proofs.ScannerScalar.emitAt_then_blockFlags_preserves_wellFormed thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_leaf_typed thm
 L4YAML.Proofs.EmitterScannability.seqInteriorSeparators_of_safebody_provider thm
 L4YAML.Proofs.DumpRoundTrip.dump_scalar_tag thm
-L4YAML.Proofs.DirectiveRuns.Quiet def
-L4YAML.Proofs.DirectiveRuns.dirStep_ph thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.overwriteAtCursor_flowStack thm
 L4YAML.Proofs.ErrorProperties.fromYamlType_unit_error thm
 L4YAML.Proofs.FlowSync.scanNextToken_indents_of_inFlow thm
@@ -248,10 +228,8 @@ L4YAML.Scanner.Indexed.skipToContentLoop_progress thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.processEscapeIx_named_ok thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_linefeed thm
 L4YAML.Proofs.Indexed.WfaProofs.parseFlowMappingValue_tok thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanBlockScalarBody_preserves_directivesPresent thm
 L4YAML.Proofs.DocumentContracts.madeProgress_of_advance thm
 L4YAML.Proofs.CommentProperties.classifyDocumentComments_compose_comm thm
-L4YAML.Proofs.ScannerDirectivesPresent.dispatchContent_preserves_directivesPresent thm
 L4YAML.Proofs.SurfaceSpan.sCompactMap_suffix thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_advance thm
 L4YAML.Proofs.Indexed.WfaProofs.parseNode_wfa thm
@@ -264,7 +242,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.scanFlowMappingEnd_tokens_eq
 L4YAML.Proofs.Indexed.NodeProofs.parseNodeContent_aad thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.envAfter_append thm
 L4YAML.Proofs.IndentStackCover.FrameLevel.width_seq thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectVerbatimTagLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Acceptance.foldQuotedNewlines_accepts thm
 L4YAML.Proofs.EmitterScannability.recseqbody_head_or_cons thm
 L4YAML.Proofs.CommentProperties.scannable_of_stripComments thm
@@ -283,7 +260,6 @@ L4YAML.Proofs.EmitterScannability.flowBodyContent_descend thm
 L4YAML.Proofs.Acceptance.collectBlockScalarLoop_line_step thm
 L4YAML.Proofs.Indexed.WellBehaved.parseBlockSequence_pos_mono_ix thm
 L4YAML.Proofs.ScannerCorrectness.collectBlockScalarLoop_preserves_simpleKey thm
-L4YAML.Proofs.DirectiveRuns.unwindIndents_vals thm
 L4YAML.Proofs.ScannerCorrectness.ValidTokenStream_iff_Prop thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.hexNibble_lt128 thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_ok_checkDanglingNode thm
@@ -300,7 +276,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.SimpleKeyAboveFloorIx_of
 L4YAML.Proofs.Indexed.ScannerCorrectness.unwindIndentsIx_preserves_AllKeysValidIx thm
 L4YAML.Scanner.Indexed.emitAtCursor_tokens_size thm
 L4YAML.Proofs.Indexed.NodeProofs.parseFlowMappingValue_ag thm
-L4YAML.Proofs.ScannerDirectivesPresent.parseHexEscape_preserves_directivesPresent thm
 L4YAML.Proofs.EmitterScannability.recseqentry_mapbracket_oracle thm
 L4YAML.Proofs.EmitterScannability.escapeChar_output_nbJson thm
 L4YAML.Proofs.Indexed.WfaProofs.advance_tokens_wfa_ix thm
@@ -312,7 +287,6 @@ L4YAML.Proofs.Indexed.NodeProofs.parseFlowMapping_ag thm
 L4YAML.Proofs.TagResolution.resolveTag_verbatim_independent thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.chain thm
 L4YAML.Proofs.FoldNewlines.markerFollower_cr thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectDoubleQuotedLoop_preserves_directivesPresent thm
 L4YAML.Proofs.DocStartLive.LiveF_snoc thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.pushMappingIndentIx_preserves_ScanInvIx thm
 L4YAML.Proofs.Indexed.NodeProofs.applyNodeFinalization_decls thm
@@ -340,7 +314,6 @@ L4YAML.Proofs.EmitterScannability.seqDescent_provider_of_located thm
 L4YAML.Proofs.ParserSoundness.stripAnnotations_mapping thm
 L4YAML.Proofs.EmitterScannability.saveSimpleKey_simpleKey_pointwise_inv thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanNextTokenIx_preserves_position_specific thm
-L4YAML.Proofs.DirectiveRuns.nose_set thm
 L4YAML.Proofs.StringProperties.dropWhile_empty thm
 L4YAML.Proofs.NodeProduction.PendingFlowMapEntry.explicitColonPending ctor
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanAnchorOrAliasIx_new_token_not_flow thm
@@ -355,7 +328,6 @@ L4YAML.Proofs.Soundness.blockMap_style_sound thm
 L4YAML.Scanner.Indexed.ScannerStateIx.advanceN_cursor thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchFlowIndicators_maintains_SimpleKeyAboveIx thm
 L4YAML.Proofs.TokenGrammar.TG.content_scalar ctor
-L4YAML.Proofs.DirectiveRuns.DirInv.closed thm
 L4YAML.Proofs.Acceptance.TagOk.secondary ctor
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_descend_step thm
 L4YAML.Proofs.Indexed.NodeProofs.AG0.declsGrow thm
@@ -370,7 +342,6 @@ L4YAML.Proofs.RoundTrip.escape_resolve_dquote thm
 L4YAML.Proofs.TokenGrammar.checkTokenGrammar_sound thm
 L4YAML.Proofs.Completeness.parseYaml_dq_hello thm
 L4YAML.Proofs.ScannerCoupling.skipWhitespaceLoop_eq_of_same_offset thm
-L4YAML.Proofs.DirectiveRuns.PostInv_dispatchContent thm
 L4YAML.Proofs.TokenGrammar.isDocStart_iff thm
 L4YAML.Proofs.Indexed.ScannerCorrectness._scalar_emitAt_tokens_size_eq thm
 L4YAML.Proofs.Indexed.NodeProofs.AG.withField thm
@@ -395,7 +366,6 @@ L4YAML.Proofs.CloseStaleExplicitKey.tacticPeel_stale def
 L4YAML.Proofs.CouplingBridge.start_of_line_gives_SSeparateInLine thm
 L4YAML.Proofs.Indexed.Composition.parseYamlIx_of_parseYamlRawIx_error thm
 L4YAML.Scanner.Indexed.peekIsIndentChar_iff thm
-L4YAML.Proofs.DirectiveRuns.dirRun_append_dir thm
 L4YAML.Proofs.EmitterScannability.escapeChar_head_not_quote thm
 L4YAML.Scanner.Indexed.peekIsWhiteSpace_iff thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_scalar_head_step thm
@@ -438,14 +408,10 @@ L4YAML.Proofs.EmitterScannability.recseqbody_window_assemble thm
 L4YAML.Proofs.EmitterScannability.FlowNoOverwriteAt_of_flow_close thm
 L4YAML.Proofs.TokenGrammar.flowSep_sound thm
 L4YAML.Proofs.TokenGrammar.TG.stream_doc ctor
-L4YAML.Proofs.DirectiveRuns.dirStep_dir thm
-L4YAML.Proofs.DirectiveRuns.PostInv_flowStart thm
 L4YAML.Proofs.ScalarProduction.isPlainSafe_to_nsPlainSafe_blockOut thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanDoubleQuotedIx_escapeString_corr thm
 L4YAML.Proofs.RoundTrip.escape_resolve_backspace thm
 L4YAML.Proofs.ParserWellBehaved.parseFlowMappingLoop_pairs_grow thm
-L4YAML.Proofs.DirectiveRuns.PostInv.stack thm
-L4YAML.Proofs.ScannerDirectivesPresent.emit_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchContent_preserves_ScanInvIx thm
 L4YAML.Scanner.Indexed.collectSingleQuotedLoopIx_closing_none thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.envAt_succ_anchor thm
@@ -460,7 +426,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.peek_of_chars_consIx_sta
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanNextTokenIx_maintains_NoOverwriteAtIx thm
 L4YAML.Proofs.ParserNodeProofs.addAnchor_decls thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tryConsume_docEnd_hit' thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipToEndOfLine_preserves_directivesPresent thm
 L4YAML.Proofs.ScannerBound.skipDocEndWhitespace_BoundInv thm
 L4YAML.Proofs.DumpRoundTrip.dump_literal_honored thm
 L4YAML.Proofs.ScannerFlowCollection.scanFlowMappingEnd_flow_sync thm
@@ -470,12 +435,9 @@ _private.L4YAML.Proofs.Parser.ParserNodeProofs.0.any_name_implies_findSome_isSom
 L4YAML.Proofs.Indexed.NodeProofs.emptyNode_aad thm
 L4YAML.Proofs.CommentRoundTrip.Classification.dumpDocumentWithComments_inline thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_checkFlowValueIndent_ok_of_none thm
-L4YAML.Proofs.DirectiveRuns.unwindIndents_quiet_eq thm
 L4YAML.Proofs.EmitterScannability.seqLocalCarrier_of_recIH thm
 L4YAML.Proofs.Acceptance.BlockStopOk.eofShort ctor
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanBlockEntryIx_tokens_eq thm
-L4YAML.Proofs.DirectiveRuns.scan_inv thm
-L4YAML.Proofs.DirectiveRuns.dirRun_append thm
 L4YAML.Proofs.Indexed.WfaProofs.parseFlowSequence_wfa thm
 L4YAML.Proofs.EmitterScannability.dispatchStructural_maintains_FlowNoOverwriteAt thm
 L4YAML.Proofs.Acceptance.doc_of_col_pos thm
@@ -525,7 +487,6 @@ L4YAML.Scanner.Indexed.trimTrailingWSIx_append_whitespace thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.NoOverwriteAtIx_of_flow_close thm
 L4YAML.Proofs.ScannerCorrectness.parseBlockHeaderLoop_preserves_simpleKey thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.unwindIndentsIx_preserves_ScanInvIx thm
-L4YAML.Proofs.DirectiveRuns.toks_filter thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_scanFlowEntry_expr thm
 L4YAML.Proofs.ScannerLoopInvariant.isValid_at_inputEnd thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingEndIx_lastRealTokenValIx thm
@@ -546,7 +507,6 @@ L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_currentIndent thm
 L4YAML.Proofs.EscapeResolution.escape_vtab thm
 L4YAML.Proofs.ScannerCorrectness.pushMappingIfNotInFlow_preserves_ScanInv thm
 L4YAML.Proofs.ScannerFlowCollection.scanFlowMappingStart_inFlow thm
-L4YAML.Proofs.ScannerAllowDirectives.scanFlowSequenceStart_preserves_allowDirectives thm
 L4YAML.Proofs.DocStartLive.LiveF_of_Shape thm
 L4YAML.Proofs.EmitterScannability.emitList_scans_nonempty thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.EmitListScansInFlowIx def
@@ -610,7 +570,6 @@ L4YAML.Proofs.PendingKeysStable.skipDocEndWhitespace_preserves_pendingKeys thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.SavedKeyAtEntryBoundaryIx def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowEntryIx_clears_explicitKeyLine thm
 L4YAML.Proofs.TokenGrammar.Sym.ctorElimType def
-L4YAML.Proofs.DirectiveRuns.unwindIndentsLoop_quiet_eq thm
 L4YAML.Proofs.EmitterScannability.RecMapEntry ind
 L4YAML.Proofs.RoundTripComposition.roundtrip_reserved_true_allowPlain thm
 L4YAML.Proofs.EmitterScannability.flowBodyContent_bodySucc_of_part6 thm
@@ -634,7 +593,6 @@ L4YAML.Proofs.EmitterScannability.recseqbody_head_seq_project thm
 L4YAML.Proofs.EmitterScannability.trailingNodeRun?_push_none thm
 L4YAML.Proofs.EmitterScannability.seqLocated_of_recseqbody thm
 L4YAML.Proofs.RoundTripComposition.resolveRoundTrips def
-L4YAML.Proofs.DirectiveRuns.pushSequenceIndent_ite_nonDirExt thm
 L4YAML.Proofs.EmitterScannability.NoColonDispatchChain.tokens_mono thm
 L4YAML.Proofs.Acceptance.BlockIndentOk def
 L4YAML.Proofs.Indexed.NodeProofs.parseSinglePairMapping_ag thm
@@ -669,8 +627,6 @@ L4YAML.Proofs.Indexed.NodeProofs.AG.anchorsGrow thm
 L4YAML.Proofs.Indexed.WellBehaved.ParseEntryFlowMapOkIx def
 L4YAML.Proofs.CloseStaleExplicitKey.closeStaleExplicitKey_explicitKeyLine thm
 L4YAML.Proofs.CommentRoundTrip.Classification.dumpDocumentWithComments_before thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectAnchorNameLoop_preserves_directivesPresent thm
-L4YAML.Proofs.DirectiveRuns.scanDoubleQuoted_pushNonDir thm
 L4YAML.Proofs.DumpRoundTrip.dump_empty_block_seq thm
 L4YAML.Proofs.RegisterWitness.RegWitness def
 L4YAML.Proofs.Acceptance.scanBlockScalarSkipComment_id thm
@@ -687,8 +643,6 @@ L4YAML.Proofs.SchemaResolution.resolve_scalar_is_leaf thm
 L4YAML.Proofs.BlockScalarContracts.satisfiesNonConsuming_spec thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_definedAnchors thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_preprocess_tokens_size_le thm
-L4YAML.Proofs.ScannerAllowDirectives.scanFlowMappingStart_preserves_allowDirectives thm
-L4YAML.Proofs.DirectiveRuns.scanBlockEntry_tokens thm
 L4YAML.Proofs.Indexed.WfaProofs.handleBlockMappingValueEntry_wfa thm
 L4YAML.Proofs.EmitterScannability.flowBodyContent_of_recseqbody_seq thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.emitList_body_filtered_characterizationIx_part1 thm
@@ -709,7 +663,6 @@ L4YAML.Proofs.StreamAccum.propertyRunFull_false_of_anchor_dispatch thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_null thm
 L4YAML.Proofs.Indexed.WellBehaved.ParseNodeFlowSeqOkIx def
 L4YAML.Proofs.TokenGrammar.TG.entryValue_none ctor
-L4YAML.Proofs.DirectiveRuns.DirInv_scanLoop_streamEnd thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyAboveIx_mono thm
 L4YAML.Proofs.FlowIndexLift.SFlowNode_at thm
 L4YAML.Proofs.Acceptance.DQCharOk.escape ctor
@@ -731,13 +684,11 @@ L4YAML.Proofs.BlockScalarContracts.and3_true thm
 L4YAML.Scanner.Indexed.hexDigitValue_lt_16 thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.advance_line_of_peekIx_state thm
 L4YAML.Proofs.BlockScalarContracts.zero_not_header_char thm
-L4YAML.Proofs.DirectiveRuns.PostInv.key thm
 L4YAML.Proofs.Acceptance.scanPlainScalar_accepts thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.dispatchContent_new_not_placeholderIx thm
 L4YAML.Proofs.Acceptance.Keeps.refl thm
 L4YAML.Proofs.Acceptance.HeaderTailOk.head thm
 L4YAML.Proofs.Acceptance.GStar_commentCharOk_toSCommentChar thm
-L4YAML.Proofs.DirectiveRuns.DirInv.key thm
 L4YAML.Proofs.DirectiveRuns.dirRun_none_bind thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.afterDoc_valid thm
 L4YAML.Proofs.EmitterScannability.SeqPathAllSeq def
@@ -759,7 +710,6 @@ L4YAML.Scanner.Indexed.hexStringValue_push thm
 L4YAML.Proofs.ScannerContracts.scanFlowMappingStart_flow_sync thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.CursorSurfCorrIx.col_eq thm
 L4YAML.Proofs.FoldNewlines.cForbidden_first_char thm
-L4YAML.Proofs.DirectiveRuns.StackOK_append thm
 L4YAML.Proofs.Acceptance.skipSpacesLoop_prefix_accepts thm
 L4YAML.Scanner.Indexed.roundtrip_flow_map_of_seq thm
 L4YAML.Proofs.DocStartLive.Shape def
@@ -771,7 +721,6 @@ _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.pr
 L4YAML.Proofs.Indexed.WfaProofs.parseExplicitKey_wfa thm
 L4YAML.Proofs.EmitterScannability.seqWindowRecSeqBody_general thm
 L4YAML.Proofs.ScannerContracts.digitOffset def
-L4YAML.Proofs.ScannerDirectivesPresent.scanPlainScalar_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyAboveIx_flowStart thm
 L4YAML.Proofs.EmitterScannability.scanFiltered_emitScalar_content thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.pushSequenceIndentIx_preserves_explicitKeyStack thm
@@ -781,19 +730,16 @@ L4YAML.Proofs.EmitterScannability.seqEnclosed_map_push_breaks thm
 L4YAML.Proofs.EscapeResolution.escape_hex8_none thm
 L4YAML.Scanner.Indexed.ScannerStateIx.scanValueClearKeyIx_cursor thm
 L4YAML.Proofs.EntryBoundaryLayout.skipToEndOfLine_preserves_simpleKeyAllowed thm
-L4YAML.Proofs.DirectiveRuns.scanAnchorOrAlias_pushNonDir thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.ScanChainIx.split thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.processEscapeIx_named_content thm
 L4YAML.Scanner.Indexed.peekIsBlank_atEnd thm
 L4YAML.Proofs.Indexed.WellBehaved.parseBlockMappingEntryValue_pos_mono_ix thm
 L4YAML.Scanner.Indexed.foldBlockContentGo_nil_of_ne_start thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanFlowMappingStartIx_ek_pushed thm
-L4YAML.Proofs.DirectiveRuns.scanDocumentStart_fields thm
 L4YAML.Proofs.DocumentContracts.madeProgress_irrefl thm
 L4YAML.Proofs.RegisterWitness.scanFlowEntry_witness thm
 L4YAML.Proofs.DocStartLive.lastReal_nil thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_trailing_space thm
-L4YAML.Proofs.DirectiveRuns.DirInv_dispatchStructural thm
 L4YAML.Proofs.Acceptance.PlainCharOk.colonSafe ctor
 L4YAML.Proofs.ScannerFlowCollection.scanFlowSequenceEnd_flow_sync thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanLoopIx_increases_tokens thm
@@ -836,7 +782,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.dispatchContent_adds_on
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_step_descend thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.ScanChainGrewIx.single thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowEntryIx_preserves_indents thm
-L4YAML.Proofs.DirectiveRuns.DirInv.ofFields thm
 L4YAML.Proofs.EmitterScannability.flowBracketBalance_pos_of_mapTypedInterior thm
 L4YAML.Proofs.EmitterScannability.seqClose_of_located_and_enclosing_within thm
 L4YAML.Proofs.EmitterScannability.FlowMonoChain_preserves_position_specific thm
@@ -852,8 +797,6 @@ L4YAML.Proofs.BlockScalarContracts.digit6_is_header_char thm
 L4YAML.Proofs.EscapeResolution.escape_backspace_not_printable thm
 L4YAML.Proofs.TokenGrammar.TG.flowMapValue_value ctor
 L4YAML.Proofs.Indexed.ScannerProgress.scanBlockEntryIx_offset_lt thm
-L4YAML.Proofs.DirectiveRuns.NonDirExt.refl thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanValuePrepare_preserves_directivesPresent thm
 L4YAML.Proofs.ScannerProofs.mk'_currentIndent thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_tab thm
 L4YAML.Proofs.EmitterScannability.MapLocated.key_bracket_succ thm
@@ -868,7 +811,6 @@ L4YAML.Proofs.TagResolution.resolveTag_default_secondary thm
 L4YAML.Proofs.EmitterScannability.no_props_saveSimpleKey thm
 L4YAML.Proofs.Indexed.WfaProofs.parseBlockSequence_wfa thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.no_props_saveSimpleKeyIx thm
-L4YAML.Proofs.DirectiveRuns.KeyOK_of_closed thm
 L4YAML.Proofs.EmitterScannability.SeqLocateGuard ind
 L4YAML.Proofs.EmitterScannability.MapLocated.key_content thm
 L4YAML.Proofs.Acceptance.scanBlockScalar_accepts thm
@@ -898,7 +840,6 @@ L4YAML.Proofs.DocStartLive.filter_getLast thm
 L4YAML.Proofs.Indexed.ScannerProgress.canStart_not_ws thm
 L4YAML.Proofs.TokenGrammar.propsLineOk_sound thm
 L4YAML.Proofs.EmitterScannability.dispatchFlowIndicators_maintains_FlowNoOverwriteAt thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectSingleQuotedLoop_preserves_directivesPresent thm
 L4YAML.Proofs.FlowSync.FlowSync_scanLoopFull thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanFlowMappingStartIx_tokens_eq thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_empty_block_seq thm
@@ -932,7 +873,6 @@ _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.to
 L4YAML.Proofs.CommentRoundTrip.Classification.classify_no_nodes_fallback thm
 L4YAML.Proofs.PreprocessIndentStable.IndentFloor.of_succ thm
 L4YAML.Proofs.EmitterScannability.NoColonDispatchChain.toScanChain thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanBlockScalar_preserves_directivesPresent thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.tokens_mono thm
 L4YAML.Proofs.EmitterScannability.ScanChain_tokens_mono thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_typed_array_empty thm
@@ -954,7 +894,6 @@ L4YAML.Proofs.EmitterScannability.MapLocated.value_bracket_succ thm
 L4YAML.Proofs.ScannerCorrectness.scanNextToken_postStructural_preserves_AllKeysValid thm
 L4YAML.Proofs.ExplicitKeyCoupling.scanFlowSequenceEnd_explicitKeyCol thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchStructural_preserves_ScanInvIx thm
-L4YAML.Proofs.ScannerDirectivesPresent.foldQuotedNewlinesLoop_preserves_directivesPresent thm
 L4YAML.Proofs.ScannerProofs.mk'_indents_size thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_explicitKeyLine thm
 L4YAML.Proofs.Acceptance.hex_bool_of_isNsHexDigit thm
@@ -971,7 +910,6 @@ L4YAML.Proofs.EmitterScannability.recmappair_window_descent thm
 L4YAML.Proofs.ParserGrammable.WellFormedAnchors def
 L4YAML.Proofs.ScannerDispatch.scanFlowMappingStart_preserves_indents thm
 L4YAML.Proofs.CommentProperties.resolve_nil thm
-L4YAML.Proofs.DirectiveRuns.ordTok_nonDir thm
 L4YAML.Proofs.Acceptance.GStar_SLEmptyOk_col thm
 L4YAML.Proofs.Indexed.WellBehaved.flowNestingIx_pos_after_flow_start thm
 L4YAML.Proofs.DocStartLive.Shape_append_ph thm
@@ -981,7 +919,6 @@ L4YAML.Proofs.Indexed.NodeProofs.AG0 def
 L4YAML.Proofs.EmitterScannability.scanFlowSequenceStart_first_filtered_token thm
 L4YAML.Proofs.ScannerScalar.emitAt_then_setFlags_preserves_wellFormed thm
 L4YAML.Proofs.EmitterScannability.NoOverwriteAt_of_endLine_update thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectLineContentLoop_preserves_directivesPresent thm
 L4YAML.Proofs.FoldNewlines.not_cForbidden_two_dots thm
 L4YAML.Proofs.Indexed.WfaProofs.parseBlockMapping_wfa thm
 L4YAML.Proofs.EmitterScannability.noOverwrite_of_keys_at_or_below thm
@@ -989,7 +926,6 @@ _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.nd
 L4YAML.Scanner.Indexed.applyChomp_clip_of_endsWith thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.collectDoubleQuotedLoopIx_escapeString_succeeds thm
 L4YAML.Proofs.TokenGrammar.TG.mapEntries_key ctor
-L4YAML.Proofs.DirectiveRuns.dirRun_append_nonDir thm
 L4YAML.Proofs.SchemaComposition.resolve_coreScalar thm
 L4YAML.Proofs.EmitterScannability.SeqLocateGuard.close thm
 L4YAML.Proofs.Indexed.NodeProofs.parseImplicitBlockSequenceLoop_aad thm
@@ -1000,10 +936,8 @@ L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_cr thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_docStartLine thm
 L4YAML.Proofs.Acceptance.peek_eq_of_head thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_step_advance thm
-L4YAML.Proofs.ScannerDirectivesPresent.processEscape_preserves_directivesPresent thm
 L4YAML.Proofs.EmitterScannability.seqEnclosed_of_seqTypedInterior thm
 L4YAML.Proofs.Indexed.Composition.parsesError def
-L4YAML.Proofs.DirectiveRuns.scanFlowMappingStart_vals thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tryConsume_docEnd_miss' thm
 L4YAML.Proofs.ParserWellBehaved.parseNode_emitter_advances thm
 L4YAML.Proofs.DocumentProduction.doc_end_eof_suffix thm
@@ -1024,7 +958,6 @@ L4YAML.Proofs.FlowSync.FlowSync_dispatchContent thm
 L4YAML.Proofs.EmitterScannability.scanNextToken_checkBareDocument_ok_of_landingLevel thm
 L4YAML.Proofs.DocStartLive.Shape_nil thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.content_empty_of thm
-L4YAML.Proofs.DirectiveRuns.ordTok_ne_streamEnd thm
 L4YAML.Proofs.Acceptance.fuel_of_corr thm
 L4YAML.Proofs.TagResolution.resolveTag_primary_override thm
 L4YAML.Proofs.ScannerCorrectness.skipDocEndWhitespace_preserves_simpleKeyStack thm
@@ -1032,18 +965,15 @@ L4YAML.Proofs.EmitterScannability.MapInteriorSeparators'_advance thm
 L4YAML.Proofs.CommentProperties.commentTexts_stripComments_eq thm
 L4YAML.Proofs.ScannerEmitBridge.canonicalRoundTrips def
 L4YAML.Proofs.Indexed.NodeProofs.handleBlockMappingKeyEntry_aad thm
-L4YAML.Proofs.ScannerDirectivesPresent.emitAt_preserves_directivesPresent thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.getBang_pos thm
 L4YAML.Proofs.ScalarProduction.prepend_char_to_continuation thm
 L4YAML.Proofs.DocumentContracts.atMostOneYaml def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.emitAt_explicitKeyStack thm
-L4YAML.Proofs.DirectiveRuns.NonDirExt.ofTokens thm
 L4YAML.Proofs.EmitterScannability.seqEnclosingLocate_of_seqOpener_at_depth thm
 L4YAML.Proofs.IndentStackBase.skipDocEndWhitespace_preserves_indents thm
 L4YAML.Proofs.Acceptance.TrailingOk def
 L4YAML.Proofs.TokenGrammar.TokenGrammar def
 L4YAML.Proofs.EmitterScannability.recbody_joint_navigator_driver_carrier thm
-L4YAML.Proofs.DirectiveRuns.dirRun_set_full thm
 L4YAML.Proofs.ParserSoundness.stripAnnotations_alias thm
 L4YAML.Proofs.Acceptance.SQTextOk.single ctor
 L4YAML.Proofs.SurfaceCoupling.tab_gives_SSWhite thm
@@ -1053,7 +983,6 @@ L4YAML.Proofs.Acceptance.TagOk.verbatim ctor
 L4YAML.Proofs.ScannerCorrectness.preprocess_unwind_preserves_ScanInv thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_allowDirectives thm
 L4YAML.Proofs.ParserWellBehaved.parseFlowMappingLoop_tokens_preserved thm
-L4YAML.Proofs.DirectiveRuns.KeyOK_append thm
 L4YAML.Proofs.Acceptance.DQTextOk ind
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.emit_directivesPresent thm
 L4YAML.Proofs.FlowIndexLift.PlainCrossed def
@@ -1064,9 +993,7 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingStartIx_d
 L4YAML.Proofs.Indexed.NodeProofs.parseBlockSequenceLoop_aad thm
 L4YAML.Proofs.EmitterScannability.seqLocateRecDriver thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.ScanChainGrewIx_filtered_grows thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectPlainScalarLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Acceptance.namedEscape_ne_cr thm
-L4YAML.Proofs.DirectiveRuns.NonDirExt.trans thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanValueIx_preserves_position_specific thm
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeep_advance thm
 L4YAML.Proofs.EmitterScannability.recbody_joint_content_pack thm
@@ -1076,7 +1003,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx.flowStac
 L4YAML.Proofs.Indexed.NodeProofs.anchors_of_recordPos thm
 L4YAML.Proofs.EmitterScannability.mapTokVals_flowClean thm
 L4YAML.Proofs.Indexed.NodeProofs.ParseNodeAAD def
-L4YAML.Proofs.DirectiveRuns.dirStep_none thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.AllTokensOnLineIx_overwriteAtCursor thm
 L4YAML.Proofs.NodeProduction.SNsPlainFirst_blockIn_to_flowOut thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.step_of_non_colon thm
@@ -1105,7 +1031,6 @@ L4YAML.Proofs.ScannerProofs.flowIndicator_rbrace thm
 L4YAML.Proofs.Soundness.toYamlValue_produces_nodeToValue thm
 L4YAML.Proofs.FoldNewlines.cForbidden_dot_space thm
 L4YAML.Schema.isFlowIndicatorChar def
-L4YAML.Proofs.DirectiveRuns.scanSingleQuoted_pushNonDir thm
 L4YAML.Proofs.ScannerCorrectness.scan_valid_token_stream thm
 L4YAML.Proofs.Acceptance.GStar_SSWhite_chars thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.emitAt_new_token_start thm
@@ -1162,15 +1087,10 @@ L4YAML.Proofs.EscapeResolution.replacement_char_valid thm
 L4YAML.Proofs.Indexed.Composition.parses_error_unterminated_flow_seq thm
 L4YAML.Proofs.FlowSync.dispatchStructural_indents_of_inFlow thm
 L4YAML.Proofs.ParserGrammable.goList_grammable_ordered thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanVerbatimTag_preserves_directivesPresent thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_typed_option_some thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipToEndOfLineLoop_preserves_directivesPresent thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.dirEnvOk_of_decl thm
 L4YAML.Proofs.Indexed.WfaProofs.bev_wfa_pair thm
-L4YAML.Proofs.DirectiveRuns.StackLen.mono thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanTagIx_new_token_start thm
-L4YAML.Proofs.DirectiveRuns.nose_one thm
-L4YAML.Proofs.DirectiveRuns.DirInv_scanNextToken thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanYamlDirectiveIx_preserves_flowLevel thm
 L4YAML.Proofs.TokenGrammar.TG.flowMap ctor
 L4YAML.Proofs.TokenGrammar.TG.flowMapEntries_end ctor
@@ -1193,7 +1113,6 @@ L4YAML.Proofs.ScannerCorrectness.unwindIndentsLoop_input_eq thm
 L4YAML.Proofs.Acceptance.PlainBreakStopOk.docMarker ctor
 L4YAML.Proofs.SchemaResolution.scalarType_plain thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.skipToContentS_flowStack thm
-L4YAML.Proofs.DirectiveRuns.PostInv_scanValue thm
 L4YAML.Proofs.RegisterWitness.SlotsWitness.of_doc_reset thm
 L4YAML.Proofs.ScannerProofs.isBlank_def thm
 L4YAML.Proofs.ScannerIndentStack.pushMappingIndent_preserves_monotone thm
@@ -1217,28 +1136,22 @@ L4YAML.Proofs.EmitterScannability.NoColonDispatchChain.flowLevel_ge_end thm
 L4YAML.Proofs.Acceptance.scanSingleQuoted_accepts thm
 L4YAML.Proofs.FlowKeyLift.sepOpt_toKey_of_noResidue thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_peek? thm
-L4YAML.Proofs.DirectiveRuns.NonDirExt def
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.scanFiltered_tokens_eq_of_chain_short_stackIx thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve_of_FlowMonoChain_skFloor thm
 L4YAML.Proofs.IndentStackCover.FrameLevel.width_map thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.ScanChainGrewIx.step ctor
-L4YAML.Proofs.ScannerDirectivesPresent.skipWhitespace_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanDirectiveIx_new_token_start thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_detail thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.flowNestingIx_go_non_flow thm
-L4YAML.Proofs.DirectiveRuns.saveSimpleKey_preserves_AllKeysValid thm
 L4YAML.Proofs.SchemaResolution.resolveScalar_not_seq thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.emit_indents thm
 L4YAML.Proofs.TokenGrammar.TG.props_anchorTag ctor
 L4YAML.Proofs.EscapeResolution.escape_hex32_none thm
 L4YAML.Proofs.Indexed.WellBehaved.parseFlowSequenceLoop_pos_mono_ix thm
-L4YAML.Proofs.DirectiveRuns.DirInv.nose thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.savedKeyAtEntryBoundaryIx_of_prefix thm
 L4YAML.Proofs.Acceptance.tokens_advance thm
 L4YAML.Scanner.Indexed.roundtrip_flow_seq_of_seq thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.content_not_alias thm
-L4YAML.Proofs.DirectiveRuns.dirStep_false_nonDir thm
-L4YAML.Proofs.ScannerDirectivesPresent.advance_preserves_directivesPresent thm
 L4YAML.Proofs.SurfaceCoupling.space_gives_SSWhite thm
 L4YAML.Proofs.Acceptance.atDocumentEnd_false_of_corr thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanTagIx_preserves_AllKeysValidIx thm
@@ -1251,15 +1164,12 @@ L4YAML.Scanner.Indexed.scanDirectiveIx_offset_monotonic thm
 L4YAML.Proofs.NodeProduction.PendingFlowMapEntry.toColon thm
 L4YAML.Proofs.EmitterScannability.mapGrammarFacts_false_window thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.advanceN_explicitKeyLine thm
-L4YAML.Proofs.DirectiveRuns.toks_push thm
 L4YAML.Proofs.ScalarProduction.isPlainSafe_to_inlineEntry_basic thm
 L4YAML.Proofs.Acceptance.SBBreakOk.toSBBreak thm
 L4YAML.Proofs.PendingKeySound.clearPendingKeyAt_slots thm
 L4YAML.Proofs.TagResolution.resolveTag_yaml_example thm
 L4YAML.Proofs.Acceptance.collectVerbatimTagLoop_accepts thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.EndLineOnLineIx def
-L4YAML.Proofs.DirectiveRuns.collectDirectiveNameLoop_preserves_allowDirectives thm
-L4YAML.Proofs.DirectiveRuns.scanValue_vals thm
 L4YAML.Proofs.FoldNewlines.fold_char_ne_dash thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.notDirBefore_of thm
 L4YAML.Proofs.FoldNewlines.fold_append_not_cForbidden_start thm
@@ -1297,7 +1207,6 @@ L4YAML.Proofs.Completeness.parseYamlIx_ok_iff thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_ampersand thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchContent_preserves_simpleKeyStack thm
 L4YAML.Proofs.Acceptance.lineRun_toBodyTail thm
-L4YAML.Proofs.DirectiveRuns.dirRun_false_closed thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.SimpleKeyAboveFloorIx_of_preserved thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingStartIx_allowDirectives thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanNextTokenIx_via_flow_dispatch_filtered_grows thm
@@ -1324,7 +1233,6 @@ L4YAML.Proofs.Acceptance.Keeps def
 L4YAML.Proofs.Acceptance.DocMarkerAt def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchFlowIndicators_ekStack_step thm
 L4YAML.Proofs.EmitterScannability.escapeChar_output_no_linebreak thm
-L4YAML.Proofs.DirectiveRuns.scanBlockScalar_pushNonDir thm
 L4YAML.Proofs.Acceptance.IndentOk.toSCIndentationIndicator thm
 L4YAML.Schema.isNumChar_of_isDigit thm
 L4YAML.Scanner.Indexed.ScannerStateIx.advance_offset_lt_of_hasMore thm
@@ -1370,13 +1278,11 @@ L4YAML.Proofs.Indexed.EmitterScannability.Basic.eof_corrIx thm
 L4YAML.Proofs.ScannerPlainContent.PlainContentInv.transfer_nonblank_peek thm
 L4YAML.Proofs.FoldNewlines.newline_isFoldAppendChar thm
 L4YAML.Proofs.CharClass.canStartPlainScalar_exception_flow thm
-L4YAML.Proofs.DirectiveRuns.dirRun_ph_only thm
 L4YAML.Proofs.Soundness.validYaml_scalar_is_scalar thm
 L4YAML.Proofs.FoldNewlines.isFoldAppendChar_iff thm
 L4YAML.Proofs.EscapeResolution.escape_nbsp thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.Inv.advance thm
 L4YAML.Proofs.PreprocessProduction.SSLCommentsFrom_prepend_white thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectBlockScalarLoop_preserves_directivesPresent thm
 L4YAML.Proofs.EmitterScannability.dispatchBlockIndicators_maintains_NoOverwriteAt thm
 L4YAML.Proofs.ScannerDispatch.with_allowDirectives_false_preserves_wellFormed thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.scanNextToken_flow_close_mapping_outermost_extIx thm
@@ -1428,7 +1334,6 @@ L4YAML.Scanner.Indexed.scanLoopIx_tokens_size_le thm
 L4YAML.Proofs.DumpRoundTrip.dump_literal_keep thm
 L4YAML.Scanner.Indexed.skipSpaces_col_eq_count thm
 L4YAML.Proofs.FoldNewlines.not_markerFollower_digit thm
-L4YAML.Proofs.DirectiveRuns.scanPlainScalar_pushNonDir thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_tab_lit thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.step_of_tokenIndex_ne thm
 L4YAML.Proofs.ScannerProofs.TokenStream_remaining_decreases thm
@@ -1441,7 +1346,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_
 L4YAML.Proofs.ScannerProofs.flowIndicator_lbrace thm
 L4YAML.Proofs.ScannerProofs.flowIndicator_rbracket thm
 L4YAML.Proofs.Indexed.WfaProofs.prepareDocumentState_reader_ix thm
-L4YAML.Proofs.DirectiveRuns.KeyTrans def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.SimpleKeyAboveFloorIx_of_flow_open thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_quoted_empty thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.envReset_one thm
@@ -1455,8 +1359,6 @@ L4YAML.Proofs.TokenGrammar.valuePropsOk_sound thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchFlowIndicators_preserves_AllKeysValidIx thm
 L4YAML.Proofs.ParserWfaProofs.parseDirectives_decls thm
 L4YAML.Scanner.Indexed.collectSingleQuotedLoopIx_linebreak thm
-L4YAML.Proofs.DirectiveRuns.StackOK def
-L4YAML.Proofs.DirectiveRuns.collectVersionMinorLoop_preserves_allowDirectives thm
 L4YAML.Proofs.Indexed.WellBehaved.ParseNodeFlowSeqOkIx.mono thm
 L4YAML.Proofs.Acceptance.PlainFirstOk.indicator ctor
 L4YAML.Proofs.EmitterScannability.seqHRec_of_root_and_context thm
@@ -1475,14 +1377,12 @@ L4YAML.Proofs.Indexed.WfaProofs.parseExplicitKey_tok thm
 L4YAML.Proofs.EmitterScannability.rec_seq_body_nested_project thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanFlowSequenceEndIx_tokens_eq thm
 L4YAML.Scanner.Indexed.PlainContentInvIx.transfer_nonblank_peek thm
-L4YAML.Proofs.DirectiveRuns.DirInv.ok thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchStructural_preserves_explicitKeyStack thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_leaf thm
 L4YAML.Proofs.ScannerPlainScalarValid.flowNesting_go_placeholder_neutral thm
 L4YAML.Proofs.SchemaDump.roundTrip_unit thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScannerSurfCorrIx_transfer thm
 L4YAML.Proofs.ParserGrammable.ScalarScannable_eq_of_content_style_eq thm
-L4YAML.Proofs.DirectiveRuns.PostInv ind
 _private.L4YAML.Proofs.RoundTrip.RoundTripComposition.0.L4YAML.Proofs.RoundTripComposition.resolve_eq_of_contentEq_plainUntagged.resolveList_eq_plainUntagged thm
 L4YAML.Proofs.FlowKeyLift.flowSeqEntries_toKey thm
 L4YAML.Schema.isIntL_num thm
@@ -1508,7 +1408,6 @@ L4YAML.Proofs.Indexed.WellBehaved.Scannable_true_implies_false thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_ok_directivesPresent_false thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.initIx_indents_sentinel thm
 L4YAML.Proofs.EscapeResolution.escape_formfeed thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipWhitespaceLoop_preserves_directivesPresent thm
 L4YAML.Proofs.EscapeResolution.not_isNamedEscapeChar_u thm
 L4YAML.Proofs.FlowKeyLift.scFlowJsonContent_toKey thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.dispatchContentIx_quote thm
@@ -1517,7 +1416,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchBlockIndicators_
 L4YAML.Proofs.Acceptance.PlainCharOk.hash ctor
 L4YAML.Scanner.Indexed.roundtrip_plain_x thm
 L4YAML.Proofs.EmitterScannability.scanDoubleQuoted_preserves_ek thm
-L4YAML.Proofs.DirectiveRuns.DirInv ind
 L4YAML.Proofs.EmitterScannability.FlowNoOverwriteAt_of_endLine_update thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_needIndentCheck thm
 L4YAML.Proofs.EmitterScannability.emitList_scans_nonempty_with_skdr thm
@@ -1529,7 +1427,6 @@ L4YAML.Proofs.Indexed.WellBehaved.advance_tokens_eq_ix thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanDocumentEndIx_preserves_ScanInvIx thm
 L4YAML.Proofs.CommentProperties.partitionCommentsByDocument_single thm
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeepSeq_child_bracket_map thm
-L4YAML.Proofs.DirectiveRuns.DirInv_scanDocumentEnd thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchStructural_none_bracket_init thm
 L4YAML.Proofs.Indexed.WfaProofs.bev_tok_pair thm
 L4YAML.Proofs.CharClass.ofNat_eq_zero_iff_of_isValidChar thm
@@ -1550,12 +1447,10 @@ L4YAML.Proofs.EscapeResolution.escape_backspace thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.emitAt_preserves_simpleKeyStack thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_via_content_dispatch thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyValidIx def
-L4YAML.Proofs.DirectiveRuns.scanDirective_fields thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchStructural_maintains_SimpleKeyAboveIx thm
 L4YAML.Scanner.Indexed.skipSpaces_no_space thm
 L4YAML.Proofs.DumpRoundTrip.dumpDirective_yaml thm
 L4YAML.Scanner.Indexed.roundtrip_flow_seq_four thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanValue_preserves_directivesPresent thm
 L4YAML.Proofs.BlockScalarContracts.satisfiesIndentBound_empty thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_flowStack thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanDirectiveIx_preserves_ScanInvIx thm
@@ -1564,7 +1459,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanDocumentEndIx_token
 L4YAML.Proofs.Acceptance.SQBreakOk.length_lt thm
 L4YAML.Proofs.Acceptance.skipSpacesLoop_white_prefix thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_dquote thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipSpaces_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.ParseStream.parseNodeProperties_skipIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingEndIx_explicitKeyStack thm
 L4YAML.Proofs.Indexed.NodeProofs.parseNode_anchors_grow thm
@@ -1627,7 +1521,6 @@ L4YAML.Proofs.Acceptance.collectPlainScalarLoop_entries thm
 L4YAML.Proofs.EmitterScannability.seqEnclosed_advance thm
 L4YAML.Proofs.SchemaResolution.resolveImplicit_null_precedence thm
 L4YAML.Scanner.Indexed.advance_indent_col_succ thm
-L4YAML.Proofs.DirectiveRuns.collectTagPrefixLoop_preserves_allowDirectives thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchFlowIndicators_bracket thm
 L4YAML.Proofs.Acceptance.collectPlainScalarLoop_stops thm
 L4YAML.Scanner.Indexed.consumeBOM_tokens thm
@@ -1635,12 +1528,10 @@ L4YAML.Proofs.Indexed.NodeProofs.parseBlockSequence_aad thm
 L4YAML.Proofs.EmitterScannability.recmapentry_classify thm
 L4YAML.Proofs.FoldNewlines.cForbidden_dash_space thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.ScanChainIx_deterministic thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectTagSuffixLoop_preserves_directivesPresent thm
 L4YAML.Proofs.ScannerCorrectness.markPendingKey_tokens thm
 L4YAML.Proofs.Indexed.NodeProofs.handleBlockMappingValueEntry_ag thm
 L4YAML.Proofs.RegisterWitness.scanDocumentEnd_witness thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.keyName def
-L4YAML.Proofs.DirectiveRuns.DirInv_saveSimpleKey thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_needIndentCheck thm
 L4YAML.Proofs.FoldNewlines.not_cForbidden_two_dashes thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_leaf_off1_b thm
@@ -1651,11 +1542,9 @@ L4YAML.Proofs.DumpRoundTrip.isPlainSafe_at thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchBlockIndicators_preserves_ScanInvIx thm
 L4YAML.Proofs.StreamAccum.ssl_comments_extend_suffixRun thm
 L4YAML.Scanner.Indexed.skipSpacesLoop_terminates thm
-L4YAML.Proofs.DirectiveRuns.scanKey_tokens thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_directivesPresent thm
 L4YAML.Scanner.Indexed.peekIsWhiteSpace_atEnd thm
 L4YAML.Proofs.Indexed.WellBehaved.parseFlowMappingValue_pos_mono_ix thm
-L4YAML.Proofs.ScannerAllowDirectives.skipToEndOfLine_preserves_allowDirectives thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanValuePrepareIx_flow_size_eq thm
 L4YAML.Proofs.CommentProperties.compose_preserves_directives thm
 L4YAML.Proofs.Acceptance.SCDoubleQuotedMultiOk.toSCDoubleQuoted thm
@@ -1667,7 +1556,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.Basic.string_foldl_toList thm
 L4YAML.Proofs.EmitterScannability.seqBodyProps_of_located_entry thm
 L4YAML.Proofs.EscapeResolution.escape_tab_literal thm
 L4YAML.Proofs.EmitterScannability.flowBodyContent_child_bracket_seq_map thm
-L4YAML.Proofs.DirectiveRuns.KeyOK def
 L4YAML.Scanner.Indexed.autoDetectBlockScalarIndentIx_ge_min thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchFlowIndicators_flowStack_step thm
 L4YAML.Proofs.EmitterScannability.recseqbody_navigator_driver thm
@@ -1702,7 +1590,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.Basic.hex_foldl_roundtripIx thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.Inv.anchors thm
 L4YAML.Proofs.EmitterScannability.FlowNoOverwriteAt def
 L4YAML.Proofs.Indexed.NodeProofs.parseNodeContent_ag thm
-L4YAML.Proofs.DirectiveRuns.DirInv.dpAD thm
 L4YAML.Proofs.Acceptance.DQCharOk.hexEscape8 ctor
 L4YAML.Proofs.Indexed.ScannerProgress.scanNextTokenIx_dispatchContent_offset_gt thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_colon thm
@@ -1742,7 +1629,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_flow_clo
 L4YAML.Proofs.TokenGrammar.isBlockEntry_iff thm
 L4YAML.Proofs.CommentProperties.resolve_stripPositions_eq thm
 L4YAML.Proofs.ScannerIndent.advance_nonNewline_col thm
-L4YAML.Proofs.DirectiveRuns.pushMappingIndent_ite_nonDirExt thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.propsBlockScanLoopIx_no_props thm
 L4YAML.Proofs.Acceptance.skipSpaces_accepts thm
 L4YAML.Proofs.ScannerContracts.mk'_wellFormed thm
@@ -1775,7 +1661,6 @@ L4YAML.Proofs.BlockScalarContracts.digit8_is_header_char thm
 L4YAML.Proofs.RegisterWitness.scanValueClearKey_witness thm
 L4YAML.Proofs.EmitterScannability.recbody_locate_map_carrier thm
 L4YAML.Proofs.CommentProperties.stripComments_idem thm
-L4YAML.Proofs.DirectiveRuns.scanTag_pushNonDir thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.doc_empty_of thm
 L4YAML.Schema.hasFlowIndicator_bool_literals thm
 L4YAML.Proofs.Indexed.WellBehaved.parseNode_alias_tokens_ix thm
@@ -1808,7 +1693,6 @@ L4YAML.Proofs.Acceptance.PlainOneLineOk.mk ctor
 L4YAML.Proofs.Acceptance.NotDocMarker def
 L4YAML.Scanner.Indexed.hexStringValue_empty thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_typed_string_hello thm
-L4YAML.Proofs.DirectiveRuns.AllKeysValid_init thm
 L4YAML.Proofs.EmitterScannability.MapInteriorSeparators'_narrow thm
 L4YAML.Proofs.BlockScalarContracts.satisfiesComposition def
 L4YAML.Scanner.Indexed.skipCommentTextLoop_terminates thm
@@ -1832,7 +1716,6 @@ L4YAML.Proofs.RegisterWitness.scanFlowMappingStart_witness thm
 L4YAML.Proofs.RegisterWitness.scanFlowMappingEnd_witness thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_ok_checkFlowValueIndent thm
 L4YAML.Proofs.Indexed.WellBehaved.tacticUnfold_loop_at_ix_ def
-L4YAML.Proofs.ScannerDirectivesPresent.scanBlockScalarConsumeNewline_preserves_directivesPresent thm
 L4YAML.Proofs.EscapeResolution.char_isValidChar thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.overwriteAtCursor_preserves_simpleKey thm
 L4YAML.Scanner.Indexed.dropWhile_append_all thm
@@ -1869,7 +1752,6 @@ L4YAML.Proofs.Acceptance.collectTagHandleLoop_accepts_open thm
 L4YAML.Proofs.Indexed.WfaScannable.addAnchor_wfaS thm
 L4YAML.Proofs.CommentProperties.compose_value_classifyDocumentComments_eq thm
 L4YAML.Proofs.SchemaResolution.scalarType_not_seq thm
-L4YAML.Proofs.ScannerDirectivesPresent.dispatchFlowIndicators_preserves_directivesPresent thm
 L4YAML.Proofs.ScannerIndentStack.pushSequenceIndent_preserves_sentinel thm
 L4YAML.Proofs.Acceptance.DQBreakOk.length_lt thm
 L4YAML.Proofs.FlowSync.FlowSync_dispatchBlock thm
@@ -1890,12 +1772,9 @@ L4YAML.Proofs.DumpRoundTrip.dump_literal_strip thm
 L4YAML.Proofs.Indexed.WfaProofs.tc_tokens_wfa_ix thm
 L4YAML.Proofs.EmitterScannability.emit_nonempty thm
 L4YAML.Proofs.ScannerFlowCollection.scanFlowSequenceStart_inFlow thm
-L4YAML.Proofs.DirectiveRuns.ClosedList def
 L4YAML.Proofs.Acceptance.ChompOk.clip ctor
 L4YAML.Proofs.EmitterScannability.ScanChain_of_scanNextToken_eq thm
-L4YAML.Proofs.DirectiveRuns.PostInv_dispatchFlow thm
 L4YAML.Proofs.EmitterScannability.scanNextToken_checkAdjacentValue_ok_of_allowed thm
-L4YAML.Proofs.DirectiveRuns.DirInv.ofPost thm
 L4YAML.Proofs.EmitterScannability.MapInteriorSeparators_narrow thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanNextTokenIx_dispatchStructural_maintains_NoOverwriteAtIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_checkBareDocument_ok_of_last thm
@@ -1926,7 +1805,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.SimpleKeyAboveFloorIx de
 L4YAML.Proofs.Acceptance.peek_none_of_corr thm
 L4YAML.Proofs.TokenGrammar.TG.content_blockSeq ctor
 L4YAML.Proofs.DumpRoundTrip.dump_scalar_tag_anchor thm
-L4YAML.Proofs.DirectiveRuns.PostInv.mk ctor
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyAboveIx_of_cleared_mono thm
 L4YAML.Proofs.ScannerEkStack.skipDocEndWhitespace_preserves_explicitKeyStack thm
 L4YAML.Proofs.DocumentContracts.atMostOneYaml_single thm
@@ -1942,7 +1820,6 @@ L4YAML.Proofs.Indexed.ScannerCorrectness.scanDocumentEndIx_preserves_AllKeysVali
 L4YAML.Proofs.FlowSync.FlowSync_flowSequenceEnd thm
 L4YAML.Proofs.RoundTrip.emit_scalar_with_backslash thm
 L4YAML.Proofs.Acceptance.skipSpacesLoop_accepts thm
-L4YAML.Proofs.ScannerDirectivesPresent.unwindIndents_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.advance_flowStack thm
 L4YAML.Proofs.Acceptance.collectPlainScalarLoop_whites thm
 L4YAML.Proofs.Acceptance.SCDoubleQuotedOk.mk ctor
@@ -1984,7 +1861,6 @@ L4YAML.Scanner.Indexed.parseHexEscapeIx_decoded thm
 L4YAML.Proofs.ParserWellBehaved.Scannable_attach_props thm
 L4YAML.Proofs.EmitterScannability.seqLocalCarrier_of_recIH_seq thm
 L4YAML.Align.minGap_le_gap thm
-L4YAML.Proofs.DirectiveRuns.scanDocumentEnd_fields thm
 L4YAML.Proofs.EmitterScannability.recseqentry_close_pin thm
 L4YAML.Proofs.RoundTrip.escape_resolve_null thm
 L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.compose_scalar_contentIx thm
@@ -1998,7 +1874,6 @@ L4YAML.Proofs.Indexed.WellBehaved.parseFlowMappingLoop_emitter_ok_ix thm
 L4YAML.Proofs.Acceptance.SBBreakOk.head' thm
 L4YAML.Proofs.EmitterScannability.RecMapEntry.map_interior thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_typed_false thm
-L4YAML.Proofs.DirectiveRuns.NonDirExt.emit thm
 L4YAML.Schema.isInt_eq_none_of_hasFlowIndicator thm
 L4YAML.Proofs.RegisterWitness.SlotsWitness.transport thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanFlowSequenceEndIx_preserves_AllKeysValidIx thm
@@ -2010,7 +1885,6 @@ L4YAML.Proofs.Acceptance.TagOk.toSCNsTagProperty thm
 L4YAML.Proofs.BlockScalarContracts.satisfiesG2 def
 L4YAML.Proofs.Indexed.ScannerProgress.scanDirectiveIx_offset_lt thm
 L4YAML.Scanner.Indexed.scanFlowEntryIx_offset_monotonic thm
-L4YAML.Proofs.DirectiveRuns.KeyTrans_of thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.emit_tokens_pushIx thm
 L4YAML.Proofs.TokenGrammar.check_sound thm
 L4YAML.Proofs.Acceptance.isNsHexDigit_ne_cr thm
@@ -2034,7 +1908,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.ParseStream.parseYamlRawIx_emitScalar_
 L4YAML.Proofs.EmitterScannability.emitAt_preserves_ek thm
 L4YAML.Proofs.BlockScalarContracts.digit2_is_header_char thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.emitPairList_scans_nonemptyIx thm
-L4YAML.Proofs.DirectiveRuns.Quiet_of_indents_eq thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_typed_list_strings thm
 L4YAML.Proofs.EmitterScannability.flowBodyWindow_and_seqEnclosed_of_facts thm
 L4YAML.Proofs.ScannerProofs.scannerEscapeChar def
@@ -2051,7 +1924,6 @@ L4YAML.Proofs.ScannerPlainScalarValid.saveSimpleKey_new_tokens_not_flow thm
 L4YAML.Proofs.Indexed.Completeness.stripAnnotations_toYamlValue_scalar_content thm
 L4YAML.Proofs.ParserWellBehaved.parseNode_alias_tokens thm
 L4YAML.Proofs.SchemaComposition.fromYamlType_int thm
-L4YAML.Proofs.DirectiveRuns.DirInv.stack thm
 L4YAML.Proofs.Indexed.NodeProofs.AG def
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.preprocess_filtered_monoIx thm
 L4YAML.Proofs.ParserWellBehaved.Scannable_true_implies_false thm
@@ -2096,7 +1968,6 @@ L4YAML.Scanner.Indexed.peekIsLineBreak_atEnd thm
 L4YAML.Proofs.Acceptance.PlainNextLineOk.toSSNsPlainNextLine thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.emit_explicitKeyStack thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_reserved_neg7_tagged thm
-L4YAML.Proofs.DirectiveRuns.KeyOK_set_both thm
 L4YAML.Proofs.Indexed.WfaProofs.handleBlockMappingKeyEntry_wfa thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.valueProps_loop_ok thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_empty_flow_seq thm
@@ -2105,7 +1976,6 @@ L4YAML.Proofs.Acceptance.parseBlockHeaderLoop_accepts thm
 L4YAML.Proofs.Acceptance.peekAt_of_corr thm
 L4YAML.Proofs.EmitterScannability.EmitScansInFlowSKDR def
 L4YAML.Proofs.Indexed.ScannerCorrectness._inline_scalar_preserves_prefix thm
-L4YAML.Proofs.DirectiveRuns.vals_emitAt thm
 L4YAML.Proofs.ParserGrammable.goPairs_grammable_ordered thm
 L4YAML.Proofs.RoundTrip.emit_map_nonempty thm
 L4YAML.Proofs.EscapeResolution.escape_tab_printable thm
@@ -2114,7 +1984,6 @@ L4YAML.Proofs.EmitterScannability.RecMapEntry.map ctor
 L4YAML.Proofs.ScannerWhitespace.consumeNewline_preserves_simpleKeyStack thm
 L4YAML.Proofs.ScannerSimpleKey.scanKey_pre_advance_wellFormed thm
 L4YAML.Proofs.ErrorProperties.getString_error thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanAnchorOrAlias_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.simpleEscapeChar_of_escapeTag thm
 L4YAML.Proofs.ExplicitKeyCoupling.pushMappingIndent_preserves_explicitKeyCol thm
 L4YAML.Proofs.Indexed.WellBehaved.parseNode_scannable_false_ix thm
@@ -2139,7 +2008,6 @@ L4YAML.Proofs.Acceptance.BodyTail.toSLLiteralContent thm
 L4YAML.Proofs.FlowSync.FlowSync.unwindIndents thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_NO thm
 L4YAML.Proofs.FlowAdjacencyIx.saveSimpleKeyIx_preserves_completesFalse thm
-L4YAML.Proofs.DirectiveRuns.DirInv_preprocess thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.escapeString_cons thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.unwindIndentsIx_flowStack thm
 L4YAML.Proofs.ScannerIndentStack.unwindBody_indents_ge_1 thm
@@ -2152,13 +2020,11 @@ L4YAML.Proofs.ScannerProofs.mk'_line thm
 L4YAML.Proofs.ScannerIndentStack.unwindBody_simpleKeyStack thm
 L4YAML.Proofs.EscapeResolution.replacement_char_printable thm
 L4YAML.Proofs.Acceptance.AutoIndentOk.eof ctor
-L4YAML.Proofs.DirectiveRuns.DirInv_closeStaleExplicitKey thm
 L4YAML.Proofs.EscapeResolution.resolveNamedEscape_count thm
 L4YAML.Proofs.StreamAccum.scanBlockEntry_error_of_bad thm
 L4YAML.Proofs.CommentRoundTrip.comment_roundtrip_mapping thm
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeepSeq_of_window_producers_map thm
 L4YAML.Proofs.EmitterScannability.scanDoubleQuoted_first_filtered_token thm
-L4YAML.Proofs.DirectiveRuns.toks_setIfInBounds thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.scannerHexCheck_eq_isHexDigitBool thm
 L4YAML.Proofs.FoldNewlines.markerFollower_tab thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.hex_two_foldl_bound thm
@@ -2174,8 +2040,6 @@ _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.en
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.danglingNodePosIx?_congr thm
 L4YAML.Proofs.ErrorProperties.getMapping_error thm
 L4YAML.Proofs.Acceptance.digit_facts thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanFlowSequenceStart_preserves_directivesPresent thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanFlowEntry_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanValuePrepareIx_preserves_explicitKeyStack thm
 L4YAML.Proofs.ScannerDocument.with_simpleKey_preserves_wellFormed thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.scanLoopIx_eof thm
@@ -2197,20 +2061,16 @@ L4YAML.Proofs.EmitterScannability.seqEnclosed_descend thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx.flowLevel_ge_end thm
 L4YAML.Proofs.ScannerIndentStack.pushSequenceIndent_preserves_flow_sync thm
 L4YAML.Proofs.LineOpenGuard.scanPlainScalar_restNoOpen thm
-L4YAML.Proofs.DirectiveRuns.ordTok def
 L4YAML.Proofs.Indexed.ScannerProgress.scanDocumentEndIx_offset_lt thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanKey_preserves_directivesPresent thm
 L4YAML.Proofs.ParserWellBehaved.parseNode_flowNesting thm
 L4YAML.Proofs.CloseStaleExplicitKey.closeStaleExplicitKey_documentEverStarted thm
 L4YAML.Proofs.NodeProduction.SFlowNode_plain_of_keyOneLine thm
-L4YAML.Proofs.DirectiveRuns.KeyOK_set thm
 L4YAML.Scanner.Indexed.collectDoubleQuotedLoopIx_zero thm
 L4YAML.Proofs.EmitterScannability.danglingNodePos?_none_of_no_run thm
 L4YAML.Scanner.Indexed.scanNextTokenIx_preprocess_offset_monotonic thm
 L4YAML.Proofs.EmitterScannability.seqWindow_flowBodyContent_seq_general thm
 L4YAML.Proofs.EmitterScannability.FlowBodyContent.headContentStart thm
 L4YAML.Proofs.Acceptance.SQTextOk ind
-L4YAML.Proofs.DirectiveRuns.DirInv_needIndentCheck thm
 L4YAML.Proofs.TokenGrammar.TG.directives_cons ctor
 L4YAML.Proofs.EmitterScannability.NoColonDispatchChain.flowLevel_ge_start thm
 L4YAML.Proofs.Acceptance.collectSingleQuotedLoop_accepts_multi thm
@@ -2232,7 +2092,6 @@ L4YAML.Proofs.ParserGrammable.MapBodyProps.bracket_seq thm
 L4YAML.Proofs.EmitterScannability.scanLoop_checkFlowValueIndent_ok_of_no_run thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.psv_match_ix def
 L4YAML.Proofs.Acceptance.SBBreakOk.cr ctor
-L4YAML.Proofs.DirectiveRuns.DirInv_scanDocumentStart thm
 L4YAML.Proofs.SurfaceSpan.sFlowSequence_suffix thm
 L4YAML.Proofs.Indexed.NodeProofs.aad_mono thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.Inv.advance_pos thm
@@ -2246,7 +2105,6 @@ L4YAML.Scanner.Indexed.trimTrailingWSIx_append_spaces thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceEndIx_lastRealTokenValIx thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_preprocess_preserves_AllKeysValidIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanLoopIx_checkDanglingNode_ok_of_sentinel_stack thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipToContent_preserves_directivesPresent thm
 L4YAML.Proofs.BlockScalarContracts.nonConsuming_preserves_g2 thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.envAt_succ thm
 L4YAML.Scanner.Indexed.skipSpacesS_tokens thm
@@ -2260,46 +2118,39 @@ _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.is
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeep_window_of_root thm
 L4YAML.Proofs.BlockScalarContracts.satisfiesComposition_spec thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.Inv.peek thm
-L4YAML.Proofs.DirectiveRuns.unwindIndents_neg_one_quiet thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.go_drop thm
 L4YAML.Proofs.ScannerDispatch.with_simpleKeyAllowed_true_preserves_wellFormed thm
 L4YAML.Proofs.Indexed.WfaProofs.prepareDocumentState_tokens_eq_ix thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_emit thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanYamlDirectiveIx_tokens_size_le_succ thm
-L4YAML.Proofs.DirectiveRuns.pushMappingIndent_nonDirExt thm
 L4YAML.Proofs.ScannerFlowCollection.scanFlowSequenceStart_tokens_size thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanKey_filtered_growsIx thm
 L4YAML.Proofs.FoldNewlines.not_markerFollower_dash thm
 L4YAML.Proofs.Acceptance.processEscape_accepts_named thm
 L4YAML.Proofs.CommentRoundTrip.emitWithComments_one_comment thm
 L4YAML.Proofs.EmitterScannability.dispatchBlockIndicators_none_close_bracket thm
-L4YAML.Proofs.DirectiveRuns.dirRun_cons thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.peekPos_some thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingEndIx_indents thm
 L4YAML.Proofs.EmitterScannability.RecSeqEntry.seq_interior thm
 L4YAML.Proofs.Indexed.EmitterScannability.ParseStream.parseStream_three_tokens_scalarIx thm
 L4YAML.Proofs.ScannerIndentStack.unwindBody_flowLevel thm
-L4YAML.Proofs.DirectiveRuns.consumeBOM_indents thm
 L4YAML.Proofs.Acceptance.wordChar_not_break thm
 L4YAML.Scanner.Indexed.scanKeyIx_offset_monotonic thm
 L4YAML.Proofs.Acceptance.skipWhitespaceLoop_accepts thm
 L4YAML.Proofs.EmitterScannability.emitList_scans_empty thm
 L4YAML.Proofs.BlockScalarContracts.letter_a_not_header_char thm
 L4YAML.Proofs.EmitterScannability.dispatchContent_maintains_FlowNoOverwriteAt thm
-L4YAML.Proofs.DirectiveRuns.PostInv_dispatchBlock thm
 L4YAML.Proofs.CouplingBridge.space_gives_SSeparateInLine thm
 L4YAML.Proofs.CommentProperties.strip_order_compose_comm thm
 L4YAML.Proofs.Indexed.NodeProofs.parseBlockMapping_aad thm
 L4YAML.Proofs.ScannerIndentStack.twoLevels def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchStructural_none_flow thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.skipSpacesS_indents thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectHexDigitsLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.unwindIndentsIx_explicitKeyStack thm
 L4YAML.Proofs.FoldNewlines.markerFollower_newline thm
 L4YAML.Proofs.TokenGrammar.TG.props_tag ctor
 L4YAML.Proofs.EmitterScannability.globalFlowSeqSepAdj_of_map_structure thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_checkBareDocument_ok_of_inFlow thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanSingleQuoted_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.ScannerProgress.scanNextTokenIx_dispatchStructural_offset_gt thm
 L4YAML.Proofs.EmitterScannability.seqWindow_flowBodyContent_general thm
 L4YAML.Proofs.EndToEndCorrectness.parseYamlIx_implies_valid_stream thm
@@ -2311,7 +2162,6 @@ L4YAML.Proofs.DocumentContracts.isDocumentBoundary def
 L4YAML.Proofs.PreprocessProduction.skipToContent_col0_prod thm
 L4YAML.Proofs.EmitterScannability.escapeString_all_nbJson thm
 L4YAML.Proofs.Acceptance.SBBreakOk.col_zero thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipToContentLoop_preserves_directivesPresent thm
 L4YAML.Proofs.RoundTrip.contentEq_diff_content thm
 L4YAML.Proofs.EmitterScannability.SeqLocateGuard.opener thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx.tokens_mono thm
@@ -2338,7 +2188,6 @@ L4YAML.Proofs.FlowIndexLift.SFlowContent_at thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFilteredIx_of_chain_eq thm
 L4YAML.Proofs.CommentRoundTrip.value_roundtrip_no_comments thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.scanLoopIx_step_eq thm
-L4YAML.Proofs.DirectiveRuns.dirRun_append_ph thm
 L4YAML.Schema.isFloat_eq_none_of_hasFlowIndicator thm
 L4YAML.Scanner.Indexed.trimTrailingWSIx_eq thm
 L4YAML.Proofs.SurfaceSpan.separateInLine_trans thm
@@ -2389,7 +2238,6 @@ L4YAML.Proofs.Indexed.ScannerCorrectness.ValidTokenStreamPropIx def
 L4YAML.Proofs.DumpRoundTrip.dumpDocuments_two thm
 L4YAML.Proofs.Indexed.Grammable.parseStreamIx_output_grammable thm
 L4YAML.Proofs.EmitterScannability.MapInteriorSeparators'_descend thm
-L4YAML.Proofs.DirectiveRuns.PostInv_scanValuePrepare thm
 L4YAML.Proofs.Acceptance.PlainOneLineOk ind
 L4YAML.Proofs.FlowSync.FlowSync_flowSequenceStart thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.scanLoopIx_eof_eq thm
@@ -2397,7 +2245,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_indents 
 L4YAML.Proofs.Indexed.WfaProofs.parseDocument_tokens_eq_ix thm
 L4YAML.Proofs.ScannerContracts.digitOffset_le_nine_all thm
 L4YAML.Proofs.LineOpenGuard.scanBlockScalar_restNoOpen thm
-L4YAML.Proofs.ScannerDirectivesPresent.consumeExactSpaces_preserves_directivesPresent thm
 L4YAML.Proofs.Acceptance.TagOk ind
 L4YAML.Proofs.DumpRoundTrip.dump_empty_flow_map thm
 L4YAML.Proofs.ScannerPlainScalarValid.scanPlainScalar_preserves_PlainScalarsValid thm
@@ -2409,7 +2256,6 @@ L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanFlowSequenceStartIx_ek_pushed 
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanKeyIx_preserves_AllKeysValidIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.skipWhitespaceS_directivesPresent thm
 L4YAML.Proofs.DumpRoundTrip.dump_scalar_core_tag_elided thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanBlockEntry_preserves_directivesPresent thm
 L4YAML.Proofs.StringProperties.forbidden_has_message thm
 L4YAML.Proofs.CommentProperties.classifyDocumentComments_preserves_anchors thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.node_empty_of thm
@@ -2420,8 +2266,6 @@ L4YAML.Proofs.EmitterScannability.emit_first_char_bracket thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.lastRealTokenValIx_push_non_ph thm
 L4YAML.Proofs.ErrorProperties.fromYamlType_string_error thm
 L4YAML.Proofs.Acceptance.PlainEntryOk.toEntry thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanTag_preserves_directivesPresent thm
-L4YAML.Proofs.DirectiveRuns.scanFlowEntry_nonDirExt thm
 L4YAML.Proofs.FlowAdjacencyIx.checkFlowAdjacencyIx_ok_of_notInFlow thm
 L4YAML.Proofs.Indexed.WellBehaved.parseFlowMappingLoop_tokens_preserved_ix thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingEndIx_detail thm
@@ -2453,7 +2297,6 @@ L4YAML.Proofs.BlockScalarContracts.extractHeaderChars_preserves_non_header thm
 L4YAML.Proofs.Indexed.Composition.parses_flow_map_empty thm
 L4YAML.Proofs.EscapeResolution.escape_space_printable thm
 L4YAML.Proofs.Indexed.NodeProofs.declsBound_of_props_finalization thm
-L4YAML.Proofs.DirectiveRuns.DirInv.transport thm
 L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport thm
 L4YAML.Proofs.Indexed.NodeProofs.parseBlockMappingLoop_ag thm
 L4YAML.Proofs.ScannerDoubleQuoted.escapeHex2_head thm
@@ -2464,15 +2307,11 @@ L4YAML.Proofs.EmitterScannability.no_props_push thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_of_tokens_eq thm
 L4YAML.Proofs.Indexed.WellBehaved.flowBracketBalanceIx def
 L4YAML.Proofs.EmitterScannability.seqFoldTotal_of_context thm
-L4YAML.Proofs.DirectiveRuns.scanSecondaryTag_pushNonDir thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipSpacesLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.EmitPairListScansInFlowIx_strong.toWeak thm
 L4YAML.Proofs.SurfaceCoupling.tab_is_white thm
 L4YAML.Proofs.LineOpenGuard.RestNoOpen def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.underIndentedFlowValuePosIx?_none_of_inFlow thm
-L4YAML.Proofs.DirectiveRuns.DirInv_scanLoop thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.skipToContentS_atEnd thm
-L4YAML.Proofs.DirectiveRuns.scanFlowMappingEnd_vals thm
 L4YAML.Proofs.EmitterScannability.dispatchBlockIndicators_none_comma thm
 L4YAML.Proofs.Acceptance.notDocMarker_of_white thm
 L4YAML.Proofs.RegisterWitness.pushSequenceIndent_witness thm
@@ -2482,7 +2321,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_scanFl
 L4YAML.Proofs.FlowKeyLift.flowMapEntry_toKey thm
 L4YAML.Proofs.Acceptance.DQCharOk ind
 L4YAML.Proofs.FlowSync.FlowSync.consumeBOM thm
-L4YAML.Proofs.DirectiveRuns.toks_length thm
 L4YAML.Proofs.Completeness.parseYaml_a_value thm
 L4YAML.Proofs.CommentRoundTrip.commentRoundTrips def
 L4YAML.Proofs.SurfaceCoupling.cr_gives_SBBreak thm
@@ -2498,10 +2336,8 @@ L4YAML.Proofs.EscapeResolution.resolveNamedEscape_valid_unicode thm
 L4YAML.Proofs.SurfaceSpan.separate_inline_or_breakOrEnd thm
 L4YAML.Proofs.EmitterScannability.globalFlowSeqSepAdj_fires thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanAnchorOrAliasIx_preserves_flowStack thm
-L4YAML.Proofs.DirectiveRuns.unwindIndentsLoop_neg_one_quiet thm
 L4YAML.Scanner.Indexed.consumeLineBreak_CRLF_line thm
 L4YAML.Proofs.EmitterScannability.seqWindowRecSeqBody thm
-L4YAML.Proofs.DirectiveRuns.foldl_dirStep_none thm
 L4YAML.Proofs.ParserGrammable.findSome_unit_to_val thm
 L4YAML.Proofs.Acceptance.SBBreakOk.crLf ctor
 L4YAML.Proofs.BlockScalarContracts.hash_not_header_char thm
@@ -2536,9 +2372,7 @@ L4YAML.Proofs.Indexed.EmitterScannability.Basic.escapeChar_head_not_quote thm
 _private.L4YAML.Proofs.Production.FlowIndexLift.0.L4YAML.Proofs.FlowIndexLift.doubleText_of_oneLine thm
 L4YAML.Proofs.EmitterScannability.seqWindow_flowBodyContent_seq thm
 L4YAML.Proofs.EmitterScannability.EmitPairListScansInFlow_strong.toWeak thm
-L4YAML.Proofs.DirectiveRuns.scanFlowSequenceEnd_vals thm
 L4YAML.Proofs.StreamAccum.OpenSeqEntry def
-L4YAML.Proofs.DirectiveRuns.unwindIndentsLoop_vals thm
 L4YAML.Proofs.TokenGrammar.TG.singlePair_value ctor
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.scanNextTokenIx_preprocess_eof thm
 L4YAML.Scanner.Indexed.roundtripOk def
@@ -2552,7 +2386,6 @@ L4YAML.Proofs.EmitterScannability.contentEqList_append_singleton thm
 L4YAML.Proofs.Soundness.seq_items_count_preserved thm
 L4YAML.Proofs.Acceptance.IndentOk ind
 L4YAML.Proofs.ScannerIndent.advance_nonNewline_line thm
-L4YAML.Proofs.DirectiveRuns.keyEq_ok thm
 L4YAML.Proofs.BlockScalarContracts.validHeaderLength_nil thm
 L4YAML.Proofs.Indexed.ScannerCorrectness._dir_update_tokens thm
 L4YAML.Proofs.RoundTrip.escape_resolve_esc thm
@@ -2565,10 +2398,8 @@ L4YAML.Scanner.Indexed.scanYamlDirectiveIx_offset_monotonic thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.ScanInvIx_of_one_emit_at_pre_cursor thm
 L4YAML.Proofs.DumpRoundTrip.dump_folded_honored thm
 L4YAML.Scanner.Indexed.skipWhitespaceLoop_terminates thm
-L4YAML.Proofs.DirectiveRuns.scanBlockScalarBody_pushNonDir thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.zero ctor
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.Array_setIfInBounds_filter_monoIx thm
-L4YAML.Proofs.ScannerDirectivesPresent.pushMappingIndent_preserves_directivesPresent thm
 L4YAML.Proofs.Acceptance.scanDoubleQuoted_accepts_multi thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_cases thm
 L4YAML.Proofs.ScannerProofs.mk'_flowLevel thm
@@ -2584,7 +2415,6 @@ L4YAML.Proofs.RegisterWitness.dispatchStructural_witness thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_space thm
 L4YAML.Proofs.EmitterScannability.FlowMonoChain_preserves_position_specific_flow thm
 L4YAML.Proofs.DocumentProduction.start_of_line_comments thm
-L4YAML.Proofs.ScannerDirectivesPresent.foldQuotedNewlines_preserves_directivesPresent thm
 L4YAML.Proofs.SchemaDump.roundTrip_nat_zero thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanFlowSequenceStartIx_tokens_eq thm
 L4YAML.Proofs.Acceptance.not_isNsAnchorChar_scanner_cond thm
@@ -2601,7 +2431,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.emitList_scans_emptyIx thm
 L4YAML.Proofs.EscapeResolution.escape_backslash_printable thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanFlowSequenceEndIx_ekstack_popped thm
 L4YAML.Proofs.Acceptance.consumeExactSpaces_accepts thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanDoubleQuoted_preserves_directivesPresent thm
 L4YAML.Proofs.SchemaDump.roundTrip_int_100 thm
 L4YAML.Proofs.EmitterScannability.preprocess_maintains_NoOverwriteAt thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_dispatchContent_quote_arm thm
@@ -2628,9 +2457,7 @@ L4YAML.Proofs.EmitterScannability.emitList_first_char_bracket thm
 L4YAML.Proofs.Indexed.ScannerProgress.canStart_not_lb thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.dispatchBlockIndicators_filtered_growsIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchFlowIndicators_close_bracket thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanNamedTag_preserves_directivesPresent thm
 L4YAML.Proofs.RoundTrip.escape_resolve_space thm
-L4YAML.Proofs.DirectiveRuns.collectTagHandleDirectiveLoop_preserves_allowDirectives thm
 L4YAML.Proofs.Acceptance.collectPlainScalarLoop_blockFold_step thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_explicitKeyLine thm
 L4YAML.Proofs.Acceptance.scanKey_accepts thm
@@ -2663,7 +2490,6 @@ L4YAML.Proofs.Indexed.ScannerCorrectness.AllKeysValidIx_mono_pos thm
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeepSeq_root_holds_nested_scalar thm
 L4YAML.Proofs.Acceptance.atDocumentBoundary_false_of_corr thm
 L4YAML.Proofs.CloseStaleExplicitKey.closeStaleExplicitKey_inputEnd thm
-L4YAML.Proofs.DirectiveRuns.PostInv.transportCleared thm
 L4YAML.Proofs.EmitterScannability.seqWindowRecSeqBody_seq_of_provider thm
 L4YAML.Proofs.Indexed.WellBehaved.parseFlowMapping_pos_mono_ix thm
 L4YAML.Proofs.TokenGrammar.TG.node_alias ctor
@@ -2696,7 +2522,6 @@ L4YAML.Proofs.StaleCursorFloor.StaleKeyCursorFloor_of_fields_eq thm
 L4YAML.Proofs.EmitterScannability.ScanChain_deterministic thm
 L4YAML.Proofs.Indexed.NodeProofs.parseBlockMappingLoop_aad thm
 L4YAML.Proofs.Acceptance.BlockStopOk.outdent ctor
-L4YAML.Proofs.DirectiveRuns.NonDirExt.congr thm
 L4YAML.Proofs.ScannerProofs.isWhiteSpace_space thm
 L4YAML.Proofs.EmitterScannability.RecMapPairDeep.toFlat thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_explicitKeyCol thm
@@ -2709,7 +2534,6 @@ L4YAML.Proofs.FlowSync.FlowSync def
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScanChainIx.offset_monotonic_weak thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.startsNode def
 L4YAML.Proofs.Acceptance.DQBreakOk.escaped ctor
-L4YAML.Proofs.DirectiveRuns.scanNamedTag_pushNonDir thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingEndIx_flowStack thm
 L4YAML.Proofs.RoundTripComposition.roundtrip_colon_space thm
 L4YAML.Proofs.EmitterScannability.recbody_joint_navigator_driver thm
@@ -2735,35 +2559,29 @@ L4YAML.Proofs.DumpRoundTrip.isPlainSafe_colon_space thm
 L4YAML.Proofs.Indexed.Grammable.parseStreamIx_output_aliases_resolve thm
 L4YAML.Scanner.Indexed.collectPlainScalarLoopIx_linebreak_block_some_hash thm
 L4YAML.Proofs.PendingKeysStable.dispatchFlowIndicators_preserves_pendingKeys thm
-L4YAML.Proofs.DirectiveRuns.dirRun_set_closed thm
 L4YAML.Proofs.RoundTrip.emit_scalar_starts_quote thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_preprocess_preserves_simpleKeyStack thm
-L4YAML.Proofs.DirectiveRuns.dirRun_true_false thm
 L4YAML.Proofs.ParserCompleteness.stripAnnotationsList_idempotent thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanTagDirectiveIx_new_token_start thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.envAt_succ_content thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.skipToContentS_explicitKeyStack thm
 L4YAML.Proofs.NodeProduction.PendingFlowSeqEntry.toColon thm
-L4YAML.Proofs.DirectiveRuns.PostInv_flowEnd thm
 L4YAML.Proofs.EmitterScannability.MapLocated.key_scalar_value thm
 L4YAML.Proofs.CharClass.isIndicator_equiv thm
 L4YAML.Proofs.Indexed.WfaProofs.parseDirectives_decls_ix thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchContent_preserves_prefix thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.flowLevel_ge_end thm
-L4YAML.Proofs.DirectiveRuns.isDirTok def
 L4YAML.Proofs.Acceptance.BodyTail.blank thm
 L4YAML.Proofs.Acceptance.isNsAnchorChar_scanner_cond thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tg_stream_last thm
 L4YAML.Proofs.ErrorProperties.scan_error_ne_schema_error thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_vtab thm
-L4YAML.Proofs.DirectiveRuns.scan_closed thm
 L4YAML.Proofs.CharClass.canStartPlainScalar_exception thm
 L4YAML.Proofs.EmitterScannability.mapGlobalFlowSeqSepAdj_of_emit thm
 L4YAML.Proofs.SurfaceCoupling.SBBreak_cr_col thm
 L4YAML.Proofs.Indexed.ScannerProgress.scanNextTokenIx_preprocess_hasMore thm
 L4YAML.Scanner.Indexed.autoDetectBlockScalarIndentLoopIx_ge_min thm
 L4YAML.Proofs.Indexed.NodeProofs.parseExplicitKey_aad thm
-L4YAML.Proofs.DirectiveRuns.DirInv_unwindIndents thm
 L4YAML.Proofs.EmitterScannability.NoColonDispatchChain_preserves_position thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_comments thm
 L4YAML.Proofs.Acceptance.IndentOk.auto ctor
@@ -2798,7 +2616,6 @@ L4YAML.Proofs.NodeProduction.propsEmpty_flowNode thm
 L4YAML.Proofs.FoldNewlines.not_cForbidden_space_start thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_descend thm
 L4YAML.Proofs.Composition.parseYaml_of_parseYamlRaw_error thm
-L4YAML.Proofs.DirectiveRuns.scanVerbatimTag_pushNonDir thm
 L4YAML.Proofs.Acceptance.SCSingleQuotedMultiOk.mk ctor
 L4YAML.Proofs.Acceptance.SCSingleQuotedMultiOk ind
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanValuePrepareIx_directivesPresent_of_inFlow thm
@@ -2810,7 +2627,6 @@ L4YAML.Proofs.Indexed.WellBehaved.parseImplicitBlockSequenceLoop_pos_mono_ix thm
 L4YAML.Proofs.LineOpenGuard.scanDoubleQuoted_restNoOpen thm
 L4YAML.Proofs.EmitterScannability.advanceTail_invariant thm
 L4YAML.Proofs.EmitterScannability.emitPairList_scans_nonempty_keyshape thm
-L4YAML.Proofs.DirectiveRuns.nose_append thm
 L4YAML.Proofs.ScannerProofs.TokenStream_ofTokens_pos thm
 L4YAML.Proofs.EmitterScannability.flowBodyContentDeep_child_bracket thm
 L4YAML.Proofs.ScalarProduction.prefix_text_literal_content thm
@@ -2850,7 +2666,6 @@ L4YAML.Proofs.Acceptance.Keeps.currentIndent thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScannerSurfCorrIx.chars_from thm
 L4YAML.Proofs.Acceptance.flowLinePrefix_toGStar thm
 L4YAML.Proofs.Indexed.NodeProofs.AG.declsGrow thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipToContentWs_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchStructural_preserves_flowLevel thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tok_of_lt thm
 L4YAML.Scanner.Indexed.roundtrip_empty thm
@@ -2859,8 +2674,6 @@ L4YAML.Proofs.RoundTripComposition.roundtrip_block_map_pair thm
 L4YAML.Proofs.DocumentContracts.docBoundary_exhaustive thm
 L4YAML.Proofs.SurfaceSpan.span_of_suffix thm
 L4YAML.Proofs.EmitterScannability.recseqbody_advance_general thm
-L4YAML.Proofs.DirectiveRuns.PushNonDir.emitAt thm
-L4YAML.Proofs.DirectiveRuns.PushNonDir.ofEq thm
 L4YAML.Proofs.EmitterScannability.SeqLocateGuard.domain thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScanChainIx.single thm
 L4YAML.Proofs.CommentRoundTrip.Classification.dumpDocumentsWithComments_single thm
@@ -2925,7 +2738,6 @@ L4YAML.Proofs.RoundTripComposition.roundtrip_typed_unit thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.dispatchBlockIndicators_none_quote thm
 L4YAML.Proofs.EmitterScannability.dispatchContent_maintains_NoOverwriteAt thm
 L4YAML.Proofs.ScannerIndentStack.pushMappingIndent_preserves_sk_sync thm
-L4YAML.Proofs.DirectiveRuns.collectVersionMajorLoop_preserves_allowDirectives thm
 L4YAML.Proofs.Acceptance.collectPlainScalarLoop_breakStop thm
 L4YAML.Proofs.SurfaceSpan.gconsumeAll_suffix thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanNextTokenIx_emitScalar_init thm
@@ -2936,7 +2748,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.advanceN_explicitKeyStac
 L4YAML.Proofs.StreamAccum.KmSound.empty thm
 L4YAML.Scanner.Indexed.scanTagIx_offset_monotonic thm
 L4YAML.Proofs.DumpRoundTrip.dump_config_doubleQuoted thm
-L4YAML.Proofs.DirectiveRuns.skipToContent_preserves_AllKeysValid thm
 L4YAML.Proofs.DumpRoundTrip.dumpDocuments_single thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_lsep thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.emitScalar_toList thm
@@ -2951,7 +2762,6 @@ L4YAML.Proofs.CouplingBridge.prev_next_with_prefix thm
 L4YAML.Proofs.EmitterScannability.EmitPairListScansInFlow def
 L4YAML.Proofs.Indexed.ScannerCorrectness.advance_preserves_ScanInvIx thm
 L4YAML.Proofs.EmitterScannability.EmitScansInFlowSavedKey def
-L4YAML.Proofs.ScannerDirectivesPresent.parseBlockHeaderLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.CursorSurfCorrIx.input_prefix thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.crossedPropsExcessIdxIx?_none_of_no_props thm
 L4YAML.Proofs.EmitterScannability.SeqLocateGuard.win_lo thm
@@ -2961,7 +2771,6 @@ L4YAML.Proofs.Indexed.ScannerCorrectness.scanValueIx_preserves_AllKeysValidIx th
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.SInv def
 L4YAML.Proofs.Indexed.ScannerCorrectness.emit_new_token_start thm
 L4YAML.Proofs.Acceptance.LineCharOk def
-L4YAML.Proofs.DirectiveRuns.dirRun_close thm
 L4YAML.Scanner.Indexed.skipSpaces_terminates thm
 L4YAML.Proofs.EmitterScannability.scanLoop_checkFlowValueIndent_ok_of_inFlow thm
 L4YAML.Proofs.Indexed.WellBehaved.parseFlowMappingLoop_pos_mono_ix thm
@@ -3019,7 +2828,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.RoundTrip.emitPairList_body_filtered_c
 L4YAML.Proofs.ScannerContracts.emit_flowStack thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanNextTokenIx_dispatchContent_maintains_SimpleKeyAboveIx thm
 L4YAML.Proofs.Indexed.WfaProofs.prepareDocumentState_decls_eq_ix thm
-L4YAML.Proofs.DirectiveRuns.scanBlockEntry_nonDirExt thm
 L4YAML.Proofs.EmitterScannability.scanValuePrepare_preserves_position_specific_flow thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceEndIx_explicitKeyLine thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScanChainIx.bound_invariant thm
@@ -3035,7 +2843,6 @@ L4YAML.Proofs.Indexed.WfaProofs.parseFlowMappingLoop_wfa thm
 L4YAML.Proofs.ScannerEmitBridge.emit_parse_has_witness thm
 L4YAML.Proofs.Acceptance.HeaderIndicatorsOk.indentFirst ctor
 L4YAML.Proofs.Acceptance.SCSingleQuotedMultiOk.toSCSingleQuoted thm
-L4YAML.Proofs.DirectiveRuns.NonDirExt.ofPush thm
 L4YAML.Proofs.StructureProduction.not_bom_of_ascii thm
 L4YAML.Proofs.ScannerFlowCollection.scanFlowSequenceEnd_tokens_size thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowEntryIx_detail thm
@@ -3063,7 +2870,6 @@ L4YAML.Proofs.CharClass.canStartPlainScalar_base thm
 L4YAML.Schema.not_hasFlowIndicator_of_num thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_seqEmpty_head_step thm
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.scanNextTokenIx_dispatchContent_maintains_NoOverwriteAtIx thm
-L4YAML.Proofs.ScannerDirectivesPresent.consumeNewline_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanLoopIx_checkFlowValueIndent_ok_of_no_run thm
 L4YAML.Schema.isNull_eq_false_of_hasFlowIndicator thm
 L4YAML.Proofs.EmitterScannability.seqDescent_provider_of_gate thm
@@ -3072,13 +2878,11 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanKeyIx_preserves_flow
 L4YAML.Proofs.Indexed.ScannerCorrectness.SimpleKeyStackValidIx def
 L4YAML.Scanner.Indexed.scanFlowSequenceEndIx_offset_monotonic thm
 L4YAML.Proofs.ScannerDoubleQuoted.escapeHex2_no_newline_bounded thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanBlockScalarSkipComment_preserves_directivesPresent thm
 L4YAML.Proofs.ScannerDoubleQuoted.processEscapeChar def
 L4YAML.Scanner.Indexed.collectDoubleQuotedLoopIx_linebreak thm
 L4YAML.Proofs.LineOpenGuard.dispatchContent_restNoOpen thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_step_leaf thm
 L4YAML.Proofs.CloseStaleExplicitKey.closeStaleExplicitKey_comments thm
-L4YAML.Proofs.DirectiveRuns.pushSequenceIndent_nonDirExt thm
 L4YAML.Proofs.Acceptance.PlainFlowBreakStopOk.noContent ctor
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_saveSimpleKeyIx thm
 L4YAML.Proofs.Indexed.ScannerProgress.scanFlowEntryIx_offset_lt thm
@@ -3090,7 +2894,6 @@ L4YAML.Proofs.FlowKeyLift.plain_toKey_of_noBreak thm
 L4YAML.Proofs.EmitterScannability.dispatchStructural_filtered_mono thm
 L4YAML.Proofs.Acceptance.collectHexDigitsLoop_accepts thm
 L4YAML.Proofs.StringProperties.forbidden_injective thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectCommentTextLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.skipToContentS_ws1 thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScannerSurfCorrIx ind
 L4YAML.Proofs.EmitterScannability.emit_scans_in_flow_with_skdr thm
@@ -3104,7 +2907,6 @@ L4YAML.Proofs.EmitterScannability.contentEqList_push thm
 L4YAML.Proofs.EmitterScannability.seqRec_of_carrier_and_windowFacts_seq thm
 L4YAML.Proofs.EmitterScannability.recbody_locate_seq_carrier thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.advance_directivesPresent thm
-L4YAML.Proofs.DirectiveRuns.DirInv.quiet thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.overwriteAtCursor_preserves_start_if_match thm
 L4YAML.Scanner.Indexed.collectPlainScalarLoopIx_content thm
 L4YAML.Proofs.EmitterScannability.scanNextToken_checkDanglingNode_ok_of_keyNotAllowed thm
@@ -3115,7 +2917,6 @@ L4YAML.Proofs.EmitterScannability.NoOverwriteAt_of_preserved thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tok_none_of_ge thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanDoubleQuotedIx_first_filtered_token thm
 L4YAML.Proofs.DocumentContracts.docBoundary_start thm
-L4YAML.Proofs.DirectiveRuns.PushNonDir def
 L4YAML.Proofs.Indexed.WellBehaved.parseFlowMappingValue_tokens_preserved_ix thm
 L4YAML.Scanner.Indexed.collectSingleQuotedLoopIx_doubled thm
 L4YAML.Proofs.DirectiveRuns.dirRun_nil thm
@@ -3135,7 +2936,6 @@ L4YAML.Proofs.FlowIndexLift.FlowContent0Residue ind
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_flow_open_mapping_init thm
 L4YAML.Proofs.DocStartLive.lastReal_append_ph thm
 L4YAML.Proofs.CommentProperties.stripPositions_idem thm
-L4YAML.Proofs.DirectiveRuns.scanKey_nonDirExt thm
 L4YAML.Proofs.ScannerProofs.hasMore_def thm
 L4YAML.Proofs.DumpRoundTrip.dump_config_flow_override_map thm
 L4YAML.Proofs.ScannerCorrectness.ScanHelpers.needIndentCheck_update_tokens thm
@@ -3181,7 +2981,6 @@ L4YAML.Proofs.ParserWellBehaved.ScalarScannable_strengthen thm
 L4YAML.Proofs.LineOpenGuard.restNoOpen_of_peek_stop thm
 L4YAML.Proofs.Acceptance.flowIndicator_not_plain thm
 L4YAML.Proofs.NodeProduction.flowSeq_flowNode thm
-L4YAML.Proofs.DirectiveRuns.scan_streamEnd_unique thm
 L4YAML.Proofs.EmitterScannability.MapInteriorSeparators_advance thm
 L4YAML.Proofs.SurfaceSpan.sFlowMapping_suffix thm
 L4YAML.Proofs.ExplicitKeyCoupling.pushMappingIndent_preserves_explicitKeyLine thm
@@ -3189,11 +2988,8 @@ L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanYamlDirective_new_t
 L4YAML.Proofs.Acceptance.GPlus.toGStar thm
 L4YAML.Proofs.SurfaceSpan.sBlockMapEntry_suffix thm
 L4YAML.Proofs.CommentProperties.compose_value_eq_of_comments_eq thm
-L4YAML.Proofs.ScannerDirectivesPresent.collectTagHandleLoop_preserves_directivesPresent thm
 L4YAML.Proofs.CommentProperties.classifyDocumentComments_size_eq thm
-L4YAML.Proofs.DirectiveRuns.DirInv.mk ctor
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_squote thm
-L4YAML.Proofs.ScannerAllowDirectives.dispatchFlowIndicators_preserves_allowDirectives thm
 L4YAML.Proofs.ScannerContracts.mk'_flowStack_empty thm
 L4YAML.Proofs.EmitterScannability.nestedSeq_recseqentry_locate_map_head_step thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.single thm
@@ -3218,12 +3014,10 @@ L4YAML.Proofs.Acceptance.scanBlockEntry_accepts thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.ScanInvIx_mk' thm
 L4YAML.Proofs.Indexed.NodeProofs.parseImplicitBlockSequence_ag thm
 L4YAML.Proofs.Acceptance.scanFlowEntry_accepts thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanSecondaryTag_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.ScannerPlainScalarValid.scanValueClearKeyIx_preserves_prefix thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanDirectiveIx_preserves_explicitKeyStack thm
 L4YAML.Proofs.Acceptance.terminates_at_marker thm
 L4YAML.Scanner.Indexed.scanDocumentStartIx_offset_monotonic thm
-L4YAML.Proofs.DirectiveRuns.PushNonDir.congr thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.AllTokensOnLineIx_scanFlowSequenceStartIx thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchFlowIndicators_maintains_SKAFIx thm
 L4YAML.Proofs.Acceptance.BodyTail.text ctor
@@ -3233,7 +3027,6 @@ L4YAML.Proofs.EmitterScannability.scan_emptyMap_test thm
 L4YAML.Proofs.FlowKeyLift.sepCommentedArm_at_eof_comment_not_inline thm
 L4YAML.Proofs.Indexed.WellBehaved.parseNode_alias_flowNesting_ix thm
 L4YAML.Proofs.Indexed.WfaProofs.parseNodeContent_wfa thm
-L4YAML.Proofs.ScannerDirectivesPresent.skipBlankLinesLoop_preserves_directivesPresent thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.perTokenEvents def
 L4YAML.Proofs.Acceptance.GStar_SLEmptyOk_length thm
 L4YAML.Proofs.Acceptance.SCDoubleQuotedOk ind
@@ -3252,9 +3045,7 @@ _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.st
 L4YAML.Proofs.EmitterScannability.FlowNoOverwriteAt_of_cleared_preserved thm
 L4YAML.Proofs.Indexed.Completeness.stripAnnotationsPairs_idempotent thm
 L4YAML.Scanner.Indexed.ScannerStateIx.skipToContentS_offset_monotonic thm
-L4YAML.Proofs.DirectiveRuns.DirInv_init thm
 L4YAML.Proofs.Indexed.NodeProofs.parseNode_aad_all thm
-L4YAML.Proofs.DirectiveRuns.DirInv.flag thm
 _private.L4YAML.Proofs.Production.FlowIndexLift.0.L4YAML.Proofs.FlowIndexLift.doubleText_cases thm
 L4YAML.Proofs.Indexed.NodeProofs.parseImplicitBlockSequence_aad thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchFlowIndicators_preserves_sync thm
@@ -3276,9 +3067,7 @@ L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.ScanChainIx ind
 L4YAML.Proofs.Acceptance.DQCharOk.plain ctor
 L4YAML.Proofs.ScannerProofs.mk'_simpleKeyAllowed thm
 L4YAML.Proofs.EscapeResolution.isNamedEscapeChar_esc thm
-L4YAML.Proofs.DirectiveRuns.PostInv.transport thm
 L4YAML.Proofs.Completeness.instDecidableEqYamlDocument def
-L4YAML.Proofs.ScannerDirectivesPresent.scanFlowMappingStart_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.WfaProofs.parseDirectives_reader_ix thm
 L4YAML.Proofs.CouplingBridge.skipSpaces_gives_SIndent thm
 L4YAML.Proofs.Indexed.EmitterScannability.ScanChain.scanLoopIx_two_iter thm
@@ -3330,7 +3119,6 @@ L4YAML.Proofs.RoundTrip.escapeChar_newline thm
 L4YAML.Proofs.Acceptance.AutoIndentOk.blank ctor
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.parseDocument_ok thm
 L4YAML.Proofs.NodeProduction.flowMap_flowNode thm
-L4YAML.Proofs.DirectiveRuns.DirInv.ofClosed thm
 L4YAML.Proofs.Completeness.decEqYamlValue.decEqPairListYV def
 L4YAML.Proofs.Indexed.EmitterScannability.EmitScans.FlowMonoChainIx_preserves_position_specific thm
 L4YAML.Proofs.Soundness.flowSeq_style_sound thm
@@ -3357,7 +3145,6 @@ L4YAML.Proofs.EmitterScannability.flowBodyContentDeepSeq_advance thm
 L4YAML.Proofs.Completeness.parseYaml_a_ok thm
 L4YAML.Proofs.EmitterScannability.recseqbody_descend thm
 L4YAML.Proofs.CommentRoundTrip.value_roundtrip_one_comment thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanFlowSequenceEnd_preserves_directivesPresent thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_tilde thm
 L4YAML.Proofs.CouplingBridge.eof_gives_SBComment thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanValueClearKeyIx_preserves_flowLevel thm
@@ -3374,7 +3161,6 @@ L4YAML.Proofs.SurfaceSpan.sBlockSeqEntries_suffix thm
 L4YAML.Proofs.Acceptance.HeaderTailOk ind
 L4YAML.Proofs.Indexed.ScannerCorrectness.advance_preserves_AllKeysValidIx thm
 L4YAML.Proofs.FoldNewlines.cForbidden_dash_tab thm
-L4YAML.Proofs.DirectiveRuns.AllKeysValid_of_clear thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanValueIx_preserves_flowLevel thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.ScanInv'Ix def
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_space_hash thm
@@ -3382,7 +3168,6 @@ L4YAML.Proofs.NodeProduction.GOpt_SSeparate_of_GStar_SSWhite thm
 L4YAML.Proofs.RoundTrip.emit_empty_seq thm
 L4YAML.Proofs.Acceptance.GOpt_sepInLine_to_gstar thm
 L4YAML.Proofs.EmitterScannability.windowWidth_strongRecOn thm
-L4YAML.Proofs.ScannerDirectivesPresent.unwindIndentsLoop_preserves_directivesPresent thm
 L4YAML.Proofs.Indexed.EmitterScannability.FilteredGrowth.scanValuePrepareIx_filtered_monoIx thm
 L4YAML.Proofs.CouplingBridge.break_gives_SSBComment thm
 L4YAML.Proofs.DocumentProduction.doc_end_break_suffix thm
@@ -3391,14 +3176,12 @@ L4YAML.Scanner.Indexed.ScannerStateIx.advanceN_succ_offset_lt_of_hasMore thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.emit_preserves_ScanInvIx thm
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tryConsume_docStart_miss thm
 L4YAML.Scanner.Indexed.roundtrip_flow_map_one thm
-L4YAML.Proofs.ScannerDirectivesPresent.pushSequenceIndent_preserves_directivesPresent thm
 L4YAML.Proofs.CloseStaleExplicitKeyIx.closeStaleExplicitKeyIx_allowDirectives thm
 L4YAML.Proofs.RoundTrip.escapeChar_null thm
 L4YAML.Proofs.SurfaceSpan.gseq3_suffix thm
 L4YAML.Proofs.TokenGrammar.TG.stream_docTerminated ctor
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.tryConsume_docStart_miss' thm
 L4YAML.Proofs.SchemaComposition.schemaRoundTrips def
-L4YAML.Proofs.DirectiveRuns.scanDocumentEnd_ok_dp thm
 L4YAML.Proofs.Acceptance.SQCharOk.length_lt thm
 L4YAML.Proofs.EscapeResolution.escape_dquote thm
 L4YAML.Proofs.EmitterScannability.SavedKeyDoesntResolve.step ctor
@@ -3408,7 +3191,6 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanDocumentStartIx_pres
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.emitAt_explicitKeyLine thm
 L4YAML.Scanner.Indexed.skipToContent_at_content thm
 L4YAML.Proofs.ScannerCorrectness.scanFlowSequenceStart_ek_cleared thm
-L4YAML.Proofs.DirectiveRuns.StackLen def
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowMappingStartIx_lastRealTokenVal thm
 L4YAML.Scanner.Indexed.applyChomp_strip thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.FlowMonoChainIx.flowStack_invariant thm
@@ -3440,7 +3222,6 @@ L4YAML.Proofs.DocStartLive.Shape_append_live thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_allowDirectives thm
 L4YAML.Proofs.Acceptance.scanValueClearKey_currentPos thm
 L4YAML.Proofs.EmitterScannability.recbody_joint_descend_tail thm
-L4YAML.Proofs.DirectiveRuns.PostInv.closed thm
 L4YAML.Proofs.DumpRoundTrip.dump_empty_nonempty thm
 L4YAML.Proofs.BlockScalarFlowGuard.blockScalarGuard_ok_of_notInFlow thm
 L4YAML.Proofs.DocumentContracts.docBoundary_end thm
@@ -3473,7 +3254,6 @@ L4YAML.Scanner.Indexed.skipCommentText_terminates thm
 L4YAML.Proofs.Acceptance.PlainFirstOk.toSNsPlainFirst thm
 L4YAML.Proofs.ScannerProofs.pushSequenceIndent_grows thm
 L4YAML.Proofs.FlowIndexLift.FlowContent0Residue.collection ctor
-L4YAML.Proofs.DirectiveRuns.scanValueClearKey_preserves_simpleKeyStack thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanTagIx_preserves_ScanInvIx thm
 L4YAML.Proofs.Indexed.Composition.parses_block_map_one thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowSequenceStartIx_explicitKeyLine thm
@@ -3481,7 +3261,6 @@ L4YAML.Proofs.EmitterScannability.mapEnclosingOpener_of_gate thm
 L4YAML.Proofs.NodeProduction.PendingFlowSeqEntry.explicitPending ctor
 L4YAML.Proofs.CommentProperties.stripComments_directives_eq thm
 L4YAML.Proofs.Acceptance.ChompOk.strip ctor
-L4YAML.Proofs.DirectiveRuns.scanFiltered_closedList thm
 L4YAML.Proofs.Indexed.ScannerCorrectness.scanFlowSequenceStartIx_preserves_ScanInvIx thm
 L4YAML.Proofs.TokenGrammar.isDocEnd_iff thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.saveSimpleKeyIx_flowStack thm
@@ -3504,14 +3283,12 @@ L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanFlowEntryIx_preserve
 L4YAML.Proofs.ScanStrictCoupling.scanDocumentStart_dp thm
 L4YAML.Proofs.EmitterScannability.dispatchBlockIndicators_preserves_position_specific_flow thm
 L4YAML.Proofs.Acceptance.isNbJson_not_lineBreak thm
-L4YAML.Proofs.DirectiveRuns.stackLen_of_AllKeysValid thm
 L4YAML.Proofs.ScannerDispatch.scanFlowSequenceStart_preserves_indents thm
 L4YAML.Proofs.DumpRoundTrip.dumpDocument_no_directives thm
 L4YAML.Scanner.Indexed.scanFlowMappingStartIx_offset_monotonic thm
 L4YAML.Proofs.FlowKeyLift.scFlowJsonNode_toKey thm
 L4YAML.Proofs.Acceptance.collectPlainScalarLoop_white_step thm
 L4YAML.Proofs.Indexed.Correctness.parseStreamIx_respects_grammar thm
-L4YAML.Proofs.ScannerDirectivesPresent.scanFlowMappingEnd_preserves_directivesPresent thm
 L4YAML.Proofs.Completeness.parseYaml_multi_doc thm
 L4YAML.Scanner.Indexed.foldQuotedNewlinesIx_of_blank_lines thm
 L4YAML.Proofs.ScannerDispatch.with_simpleKey_endLine_preserves_wellFormed thm
@@ -3519,7 +3296,6 @@ L4YAML.Scanner.Indexed.roundtrip_flow_map_two thm
 L4YAML.Proofs.Indexed.EmitterScannability.FlowMonoChain.scanNextTokenIx_dispatchStructural_maintains_SKAFIx thm
 L4YAML.Scanner.Indexed.consumeLineBreak_CRLF_col thm
 L4YAML.Proofs.DumpRoundTrip.isPlainSafe_bang thm
-L4YAML.Proofs.DirectiveRuns.checkNoPendingDirectives_ok thm
 L4YAML.Proofs.CommentProperties.commentsFor_stripComments thm
 L4YAML.Proofs.SchemaResolution.scalarType_not_map thm
 L4YAML.Proofs.EscapeResolution.escape_hex16_none thm
@@ -3541,7 +3317,6 @@ L4YAML.Proofs.LineOpenGuard.restNoOpen_of_validateFlowClose thm
 L4YAML.Proofs.Acceptance.break_peek_term thm
 L4YAML.Proofs.Indexed.EmitterScannability.Basic.CursorSurfCorrIx.mk ctor
 _private.L4YAML.Proofs.Parser.StreamCompleteness.0.L4YAML.Proofs.TokenGrammar.peek_tok thm
-L4YAML.Proofs.DirectiveRuns.PostInv.nose thm
 "
 
 end L4YAML.Tests.Guards.DeadDeclarationRoster

@@ -544,9 +544,10 @@ headers through `LEAN_PATH`, which this script sets from the workspace. -/
 script «docs-nav» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-docs-nav" #[] args
 
-/-- `lake run census-dashboard [-- --check | --md FILE | --diff REF]`: every directed census (a pinned count driven
-    to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs` pin literals, its
-    goal, the distance left and what moves it; then the pinned readings with no target (item 514).
+/-- `lake run census-dashboard [-- --check | --md FILE | --html FILE | --flat | --diff REF]`: every directed census
+    (a pinned count driven to zero or up to a bound) with its current reading off the `Tests/Guards/Proofs`
+    pin literals, its goal, the distance left and what moves it, grouped by census; then the pinned
+    readings with no target (item 514).  `--html` writes the page CI publishes (item 536).
     Reads source text only — no build of the library needed. -/
 script «census-dashboard» (args) do
   runGateExe (← getWorkspace).root.dir "scripts-census-dashboard" #[] args
@@ -718,6 +719,13 @@ script «run-all-tests» (args) do
     IO.FS.writeFile (out / s!"{name}.txt") (s!"=== {name} ===\n" ++ text)
     if r.exitCode != 0 then failed := failed.push name
     IO.println ""
+  -- the coverage index links the census dashboard only when the page is beside it
+  let dash ← try
+      IO.Process.output { cmd := "lake", args := #["run", "census-dashboard", "--", "--html", (out / "census-dashboard.html").toString], cwd := some root }
+    catch e => pure { exitCode := 127, stdout := "", stderr := s!"{e}\n" }
+  if dash.exitCode != 0 then
+    IO.eprint dash.stderr
+    IO.eprintln "warning: census dashboard not written; the coverage index will not link it"
   IO.println "=== Generating HTML coverage reports ==="
   let h ← try
       IO.Process.output { cmd := (bin / "suiterunner").toString, args := #["--html", out.toString ++ "/"], cwd := some root }

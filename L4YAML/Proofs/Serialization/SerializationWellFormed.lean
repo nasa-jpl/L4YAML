@@ -139,44 +139,6 @@ lemma serializationWellFormed_iff_check (events : List Event) :
 
 /-! ## Scope laws: independent semantic consequences -/
 
-lemma define_then_use_alias (env : Env) (name : String) (rest : List Event) :
-    WellFormedFrom env (.defineAnchor name :: .useAlias name :: rest) ↔
-      WellFormedFrom { env with anchors := name :: env.anchors } rest := by
-  simp [WellFormedFrom, AliasAllowed]
-
-lemma undeclared_alias_rejected (env : Env) (name : String)
-    (h : name ∉ env.anchors) (rest : List Event) :
-    ¬ WellFormedFrom env (.useAlias name :: rest) := by
-  simp [WellFormedFrom, AliasAllowed, h]
-
-lemma declare_then_use_tag (env : Env) (handle : String) (rest : List Event) :
-    WellFormedFrom env (.declareTag handle :: .useTag handle :: rest) ↔
-      WellFormedFrom { env with tagHandles := handle :: env.tagHandles } rest := by
-  simp [WellFormedFrom, TagHandleAllowed]
-
-lemma undeclared_named_tag_rejected (env : Env) (handle : String)
-    (h_builtin : ¬ BuiltinTagHandle handle)
-    (h_decl : handle ∉ env.tagHandles)
-    (rest : List Event) :
-    ¬ WellFormedFrom env (.useTag handle :: rest) := by
-  simp [WellFormedFrom, TagHandleAllowed, h_builtin, h_decl]
-
-lemma document_reset_forgets_anchor (env : Env) (name : String) (rest : List Event) :
-    WellFormedFrom env
-      (.defineAnchor name :: .endDocument :: .beginDocument :: .useAlias name :: rest) →
-      False := by
-  intro h
-  simp [WellFormedFrom, AliasAllowed, Env.reset] at h
-
-lemma document_reset_forgets_custom_tag (env : Env) (handle : String)
-    (h_builtin : ¬ BuiltinTagHandle handle) (rest : List Event) :
-    WellFormedFrom env
-      (.declareTag handle :: .endDocument :: .beginDocument :: .useTag handle :: rest) →
-      False := by
-  intro h
-  simp [WellFormedFrom, TagHandleAllowed, Env.reset, h_builtin] at h
-
-
 /-! ## Extensional semantic state
 
 The list representation is intentionally not semantically observable.  Only

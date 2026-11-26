@@ -53,10 +53,6 @@ def Lx.emit (s : Lx) (seg : Seg) : Lx :=
 def Lx.push (s : Lx) (c : Char) : Lx :=
   { s with other := c :: s.other, col := if c = '\n' ∨ c = '\r' then 0 else s.col + 1 }
 
-def isBreakOrEnd : List Char → Bool
-  | [] => true
-  | c :: _ => c = '\n' || c = '\r'
-
 def isSpaceBreakOrEnd : List Char → Bool
   | [] => true
   | c :: _ => c = ' ' || c = '\t' || c = '\n' || c = '\r'
@@ -122,9 +118,6 @@ def plain (flow : Nat) : List Char → List Char × List Char
     else if (c = ' ' ∨ c = '\t') ∧ cs.head? = some '#' then ([], c :: cs)
     else if flow > 0 ∧ isFlowIndicatorBool c then ([], c :: cs)
     else let (a, b) := plain flow cs; (c :: a, b)
-
-def isIndicatorStart (c : Char) : Bool :=
-  c ∈ ['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>', '\'', '"', '%', '@', '`']
 
 def anchorName (cs : List Char) : List Char × List Char := spanWhile isAnchorCharBool cs
 

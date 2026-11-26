@@ -145,12 +145,6 @@ lemma goOut_append (l₁ l₂ : List (Positioned YamlToken)) (p : List String) :
     all_goals (try (split <;> simp))
     all_goals (try (rename_i handle _; by_cases h : handle = "" <;> simp [h, ih]))
 
-/-- The split law: the events of `l₁ ++ l₂` are those of `l₁`, then those of `l₂` from
-the handles `l₁` left pending. -/
-lemma go_append (l₁ l₂ : List (Positioned YamlToken)) (p : List String) :
-    go (l₁ ++ l₂) p = (goOut l₁ p).1 ++ go l₂ (goOut l₁ p).2 := by
-  rw [go_eq_goOut, goOut_append, go_eq_goOut]; simp [List.append_assoc]
-
 lemma tokenEvents_eq_goOut (ts : Array (Positioned YamlToken)) :
     tokenEvents ts =
       (goOut ts.toList []).1 ++ (goOut ts.toList []).2.reverse.map .declareTag :=

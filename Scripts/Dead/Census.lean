@@ -28,6 +28,7 @@ The unreached declarations split into four classes — the roster is class (B) a
 | class | rule | reported as |
 |---|---|---|
 | (A) campaign in progress | module under `campaignNamespaces` — a Blueprint capstone row with no declaration yet (7.7's S3 / S5 chain) | count + modules |
+| (A) orphans (item 530) | an (A) declaration no constant of the environment references — library or test module, its own auxiliaries aside (`example`s leave no constant, so a Rule 2 instantiation is not a consumer) | count + modules + names; the dashboard's directed row for the class |
 | (C) API by convention | module not under `L4YAML.Proofs` — the user-facing library no capstone states anything about; not decidable mechanically, so bucketed, never called dead | count + modules |
 | (D) Rule 2 / instrument-only | reached from the test modules but from no capstone, Blueprint row or export | count |
 | (B) scaffolding behind no capstone or Blueprint row | the rest — the roster, pinned as a SET of fully-qualified names (`Tests/Guards/Proofs/DeadDeclarationRoster.lean`), shrink-only | names |
@@ -71,7 +72,7 @@ def generatedUnderscore : List String :=
   ["_proof", "_eq", "_sunfold", "_unsafe", "_cstage", "_closed", "_lam", "_elam", "_rarg", "_boxed",
    "_redArg", "_spec", "_sizeOf", "_override", "_impl", "_regBuiltin", "_hyg", "_uniq", "_aux", "_private",
    "_root_", "_example", "_simp", "_mutual", "_nested", "_ind", "_at", "_fun", "_match", "_bind", "_let",
-   "_sparseCasesOn", "_flat", "_f", "_unary", "_auto", "_native"]
+   "_sparseCasesOn", "_flat", "_f", "_unary", "_auto", "_native", "_default"]
 
 def generatedComponent : List String :=
   ["sizeOf_spec", "injEq", "inj", "below", "ibelow", "brecOn", "binductionOn", "casesOn", "recOn",
@@ -83,7 +84,9 @@ def isAux (env : Environment) (n : Name) : Bool :=
   || (Lean.Meta.Match.Extension.getMatcherInfo? env n).isSome
   || (privateToUserName n).components.any fun c => match c with
       | .str _ s => s.startsWith "proof_" || s.startsWith "match_" || s.startsWith "eq_"
-        || generatedComponent.contains s || generatedUnderscore.any (fun g => s.startsWith g)
+        || generatedComponent.any (fun g => s == g ||
+             (s.startsWith (g ++ "_") && (s.drop (g.length + 1)).length > 0 && (s.drop (g.length + 1)).all Char.isDigit))  -- `brecOn_1` (Lean 4.36's `CommitNode.brecOn_1.eq`), not `ofNat_eq_…`
+        || generatedUnderscore.any (fun g => s.startsWith g)
       | .num _ _ => true
       | _ => false
 
@@ -114,6 +117,7 @@ structure Report where
   unreached : Nat
   unreachedThms : Nat
   campaign : Nat
+  orphan : Nat                -- (A) declarations no constant anywhere references (item 530): built, never spent
   api : Nat
   testOnly : Nat
   roster : Array Decl
@@ -121,6 +125,8 @@ structure Report where
   rosterClusterRoots : Nat
   perModule : Array (Name × Nat)          -- (B) per module, descending
   campaignModules : Array (Name × Nat)
+  orphanModules : Array (Name × Nat)
+  orphans : Array Decl
   apiModules : Array (Name × Nat)
 
 /-- One `Blueprint/04` table row (`scripts/blueprint-capstones.txt`, `<row> | <modules> | <names>`):
@@ -208,6 +214,27 @@ def classify (env : Environment) (blueprintRows : List BlueprintRow := []) : Rep
   for d in dead do
     for m in Scripts.Path.CapstonePath.rawRefs env d.name do
       if m != d.name && rosterSet.contains m then referred := referred.insert m
+  -- (A) orphans (item 530): a campaign declaration that NO constant of the loaded environment (library
+  -- or test module) references, other than itself and its own auxiliaries (`foo._proof_1`, `foo.eq_1`,
+  -- `foo.match_1` refer to `foo`'s premises, not to `foo`).  "Unreached" is the capstone's distance;
+  -- "orphan" is what a build-ahead item can honestly move: a lemma built for a consumer that exists.
+  let campaignDead := dead.filter fun d => classOf d == .campaign
+  let campaignSet : Std.HashSet Name := campaignDead.foldl (fun s d => s.insert d.name) {}
+  let mut consumed : Std.HashSet Name := {}
+  for (c, _) in env.constants.toList do
+    for m in Scripts.Path.CapstonePath.rawRefs env c do
+      -- a constructor's type names its own inductive (`TSeq3.mk : … → TSeq3`): not a spend of `TSeq3`
+      let ownCtor := match env.find? c with
+        | some (.ctorInfo ci) => ci.induct == m
+        | _ => false
+      if m != c && campaignSet.contains m && !(isAux env c && m.isPrefixOf c) && !ownCtor then
+        consumed := consumed.insert m
+  -- derived instances (`instReprX`, `instDecidableEqY`) are generated with their type, not built for a spender
+  let derivedInstance (n : Name) : Bool := match n with
+    | .str _ s => s.startsWith "inst"
+    | _ => false
+  let orphans := (campaignDead.filter fun d => !consumed.contains d.name && !derivedInstance d.name).qsort
+    fun a b => toString a.name < toString b.name
   let count (xs : Array Decl) (k : Kind) := (xs.filter fun d => d.kind == k).size
   let byModule (xs : Array Decl) : Array (Name × Nat) :=
     let m : Std.HashMap Name Nat := xs.foldl (fun h d => h.insert d.module (h.getD d.module 0 + 1)) {}
@@ -218,18 +245,21 @@ def classify (env : Environment) (blueprintRows : List BlueprintRow := []) : Rep
     capstoneRoots := caps.length, exportRoots := exps.length, testRoots := tests.length
     blueprintRoots := bps.length, blueprintUnresolved := unresolved
     unreached := dead.size, unreachedThms := count dead .thm
-    campaign := (dead.filter fun d => classOf d == .campaign).size
+    campaign := campaignDead.size
+    orphan := orphans.size
     api := (dead.filter fun d => classOf d == .api).size
     testOnly := (dead.filter fun d => classOf d == .testOnly).size
     roster := roster, rosterThms := count roster .thm
     rosterClusterRoots := (roster.filter fun d => !referred.contains d.name).size
     perModule := byModule roster
-    campaignModules := byModule (dead.filter fun d => classOf d == .campaign)
+    campaignModules := byModule campaignDead
+    orphanModules := byModule orphans
+    orphans := orphans
     apiModules := byModule (dead.filter fun d => classOf d == .api) }
 
 /-- The one-line pin (`expectedDeadCensus` in `Tests/Guards/Proofs/DeadDeclarationCensus.lean`). -/
 def Report.summary (r : Report) : String :=
-  s!"population={r.population} thm={r.thms} def={r.defs} roots=capstone:{r.capstoneRoots}+export:{r.exportRoots}+blueprint:{r.blueprintRoots}(unresolved={r.blueprintUnresolved}) unreached={r.unreached} thm={r.unreachedThms} A-campaign={r.campaign} C-api={r.api} D-test-only={r.testOnly} B-roster={r.roster.size} thm={r.rosterThms} cluster-roots={r.rosterClusterRoots}"
+  s!"population={r.population} thm={r.thms} def={r.defs} roots=capstone:{r.capstoneRoots}+export:{r.exportRoots}+blueprint:{r.blueprintRoots}(unresolved={r.blueprintUnresolved}) unreached={r.unreached} thm={r.unreachedThms} A-campaign={r.campaign} A-orphan={r.orphan} C-api={r.api} D-test-only={r.testOnly} B-roster={r.roster.size} thm={r.rosterThms} cluster-roots={r.rosterClusterRoots}"
 
 /-- The roster as the SET pin: fully-qualified names, sorted, one per line. -/
 def Report.rosterText (r : Report) : String :=
@@ -242,6 +272,8 @@ def Report.render (r : Report) (modules : Nat := 25) : String := Id.run do
   out := out ++ section_ "(B) roster by module" r.perModule
   out := out ++ section_ "(A) campaign in progress by module" r.campaignModules
   out := out ++ section_ "(C) API by convention by module" r.apiModules
+  out := out ++ section_ "(A) orphans — campaign declarations no constant references (item 530) by module" r.orphanModules
+  out := out ++ "(A) orphans, by name:\n" ++ "".intercalate (r.orphans.toList.map fun d => s!"  {d.name} {d.kind.show}\n")
   return out
 
 /-- What a pinned roster and the fresh one disagree on, by NAME (the kind column is informational:

@@ -17,6 +17,7 @@ public import L4YAML.Proofs.Parser.ParserCompleteness
 public import L4YAML.Proofs.Parser.IndexedCompleteness
 public import L4YAML.Proofs.Coupling.SurfaceCoupling
 public import L4YAML.Proofs.RoundTrip.RoundTrip
+public import L4YAML.Proofs.Serialization.ScannerShape
 
 -- Replay needs the actual axiom types and closed Boolean computations. Lean's
 -- exported dependency cache records private axiom names without loading their
@@ -68,7 +69,7 @@ so that any drift **fails the build**:
 | 4 end-to-end | `parse_sound_shallow`, `parse_sound_deep`, `parse_complete`, `parse_deterministic` |
 | 5 values | `validYaml_construct`, `toYamlValue_correct` |
 | 6 round-trip | `universal_roundtrip`, `emit_roundtrip_content_eq`, `canonical_roundtrip_conditional`, `escapeTag_roundtrip`, `format_whitespace_only` (whitespace-only reformat) |
-| 7 strictness | `parse_strict_proof`, `scan_strict_proof` |
+| 7 strictness | `parse_strict_proof`, `scan_strict_proof`, `scanFiltered_parseStream_ok_checkFrom_full` (an accepted input's token events are a well-formed serialization) |
 | 8 coupling | `SIndent_zero/succ/col/chars/all_spaces`, `GChar_col` |
 -/
 
@@ -88,6 +89,7 @@ L4YAML.Proofs.EndToEndCorrectness.parse_sound_shallow
 L4YAML.Proofs.Composition.parseYaml_pipeline
 L4YAML.Align.format_whitespace_only
 L4YAML.Proofs.SurfaceCoupling.SIndent_chars
+L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_parseStream_ok_checkFrom_full
 L4YAML.Proofs.RoundTrip.escapeTag_roundtrip
 L4YAML.Proofs.SurfaceCoupling.SIndent_succ
 L4YAML.Proofs.EndToEndCorrectness.parse_deterministic
@@ -119,6 +121,7 @@ L4YAML.Proofs.EndToEndCorrectness.parse_sound_shallow: pure
 L4YAML.Proofs.Composition.parseYaml_pipeline: pure
 L4YAML.Align.format_whitespace_only: pure
 L4YAML.Proofs.SurfaceCoupling.SIndent_chars: pure
+L4YAML.Proofs.Serialization.ScannerShape.scanFiltered_parseStream_ok_checkFrom_full: pure
 L4YAML.Proofs.RoundTrip.escapeTag_roundtrip: native
 L4YAML.Proofs.SurfaceCoupling.SIndent_succ: pure
 L4YAML.Proofs.EndToEndCorrectness.parse_deterministic: pure

@@ -155,14 +155,6 @@ lemma spanWhile_append_stop (p : Char → Bool) (xs : List Char) (stop : Char)
 
 /-! ## Family-level source recognition -/
 
-lemma anchor_definition_source_exact
-    (nameChars : List Char)
-    (hne : nameChars ≠ [])
-    (hchars : ∀ c ∈ nameChars, isAnchorCharBool c = true) :
-    anchorEventAt ('&' :: nameChars) =
-      some (.defineAnchor (String.ofList nameChars), []) := by
-  simp [anchorEventAt, spanWhile_all isAnchorCharBool nameChars hchars, hne]
-
 lemma alias_use_source_exact
     (nameChars : List Char)
     (hne : nameChars ≠ [])
@@ -181,22 +173,6 @@ lemma named_tag_use_source_exact
   simp only [namedTagUseAt, namedTagUseTail]
   rw [spanWhile_append_stop isWordCharBool handleChars '!' suffix hchars hbang]
   simp
-
-lemma named_tag_declaration_source_exact
-    (handleChars tail : List Char)
-    (hne : handleChars ≠ [])
-    (hchars : ∀ c ∈ handleChars, isWordCharBool c = true) :
-    namedTagDeclarationAt
-        ('%' :: 'T' :: 'A' :: 'G' :: ' ' :: '!' ::
-          (handleChars ++ '!' :: tail)) =
-      some (.declareTag ("!" ++ String.ofList handleChars ++ "!"), tail) := by
-  have hbang : isWordCharBool '!' = false := by decide
-  change namedTagDeclarationTail (handleChars ++ '!' :: tail) =
-    some (.declareTag ("!" ++ String.ofList handleChars ++ "!"), tail)
-  unfold namedTagDeclarationTail
-  rw [spanWhile_append_stop isWordCharBool handleChars '!' tail hchars hbang]
-  simp
-
 
 /-! ## Bridge to the formal surface productions
 

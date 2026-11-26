@@ -50,7 +50,7 @@ lake run check-closure-log            # DOCS.md items ascend / dated / gaps decl
 lake run check-serialization-proofs   # serialization hygiene: axiom profiles of every #print axioms site, sorry control
 lake run check-gate-vocab             # gate names cited in prose resolve (reads .olean headers via LEAN_PATH)
 lake run check-scripts-lean           # Rule 9: scripts/**/*.py and inline python3 sites are on scripts/scripts-ledger.txt (shrink-only pin)
-lake run census-dashboard             # every directed census off the Tests/Guards pin literals: reading, goal, distance left, what moves it (`-- --check` in CI; `-- --md FILE`; no library build needed)
+lake run census-dashboard             # every directed census off the Tests/Guards pin literals: reading, goal, distance left, what moves it (grouped by census, `-- --flat` = one table; `-- --check` in CI; `-- --md FILE`; `-- --html FILE` = the published page; no library build needed)
 lake run census-dashboard -- --diff origin/fix-a-grammar-completeness   # only the pins this branch moved: directed (goal distance before → after, verdict) vs population; paste its table at the top of the PR body
 lake run check-hygiene -- docs/reports/stats.json   # zero sorries / custom axioms in the compiled environment (needs `lake exe collect-stats` first)
 lake run run-all-tests                # every test exe, collects failures
