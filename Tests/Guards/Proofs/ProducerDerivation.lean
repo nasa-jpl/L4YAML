@@ -264,6 +264,8 @@ def readDecl (n : Name) : MetaM Readings := do
 -- both +1; the producer's thread prodThread 23 → 24, withCorr 18 → 19; against T prodInT 14 → 15, union 27 → 28).
 -- 2026-11-26 (actual marked-column correspondence):
 -- The unused off-column wrapper leaves the producer ring; the consumed actual-column lemma and helper retirement remeasure the authored population.
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedCensus : String :=
 -- 2026-10-23 ([147] glued value): corrHyp 545 → 546 — `flowGluedCollectionValue_false_of_corr_colon_blank` reads
 -- the `": "` surface through a `ScannerSurfCorr` hypothesis; the thread, held and pair rows are unchanged.
@@ -309,7 +311,7 @@ def expectedCensus : String :=
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
 -- 2026-11-24 (item 535): corrHyp 643 → 635 — the eight dispatcher-arm corollaries of `ScannerShape` (`dispatchStructural_*_trace` ×3,
 -- `dispatchFlowIndicators_*_trace` ×5) are deleted: each held `ScannerSurfCorr`, no constant and no `example` referenced them.
-  "corrHyp=634 streamConcl=91 both=44 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=635 streamConcl=91 both=44 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=

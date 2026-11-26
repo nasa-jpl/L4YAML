@@ -87,8 +87,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-26: one consumed actual-column lemma replaces the retired off-column
 -- wrapper and singleton helper: population 14050 -> 14049, thm 10170 -> 10169.
 -- The compiler leaves the unreached classes, B-roster and cluster roots unchanged.
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedDeadCensus : String :=
-  "population=14049 thm=10169 def=2513 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5948 thm=4244 A-campaign=1124 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14050 thm=10170 def=2513 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5949 thm=4245 A-campaign=1125 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
