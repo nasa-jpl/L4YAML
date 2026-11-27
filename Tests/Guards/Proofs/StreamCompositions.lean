@@ -646,7 +646,7 @@ def expectedSites : List String :=
     "accum_flow_open_depth0→flowKeyRoute_of_root.h_close [SSLComments ⇒ Stream] segments=3 comps=3",
     "accum_block_pending→accum_block_on_closeThenBlock.h_close_pending [SSLComments ⇒ Stream] segments=4 comps=3",
     "accum_block_pending→accum_block_on_pendingBlock.h_close_pending [SSLComments ⇒ Stream] segments=3 comps=3",
-    "accum_block_pending→accum_block_on_closeThenBlock.h_vslot [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream | [col(_)=_+1] SBlockIndented(_,blockOut) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream | [col(_)=_+1] SBlockIndented(_,blockOut) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] segments=2 comps=2",
+    "accum_block_pending→accum_block_on_closeThenBlock.h_vslot [[col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream | [col(_)=_+1] SBlockIndented(_,blockOut) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] segments=2 comps=2",
     "accum_structural_pending→dispatch_new_pending.h_dir_route [SLDirectiveDocument ⇒ Stream] segments=1 comps=1",
     "structural_dispatch_to_pending:pendingDocStart.h_doc_route [GAlt(SLBareDocument,GSeq(SENode,SSLComments)) ⇒ Stream] segments=1 comps=1",
     "question_open_map:pendingMapValue.h_kslot [SBlockNode(_+1,blockIn) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream] segments=2 comps=1"]

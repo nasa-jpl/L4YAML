@@ -20029,6 +20029,50 @@ def testRootEmptyDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state "P143 a BOM then `? a` marks column 0" (seedMarks "\ufeff? a" == some [0])
 end P143Test
 
+/-! ## P144 — the explicit `:`'s value slot (item 541, row 12)
+
+Item 541 deletes the slot's own route (`hkv`) from `accum_block_on_closeThenBlock.h_vslot`
+and pays the remaining chain where the own column holds no mark or every mark is the own.
+**Risk:** the explicit `:` leaves its own column marked (the own route would then be owed),
+or leaves no ancestor (the declined remainder would be empty).
+-/
+namespace P144Test
+open P143Test in
+/-- After every `value` token of a `scan` run: the slot's level and the marked columns. -/
+partial def valueSlots (input : String) : List (Int × List Nat) :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Int × List Nat)) : List (Int × List Nat) :=
+    match fuel with
+    | 0 => acc.reverse
+    | fuel + 1 =>
+      match scanNextToken s with
+      | .ok (some s') =>
+        let hit := match s'.tokens.back? with
+          | some t => s'.tokens.size > s.tokens.size && (match t.val with | .value => true | _ => false)
+          | none => false
+        go s' fuel (if hit then (s'.currentIndent, markedColsOf s'.pendingKeys s'.indentColumns) :: acc else acc)
+      | _ => acc.reverse
+  go (scanSeed input) 64 []
+
+def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P144: the explicit `:`'s value slot (item 541)"
+  let rows : List (String × List (Int × List Nat)) :=
+    [("? a\n: - b\n: c", [(0, []), (0, [])]),
+     ("? a\n: b", [(0, [])]),
+     ("?\n: - b", [(0, [])]),
+     ("  ? a\n  : - b", [(2, [])]),
+     ("? ? a\n  : - b\n: c", [(2, [0]), (0, [])]),
+     ("?\n  ? a\n  : - b\n: c", [(2, [0]), (0, [])]),
+     ("? ? ? a\n    : - b\n  : c\n: d", [(4, [0, 2]), (2, [0]), (0, [])]),
+     ("- ? a\n  : - b", [(2, [])]),
+     ("\ufeff? a\n: - b", [(0, [])]),
+     ("a: 1", [(0, [])]), ("- a", []), ("", [])]
+  for (input, expected) in rows do
+    let got := valueSlots input
+    check state s!"P144 {repr input}: the slots behind `:` and the marks held there" (got == expected)
+    check state s!"P144 {repr input}: no explicit `:` leaves its own column marked"
+      (got.all fun (nv, marks) => !marks.contains nv.toNat)
+end P144Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20362,6 +20406,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P141Test.testContentBehindParks state
   P142Test.testQuestionPark state
   P143Test.testRootEmptyDomain state
+  P144Test.testExplicitValueSlot state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",

@@ -701,7 +701,7 @@ def expectedDecisions : List String :=
    "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:empty,E:other(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)))×2|paid pos=—",
    "accum_block_on_closeThenBlock dite kn [nv ≤ k] → E:node|punt pos=—",
    "accum_block_on_closeThenBlock dite kn [nn < k] → paid|— pos=—",
-   "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass×4|punt pos=—",
+   "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass|punt pos=—",
    "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass×2|— pos=—",
    "accum_block_on_closeThenBlock dite kmem [k ∈ ns] → E:pass|— pos=—",
    "accum_block_on_closeThenBlock dite kmem [k ∈ ns] → E:pass|— pos=—",
@@ -740,8 +740,8 @@ def expectedDecisions : List String :=
    "accum_block_on_pendingBlock Or.casesOn k∃ [h_upSpend:(∀ (sp_m : SurfPos), SBlockIndented n YamlContext.blockIn sp_scan sp_m →…] → —|P:spend pos=above#5",
    "accum_block_on_pendingBlock dite other [s_prep.allowDirectives = true] → —|— pos=beside#5",
    "accum_block_on_pendingBlock dite other [s_prep.allowDirectives = true] → —|— pos=beside#6",
-   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:pass,E:node×2|punt pos=—",
-   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → E:carry,E:node×2|punt pos=—"]
+   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:node|punt pos=—",
+   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:node|punt pos=—"]
 -- 2026-10-24 (B3 [66] col-0 threading): follows CloseLandingWidth — the content/block parks close from `sp_gram` (run + gate).
 -- 2026-10-26 (item 369): h_res_land=punt → h_res_land=cond[opt,kmem] — `h_res_land` read off `pendingBlock.h_closeF`.
 -- 2026-10-29 (item 387): `h_res_land=cond[opt,kmem,other,kn]` — the no-pop arm's `n < k` split joins its conditions.
@@ -812,7 +812,7 @@ def expectedLine : String :=
   -- `accum_block_on_closeThenBlock`'s explicit `:` face; no frame row moved.
 -- Item 371 (kslot=4 → 0, kslotUp=4 → 0): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=0 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=159 decOnK=22 decKN=14 decKMem=8 decKNv=0 apps=61 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
+  "asked=6 both=4 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=2 feedTuple=0 entry=4 entrySBI=4 kslot=0 kslotUp=0 closeF=4 closeFV=4 seqF=0 top=4 floor=0 cover=4 cover2=4 floorB=4 aboveKN=0 aboveKMem=1 aboveKNv=0 aboveKEx=1 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=149 decOnK=22 decKN=14 decKMem=8 decKNv=0 apps=59 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
 
 /-! ## §5 The reading -/
 
