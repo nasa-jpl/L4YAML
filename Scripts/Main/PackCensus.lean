@@ -206,6 +206,8 @@ def birthProducers : List String :=
 
 def birthLabel := "PACK-BIRTHS"
 
+def payLabel := "PACK-REFUSED-PAYS"
+
 /-- The declaration's lines `a..b` (1-based, inclusive) as one string: `--` line comments and `/- … -/`
 block comments dropped (so a comment cannot add or hide a write), joined with spaces and whitespace
 collapsed (so a write wrapped across lines still matches). -/
@@ -259,14 +261,28 @@ def runBirths (o : Opts) : IO UInt32 := do
     parts := parts.push s!"{d}={alt}+{relay}"
   let line := " ".intercalate parts.toList
   IO.println s!"{birthLabel} {line}"
+  -- Item 540: the births count cannot tell a guarded decline from an unconditional one, so the
+  -- refused-landing payments beside them are counted too.
+  let some cdr := ds.find? (·.name == "content_dispatch_routed")
+    | return ← die s!"content_dispatch_routed: no declaration of that name in {rel}'s ranges" 1
+  let pays := Scripts.Flip.Patch.countOccurrences (declText src cdr.start cdr.stop)
+    "(fun hr : ExplicitValueRefused s_prep => have h0 := h_nomark hr; Or.inl ⟨[],"
+  let payLine := s!"content_dispatch_routed={pays}"
+  IO.println s!"{payLabel} {payLine}"
   let pinText ← IO.FS.readFile (o.root / pinFile)
-  match pinValue? pinText "expectedPackBirths" with
-  | none => IO.println s!"{birthLabel}-PIN absent"; return 0
-  | some v =>
-    if v == line then IO.println s!"{birthLabel}-PIN agrees"; return 0
-    else
-      IO.println s!"{birthLabel}-PIN MOVED\n  got      {line}\n  expected {v}"
-      return 1
+  let mut rc : UInt32 := 0
+  for (label, pin, got, required) in
+      [(birthLabel, "expectedPackBirths", line, false), (payLabel, "expectedPackRefusedPays", payLine, true)] do
+    match pinValue? pinText pin with
+    | none =>
+      IO.println s!"{label}-PIN absent"
+      if required then rc := 1
+    | some v =>
+      if v == got then IO.println s!"{label}-PIN agrees"
+      else
+        IO.println s!"{label}-PIN MOVED\n  got      {got}\n  expected {v}"
+        rc := 1
+  return rc
 
 def runClasses (o : Opts) : IO UInt32 := do
   let audit ← IO.FS.readFile (o.root / auditFile)

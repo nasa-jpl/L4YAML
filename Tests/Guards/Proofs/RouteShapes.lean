@@ -787,11 +787,11 @@ def expectedSpines : List String :=
    "  stream=0 carry=6 fwd=0 punt=0 closed=0 SSLComments > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)  ← pendingBlockContent.h_closeFV",
    "  stream=0 carry=7 fwd=0 punt=0 closed=0 SBlockIndented(_,blockIn) ⇒ Stream  ← pendingBlock.h_close",
    "  stream=0 carry=7 fwd=0 punt=0 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Stream  ← pendingBlock.h_close_entry",
-   "  stream=0 carry=12 fwd=0 punt=1 closed=1 SBlockIndented(_,blockIn) > SCompactSeqTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream  ← pendingBlock.h_kslot, pendingBlock.h_kslotUp",
+   "  stream=0 carry=12 fwd=0 punt=0 closed=2 SBlockIndented(_,blockIn) > SCompactSeqTail(_) > SIndent(_) > GLit(':') > SBlockIndented(_,blockOut) ⇒ Resume(map(_)::[])▹Stream  ← pendingBlock.h_kslot, pendingBlock.h_kslotUp",
    "  stream=0 carry=7 fwd=0 punt=0 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Resume(_)▹Stream  ← pendingBlock.h_closeF",
    "  stream=0 carry=3 fwd=0 punt=0 closed=4 SBlockIndented(_,blockIn) > SCompactSeqTail(_) > SCompactMapTail(_) ⇒ Resume(_)▹Stream  ← pendingBlock.h_closeF",
    "  stream=0 carry=2 fwd=0 punt=5 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) > SCompactSeqTail(_) ⇒ Resume(_)▹Stream  ← pendingBlock.h_seqF",
-   "  stream=0 carry=6 fwd=0 punt=1 closed=0 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)  ← pendingBlock.h_closeFV",
+   "  stream=0 carry=6 fwd=0 punt=0 closed=1 SBlockIndented(_,blockIn) > SCompactSeqTail(_) ⇒ Key(_)▹ExplValueLine(_)  ← pendingBlock.h_closeFV",
    "  stream=2 carry=4 fwd=0 punt=0 closed=0 SBlockNode(_+1,blockOut) ⇒ Stream  ← pendingMapValue.h_close",
    "  stream=2 carry=4 fwd=0 punt=6 closed=0 [col(_)=_+1] SBlockIndented(_,blockOut) ⇒ Stream  ← pendingMapValue.h_ivl, pendingMapValue.h_vslot",
    "  stream=0 carry=2 fwd=0 punt=4 closed=0 SBlockMapEntry(_) > SCompactMapTail(_) ⇒ Stream  ← pendingMapValue.h_expl",
@@ -822,7 +822,7 @@ def expectedSites : List String :=
    "  colon_open_map_explicit: nil park=pendingMapValue stream=param:h_stream_mid closedBy=[] h_close=carry,h_ivl=carry,h_expl=punt,h_expl=punt,h_vslot=carry,h_kslot=closed,h_closeF=carry,h_frames=carry,h_closeFV=closed,h_framesV=closed,h_seqF=punt,h_explUp=punt",
    "  question_open_map: nil park=pendingMapValue stream=param:h_stream_land closedBy=[] h_close=stream,h_ivl=stream,h_expl=carry,h_expl=carry,h_vslot=stream,h_kslot=stream,h_closeF=carry,h_frames=carry,h_closeFV=stream,h_framesV=stream,h_seqF=punt,h_explUp=carry",
    "  colon_open_map: nil park=pendingMapValue stream=param:h_stream_land closedBy=[] h_close=stream,h_ivl=punt,h_expl=punt,h_expl=punt,h_vslot=punt,h_kslot=carry,h_closeF=carry,h_frames=carry,h_closeFV=carry,h_framesV=carry,h_seqF=punt,h_explUp=punt",
-   "  accum_block_on_noPending: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=closed,h_closeF=carry,h_closeF=closed,h_seqF=punt,h_kslotUp=punt,h_closeFV=punt",
+   "  accum_block_on_noPending: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=closed,h_closeF=carry,h_closeF=closed,h_seqF=punt,h_kslotUp=closed,h_closeFV=closed",
    "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=carry,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
    "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=closed,h_seqF=carry,h_kslotUp=carry,h_closeFV=carry",
    "  accum_block_on_pendingBlock: nil park=pendingBlock stream=param:h_stream_block closedBy=[] h_close=carry,h_close_entry=carry,h_kslot=carry,h_closeF=carry,h_closeF=closed,h_seqF=punt,h_kslotUp=carry,h_closeFV=carry",
@@ -958,7 +958,7 @@ def expectedK : List String :=
 -- scanner projection, so one optional closure changes from punt to closed.
 def expectedLine : String :=
   -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (the `SeqTopKey` face): the pack's route slot reads as a guarded alternative, not a bare stream route.
-  "closures=58 packed=14 optional=42 guarded=17 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=7 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=280 stream=7 carry=192 fwd=0 punt=69 closed=12 mandatory[stream=4 carry=53 fwd=0 punt=14 closed=1] optional[stream=3 carry=139 fwd=0 punt=55 closed=11] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=5 spinesCarried=35 spinesTouched=40 firstsFromStream=4 headsFromStream=3 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=49 flow[stream=8 carry=30 fwd=0 punt=10 closed=1] routeArgs=183 routeStream=16 routeCarry=69 routeFwd=55 routeClosed=43 routeToWalked=117 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1185 build[stream=16 carry=308 fwd=749 punt=79 closed=33] buildStreamSlots=16 buildSpines=10 routePairs=7 routeSpines=5 k=14 kHeads=6 streamBuilders=8"
+  "closures=58 packed=14 optional=42 guarded=17 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=7 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=280 stream=7 carry=192 fwd=0 punt=67 closed=14 mandatory[stream=4 carry=53 fwd=0 punt=14 closed=1] optional[stream=3 carry=139 fwd=0 punt=53 closed=13] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=5 spinesCarried=35 spinesTouched=40 firstsFromStream=4 headsFromStream=3 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=49 flow[stream=8 carry=30 fwd=0 punt=10 closed=1] routeArgs=183 routeStream=16 routeCarry=69 routeFwd=55 routeClosed=43 routeToWalked=117 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1185 build[stream=16 carry=308 fwd=749 punt=77 closed=35] buildStreamSlots=16 buildSpines=10 routePairs=7 routeSpines=5 k=14 kHeads=6 streamBuilders=8"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftTermElabM do
