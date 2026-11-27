@@ -28145,17 +28145,18 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc :=
-      match h_vslot with
+      -- Item 542: no mark survives the landing — the domain on `s'` is empty (the dedent closed the slot).
+      if hnil : RegisterWitness.markedCols s' = [] then
+        Or.inl (fun _ hm => absurd (hnil ▸ hm) List.not_mem_nil)
+      else match h_vslot with
       | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl kvU⟩ =>
           if hnk : nv ≤ k then
-            if hms : RegisterWitness.markedCols s' = [nv] then
-              Or.inl (fun nv' hm => by
-                rw [hms] at hm; rw [List.mem_singleton.mp hm]
-                exact ⟨[], fun _ h => absurd h (List.not_mem_nil),
-                  fun _ h_indented sp_e h_tail =>
-                    KeyFrames.bottom sp_e (kvU nv ((h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)).mem (hms ▸ List.mem_singleton_self nv)) sp_e (slotLandedSeq hnk h_ssl
-                      (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))⟩)
-            else Or.inr trivial
+            -- Item 542: every surviving mark rides the slot's chain (`hkvUp`, item 521), not the own mark alone.
+            Or.inl (fun nv' hm =>
+              ⟨[], fun _ h => absurd h (List.not_mem_nil),
+                fun _ h_indented sp_e h_tail =>
+                  KeyFrames.bottom sp_e (kvU nv' ((h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)).mem hm) sp_e (slotLandedSeq hnk h_ssl
+                    (SBlockSeqEntries_of_compactTail h_ind h_dash h_gnot h_indented h_tail)))⟩)
           else Or.inr trivial
       -- Item 320: the slot's own alternative, handed on (the catch-all below keeps the residue arm).
       | Or.inl ⟨_, _, _, _, _, _, _, _, _, Or.inr h_alt⟩ => Or.inr h_alt
@@ -28254,7 +28255,10 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- `?⏎  - a⏎: w`, and through the sibling arm `?⏎- a⏎- b⏎: w`).
              -- A slot with no inner pack, or a landing LEFT of the frame,
              -- keeps the deferral. ═══
-             (match h_vslot with
+             (if hnil : RegisterWitness.markedCols s' = [] then
+               -- Item 542: no mark survives the landing; the field's domain on `s'` is empty.
+               Or.inl (fun _ hm => absurd (hnil ▸ hm) List.not_mem_nil)
+              else match h_vslot with
               | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl kvU⟩ =>
                   if hnk : nv ≤ k then
                     Or.inl (RegisterWitness.MarkedColsIn.relay (h_mcstep_ne (by decide) _ (RegisterWitness.MarkedColsIn.self sc)) <| by
@@ -28284,7 +28288,9 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- value line off it, and this reads the line of the frame that one
              -- stands inside.  Same carrier, same bound — what differs is only
              -- which `:` is owed. ═══
-             (match h_vslot with
+             (if hnil : RegisterWitness.markedCols s' = [] then
+               Or.inl ⟨[], RegisterWitness.MarkedColsIn.of_markedCols_nil hnil, fun _ h => absurd h List.not_mem_nil⟩
+              else match h_vslot with
               | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl kvU⟩ =>
                   if hnk : nv ≤ k then
                     -- Item 191: the crossing is indifferent to WHICH ancestor's

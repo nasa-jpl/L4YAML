@@ -20130,6 +20130,59 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
+/-! ## P145 — the landed `-` and the marks it leaves (item 542, row 12)
+
+Item 542 pays `accum_block_on_closeThenBlock`'s `-` arm where no mark survives the landing (the empty
+domain on `s'`) and routes every surviving mark through the slot's chain at `nv ≤ k`.
+**Risk:** a dedent `-` always leaves an ancestor's mark (the empty-domain payment would be vacuous),
+or never leaves two marks at `nv ≤ k` (the chain payment would be).
+-/
+namespace P145Test
+open P143Test in
+/-- At every block `-` pause of a `scan` run: (a mark of the park right of the `-`?, the marks after the step). -/
+partial def dashLandings (input : String) : List (Bool × List Nat) :=
+  let chars := input.toList
+  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Bool × List Nat)) : List (Bool × List Nat) :=
+    match fuel with
+    | 0 => acc.reverse
+    | fuel + 1 =>
+      match scanNextToken s with
+      | .ok (some s') =>
+        let row := match scanNextToken_preprocess s with
+          | .ok (some (sp, c)) =>
+            if c == '-' && sp.flowLevel == 0 &&
+                (chars[sp.offset + 1]?.map (fun ch => ch == ' ' || ch == '\n')).getD true then
+              let pre := markedColsOf s.pendingKeys s.indentColumns
+              if pre.isEmpty then [] else
+                [(pre.any (· > sp.col), markedColsOf s'.pendingKeys s'.indentColumns)]
+            else []
+          | _ => []
+        go s' fuel (row ++ acc)
+      | _ => acc.reverse
+  go (scanSeed input) 64 []
+
+def testDashLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P145: the landed `-` and the marks it leaves (item 542)"
+  let inputs : List String :=
+    [ "- ?\n- b", "- ? a\n- b", "? ?\n- b", "- ?\n  - a\n- b", "k:\n  ? a\n- b", "- - ?\n  - b",
+      "? a\n- b", "?\n- a", "?\n- a\n: b", "- ?\n  - a\n  : b", "- ? a\n  : b", "- a\n- ? b\n  : c",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b",
+      "k:\n  ?\n  - a\n  : b", "- - ? a\n  - b", "- ? a\n  ? b\n- c", "? - a\n- b", "- ? - a\n- b",
+      "k:\n  - ? a\n  - b", "?\n  ?\n  - a\n  : b\n: c", "- ?\n    ?\n      - a\n    : b\n- c",
+      "- ? a\n  : b\n- c", "- - ? a\n- b",
+      "?\n  ?\n  -\n: w", "? - ?\n  - b\n: w", "?\n  - ?\n  - b\n: w", "?\n-\n: w", "", "- a", "? a" ]
+  let rows := inputs.flatMap fun input => (dashLandings input).map fun r => (input, r)
+  let dedent := rows.filter (·.2.1)
+  let paid := dedent.filter (·.2.2.isEmpty)
+  let multi := rows.filter fun r => !r.2.1 && r.2.2.length ≥ 2
+  check state "P145 block `-` pauses at a park holding a mark: 29" (rows.length == 29)
+  check state "P145 a mark of the park right of the `-`: 12" (dedent.length == 12)
+  check state "P145 of those, no mark survives the step (the empty domain, paid): 10" (paid.length == 10)
+  check state "P145 the 2 left hold an ancestor mark only (`[0]`, still declined)" ((dedent.filter (!·.2.2.isEmpty)).all (·.2.2 == [0]))
+  check state "P145 no mark right of the `-`, two marks held (the chain, not the own mark alone): 5" (multi.length == 5)
+  check state "P145 fuel 0/1/2: no pause, no row" ((["", "- a", "? a"].flatMap dashLandings).isEmpty)
+end P145Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20464,6 +20517,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P142Test.testQuestionPark state
   P143Test.testRootEmptyDomain state
   P144Test.testExplicitValueSlot state
+  P145Test.testDashLandingMarks state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
