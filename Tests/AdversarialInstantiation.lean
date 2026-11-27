@@ -20068,10 +20068,11 @@ partial def valueSlots (input : String) : List (Bool × Int × List Nat) :=
   go (scanSeed input) 64 []
 
 open P143Test in
-/-- `explicitAt` against the scanner's own effect, at every `value` token: an explicit `:` leaves
-`implicitValueLine` alone, an implicit one stamps its line.  Returns (`:`s read, disagreements). -/
-partial def tagDrift (input : String) : Nat × Nat :=
-  let rec go (s : ScannerState) (fuel : Nat) (acc : Nat × Nat) : Nat × Nat :=
+/-- `explicitAt` against the scanner's own effect, at every BLOCK-context `value` token: there an explicit
+`:` leaves `implicitValueLine` alone and an implicit one stamps its line.  A flow `:` leaves the field alone
+either way, so it is counted apart and not read.  Returns (block `:`s read, disagreements, flow `:`s). -/
+partial def tagDrift (input : String) : Nat × Nat × Nat :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : Nat × Nat × Nat) : Nat × Nat × Nat :=
     match fuel with
     | 0 => acc
     | fuel + 1 =>
@@ -20080,16 +20081,19 @@ partial def tagDrift (input : String) : Nat × Nat :=
         let hit := match s'.tokens.back? with
           | some t => s'.tokens.size > s.tokens.size && (match t.val with | .value => true | _ => false)
           | none => false
-        let agrees := match scanNextToken_preprocess s with
+        let acc' := match scanNextToken_preprocess s with
           | .ok (some (sp, _)) =>
-            -- the two effects must differ on this step, or the field says nothing
-            sp.implicitValueLine != some sp.line &&
-              (if explicitAt s then s'.implicitValueLine == sp.implicitValueLine
-               else s'.implicitValueLine == some sp.line)
-          | _ => false
-        go s' fuel (if hit then (acc.1 + 1, if agrees then acc.2 else acc.2 + 1) else acc)
+            if sp.inFlow then (acc.1, acc.2.1, acc.2.2 + 1)
+            else
+              -- the two effects must differ on this step, or the field says nothing
+              let agrees := sp.implicitValueLine != some sp.line &&
+                (if explicitAt s then s'.implicitValueLine == sp.implicitValueLine
+                 else s'.implicitValueLine == some sp.line)
+              (acc.1 + 1, if agrees then acc.2.1 else acc.2.1 + 1, acc.2.2)
+          | _ => (acc.1 + 1, acc.2.1 + 1, acc.2.2)
+        go s' fuel (if hit then acc' else acc)
       | _ => acc
-  go (scanSeed input) 64 (0, 0)
+  go (scanSeed input) 64 (0, 0, 0)
 
 def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "P144: the explicit `:`'s value slot (item 541)"
@@ -20114,9 +20118,12 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     check state s!"P144 {repr input}: the `:`s (explicit?), their levels and the marks held there" (got == expected)
     check state s!"P144 {repr input}: no EXPLICIT `:` leaves its own column marked"
       ((got.filter (·.1)).all fun (_, nv, marks) => !marks.contains nv.toNat)
-  let drift := rows.foldl (fun acc (input, _) => let d := tagDrift input; (acc.1 + d.1, acc.2 + d.2)) (0, 0)
-  check state "P144 the tag is the scanner's: at all 27 `:`s it agrees with the step's effect on `implicitValueLine`"
-    (drift == (27, 0))
+  let drift := rows.foldl (fun acc (input, _) =>
+    let d := tagDrift input; (acc.1 + d.1, acc.2.1 + d.2.1, acc.2.2 + d.2.2)) (0, 0, 0)
+  check state "P144 the tag is the scanner's: at all 27 block `:`s (no flow `:` in the rows) it agrees with the step's effect on `implicitValueLine`"
+    (drift == (27, 0, 0))
+  check state "P144 a flow `:` is counted apart, not read against `implicitValueLine`: `{a: 1}` (0, 0, 1), `? {a: 1}⏎: b` (1, 0, 1)"
+    (tagDrift "{a: 1}" == (0, 0, 1) && tagDrift "? {a: 1}\n: b" == (1, 0, 1))
   check state "P144 the own-column check is not vacuous: 13 inputs hold an explicit `:`"
     ((rows.filter fun (input, _) => (valueSlots input).any (·.1)).length == 13)
   check state "P144 the tag separates: 3 inputs hold an implicit `:` inside a pending `?` key (its mark still held)"
