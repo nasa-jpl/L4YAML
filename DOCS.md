@@ -54151,10 +54151,10 @@ Full `lake build` 2,645 jobs, exit 0, 3 modules with warnings (the base's).  `ch
 
 **Predictions, before the build.**  P1 — behind an explicit `:` the slot's own column is unmarked.  P2 — an ancestor's mark survives that `:` (`? ? a⏎  : - b`), so (c) cannot be paid everywhere.  P3 — `hkv` is redundant: deleting it loses no payment.  P4 — no shrink-only pin grows.
 
-**Rule 2.**  `P144Test` (`Tests/AdversarialInstantiation.lean`), before the proof: after every `value` token of a `scan` run, the slot's level and the marked columns, on 12 inputs (root, indented, in a sequence, behind a BOM, empty key, one / two / three nested `?`, an implicit `a: 1`, and inputs with no `:`).  The own column is never marked; `? ? a⏎  : - b⏎: c` holds `[0]` at the inner slot, `? ? ? a⏎    : - b⏎  : c⏎: d` holds `[0, 2]`.  The first run expected `a: - b` to produce no slot and failed on it — a wrong expectation of the test, not a refutation.  62,348 / 62,348.
+**Rule 2.**  `P144Test` (`Tests/AdversarialInstantiation.lean`), before the proof: after every `value` token of a `scan` run, whether the `:` is explicit (the register armed before the step), the slot's level and the marked columns, on 13 inputs (root, indented, in a sequence, behind a BOM, empty key, one / two / three nested `?`, an implicit `a: 1`, an implicit `:` behind an explicit one, and inputs with no `:`).  The own-column check reads the EXPLICIT `:`s only (10 inputs hold one; review of the first push — it had read every `value` token); there the own column is never marked; `? ? a⏎  : - b⏎: c` holds `[0]` at the inner slot, `? ? ? a⏎    : - b⏎  : c⏎: d` holds `[0, 2]`.  The first run expected `a: - b` to produce no slot and failed on it — a wrong expectation of the test, not a refutation.  62,351 / 62,351.
 
 **What was built.**
-- `accum_block_on_closeThenBlock.h_vslot`: the conjunct `hkv` (the slot's own value-line route `∨ PackAlt sc`) is gone; `hkvUp` (every `nvU ∈ markedCols sc`) is the slot's one route.  Its nine readers in that lemma read `kvU nv …` where they read `kv`, with the membership `nv ∈ markedCols sc` taken from `markedCols s' = [nv]` and `h_mcstep_ne` at the two `KeyFrames.bottom` sites.
+- `accum_block_on_closeThenBlock.h_vslot`: the conjunct `hkv` (the slot's own value-line route `∨ PackAlt sc`) is gone; `hkvUp` (every `nvU ∈ markedCols sc`) is the slot's one route — it holds the own route only where `nv` is marked, which `hkv` did not require.  Its nine readers in that lemma read `kvU nv …` where they read `kv`, with the membership `nv ∈ markedCols sc` taken from `markedCols s' = [nv]` and `h_mcstep_ne` at the two `KeyFrames.bottom` sites.
 - `accum_block_pending`, the producer: (b) is `Or.inl` where `nmv ∉ markedCols sc` (every mark is then in `nsU`), declined where the own column is marked with no route; (c) is `Or.inl` where every mark is the slot's own and its `?` route is held, and where no mark is held; otherwise declined.  (a) no longer exists.
 - No `Sound` or `ExplicitValueRefused` reading was needed: the guards are decided on `markedCols sc` itself.  That `NotQuestionPark` implies the unmarked own column (P1, as a lemma) is NOT proved here; `P144Test` reads it only.
 
@@ -54162,7 +54162,7 @@ Full `lake build` 2,645 jobs, exit 0, 3 modules with warnings (the base's).  `ch
 
 | P | said | result |
 |---|---|---|
-| P1 | own column unmarked | HELD on the 12 inputs (test, not proof). |
+| P1 | own column unmarked | HELD on the 10 inputs with an explicit `:` (test, not proof). |
 | P2 | an ancestor survives | HELD — (c) stays declined where a mark other than the slot's own is held. |
 | P3 | `hkv` redundant | REFUTED in part.  Where the own route was held and the ancestors' chain declined, three readers paid from `kv` alone; the first build dropped them.  The producer's own-marks-only branch restores the case with no other mark; with another mark held, `indicator_open_map.h_explUp_chain`'s singleton arm `⟨[nv], slotChainMap … kv⟩` is lost (`RelaySupplyCensus` `PAY` 195 → 193).  It returns when the ancestors' chain is paid (NEXT (3)). |
 | P4 | no shrink-only pin grows | HELD — `OrTrueAudit` `inrTrivial` 460 and `accum_block_pending ×41` unchanged (three declines replaced by three guarded ones, plus one). |

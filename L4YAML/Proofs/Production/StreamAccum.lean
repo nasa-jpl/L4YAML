@@ -27347,7 +27347,8 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
       sc.simpleKeyAllowed = true ∧ sp_gram = sp_scan ∧ sp_scan.col = nv + 1 ∧
       (∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_gram sp_v →
         SLYamlStream sp_start sp_v) ∧
-      -- Item 541: the slot's own route is this chain's `nv` instance (item 521); the conjunct `hkv` is gone.
+      -- Item 541: the conjunct `hkv` (the slot's own route, owed whether or not `nv` was marked) is gone; this chain
+      -- holds it only where `nv ∈ markedCols sc` (item 521) — a reader of the own route must show that membership.
       -- **Item 191: a LIST of ancestors** — the park may stand inside several
       -- open `?` frames at once and the landing names one of them.
       ((∀ nvU ∈ RegisterWitness.markedCols sc,

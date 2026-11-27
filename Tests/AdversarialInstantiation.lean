@@ -20038,9 +20038,11 @@ or leaves no ancestor (the declined remainder would be empty).
 -/
 namespace P144Test
 open P143Test in
-/-- After every `value` token of a `scan` run: the slot's level and the marked columns. -/
-partial def valueSlots (input : String) : List (Int × List Nat) :=
-  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Int × List Nat)) : List (Int × List Nat) :=
+/-- After every `value` token of a `scan` run: whether the `:` is EXPLICIT (the register was armed
+before the step — `dispatchBlockValue`'s `explicitValue` reads it), the slot's level, the marked columns. -/
+partial def valueSlots (input : String) : List (Bool × Int × List Nat) :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Bool × Int × List Nat)) :
+      List (Bool × Int × List Nat) :=
     match fuel with
     | 0 => acc.reverse
     | fuel + 1 =>
@@ -20049,28 +20051,33 @@ partial def valueSlots (input : String) : List (Int × List Nat) :=
         let hit := match s'.tokens.back? with
           | some t => s'.tokens.size > s.tokens.size && (match t.val with | .value => true | _ => false)
           | none => false
-        go s' fuel (if hit then (s'.currentIndent, markedColsOf s'.pendingKeys s'.indentColumns) :: acc else acc)
+        go s' fuel (if hit then
+          (s.explicitKeyLine.isSome, s'.currentIndent, markedColsOf s'.pendingKeys s'.indentColumns) :: acc
+          else acc)
       | _ => acc.reverse
   go (scanSeed input) 64 []
 
 def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
   setCategory state "P144: the explicit `:`'s value slot (item 541)"
-  let rows : List (String × List (Int × List Nat)) :=
-    [("? a\n: - b\n: c", [(0, []), (0, [])]),
-     ("? a\n: b", [(0, [])]),
-     ("?\n: - b", [(0, [])]),
-     ("  ? a\n  : - b", [(2, [])]),
-     ("? ? a\n  : - b\n: c", [(2, [0]), (0, [])]),
-     ("?\n  ? a\n  : - b\n: c", [(2, [0]), (0, [])]),
-     ("? ? ? a\n    : - b\n  : c\n: d", [(4, [0, 2]), (2, [0]), (0, [])]),
-     ("- ? a\n  : - b", [(2, [])]),
-     ("\ufeff? a\n: - b", [(0, [])]),
-     ("a: 1", [(0, [])]), ("- a", []), ("", [])]
+  let rows : List (String × List (Bool × Int × List Nat)) :=
+    [("? a\n: - b\n: c", [(true, 0, []), (false, 0, [])]),
+     ("? a\n: b", [(true, 0, [])]),
+     ("?\n: - b", [(true, 0, [])]),
+     ("  ? a\n  : - b", [(true, 2, [])]),
+     ("? ? a\n  : - b\n: c", [(true, 2, [0]), (true, 0, [])]),
+     ("?\n  ? a\n  : - b\n: c", [(true, 2, [0]), (true, 0, [])]),
+     ("? ? ? a\n    : - b\n  : c\n: d", [(true, 4, [0, 2]), (true, 2, [0]), (true, 0, [])]),
+     ("- ? a\n  : - b", [(true, 2, [])]),
+     ("\ufeff? a\n: - b", [(true, 0, [])]),
+     ("? a\n: b: c", [(true, 0, []), (false, 2, [])]),
+     ("a: 1", [(false, 0, [])]), ("- a", []), ("", [])]
   for (input, expected) in rows do
     let got := valueSlots input
-    check state s!"P144 {repr input}: the slots behind `:` and the marks held there" (got == expected)
-    check state s!"P144 {repr input}: no explicit `:` leaves its own column marked"
-      (got.all fun (nv, marks) => !marks.contains nv.toNat)
+    check state s!"P144 {repr input}: the `:`s (explicit?), their levels and the marks held there" (got == expected)
+    check state s!"P144 {repr input}: no EXPLICIT `:` leaves its own column marked"
+      ((got.filter (·.1)).all fun (_, nv, marks) => !marks.contains nv.toNat)
+  check state "P144 the own-column check is not vacuous: 10 inputs hold an explicit `:`"
+    ((rows.filter fun (input, _) => (valueSlots input).any (·.1)).length == 10)
 end P144Test
 
 namespace P141Test
