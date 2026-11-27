@@ -581,7 +581,7 @@ def expectedLadder : List String :=
    -- 2026-11-13 (item 489, the landing agreement): 142 → 143 — `accum_step_content_pairB` holds `h_blk_none`.
    -- 2026-11-14 (item 490): 143 → 144 — `accum_step_content_pairK` holds `h_blk_none`.
    -- 2026-11-25 (item 538, β PR 7): 147 → 148 — `TPendingNode.question_step` holds `h_dispatch` at `?`.
-   "scanNextToken_dispatchBlockIndicators holders=148 edge=1 chain=0",
+   "scanNextToken_dispatchBlockIndicators holders=151 edge=1 chain=0",
    -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
    -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent holders 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
    -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent holders 175 → 180 — `TraceOf/ContentBridge`'s three twins

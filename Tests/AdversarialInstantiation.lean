@@ -20131,7 +20131,7 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
 end P144Test
 
 namespace P145
-/-! **Priority 145 (item 542): the block-indicator steps, priced by source park.**  Every
+/-! **Priority 145 (item 544): the block-indicator steps, priced by source park.**  Every
 depth-0 step whose last real token is `-` / `?` / `:`: the park it leaves from, whether it opens a
 collection (a `blockSequenceStart` / `blockMappingStart` pushed by the same step), whether it closes
 levels first (`blockEnd`), whether the step only APPENDS tokens (the `:` behind an implicit key inserts
