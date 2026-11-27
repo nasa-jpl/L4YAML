@@ -18720,7 +18720,19 @@ example (s s₃ s' : SurfPos) (eb : List Event) (hde : SCDirectivesEnd s s₃) (
 example (s s₃ s₄ s' : SurfPos) (ed eb : List Event) (hd : TPlus TLDirective s s₃ ed)
     (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
     TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
-  by simpa using TLYamlStream.directiveRoute (emptyStream s) (GStar.nil _) hd hde hb
+  by simpa using TLYamlStream.directiveRoute (TDirReady.seed _ (GStar.nil _)) hd hde hb
+/-- Item 542: the run starts behind `[202]*` (comments first) or behind a stream and `...` — `endDocument`, then
+`beginDocument`, then the declarations; the route is `single` / `suffixContinue`, never `implicitContinue`. -/
+example (s s₂ s₃ s₄ s' : SurfPos) (ed eb : List Event) (hp : GStar SLDocumentPrefix s s₂) (hd : TPlus TLDirective s₂ s₃ ed)
+    (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
+    TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
+  by simpa using TLYamlStream.directiveRoute (TDirReady.seed _ hp) hd hde hb
+example (s s₀ s₁ s₂ s₃ s₄ s₅ s' : SurfPos) (e₀ ed eb : List Event) (h : TLYamlStream s s₀ e₀)
+    (hm : SCDocumentEnd s₀ s₁) (hc : SSLComments s₁ s₂) (hp : GStar SLDocumentPrefix s₂ s₃)
+    (hd : TPlus TLDirective s₃ s₄ ed) (hde : SCDirectivesEnd s₄ s₅) (hb : TLExplicitBody s₅ s' eb) :
+    TLYamlStream s s' (e₀ ++ .endDocument :: .beginDocument :: ed ++ eb) :=
+  by simpa using TLYamlStream.directiveRoute (TDirReady.suffix _ _ _ e₀ _ h
+    (TPlus.mk _ _ _ _ [] (TLDocumentSuffix.mk s₀ s₁ s₂ hm hc) (TStar.nil _)) hp) hd hde hb
 /-- Two documents: the second route lands AFTER the first's events, `endDocument` between them. -/
 example (s s₂ s₃ s₄ s₅ s' : SurfPos) (eb eb' : List Event) (hde : SCDirectivesEnd s s₂) (hb : TLExplicitBody s₂ s₃ eb)
     (hm : SCDocumentEnd s₃ s₄) (hc : SSLComments s₄ s₅) (hde' : SCDirectivesEnd s₅ s₅) (hb' : TLExplicitBody s₅ s' eb') :
@@ -18896,12 +18908,13 @@ example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep : ScannerState) (e
     (h_acc : ∀ sp_mid, SSLComments sp_scan sp_mid →
       TPlus TLDirective sp_block sp_mid [.declareTag "!a!", .declareTag "!b!"])
     (h_pre : SSLComments sp_scan sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (h_ready : TDirReady sp_start sp_block ev_c)
     (rest : List Char) (hchars : sp_prep.chars = '-' :: '-' :: '-' :: rest) (hcol : sp_prep.col = 0) :
     ∃ sp', ScannerSurfCorr (scanDocumentStart s_prep) sp' ∧
       TSLYamlStream sp_start (scanDocumentStart s_prep) sp_block ev_c
         [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] ∧
       TPendingNode sp_start false sp_block sp' ev_c [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] :=
-  TPendingNode.docStart_step_run hS h_acc h_pre hcorr rest hchars hcol
+  TPendingNode.docStart_step_run hS h_ready h_acc h_pre hcorr rest hchars hcol
 /-- `---` from a line-start park with no handle: `[beginDocument]` alone. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)

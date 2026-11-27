@@ -1,0 +1,32 @@
+{
+  "item": 542,
+  "tag": "T-FLIP-211",
+  "rev": "HEAD",
+  "target": "L4YAML",
+  "log": "scratch/542-t-flip211-build.log",
+  "msgWidth": 100,
+  "rounds": 1,
+  "files": [
+    {
+      "file": "L4YAML/Proofs/Serialization/TraceOf/Document.lean",
+      "patches": [
+        {
+          "name": "T_DOC_NARROW",
+          "old": [
+            "      GStar SLDocumentPrefix s₁ s₂ →",
+            "      TOpt TLAnyDocument s₂ s₃ e₁ →",
+            "      TStar TLDocumentSuffix s₃ s' e₂ →",
+            "      TLYamlStream s s' (e₀ ++ e₁ ++ e₂)"
+          ],
+          "new": [
+            "      GStar SLDocumentPrefix s₁ s₂ →",
+            "      TOpt TLExplicitDocument s₂ s₃ e₁ →",
+            "      TStar TLDocumentSuffix s₃ s' e₂ →",
+            "      TLYamlStream s s' (e₀ ++ e₁ ++ e₂)"
+          ],
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
