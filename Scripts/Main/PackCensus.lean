@@ -271,9 +271,12 @@ def runBirths (o : Opts) : IO UInt32 := do
   IO.println s!"{payLabel} {payLine}"
   let pinText ← IO.FS.readFile (o.root / pinFile)
   let mut rc : UInt32 := 0
-  for (label, pin, got) in [(birthLabel, "expectedPackBirths", line), (payLabel, "expectedPackRefusedPays", payLine)] do
+  for (label, pin, got, required) in
+      [(birthLabel, "expectedPackBirths", line, false), (payLabel, "expectedPackRefusedPays", payLine, true)] do
     match pinValue? pinText pin with
-    | none => IO.println s!"{label}-PIN absent"
+    | none =>
+      IO.println s!"{label}-PIN absent"
+      if required then rc := 1
     | some v =>
       if v == got then IO.println s!"{label}-PIN agrees"
       else
