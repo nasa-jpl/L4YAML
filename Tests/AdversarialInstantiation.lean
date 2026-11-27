@@ -20140,7 +20140,10 @@ Predictions (written before this instrument ran): Q1 about 200 `-`, 330 `:`, 30 
 (`goOut`) are unchanged at every one; Q3 `-` opens a sequence at about 60 % and its parks are mostly
 `noPending` / `pendingContent`, with some `pendingBlock` and `pendingMapValue`; Q4 `:` is not an append
 at about 90 % (the implicit key); `-` and `?` always append; Q5 `?` leaves mostly from `noPending` and
-opens a mapping at about 60 %; Q6 a `blockEnd` in the same step at ≥ 1 for each of `-` and `:`. -/
+opens a mapping at about 60 %; Q6 a `blockEnd` in the same step at ≥ 1 for each of `-` and `:`.
+Second reading, for `colon_step`'s slot premise (predictions written after the first reading and before
+this one ran): R1 a simple key is saved at about 124 of the 171 `:` steps (the 122 inserts and a few
+that `scanValueClearKey` drops); R2 both of its slots hold a `placeholder` at every one (0 violations). -/
 open L4YAML L4YAML.Scanner P107 P111 P113
 open L4YAML.Proofs.Serialization.TokenEvents (goOut)
 
@@ -20151,6 +20154,8 @@ structure Tally where
   closes : List (String × Nat) := []
   appends : List (String × Nat) := []
   inserts : List (String × Nat) := []
+  keySaved : Nat := 0
+  slotBad : List String := []
   moved : List String := []
   deriving Repr
 
@@ -20172,6 +20177,11 @@ def tally (rows : List String) : Tally := Id.run do
               let closed := cnt b "bEnd" > cnt a "bEnd"
               let isAppend := b.take a.length == a
               let cell := s!"{k}/{P136.parkOf pre.tokens.toList}"
+              let ph (i : Nat) := (pre.tokens[i]?.map (P119.isPlaceholder ·.val)).getD false
+              let saved := k == "value" && pre.simpleKey.possible
+              let slotsOk := ph pre.simpleKey.tokenIndex && ph (pre.simpleKey.tokenIndex + 1)
+              t := { t with keySaved := if saved then t.keySaved + 1 else t.keySaved,
+                            slotBad := if saved && !slotsOk then t.slotBad ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] else t.slotBad }
               let same := reprStr (goOut pre.tokens.toList []).1 == reprStr (goOut post.tokens.toList []).1
               t := { t with kinds := bumpS t.kinds k, parks := bumpS t.parks cell,
                             opens := if opened then bumpS t.opens cell else t.opens,
