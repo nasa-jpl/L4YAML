@@ -689,7 +689,7 @@ def expectedSpends : List String :=
 -- ARMED fact ((γ′), `exists_mem_ne_of_not_markedColsIn`).
 -- 2026-11-07 (item 448, (α) stage A): the two `dite kn` rows of `closeThenBlock` read one `E:empty` more — the
 -- `nv = k` arm's `SBlockNode.emptyNode` close, off which the mapping's frames' strict order is read (`ResumeFrames.strict`).
--- (item 542, (R1)): `h_slotV`'s `nv ≤ k` row reads `paid` — every surviving mark rides the slot's chain, the `markedCols s' = [nv]` split gone.
+-- (item 545, (R1)): `h_slotV`'s `nv ≤ k` row reads `paid` — every surviving mark rides the slot's chain, the `markedCols s' = [nv]` split gone.
 def expectedDecisions : List String :=
   ["flowKeyRoute_of_root dite kmem [Proofs.IndentStackCover.FrameLevel.map w ∈ ks] → E:other(lemma:SSLCommentsFrom_at_park(prem:ScannerSurfCorr,prem:GStar,prem:∀→Not,lemma:left(prem:And),lemma:left(lemma:right(lemma:right(…)))))|punt pos=—",
    "flowKeyRoute_of_root match k∃ [h_res_land,h_sfx,h_nodoc:((∃ ks', (∀ (fr : Proofs.IndentStackCover.FrameLevel), fr ∈ ks' → fr.wid…] → —|—|—|P:spend pos=—",

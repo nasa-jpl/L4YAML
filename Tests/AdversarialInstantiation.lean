@@ -20130,9 +20130,9 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
-/-! ## P145 — the landed `-` and the marks it leaves (item 542, row 12)
+/-! ## P145 — the landed `-` and the marks it leaves (item 545, row 12)
 
-Item 542 pays `accum_block_on_closeThenBlock`'s `-` arm where no mark survives the landing (the empty
+Item 545 pays `accum_block_on_closeThenBlock`'s `-` arm where no mark survives the landing (the empty
 domain on `s'`) and routes every surviving mark through the slot's chain at `nv ≤ k`.
 **Risk:** a dedent `-` always leaves an ancestor's mark (the empty-domain payment would be vacuous),
 or never leaves two marks at `nv ≤ k` (the chain payment would be).
@@ -20162,7 +20162,7 @@ partial def dashLandings (input : String) : List (Bool × List Nat) :=
   go (scanSeed input) 64 []
 
 def testDashLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
-  setCategory state "P145: the landed `-` and the marks it leaves (item 542)"
+  setCategory state "P145: the landed `-` and the marks it leaves (item 545)"
   let inputs : List String :=
     [ "- ?\n- b", "- ? a\n- b", "? ?\n- b", "- ?\n  - a\n- b", "k:\n  ? a\n- b", "- - ?\n  - b",
       "? a\n- b", "?\n- a", "?\n- a\n: b", "- ?\n  - a\n  : b", "- ? a\n  : b", "- a\n- ? b\n  : c",

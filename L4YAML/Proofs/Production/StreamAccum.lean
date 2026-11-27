@@ -28145,13 +28145,13 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
         ∀ sp_mid : SurfPos, SBlockIndented k .blockIn sp_scan' sp_mid →
         ∀ sp_end : SurfPos, SCompactSeqTail k sp_mid sp_end →
         KeyFrames (ExplValueLine sp_start nv) ks sp_end) ∨ PackAlt sc :=
-      -- Item 542: no mark survives the landing — the domain on `s'` is empty (the dedent closed the slot).
+      -- Item 545: no mark survives the landing — the domain on `s'` is empty (the dedent closed the slot).
       if hnil : RegisterWitness.markedCols s' = [] then
         Or.inl (fun _ hm => absurd (hnil ▸ hm) List.not_mem_nil)
       else match h_vslot with
       | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl kvU⟩ =>
           if hnk : nv ≤ k then
-            -- Item 542: every surviving mark rides the slot's chain (`hkvUp`, item 521), not the own mark alone.
+            -- Item 545: every surviving mark rides the slot's chain (`hkvUp`, item 521), not the own mark alone.
             Or.inl (fun nv' hm =>
               ⟨[], fun _ h => absurd h (List.not_mem_nil),
                 fun _ h_indented sp_e h_tail =>
@@ -28256,7 +28256,7 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
              -- A slot with no inner pack, or a landing LEFT of the frame,
              -- keeps the deferral. ═══
              (if hnil : RegisterWitness.markedCols s' = [] then
-               -- Item 542: no mark survives the landing; the field's domain on `s'` is empty.
+               -- Item 545: no mark survives the landing; the field's domain on `s'` is empty.
                Or.inl (fun _ hm => absurd (hnil ▸ hm) List.not_mem_nil)
               else match h_vslot with
               | Or.inl ⟨nv, _, _, _, _, _, _, _, _, Or.inl kvU⟩ =>
