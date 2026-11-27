@@ -47,13 +47,13 @@ def expectedSummary : String :=
 -- Item 519: off-honest 92 → 91, off-unread 55 → 56, on 8 → 6, off 43 → 41, unrooted-arms 89 → 93, arms 238 → 237 —
 -- the four flow-close `Classical.em` splits are gone (PAID from `vslot`), the open's three ladders with them; shrink-only.
 -- Item 519 (review round): arms 237 → 239 (the two fallback `match`es at the `vslot` writers), off-honest 91 → 92 / off-unread 56 → 55 (`pendingBlock.h_kslotUp` read again at the open).
-  "positions=253 on=7 off=179 unresolved=67 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=90 off-unread=55 off-conclusion=19 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=15 nested-unresolved=67 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=122 PackAlt=50 PackAltG=7 pack-declines: on=4 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1151/1261 unrooted-arms=94 arms=237 relays=138 drop-set=7/8"
+  "positions=253 on=7 off=179 unresolved=67 on-drop=3 on-via=0 on-relay=4 on-conclusion=0 off-honest=90 off-unread=55 off-conclusion=19 off-unreached=0 on-drop-nested=0 on-via-nested=0 on-relay-nested=0 off-honest-nested=15 nested-unresolved=67 on-by-alt: True=0 PackAlt=7 PackAltG=0 off-by-alt: True=122 PackAlt=50 PackAltG=7 pack-declines: on=3 off=41 consumed=scan_content_gives_stream_v2 streamAccum-reached=1151/1261 unrooted-arms=94 arms=237 relays=138 drop-set=7/8"
 
 def expectedOn : List String :=
   -- Item 519: the four flow-close splits are PAID from `vslot` (shrink: `pendingContent.h_vpack` on-relay DECLINE 4 → 2).
   ["L4YAML.Proofs.StreamAccum.PendingNode.pendingContent[9].h_vpack top ∨ PackAlt on-relay DECLINE=2",
    "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlockContent[12].h_kslot top ∨ PackAlt on-relay",
-   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot top ∨ PackAlt on-relay DECLINE=1",
+   "L4YAML.Proofs.StreamAccum.PendingNode.pendingBlock[10].h_kslot top ∨ PackAlt on-relay",
    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[10].h_vpack top ∨ PackAlt on-drop DECLINE=1",
    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock[13].h_kslot top ∨ PackAlt on-drop",
    "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent[15].h_kslot top ∨ PackAlt on-drop",

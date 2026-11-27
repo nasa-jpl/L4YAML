@@ -26945,7 +26945,11 @@ lemma accum_block_on_noPending
     -- width is at or right of, and the one no other producer can name (item
     -- 254).  The caller has carried it since item 147.
     (h_mono : IndentStackMono.Mono sc)
-    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#')) :
+    (h_gate : sc.inFlow = false → sp_block.col ≠ 0 → ¬ (CommentOk sc ∧ sc.peek? = some '#'))
+    -- The accumulation already carries the scanner's slot/register invariant.
+    -- A fresh root sequence owes no explicit-key value line: derive that
+    -- empty domain from the actual state instead of supplying PackAlt.
+    (h_sound : PendingKeySound.Sound sc) :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -27040,7 +27044,20 @@ lemma accum_block_on_noPending
              (park_col_of_indicator hcol_mid h_ind h_dash)
              -- Item 92: a landed `-` with nothing pending opens `[183]` under
              -- no `[187]` frame — there is no value line to pack.
-             (Or.inr (PackAlt.step_blockEntry h_preprocess h_dispatch (PackAlt.ofRefused (h_noek (noflow_park_of_noflow h_preprocess h_noflow)))))
+             (by
+               have hfl : sc.flowLevel = 0 := by
+                 simpa [ScannerState.inFlow] using h_scflow
+               have h_empty : RegisterWitness.MarkedColsIn sc [] :=
+                 RegisterWitness.MarkedColsIn.of_explicitKeyLine_none
+                   h_sound hfl (h_noek h_scflow)
+               have h_prep := RegisterWitness.preprocess_markedCols h_preprocess h_empty
+               have h_slots := (PendingKeySound.preprocess_sound h_preprocess h_sound h_mono).slots
+               have h_out : RegisterWitness.MarkedColsIn s' [] :=
+                 RegisterWitness.dispatchBlockIndicators_markedCols_of_ne h_dispatch
+                   (by decide)
+                   (h_prep.transport (by split <;> rfl) (by split <;> rfl))
+                   (by split <;> exact h_slots)
+               exact Or.inl (fun nv hm => absurd (h_out.mem hm) List.not_mem_nil))
              -- **Item 256: the root's resume frames, PAID, at floor 0.**  The
              -- seed's stack is EMPTY (`h_ntop`), so on a monotone stack no mapping
              -- level stands at or right of column 0 (`covered_nil_of_ntop`); the
@@ -30999,7 +31016,7 @@ lemma accum_block_pending (sc : ScannerState)
         h_corr h_from h_ok
   cases h_pending with
   | noPending _ _ h_col h_arm h_nodoc h_noek h_ntop208 =>
-    exact accum_block_on_noPending sc sp_start sp_block s_prep s' c sp_prep sp_scan'
+    exact accum_block_on_noPending (h_sound := h_sound) sc sp_start sp_block s_prep s' c sp_prep sp_scan'
       -- Item 223: the landing wants the flag alone; the park now carries the
       -- cleared register beside it and this site projects it off.
       h_stream_block (h_col.resolve_right (by simp [sc_noflow_of_prep h_preprocess h_noflow])) hcorr_prep hcorr_result h_corr h_col (h_arm.imp_left And.left)

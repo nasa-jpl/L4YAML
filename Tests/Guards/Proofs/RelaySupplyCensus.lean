@@ -973,8 +973,7 @@ def expectedTally : String :=
   -- 2026-10-26 (item 369): edges 664 → 665, DECLINE 256 → 255, FIELD 55 → 56, SPLIT 160 → 161 —
   -- `pendingBlock.h_closeF` threaded into `accum_block_on_pendingBlock` (one FIELD edge) and the
   -- `:`/`?` landing's `h_res_land` there read off those frames instead of `Or.inr trivial`.
-  "edges=636 skipped=41 [DECLINE=235, FIELD=60, LOCAL=26, PAY=50, RELAY=64, \
-SPLIT=175, VIA=26]"
+  "edges=636 skipped=41 [DECLINE=234, FIELD=60, LOCAL=26, PAY=51, RELAY=64, SPLIT=175, VIA=26]"
 
 /-- **The row item 211 read off the compiler's error text and got wrong.**  All
     eight of these print `h_keyctx` when the premise is narrowed; six of them
@@ -1454,7 +1453,7 @@ def expectedBranchSupply : List String :=
    "h_cov :: indicator_open_map#27 :: splits=3 sup=4 [DECLINE=1,SPLIT=3] ⇐ - ⇒ DECLINE+brDECLINE+brPAY",
    "h_explUp_chainD :: colon_open_map#28 :: splits=1 sup=1 [RELAY=1] ⇐ h_explUp_chainD@indicator_open_map ⇒ DECLINE+brDECLINE+brPAY",
    "h_explUp_chainD :: question_open_map#29 :: splits=1 sup=1 [RELAY=1] ⇐ h_explUp_chainD@indicator_open_map ⇒ DECLINE+brDECLINE+brPAY",
-   "h_kslot :: accum_block_on_pendingBlock#13 :: splits=3 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslot ⇒ DECLINE+brDECLINE+brPAY",
+   "h_kslot :: accum_block_on_pendingBlock#13 :: splits=3 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslot ⇒ PAY+brDECLINE+brPAY",
    "h_kslot :: accum_block_on_pendingBlockContent#15 :: splits=1 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslot ⇒ brDECLINE+brPAY",
    "h_kslot :: accum_content_on_pendingMapValue_indented#17 :: splits=3 sup=1 [FIELD=1] ⇐ PendingNode.pendingMapValue.h_kslot ⇒ DECLINE+brDECLINE+brPAY",
    "h_kslotD :: colon_open_map_implicit#29 :: splits=1 sup=1 [FIELD=1] ⇐ And.intro.left ⇒ ORPHAN",
@@ -1462,7 +1461,7 @@ def expectedBranchSupply : List String :=
    "h_kslotUp :: accum_block_on_pendingBlock#30 :: splits=4 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY",
    "h_kslotUp :: accum_block_on_pendingBlockContent#35 :: splits=1 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlockContent.h_kslotUp ⇒ brDECLINE+brPAY",
    "h_kslotUp_old :: accum_content_on_pendingBlock_indented#32 :: splits=3 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslotUp ⇒ DECLINE+brDECLINE+brPAY",
-   "h_kslot_old :: accum_content_on_pendingBlock_indented#13 :: splits=8 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslot ⇒ DECLINE+brDECLINE+brPAY",
+   "h_kslot_old :: accum_content_on_pendingBlock_indented#13 :: splits=8 sup=1 [FIELD=1] ⇐ PendingNode.pendingBlock.h_kslot ⇒ PAY+brDECLINE+brPAY",
    "h_mapF :: accum_block_on_closeThenBlock#29 :: splits=1 sup=11 [DECLINE=7,FIELD=2,RELAY=2] ⇐ h_mapF109@accum_block_on_pendingContent,-,PendingNode.pendingMapValue.h_frames ⇒ DECLINE+PAY+VIA+brDECLINE+brPAY",
    "h_mapFV :: accum_block_on_closeThenBlock#31 :: splits=1 sup=11 [DECLINE=3,FIELD=4,RELAY=2,SPLIT=2] ⇐ h_mapFV108@accum_block_on_pendingContent,PendingNode.pendingProps.h_closeFV,-,PendingNode.pendingMapValue.h_framesV ⇒ CYCLE+DECLINE+brDECLINE+brPAY",
    "h_mapFV108 :: accum_block_on_pendingContent#35 :: splits=1 sup=1 [FIELD=1] ⇐ PendingNode.pendingContent.h_framesV ⇒ DECLINE+brDECLINE+brPAY",
@@ -1518,7 +1517,7 @@ def expectedBranchSupply : List String :=
 def expectedDeclineWriters : List String :=
   ["10 colon_open_map_implicit",
    "10 colon_open_map_props",
-   "13 accum_block_on_noPending",
+   "11 accum_block_on_noPending",
    "14 accum_content_on_pendingBlock_indented",
    "14 content_dispatch_routed",
    "17 accum_content_on_pendingMapValue_indented",
