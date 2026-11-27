@@ -5333,7 +5333,9 @@ def testDirectiveLoops (state : IO.Ref TestCollector) : IO Unit := do
 block/document fragment — the PARSER's side of each row.  The grammar side lives in
 `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean`: `a⏎&x` has the traces `[]` and
 `[defineAnchor x]` (`implicitContinue`, row 19) and `a: |⏎   x⏎  &x b: *x` has `[]` and
-`[defineAnchor x, useAlias x]` (`[173]`'s `SIndentLe` tail).  Each row pins what
+`[defineAnchor x, useAlias x]` (`[173]`'s `SIndentLe` tail); in `TraceOfForbiddenAmbiguity.lean`,
+`a⏎...` has `[]` and `[endDocument]` and `a⏎---` has `[]` and `[beginDocument]` (`[206]
+c-forbidden` missing from `[207]`; parser: the marker reading on both).  Each row pins what
 `parseYaml` does with the informative input: `some k` = accepted with `k` documents,
 `none` = refused.  The two refuted rows show the parser taking ONE reading (grammar
 laxity) and NEITHER (scanner/grammar disagreement) respectively. -/
@@ -5369,6 +5371,18 @@ def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
       ("a: &x⏎  b: *x", "a: &x\n  b: *x", some 1),
       ("BOM &x a", "\uFEFF&x a", some 1),
       ("CRLF a␍⏎&x (R1 with CRLF: parser still one doc)", "a\r\n&x", some 1),
+      ("R3 a⏎... (REFUTED: [] vs [endDocument], `single` alone; parser: one doc, `...` the marker)", "a\n...", some 1),
+      ("R4 a⏎--- (REFUTED: [] vs [beginDocument]; parser: two docs, `---` the marker)", "a\n---", some 2),
+      ("R4 a⏎--- b (marker + content, two docs)", "a\n--- b", some 2),
+      ("R3 cousin a⏎... b (`...` + content: parser refuses)", "a\n... b", none),
+      ("a⏎...b (not [206]: no white after the dots; plain `a ...b`)", "a\n...b", some 1),
+      ("a⏎ ... (not [206]: column 1; plain `a ...`)", "a\n ...", some 1),
+      ("- a⏎... (marker under a sequence)", "- a\n...", some 1),
+      ("k: a⏎... (marker under a mapping)", "k: a\n...", some 1),
+      ("\"a⏎...\" (not [206]: the quote follows the dots)", "\"a\n...\"", some 1),
+      ("\"a⏎...⏎b\" ([206] inside a double-quoted scalar: refused)", "\"a\n...\nb\"", none),
+      ("'a⏎---⏎b' ([206] inside a single-quoted scalar: refused)", "'a\n---\nb'", none),
+      ("[a,⏎...⏎] ([206] inside a flow collection: refused)", "[a,\n...\n]", none),
       ("CRLF a: &x b␍⏎", "a: &x b\r\n", some 1) ]
   for (label, src, expected) in rows do
     let got : Option Nat := match L4YAML.TokenParser.parseYaml src with
