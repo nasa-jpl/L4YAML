@@ -1148,17 +1148,15 @@ dite⇒SPLIT=5]"
 -- four flow-close `Classical.em` splits on the closed state's marks are gone (`vslot` every-mark pays
 -- `h_vpack` / `h_framesV` outright) and the open's three `frameChainUnion` ladders with them.
 def expectedSplitLanding : String :=
-  "survived=175 collapsed=12 leaves=419 elsewhere=11 [DECLINE=213, PAY=195, \
+  "survived=175 collapsed=12 leaves=412 elsewhere=11 [DECLINE=208, PAY=193, \
 VIA=11] \
 [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
-DECLINE|DECLINE|DECLINE|DECLINE|PAY=1, \
-DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY=1, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=9, \
+DECLINE|DECLINE|DECLINE|PAY=3, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=6, \
 DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
-DECLINE|PAY=149, DECLINE|PAY|PAY=2, PAY|VIA=1, PAY|VIA|VIA=1]"
+DECLINE|PAY=152, DECLINE|PAY|PAY=2, PAY|VIA=1, PAY|VIA|VIA=1]"
 
 /-- **Which BRANCH is taken (DOCS item 217).**  Item 216 resolved what a split
     WRITES — both answers, one per arm.  What it could not say was which arm the
@@ -1267,7 +1265,7 @@ def expectedSplitBranch : String :=
 -- Item 519: splits 174 → 175, leaves 420 → 422, relayRooted 164 → 161, siteDecided 10 → 14, plainRoot 55 → 52,
 -- DECLINE-closed 105 → 102, DECLINE-free 112 → 116, PAY-free 191 → 192 — the four flow-close `Classical.em`
 -- splits are gone and the open's three ladders with them (`vslot` every-mark).
-  "splits=175 leaves=419 relayRooted=161 siteDecided=14 optionalRoot=109 plainRoot=52 agree=116/116 disagree=0 [DECLINE-closed=96, DECLINE-free=117, PAY-free=195, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=175 leaves=412 relayRooted=161 siteDecided=14 optionalRoot=109 plainRoot=52 agree=116/116 disagree=0 [DECLINE-closed=96, DECLINE-free=112, PAY-free=193, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
