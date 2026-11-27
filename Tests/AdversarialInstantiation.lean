@@ -20037,9 +20037,19 @@ and pays the remaining chain where the own column holds no mark or every mark is
 or leaves no ancestor (the declined remainder would be empty).
 -/
 namespace P144Test
+/-- `scanValue`'s own `explicitValue`, read at the state the `:` is dispatched from (after preprocess):
+the register armed, no live simple key after `scanValueClearKey`, and (in block) the `:` AT the key's column. -/
+def explicitAt (s : ScannerState) : Bool :=
+  match scanNextToken_preprocess s with
+  | .ok (some (sp, _)) =>
+    let s_kc := scanValueClearKey sp
+    s_kc.explicitKeyLine.isSome && !s_kc.simpleKey.possible
+      && (sp.inFlow || (sp.col : Int) == s_kc.explicitKeyCol)
+  | _ => false
+
 open P143Test in
-/-- After every `value` token of a `scan` run: whether the `:` is EXPLICIT (the register was armed
-before the step — `dispatchBlockValue`'s `explicitValue` reads it), the slot's level, the marked columns. -/
+/-- After every `value` token of a `scan` run: whether the `:` is EXPLICIT (`explicitAt`), the slot's
+level, the marked columns. -/
 partial def valueSlots (input : String) : List (Bool × Int × List Nat) :=
   let rec go (s : ScannerState) (fuel : Nat) (acc : List (Bool × Int × List Nat)) :
       List (Bool × Int × List Nat) :=
@@ -20052,7 +20062,7 @@ partial def valueSlots (input : String) : List (Bool × Int × List Nat) :=
           | some t => s'.tokens.size > s.tokens.size && (match t.val with | .value => true | _ => false)
           | none => false
         go s' fuel (if hit then
-          (s.explicitKeyLine.isSome, s'.currentIndent, markedColsOf s'.pendingKeys s'.indentColumns) :: acc
+          (explicitAt s, s'.currentIndent, markedColsOf s'.pendingKeys s'.indentColumns) :: acc
           else acc)
       | _ => acc.reverse
   go (scanSeed input) 64 []
@@ -20070,14 +20080,20 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
      ("- ? a\n  : - b", [(true, 2, [])]),
      ("\ufeff? a\n: - b", [(true, 0, [])]),
      ("? a\n: b: c", [(true, 0, []), (false, 2, [])]),
+     ("? earth: blue\n: moon: white", [(false, 2, [0]), (true, 0, []), (false, 2, [])]),
+     ("? earth: blue\n  : x\n: y", [(false, 2, [0]), (false, 2, [0]), (true, 0, [])]),
+     ("? : x\n: y", [(false, 2, [0]), (true, 0, [])]),
+     ("k:\n  ? a\n: v", [(false, 0, []), (false, 0, [])]),
      ("a: 1", [(false, 0, [])]), ("- a", []), ("", [])]
   for (input, expected) in rows do
     let got := valueSlots input
     check state s!"P144 {repr input}: the `:`s (explicit?), their levels and the marks held there" (got == expected)
     check state s!"P144 {repr input}: no EXPLICIT `:` leaves its own column marked"
       ((got.filter (·.1)).all fun (_, nv, marks) => !marks.contains nv.toNat)
-  check state "P144 the own-column check is not vacuous: 10 inputs hold an explicit `:`"
-    ((rows.filter fun (input, _) => (valueSlots input).any (·.1)).length == 10)
+  check state "P144 the own-column check is not vacuous: 13 inputs hold an explicit `:`"
+    ((rows.filter fun (input, _) => (valueSlots input).any (·.1)).length == 13)
+  check state "P144 the tag separates: 3 inputs hold an implicit `:` inside a pending `?` key (its mark still held)"
+    ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
 namespace P141Test
