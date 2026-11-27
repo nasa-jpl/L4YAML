@@ -18721,7 +18721,7 @@ example (s s₃ s₄ s' : SurfPos) (ed eb : List Event) (hd : TPlus TLDirective 
     (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
     TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
   by simpa using TLYamlStream.directiveRoute (TDirReady.seed _ (GStar.nil _)) hd hde hb
-/-- Item 542: the run starts behind `[202]*` (comments first) or behind a stream and `...` — `endDocument`, then
+/-- Item 543: the run starts behind `[202]*` (comments first) or behind a stream and `...` — `endDocument`, then
 `beginDocument`, then the declarations; the route is `single` / `suffixContinue`, never `implicitContinue`. -/
 example (s s₂ s₃ s₄ s' : SurfPos) (ed eb : List Event) (hp : GStar SLDocumentPrefix s s₂) (hd : TPlus TLDirective s₂ s₃ ed)
     (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
