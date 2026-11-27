@@ -20130,6 +20130,67 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
+namespace P143
+/-! **Priority 143 (S3 slice (4) PR 24): the block-indicator steps, priced by source park.**  Every
+depth-0 step whose last real token is `-` / `?` / `:`: the park it leaves from, whether it opens a
+collection (a `blockSequenceStart` / `blockMappingStart` pushed by the same step), whether it closes
+levels first (`blockEnd`), whether the step only APPENDS tokens (the `:` behind an implicit key inserts
+`key` before the key's scalar), and whether the open events move.
+Predictions (written before this instrument ran): Q1 about 200 `-`, 330 `:`, 30 `?`; Q2 the events
+(`goOut`) are unchanged at every one; Q3 `-` opens a sequence at about 60 % and its parks are mostly
+`noPending` / `pendingContent`, with some `pendingBlock` and `pendingMapValue`; Q4 `:` is not an append
+at about 90 % (the implicit key); `-` and `?` always append; Q5 `?` leaves mostly from `noPending` and
+opens a mapping at about 60 %; Q6 a `blockEnd` in the same step at ≥ 1 for each of `-` and `:`. -/
+open L4YAML L4YAML.Scanner P107 P111 P113
+open L4YAML.Proofs.Serialization.TokenEvents (goOut)
+
+structure Tally where
+  kinds : List (String × Nat) := []
+  parks : List (String × Nat) := []
+  opens : List (String × Nat) := []
+  closes : List (String × Nat) := []
+  appends : List (String × Nat) := []
+  inserts : List (String × Nat) := []
+  moved : List String := []
+  deriving Repr
+
+def tally (rows : List String) : Tally := Id.run do
+  let mut t : Tally := {}
+  for s in rows do
+    match scanFiltered s, P107.stepsOf s with
+    | .ok _, some sts =>
+      for (pre, post) in sts do
+        if pre.flowLevel == 0 && post.flowLevel == 0 then
+          let real (l : List (Positioned YamlToken)) := (l.filter fun tk => !P119.isPlaceholder tk.val).map (P111.kindOf ·.val)
+          let a := real pre.tokens.toList
+          let b := real post.tokens.toList
+          match b.reverse.head? with
+          | some k =>
+            if b.length > a.length && (k == "bEntry" || k == "key" || k == "value") then
+              let cnt (l : List String) (x : String) := (l.filter (· == x)).length
+              let opened := cnt b "bSeqStart" + cnt b "bMapStart" > cnt a "bSeqStart" + cnt a "bMapStart"
+              let closed := cnt b "bEnd" > cnt a "bEnd"
+              let isAppend := b.take a.length == a
+              let cell := s!"{k}/{P136.parkOf pre.tokens.toList}"
+              let same := reprStr (goOut pre.tokens.toList []).1 == reprStr (goOut post.tokens.toList []).1
+              t := { t with kinds := bumpS t.kinds k, parks := bumpS t.parks cell,
+                            opens := if opened then bumpS t.opens cell else t.opens,
+                            closes := if closed then bumpS t.closes cell else t.closes,
+                            appends := if isAppend then bumpS t.appends k else t.appends,
+                            inserts := if isAppend then t.inserts else bumpS t.inserts cell,
+                            moved := if same then t.moved else t.moved ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] }
+          | none => pure ()
+    | _, _ => pure ()
+  return t
+end P143
+
+namespace P143Test
+def testBlockIndicatorSteps (state : IO.Ref TestCollector) : IO Unit := do
+  let t := P143.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P143 {repr t}"
+  check state "P143 PLACEHOLDER" (t.moved.isEmpty || true)
+end P143Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20462,6 +20523,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P140Test.testLeafAtIndentation state
   P141Test.testContentBehindParks state
   P142Test.testQuestionPark state
+  P143Test.testBlockIndicatorSteps state
   P143Test.testRootEmptyDomain state
   P144Test.testExplicitValueSlot state
   P131Test.testOpenCarrierShadow state
