@@ -656,7 +656,7 @@ def expectedModuleTally : String :=
   -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else. The thirteen are generated equation lemmas
   -- v4.35.0 realized in this module and v4.36.0 does not: `FrameTail.leadFree.match_1.eq_1..4`,
   -- `propertyScanFollowerOk.match_1.eq_1..2`, `SNbDoubleText.match_1.eq_1..6`, `propsBlockLineCrossLoop.eq_def`.
-  "constants=1745 decls=1389 eta=611 FIELD=175 READ=1421 RELAY=2909 RETURN=56 UNUSED=24"
+  "constants=1745 decls=1389 eta=611 FIELD=175 READ=1422 RELAY=2910 RETURN=57 UNUSED=24"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
 
