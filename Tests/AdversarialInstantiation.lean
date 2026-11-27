@@ -20130,8 +20130,8 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
-namespace P143
-/-! **Priority 143 (S3 slice (4) PR 24): the block-indicator steps, priced by source park.**  Every
+namespace P145
+/-! **Priority 145 (item 542): the block-indicator steps, priced by source park.**  Every
 depth-0 step whose last real token is `-` / `?` / `:`: the park it leaves from, whether it opens a
 collection (a `blockSequenceStart` / `blockMappingStart` pushed by the same step), whether it closes
 levels first (`blockEnd`), whether the step only APPENDS tokens (the `:` behind an implicit key inserts
@@ -20192,14 +20192,92 @@ def tally (rows : List String) : Tally := Id.run do
           | none => pure ()
     | _, _ => pure ()
   return t
-end P143
 
-namespace P143Test
+section Statements
+open L4YAML.Proofs.Serialization.TraceOf L4YAML.Proofs.Serialization.TraceOf.StreamBridge
+open L4YAML.Proofs.Serialization.TraceOf.DocBridge (TSLYamlStream)
+open L4YAML.Proofs.CouplingBridge
+open L4YAML.Proofs.Serialization.SerializationWellFormed (Event)
+open L4YAML.Surface
+
+/-- The slot premise is needed: a silent token written over an `anchor` loses its event. -/
+example : goOut ([(⟨default, .anchor "a", default⟩ : Positioned YamlToken)].set 0 ⟨default, .key, default⟩) [] ≠
+    goOut [(⟨default, .anchor "a", default⟩ : Positioned YamlToken)] [] := by
+  simp [goOut, L4YAML.Proofs.Serialization.TokenEvents.tokenEvent]
+
+/-- Each indicator's step through `indicator_step_park`: the events stay, and the RETURNED park closes
+an empty node into the stream through `TPendingNode.close_with_ssl`. -/
+example (c : Char) (sp_start sp_block sp_ind sp_mid : SurfPos) (s_ad s' : ScannerState)
+    (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some c)
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s'))
+    (h_slots : s_ad.simpleKey.possible = true → ∀ i t,
+      i = s_ad.simpleKey.tokenIndex ∨ i = s_ad.simpleKey.tokenIndex + 1 →
+      s_ad.tokens.toList[i]? = some t → t.val = .placeholder)
+    (h_route : TPendingNode.IndicatorRoute sp_start sp_ind (ev_c ++ ev_o) c)
+    (h_ssl : ∀ sp', GLit c sp_ind sp' → SSLComments sp' sp_mid) :
+    (goOut s'.tokens.toList []).1 = ev_c ++ ev_o ∧ TLYamlStream sp_start sp_mid (ev_c ++ ev_o) := by
+  obtain ⟨sp', h_lit, _, hS', hP⟩ :=
+    TPendingNode.indicator_step_park hS hcorr hpeek h_dispatch h_slots h_route
+  exact ⟨congrArg Prod.fst hS'.events, TPendingNode.close_with_ssl hS' hP (h_ssl _ h_lit)⟩
+
+/-- A `:` with no key saved (the explicit value, the empty key): the slot premise is vacuous. -/
+example (n : Nat) (sp_start sp_block sp_ind : SurfPos) (s_ad s' : ScannerState) (ev_c ev_o : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some ':')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad ':' = .ok (some s'))
+    (h_nokey : s_ad.simpleKey.possible = false)
+    (h_route : ∀ sp' sp_k ev, GLit ':' sp_ind sp' →
+      TBlockNode (n + 1) .blockOut sp' sp_k ev → TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev)) :
+    ∃ sp', TPendingNode sp_start false sp_block sp' ev_c ev_o [] := by
+  obtain ⟨sp', _, _, _, hP⟩ := TPendingNode.colon_step hS hcorr hpeek h_dispatch
+    (fun h => by rw [h_nokey] at h; cases h) h_route
+  exact ⟨sp', hP⟩
+
+/-- A `-` whose entry is a compact mapping: the park's route takes any `TBlockIndented`. -/
+example (n m : Nat) (sp_start sp_block sp_ind sp₁ sp_k : SurfPos) (s_ad s' : ScannerState)
+    (ev_c ev_o ev : List Event)
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some '-')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad '-' = .ok (some s'))
+    (h_route : ∀ sp' sp_k ev, GLit '-' sp_ind sp' → GNot SNsChar sp' →
+      TBlockIndented n .blockIn sp' sp_k ev → TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev))
+    (h_cm : ∀ sp', GLit '-' sp_ind sp' → SIndent m sp' sp₁ ∧ TCompactMap (n + 1 + m) sp₁ sp_k ev) :
+    TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev) := by
+  obtain ⟨sp', h_lit, h_not, _, _, _⟩ := TPendingNode.dash_step hS hcorr hpeek h_dispatch h_route
+  exact h_route _ _ _ h_lit h_not (.compactMap n .blockIn m _ _ _ _ (h_cm _ h_lit).1 (h_cm _ h_lit).2)
+
+end Statements
+end P145
+
+namespace P145Test
 def testBlockIndicatorSteps (state : IO.Ref TestCollector) : IO Unit := do
-  let t := P143.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
-  IO.println s!"P143 {repr t}"
-  check state "P143 PLACEHOLDER" (t.moved.isEmpty || true)
-end P143Test
+  let t := P145.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P145 {repr t}"
+  let sum (l : List (String × Nat)) (k : String) := (l.filter (·.1.startsWith k)).foldl (· + ·.2) 0
+  check state "P145 Q1 (refuted for `-` and `:`, predicted about 200 / 330 / 30): 118 `-`, 171 `:`, 29 `?`"
+    (t.kinds.lookup "bEntry" == some 118 && t.kinds.lookup "value" == some 171 && t.kinds.lookup "key" == some 29)
+  check state "P145 Q2: the events are unchanged at every one of the 318 steps" t.moved.isEmpty
+  check state "P145 Q3 (refuted, predicted about 60 %): `-` opens a sequence at 92 of 118; its parks: 56 noPending, 15 pendingBlock, 15 pendingContent, 10 pendingMapValue, 9 pendingDocEnd, 6 pendingProps, 5 pendingDocStart, 2 pendingKey"
+    (sum t.opens "bEntry/" == 92 && t.parks.lookup "bEntry/noPending" == some 56 &&
+     t.parks.lookup "bEntry/pendingBlock" == some 15 && t.parks.lookup "bEntry/pendingContent" == some 15 &&
+     t.parks.lookup "bEntry/pendingMapValue" == some 10 && t.parks.lookup "bEntry/pendingDocEnd" == some 9 &&
+     t.parks.lookup "bEntry/pendingProps" == some 6 && t.parks.lookup "bEntry/pendingDocStart" == some 5 &&
+     t.parks.lookup "bEntry/pendingKey" == some 2)
+  check state "P145 Q4 (refuted, predicted about 90 %): `:` writes into the token list (not an append) at 122 of 171, 116 behind content and 6 at noPending; `-` and `?` always append"
+    (sum t.inserts "value/" == 122 && t.inserts.lookup "value/pendingContent" == some 116 &&
+     t.inserts.lookup "value/noPending" == some 6 && t.appends.lookup "bEntry" == some 118 &&
+     t.appends.lookup "key" == some 29 && t.appends.lookup "value" == some 49)
+  check state "P145 Q5 (half refuted, predicted about 60 % opening): `?` leaves from noPending at 21 of 29 and opens a mapping at all 29"
+    (t.parks.lookup "key/noPending" == some 21 && sum t.opens "key/" == 29)
+  check state "P145 Q6: a `blockEnd` in the same step at 6 `:` and 1 `-`, all behind content"
+    (t.closes == [("value/pendingContent", 6), ("bEntry/pendingContent", 1)])
+  check state "P145 R1 (refuted, predicted about 124): a simple key is saved at 146 of the 171 `:` steps"
+    (t.keySaved == 146)
+  check state "P145 R2: both slots of the saved key hold a `placeholder` at every one (`colon_step`'s `h_slots`)"
+    t.slotBad.isEmpty
+end P145Test
 
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
@@ -20533,7 +20611,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P140Test.testLeafAtIndentation state
   P141Test.testContentBehindParks state
   P142Test.testQuestionPark state
-  P143Test.testBlockIndicatorSteps state
+  P145Test.testBlockIndicatorSteps state
   P143Test.testRootEmptyDomain state
   P144Test.testExplicitValueSlot state
   P131Test.testOpenCarrierShadow state

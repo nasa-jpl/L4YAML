@@ -791,6 +791,177 @@ lemma question_step {k : Nat} {sp_start sp_block sp_ind : SurfPos} {s_ad s' : Sc
     .pendingMapValue _ _ k _ _ fun sp_mid ev_n h =>
       h_route _ _ (.explicitEmpty k _ _ _ _ h_lit (.node k .blockOut _ _ _ h))⟩
 
+/-- A silent token pushed on the stream leaves the events where they were. -/
+lemma events_emit (t : ScannerState) (v : YamlToken) (hv : tokenEvent v = none)
+    (hds : v ≠ .documentStart) (hdir : ∀ h pfx, v ≠ .tagDirective h pfx) (e : List Event)
+    (he : goOut t.tokens.toList [] = (e, [])) : goOut (t.emit v).tokens.toList [] = (e, []) := by
+  have htok : (t.emit v).tokens.toList = t.tokens.toList ++ [FlowBridge.indicatorTok t v] := by
+    simp [ScannerState.emit, FlowBridge.indicatorTok]
+  rw [htok, goOut_append, he, FlowBridge.goOut_indicator t v hv [] hds hdir]; simp
+
+/-- A silent token written over a `placeholder` leaves `goOut` where it was (the implicit key's
+`blockMappingStart` / `key`, which `scanValuePrepare` writes into the saved key's two slots). -/
+lemma goOut_set_silent (y : Positioned YamlToken) (hv : tokenEvent y.val = none)
+    (hds : y.val ≠ .documentStart) (hdir : ∀ h pfx, y.val ≠ .tagDirective h pfx) :
+    ∀ (L : List (Positioned YamlToken)) (j : Nat) (p : List String),
+      (∀ t, L[j]? = some t → t.val = .placeholder) → goOut (L.set j y) p = goOut L p := by
+  intro L
+  induction L with
+  | nil => intro j p _; simp
+  | cons t ts ih =>
+    intro j p hL
+    cases j with
+    | zero =>
+      have ht : t.val = .placeholder := hL t (by simp)
+      rw [List.set_cons_zero, goOut_silent y hv hds hdir,
+        goOut_silent t (by rw [ht]; rfl) (by rw [ht]; simp) (by rw [ht]; simp)]
+    | succ j =>
+      have h1 : (t :: ts).set (j + 1) y = [t] ++ ts.set j y := by simp
+      have h2 := goOut_append [t] ts p
+      simp only [List.singleton_append] at h2
+      rw [h1, goOut_append, ih j _ (fun u hu => hL u (by simpa using hu)), h2]
+
+/-- `scanValue`'s tokens: the prepared state's, and `value`. -/
+lemma scanValue_tokens (s s' : ScannerState) (h : scanValue s = .ok s') :
+    s'.tokens = ((scanValuePrepare (scanValueClearKey s)).emit .value).tokens := by
+  unfold scanValue at h
+  simp only [bind, Except.bind] at h
+  repeat' (split at h)
+  all_goals (first
+    | contradiction
+    | (injection h with h_eq; subst h_eq
+       simp [L4YAML.Proofs.ScannerCorrectness.advance_preserves_tokens]))
+
+/-- `scanValuePrepare` leaves the events where they were, the saved key's two slots being
+`placeholder`s: it writes `blockMappingStart` / `key` over them, or pushes `blockMappingStart`. -/
+lemma scanValuePrepare_events (s : ScannerState) (e : List Event)
+    (h_slots : s.simpleKey.possible = true → ∀ i t,
+      i = s.simpleKey.tokenIndex ∨ i = s.simpleKey.tokenIndex + 1 →
+      s.tokens.toList[i]? = some t → t.val = .placeholder)
+    (he : goOut s.tokens.toList [] = (e, [])) :
+    goOut (scanValuePrepare s).tokens.toList [] = (e, []) := by
+  unfold scanValuePrepare
+  split
+  · rename_i hp
+    have hs := h_slots hp
+    have one : ∀ (y : Positioned YamlToken), y.val = .key →
+        goOut (s.tokens.toList.set (s.simpleKey.tokenIndex + 1) y) [] = (e, []) := fun y hy => by
+      rw [goOut_set_silent y (by rw [hy]; rfl) (by rw [hy]; simp) (by rw [hy]; simp) _ _ _
+        (fun t ht => hs _ t (Or.inr rfl) ht)]
+      exact he
+    split
+    · split
+      · simp only [Array.toList_setIfInBounds]
+        rw [goOut_set_silent _ rfl (by simp) (by simp) _ _ _ (fun t ht => hs _ t (Or.inr rfl)
+            (by rwa [List.getElem?_set_ne (by omega)] at ht)),
+          goOut_set_silent _ rfl (by simp) (by simp) _ _ _ (fun t ht => hs _ t (Or.inl rfl) ht)]
+        exact he
+      · simpa only [Array.toList_setIfInBounds] using one _ rfl
+    · simpa only [Array.toList_setIfInBounds] using one _ rfl
+  · split
+    · exact he
+    · split
+      · unfold pushMappingIndent
+        split
+        · exact events_emit s .blockMappingStart rfl (by simp) (by simp) _ he
+        · exact he
+      · exact he
+
+/-- **The `-` step, T side**: at a `-` the dispatcher takes, the stream's events are unchanged
+(`blockSequenceStart` and `blockEntry` are silent) and the scanner parks in `pendingBlock` behind the
+indicator, the entry's node closing the stream through the `-`'s route. -/
+lemma dash_step {n : Nat} {sp_start sp_block sp_ind : SurfPos} {s_ad s' : ScannerState}
+    {ev_c ev_o : List Event}
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some '-')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad '-' = .ok (some s'))
+    (h_route : ∀ sp' sp_k ev, GLit '-' sp_ind sp' → GNot SNsChar sp' →
+      TBlockIndented n .blockIn sp' sp_k ev → TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev)) :
+    ∃ sp', GLit '-' sp_ind sp' ∧ GNot SNsChar sp' ∧ ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c ev_o [] ∧
+      TPendingNode sp_start false sp_block sp' ev_c ev_o [] := by
+  obtain ⟨sp', h_lit, h_not, hcorr'⟩ :=
+    L4YAML.Proofs.StreamAccum.dispatchBlockEntry_full_prod _ sp_ind hcorr hpeek h_dispatch
+  have hk := L4YAML.Proofs.StreamAccum.dispatchBlock_dash_scanBlockEntry h_dispatch
+  have hps : goOut (pushSequenceIndent s_ad s_ad.col).tokens.toList [] = (ev_c ++ ev_o, []) := by
+    unfold pushSequenceIndent
+    split
+    · exact events_emit s_ad .blockSequenceStart rfl (by simp) (by simp) _ hS.events
+    · exact hS.events
+  have hev : goOut s'.tokens.toList [] = (ev_c ++ ev_o, []) := by
+    rw [L4YAML.Proofs.DirectiveRuns.scanBlockEntry_tokens s_ad s' hk]
+    split
+    · exact events_emit _ .blockEntry rfl (by simp) (by simp) _ hps
+    · exact events_emit _ .blockEntry rfl (by simp) (by simp) _ hS.events
+  exact ⟨sp', h_lit, h_not, hcorr', ⟨hS.stream, hev⟩,
+    .pendingBlock _ _ n _ _ fun sp_mid ev_n h => h_route _ _ _ h_lit h_not h⟩
+
+/-- **The `:` step, T side**: at a `:` the dispatcher takes, the stream's events are unchanged — the
+implicit key's `blockMappingStart` / `key` go over the saved key's `placeholder` slots (`h_slots`), and
+`value` is silent — and the scanner parks in `pendingMapValue` behind the indicator. -/
+lemma colon_step {n : Nat} {sp_start sp_block sp_ind : SurfPos} {s_ad s' : ScannerState}
+    {ev_c ev_o : List Event}
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some ':')
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad ':' = .ok (some s'))
+    (h_slots : s_ad.simpleKey.possible = true → ∀ i t,
+      i = s_ad.simpleKey.tokenIndex ∨ i = s_ad.simpleKey.tokenIndex + 1 →
+      s_ad.tokens.toList[i]? = some t → t.val = .placeholder)
+    (h_route : ∀ sp' sp_k ev, GLit ':' sp_ind sp' →
+      TBlockNode (n + 1) .blockOut sp' sp_k ev → TLYamlStream sp_start sp_k (ev_c ++ ev_o ++ ev)) :
+    ∃ sp', GLit ':' sp_ind sp' ∧ ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c ev_o [] ∧
+      TPendingNode sp_start false sp_block sp' ev_c ev_o [] := by
+  obtain ⟨sp', h_lit, hcorr'⟩ :=
+    L4YAML.Proofs.StreamAccum.dispatchBlockValue_full_prod _ sp_ind hcorr hpeek h_dispatch
+  have hk := L4YAML.Proofs.StreamAccum.dispatchBlock_colon_scanValue h_dispatch
+  have hkc : goOut (scanValuePrepare (scanValueClearKey s_ad)).tokens.toList [] =
+      (ev_c ++ ev_o, []) := by
+    rcases L4YAML.Proofs.ScannerCorrectness.scanValueClearKey_identity_or_clear s_ad with h | ⟨hp, ht⟩
+    · rw [h]; exact scanValuePrepare_events s_ad _ h_slots hS.events
+    · exact scanValuePrepare_events _ _ (fun h => by rw [hp] at h; cases h) (by rw [ht]; exact hS.events)
+  have hev : goOut s'.tokens.toList [] = (ev_c ++ ev_o, []) := by
+    rw [scanValue_tokens s_ad s' hk]
+    exact events_emit _ .value rfl (by simp) (by simp) _ hkc
+  exact ⟨sp', h_lit, hcorr', ⟨hS.stream, hev⟩,
+    .pendingMapValue _ _ n _ _ fun sp_mid ev_n h => h_route _ _ _ h_lit h⟩
+
+/-- What the block indicator at `sp_ind` closes the stream through, by indicator: the entry behind `-`,
+the explicit entry at `?`, the value's node behind `:`. -/
+inductive IndicatorRoute (sp_start sp_ind : SurfPos) (ev₀ : List Event) : Char → Prop where
+  | dash (n : Nat)
+      (h : ∀ sp' sp_k ev, GLit '-' sp_ind sp' → GNot SNsChar sp' →
+        TBlockIndented n .blockIn sp' sp_k ev → TLYamlStream sp_start sp_k (ev₀ ++ ev)) :
+      IndicatorRoute sp_start sp_ind ev₀ '-'
+  | question (k : Nat)
+      (h : ∀ sp_k ev, TBlockMapEntry k sp_ind sp_k ev → TLYamlStream sp_start sp_k (ev₀ ++ ev)) :
+      IndicatorRoute sp_start sp_ind ev₀ '?'
+  | colon (n : Nat)
+      (h : ∀ sp' sp_k ev, GLit ':' sp_ind sp' →
+        TBlockNode (n + 1) .blockOut sp' sp_k ev → TLYamlStream sp_start sp_k (ev₀ ++ ev)) :
+      IndicatorRoute sp_start sp_ind ev₀ ':'
+
+/-- **The fold's one step at a block indicator**: `-`, `?` or `:` taken by the dispatcher leaves the
+events where they were and parks behind the indicator. -/
+lemma indicator_step_park {c : Char} {sp_start sp_block sp_ind : SurfPos} {s_ad s' : ScannerState}
+    {ev_c ev_o : List Event}
+    (hS : TSLYamlStream sp_start s_ad sp_block ev_c ev_o [])
+    (hcorr : ScannerSurfCorr s_ad sp_ind) (hpeek : s_ad.peek? = some c)
+    (h_dispatch : scanNextToken_dispatchBlockIndicators s_ad c = .ok (some s'))
+    (h_slots : s_ad.simpleKey.possible = true → ∀ i t,
+      i = s_ad.simpleKey.tokenIndex ∨ i = s_ad.simpleKey.tokenIndex + 1 →
+      s_ad.tokens.toList[i]? = some t → t.val = .placeholder)
+    (h_route : IndicatorRoute sp_start sp_ind (ev_c ++ ev_o) c) :
+    ∃ sp', GLit c sp_ind sp' ∧ ScannerSurfCorr s' sp' ∧
+      TSLYamlStream sp_start s' sp_block ev_c ev_o [] ∧
+      TPendingNode sp_start false sp_block sp' ev_c ev_o [] := by
+  cases h_route with
+  | dash n h =>
+    obtain ⟨sp', h1, _, h2, h3, h4⟩ := dash_step (n := n) hS hcorr hpeek h_dispatch h
+    exact ⟨sp', h1, h2, h3, h4⟩
+  | question k h => exact question_step (k := k) hS hcorr hpeek h_dispatch h
+  | colon n h => exact colon_step (n := n) hS hcorr hpeek h_dispatch h_slots h
+
 end TPendingNode
 
 /-- The bare-document route at the first document's line start: a completed `TBlockNode` at the park is
