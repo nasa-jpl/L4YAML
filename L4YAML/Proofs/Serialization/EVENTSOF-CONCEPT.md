@@ -518,3 +518,25 @@ either way).  `BlockStopOk.badChar` carries a non-empty run (`GPlus`), and the
 `m = 2` reading no longer fits in one mapping.  Pair 2 survives exactly as
 predicted — as two bare documents through `implicitContinue` (`readTwoDocs`) —
 so `traceOf_unique` stays refuted until `[211]` is explicit-only.
+
+**A third hole, independent of `[211]`: `[206] c-forbidden`.**  `[207]
+l-bare-document` is `s-l+block-node(-1,BLOCK-IN)` *excluding `c-forbidden`
+content*; `SLBareDocument` has no such exclusion (`SCForbidden` is declared in
+`Surface/Document.lean` and used nowhere), and neither has the hand-written
+`TLBareDocument` (`TraceOf/Document.lean`), the constructor the pairs below go
+through — a repair must narrow both.  A column-0 `...` or `---` line is
+therefore both a continuation line of a multi-line plain scalar (`[69]` at
+`n = 0`, `.`/`-` being `ns-plain-safe`) and a document marker
+(`Tests/Guards/Proofs/TraceOfForbiddenAmbiguity.lean`):
+
+3. `a⏎...` — trace `[]` (the plain `a ...`) or `[endDocument]` (`a`, then
+   `[205]`).  Both derivations are `TLYamlStream.single`: no `implicitContinue`
+   at all (`traceOf_unique_refuted_forbidden`).
+4. `a⏎---` — trace `[]` (the plain `a ---`) or `[beginDocument]` (`a`, then an
+   EXPLICIT empty document through `implicitContinue`, the continuation
+   explicit-only keeps).
+
+The scanner and parser take the marker reading on both.  So `[211]`
+explicit-only is necessary for `traceOf_unique` and not sufficient: the
+exclusion of `[207]` has to enter the Surface grammar as well, and the
+block/document proof (`UniqueBlock.lean`) can start only on a grammar with both.

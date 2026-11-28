@@ -54178,6 +54178,35 @@ Full `lake build` 2,645 jobs, exit 0, 3 modules with warnings (the base's).  `ch
 
 **NEXT —** step 12.3.4.2, still paying in place.  (1) (R1), its three declines apart, as item 539's NEXT (3) states them; with `hkv` gone, the `nv ≤ k` decline on `markedCols s' ≠ [nv]` reads `hkvUp` alone.  (2) What (R2) left: the ancestors' chain across an explicit `:`'s value slot (`? ? a⏎  : - b`) — `pendingMapValue.h_explUp`'s decline at a `NotQuestionPark` park, the same class as `h_explUp_chainD`'s bare `∨ PackAlt sc` — and the own column marked with no `?` route, which `P144Test` never reaches (candidate: a lemma from `NotQuestionPark` and `Sound`; not built).  (3) the `h_explUp_chainD` class as item 540's NEXT (3) states it; then the flip re-priced on its own base, the flow frame's `PackAltG` and item 537's (3); 12.3.4.3, 12.3.5, 12.4, 12.5, 12.6 follow.
 
+### Item 542 (2026-11-27)
+
+**`traceOf_unique` lane, Rule 2 — REFUTED a third time, independently of row 19: `[206] c-forbidden` is missing from `[207] l-bare-document`, so `a⏎...` has the traces `[]` and `[endDocument]` with `TLYamlStream.single` alone, and `a⏎---` has `[]` and `[beginDocument]` through the EXPLICIT continuation that `[211]` explicit-only keeps.  Guard and parser-side ledger landed; no library file touched, no proof spent.**
+
+**The mandate.**  Not item 541's NEXT (Row 12, another lane).  This lane's standing mandate is EVENTSOF-CONCEPT §10, "Slice 3 stopped": `traceOf_unique` on the block/document fragment, refuted by `Tests/Guards/Proofs/TraceOfBlockAmbiguity.lean` and waiting on `[211]` explicit-only (row 19, its own lane).  The question asked here, before any `UniqueBlock.lean`: once `implicitContinue` takes only an explicit document, is the statement true?
+
+**Predictions, before the build.**  P1 — no: `a⏎...` derives twice under `single` alone, since `SNsPlainNextLine` at `n = 0` accepts a column-0 line of `ns-plain-safe` dots and `SLBareDocument` excludes nothing.  P2 — `a⏎---` derives twice as well, the second reading an explicit empty document, so the row-19 narrowing does not remove it.  P3 — the parser takes the marker reading on both (one document; two documents).  P4 — no census pin moves: the new module is a guard, not a library module.
+
+**The reading.**
+- `Tests/Guards/Proofs/TraceOfForbiddenAmbiguity.lean` (new): `traceOf_dotsPlain` / `traceOf_dotsMarker` (`a⏎...`: `[]` / `[endDocument]`), `traceOf_unique_refuted_forbidden` (the stream statement refuted with no `implicitContinue` in either derivation), `traceOf_dashesPlain` / `traceOf_dashesMarker` (`a⏎---`: `[]` / `[beginDocument]`).  The plain reading is one term for both markers (`plainOverMarker`): `[69]` grants the continuation line indent 0 at `n = 0`, and `.` and `-` are `ns-plain-safe`.
+- The cause is in the Surface grammar, not in the trace annotation: `[207]` is `s-l+block-node(-1,BLOCK-IN)` *excluding `c-forbidden` content*, `SLBareDocument.mk` is the block node alone, and `SCForbidden` (`Surface/Document.lean`) is declared and used nowhere.
+- Parser side (`testTraceOfBlockLedger`, Priority 33, +12 rows): `a⏎...` one document and `a⏎---` two — the marker reading on both, which is also the scanner's (`tokenEvents ∘ scan` gives `[endDocument]` / `[beginDocument]`).  Boundary rows: `a⏎...b` and `a⏎ ...` are plain (not `[206]`: no white after the dots; column 1); `a⏎... b` is refused; `[206]` inside a double-quoted scalar, a single-quoted scalar and a flow collection is refused; `"a⏎..."` is accepted (the quote follows the dots).
+- EVENTSOF-CONCEPT §10 records pairs 3 and 4 after the `[173]` paragraph.
+
+**Predictions, scored.**
+
+| P | said | result |
+|---|---|---|
+| P1 | `a⏎...` twice under `single` | HELD — both terms elaborate. |
+| P2 | `a⏎---` twice, explicit second document | HELD. |
+| P3 | parser: the marker reading | HELD — 1 and 2 documents. |
+| P4 | no pin moves | HELD — `census-dashboard -- --diff`: directed 0, population 0. |
+
+**Gates.**  No pin moved.  Full `lake build` 2,647 jobs, exit 0, 3 modules with warnings (the base's).  `check-theorem-keyword`, `check-import-closure`, `check-reflection-index`, `check-doc-graphs`, `check-closure-log`, `check-serialization-proofs`, `check-gate-vocab`, `check-pack-births`, `check-scripts-lean`, `census-dashboard -- --check`: green.  `run-all-tests` exit 0; `adversarialinstantiation` 62374 / 62374 (the ledger's 41 rows among them); `suiterunner` 869 / 0 / 151; `eventscore` 347 / 358.  Axiom census (`#print axioms`) of the five `traceOf_*` lemmas of the new guard: `propext`, `Classical.choice`, `Quot.sound`.  No `sorry`; no library file and no capstone statement touched.
+
+**Paid / deferred.**  Paid: the Rule-2 answer — `[211]` explicit-only is necessary and NOT sufficient for `traceOf_unique`; the second Surface repair is named before any block-fragment proof is written against a grammar that cannot carry it.  Deferred: the repair itself (`[206]` on `[207]`), and with it every line of `UniqueBlock.lean`.  The refused rows (`a⏎... b`, `[206]` inside a quoted scalar or a flow collection) are parser-side readings only: whether the grammar derives them is not established here.
+
+**NEXT —** the `[206]` narrowing, priced before it is made.  The repair has TWO sites: `SLBareDocument.mk` (`Surface/Document.lean`) and the hand-written `TLBareDocument.mk` (`TraceOf/Document.lean`), which is not generated from the Surface rule and is the constructor both refuted pairs above go through — narrowing `SLBareDocument` alone leaves every counterexample of this item standing.  (1) Rule 2 on the candidate statement: `SLBareDocument.mk` and `TLBareDocument.mk` both gain "no position of the span satisfies `SCForbidden`" (the spec's own wording), against the alternative of a per-line premise on the continuation lines of `[69]`-prefixed scalars; instantiate both on the twelve rows above and on `--- a⏎...`, `---⏎a⏎---`, a root block scalar and a BOM.  (2) Price it: what breaks in `parse → grammar` (the producers of `SLBareDocument`, which must now show the scanner never leaves a `[206]` line inside a document) and in the trace layer: the three `TLBareDocument.mk` sites of `TraceOf/StreamBridge.lean` (the trace-side fold lane's file), which must each supply the new premise; the generated `TraceOf/Node.lean` moves only if the per-line alternative is chosen, since the span-level premise sits on the document wrappers, not on a node rule.  (3) Only then land it; `UniqueBlock.lean` starts after both it and row 19's `[211]` are on the branch.
+
 ### Item 545 (2026-11-27)
 
 **Step 12.3.4.2 — (R1) PAID in place where it holds: `accum_block_on_closeThenBlock`'s landed `-` writes `h_slotV`, `pendingBlock.h_kslot` and `pendingBlock.h_kslotUp` `Or.inl` wherever no mark survives the landing (the empty domain on `s'`, the slot or no slot), and `h_slotV`'s `markedCols s' ≠ [nv]` decline is GONE — every surviving mark rides `hkvUp`; a mark right of the `-` beside a surviving ancestor, and the residue arm with a mark held, stay DECLINED.  Library built; `OrTrueAudit` `inrTrivial` 460 → 459, `RelaySupplyCensus` `PAY` 193 → 195.**
