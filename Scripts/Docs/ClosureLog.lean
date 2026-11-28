@@ -39,7 +39,7 @@ def declaredGaps : List (Nat × String) :=
    (442, "item-445-2026-11-06"),
    -- 542–544: taken by three concurrent lanes' open PRs on 2026-11-27 (`traceOf_unique`, Row 19, the trace
    -- fold); Row 12's (R1) item became 545.  Whichever PR merges later deletes its own number here.
-   (542, "item-545-2026-11-27"), (543, "item-545-2026-11-27"), (544, "item-545-2026-11-27")]
+   (542, "item-545-2026-11-27"), (544, "item-545-2026-11-27")]
 
 /-- One `### Item N[a] (DATE)` heading. -/
 structure Entry where

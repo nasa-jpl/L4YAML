@@ -18720,7 +18720,19 @@ example (s s₃ s' : SurfPos) (eb : List Event) (hde : SCDirectivesEnd s s₃) (
 example (s s₃ s₄ s' : SurfPos) (ed eb : List Event) (hd : TPlus TLDirective s s₃ ed)
     (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
     TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
-  by simpa using TLYamlStream.directiveRoute (emptyStream s) (GStar.nil _) hd hde hb
+  by simpa using TLYamlStream.directiveRoute (TDirReady.seed _ (GStar.nil _)) hd hde hb
+/-- Item 543: the run starts behind `[202]*` (comments first) or behind a stream and `...` — `endDocument`, then
+`beginDocument`, then the declarations; the route is `single` / `suffixContinue`, never `implicitContinue`. -/
+example (s s₂ s₃ s₄ s' : SurfPos) (ed eb : List Event) (hp : GStar SLDocumentPrefix s s₂) (hd : TPlus TLDirective s₂ s₃ ed)
+    (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
+    TLYamlStream s s' (.beginDocument :: ed ++ eb) :=
+  by simpa using TLYamlStream.directiveRoute (TDirReady.seed _ hp) hd hde hb
+example (s s₀ s₁ s₂ s₃ s₄ s₅ s' : SurfPos) (e₀ ed eb : List Event) (h : TLYamlStream s s₀ e₀)
+    (hm : SCDocumentEnd s₀ s₁) (hc : SSLComments s₁ s₂) (hp : GStar SLDocumentPrefix s₂ s₃)
+    (hd : TPlus TLDirective s₃ s₄ ed) (hde : SCDirectivesEnd s₄ s₅) (hb : TLExplicitBody s₅ s' eb) :
+    TLYamlStream s s' (e₀ ++ .endDocument :: .beginDocument :: ed ++ eb) :=
+  by simpa using TLYamlStream.directiveRoute (TDirReady.suffix _ _ _ e₀ _ h
+    (TPlus.mk _ _ _ _ [] (TLDocumentSuffix.mk s₀ s₁ s₂ hm hc) (TStar.nil _)) hp) hd hde hb
 /-- Two documents: the second route lands AFTER the first's events, `endDocument` between them. -/
 example (s s₂ s₃ s₄ s₅ s' : SurfPos) (eb eb' : List Event) (hde : SCDirectivesEnd s s₂) (hb : TLExplicitBody s₂ s₃ eb)
     (hm : SCDocumentEnd s₃ s₄) (hc : SSLComments s₄ s₅) (hde' : SCDirectivesEnd s₅ s₅) (hb' : TLExplicitBody s₅ s' eb') :
@@ -18781,6 +18793,44 @@ def routeShapes (rows : List String) : RouteTally := Id.run do
     | .error _ => pure ()
   return t
 
+
+structure ReadyTally where
+  runs : Nat := 0
+  seed : Nat := 0
+  suffix : Nat := 0
+  other : List String := []
+  deriving Repr
+
+/-- Item 543 (review): `TDirReady` on the scanner's own tokens.  A `%` run is ready when the real token before
+it is `streamStart` (only `[202]*` behind it — `seed`) or `documentEnd` (a stream and `[205]+` — `suffix`);
+any other predecessor is a run only `implicitContinue` could have placed.  Predicted: none, over ≈ 45 runs. -/
+def dirReady (rows : List String) : ReadyTally := Id.run do
+  let mut t : ReadyTally := {}
+  for s in rows do
+    match scanFiltered s with
+    | .ok toks =>
+      let mut prev : Option L4YAML.YamlToken := none
+      for tk in toks.toList do
+        if P119.isPlaceholder tk.val then continue
+        if isDirective tk.val then
+          match prev with
+          | some (.tagDirective _ _) | some (.versionDirective _ _) => pure ()
+          | some .streamStart => t := { t with runs := t.runs + 1, seed := t.seed + 1 }
+          | some .documentEnd => t := { t with runs := t.runs + 1, suffix := t.suffix + 1 }
+          | _ => t := { t with runs := t.runs + 1, other := t.other ++ [s] }
+        prev := some tk.val
+    | .error _ => pure ()
+  return t
+
+/-- Concrete rows for `TDirReady`: stream start, a comment first, after a bare document's `...`, after a leading
+`...`, and after `...` then a comment. -/
+def readyRows : List String :=
+  ["%TAG !a! x\n---\n", "# c\n%YAML 1.2\n---\n", "a\n...\n%TAG !a! x\n---\nb", "...\n%TAG !a! x\n---\n",
+   "a: b\n...\n# c\n%TAG !a! x\n---\n"]
+
+/-- Rows where a `%` line follows content with no `...`: no directive token may come out of them. -/
+def unreadyRows : List String :=
+  ["---\n%TAG !a! x\n", "a\n%TAG !a! x\n---\nb", "--- a\n%TAG !a! x\n", "- a\n%TAG !a! x\n---\n"]
 end P135
 
 namespace P136
@@ -18896,12 +18946,13 @@ example (sp_start sp_block sp_scan sp_prep : SurfPos) (s_prep : ScannerState) (e
     (h_acc : ∀ sp_mid, SSLComments sp_scan sp_mid →
       TPlus TLDirective sp_block sp_mid [.declareTag "!a!", .declareTag "!b!"])
     (h_pre : SSLComments sp_scan sp_prep) (hcorr : ScannerSurfCorr s_prep sp_prep)
+    (h_ready : TDirReady sp_start sp_block ev_c)
     (rest : List Char) (hchars : sp_prep.chars = '-' :: '-' :: '-' :: rest) (hcol : sp_prep.col = 0) :
     ∃ sp', ScannerSurfCorr (scanDocumentStart s_prep) sp' ∧
       TSLYamlStream sp_start (scanDocumentStart s_prep) sp_block ev_c
         [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] ∧
       TPendingNode sp_start false sp_block sp' ev_c [.beginDocument, .declareTag "!a!", .declareTag "!b!"] [] :=
-  TPendingNode.docStart_step_run hS h_acc h_pre hcorr rest hchars hcol
+  TPendingNode.docStart_step_run hS h_ready h_acc h_pre hcorr rest hchars hcol
 /-- `---` from a line-start park with no handle: `[beginDocument]` alone. -/
 example (sp_start sp sp_prep : SurfPos) (s_prep : ScannerState) (ev_c : List Event)
     (hS : TSLYamlStream sp_start s_prep sp ev_c [] []) (h_col : sp.col = 0)
@@ -20299,6 +20350,21 @@ def testStreamPrefix (state : IO.Ref TestCollector) : IO Unit := do
   -- the `---`-opened documents, P3's 115) — HELD on the rest: 38 with declarations, 97 `endDocument`s, 115 / 115 shaped.
   check state "P135 routes: 115 documents, 38 carry declarations, 97 endDocuments"
     (r.docs == 115 && r.withDecls == 38 && r.endDocs == 97)
+  let d := P135.dirReady (P113.allRows ++ P118.extraRows ++ P135.extraRows ++ P135.readyRows ++ P135.unreadyRows)
+  IO.println s!"P135 ready {repr d}"
+  IO.println s!"P135 ready rows {repr (P135.readyRows.map fun s => let r := P135.dirReady [s]; (r.seed, r.suffix, r.other.length))}"
+  IO.println s!"P135 unready rows {repr (P135.unreadyRows.map fun s => ((scanFiltered s).toOption.isSome, (P135.dirReady [s]).runs))}"
+  check state "P135 ready: every % run starts behind streamStart or documentEnd" (d.other.isEmpty)
+  -- Scored (item 543's P8–P10, filed before the run): P8 HELD on `other = 0`, REFUTED on the counts (60 runs, 48 seed / 12 suffix, not ≈ 45 / 35 / 10);
+  -- P9 REFUTED on "a⏎%TAG !a! x⏎---⏎b" — accepted, the `%` line is the plain scalar's continuation, no directive
+  -- token — HELD on the other three; P10 HELD.
+  check state "P135 ready: 60 runs, 48 seed / 12 suffix" (d.runs == 60 && d.seed == 48 && d.suffix == 12)
+  check state "P135 ready rows: seed, seed, suffix, suffix, suffix"
+    ((P135.readyRows.map fun s => let r := P135.dirReady [s]; (r.seed, r.suffix, r.other.length))
+      == [(1, 0, 0), (1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0)])
+  check state "P135 unready rows: refused or no directive token"
+    ((P135.unreadyRows.map fun s => ((scanFiltered s).toOption.isSome, (P135.dirReady [s]).runs))
+      == [(false, 0), (true, 0), (true, 0), (false, 0)])
   check state "P135 the three refused rows"
     ((P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone) == ["%TAG !a! x\n...", "%TAG !a! x", "---\n%TAG !a! x\n"])
 end P135Test

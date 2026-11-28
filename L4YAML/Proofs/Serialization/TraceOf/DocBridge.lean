@@ -864,15 +864,26 @@ lemma TLYamlStream.explicitRoute {s s₁ s₂ s₃ s' : SurfPos} {e eb : List Ev
     (TOpt.some _ _ _ (TLAnyDocument.explicit _ _ _
       (TLExplicitDocument.withContent s₂ s₃ s' eb hde hb))) (TStar.nil _)
 
+/-- Where a `%` run may start (the twin of item 138's `PendingNode.dirRoute` domain): behind it is
+`[202]*` alone, or a stream, `[205]+` and `[202]*` — `[211]`'s two arms that take `l-any-document`. -/
+inductive TDirReady (s : SurfPos) : SurfPos → List Event → Prop where
+  | seed (s₂ : SurfPos) : GStar SLDocumentPrefix s s₂ → TDirReady s s₂ []
+  | suffix (s₀ s₁ s₂ : SurfPos) (e₀ e₁ : List Event) :
+      TLYamlStream s s₀ e₀ → TPlus TLDocumentSuffix s₀ s₁ e₁ → GStar SLDocumentPrefix s₁ s₂ →
+      TDirReady s s₂ (e₀ ++ e₁)
+
 /-- Directives then `---` body: the declarations follow the `beginDocument` (the twin of
-`h_dir_route`). -/
-lemma TLYamlStream.directiveRoute {s s₁ s₂ s₃ s₄ s' : SurfPos} {e ed eb : List Event}
-    (h : TLYamlStream s s₁ e) (hp : GStar SLDocumentPrefix s₁ s₂)
+`h_dir_route`), in `single`'s or `suffixContinue`'s slot — never `implicitContinue`'s. -/
+lemma TLYamlStream.directiveRoute {s s₂ s₃ s₄ s' : SurfPos} {e ed eb : List Event}
+    (h : TDirReady s s₂ e)
     (hd : TPlus TLDirective s₂ s₃ ed) (hde : SCDirectivesEnd s₃ s₄) (hb : TLExplicitBody s₄ s' eb) :
     TLYamlStream s s' (e ++ .beginDocument :: ed ++ eb) := by
-  simpa using TLYamlStream.implicitContinue s s₁ s₂ s' s' e (.beginDocument :: ed ++ eb) [] h hp
-    (TOpt.some _ _ _ (TLAnyDocument.directive _ _ _
-      (TLDirectiveDocument.mk s₂ s₃ s₄ s' ed eb hd hde hb))) (TStar.nil _)
+  have hdoc := TOpt.some _ _ _ (TLAnyDocument.directive _ _ _
+    (TLDirectiveDocument.mk s₂ s₃ s₄ s' ed eb hd hde hb))
+  cases h with
+  | seed _ hp => simpa using TLYamlStream.single s s₂ s' s' _ [] hp hdoc (TStar.nil _)
+  | suffix s₀ s₁ _ e₀ e₁ h hs hp =>
+    simpa using TLYamlStream.suffixContinue s s₀ s₁ s₂ s' s' e₀ e₁ _ [] h hs hp hdoc (TStar.nil _)
 
 /-- A star grows at its end. -/
 lemma TStar_snoc {P : TRel} {s₁ s₂ s₃ : SurfPos} {ed e : List Event}
