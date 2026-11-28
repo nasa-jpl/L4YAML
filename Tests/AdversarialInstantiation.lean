@@ -20130,6 +20130,76 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
+/-! ## P146 — the block colon's scanner-owned exclusion (item 541 follow-up, row 12)
+
+The production proof retains TopUnmarked in the negative explicit-entry face.
+It excludes the consumed slot's own column, not the smaller ancestor marks.
+The first executable sweep ran before the proof in Research/R2ValueOwnership;
+this suite port additionally uses scan's BOM-consuming seed and pins witnesses.
+-/
+namespace P146Test
+
+def sources : List String := [
+  "", ": x\n", "a: b\n", "? a\n: b\n", "?\n: b\n",
+  "? ? a\n  : - b\n: c\n", "? ? ? a\n    : b\n: d\n",
+  "? ? ? ? a\n      : b\n  : d\n: e\n",
+  "? ? ? ? a\n      : b\n      ? c\n      : d\n  : e\n: f\n",
+  "? earth: blue\n: moon: white\n", "? earth: blue\n  : x\n: y\n",
+  "? : x\n: y\n", "- ? a\n  : b\n", "k:\n  ? a\n  : b\n",
+  "? &a a\n: b\n", "? a\n: &b b\n", "? a\n: |\n  b\n",
+  "? a\n: >\n  b\n", "? a\n: [b, c]\n", "? a\n: {b: c}\n",
+  "? a\n: b\n? c\n: d\n", "{a: b}\n", "? {a: b}\n: c\n",
+  "a: b: c\n", "? a: b\n", "? a\n : b\n", "\ufeff? a\n: b\n"]
+
+/-- Every observed value-token transition, including flow values counted apart. -/
+def valueRows (input : String) (budget : Nat) : Array (Bool × List Nat × Int) := Id.run do
+  let mut scanner := P143Test.scanSeed input
+  let mut rows := #[]
+  for _ in [:budget] do
+    match scanNextToken scanner with
+    | .ok (some next) =>
+      if next.tokens.size > scanner.tokens.size &&
+          next.tokens.back?.any (fun t => t.val == .value) then
+        rows := rows.push (next.inFlow,
+          markedColsOf next.pendingKeys next.indentColumns, next.currentIndent)
+      scanner := next
+    | _ => break
+  return rows
+
+def budgets (s : String) : List Nat := [0, 1, 2, (s.utf8ByteSize + 1) * 4]
+
+def testValueOwnership (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P146: the block colon's scanner-owned exclusion (item 541 follow-up)"
+  let mut count := 0
+  let mut blockCount := 0
+  let mut flowCount := 0
+  for input in sources do
+    for budget in budgets input do
+      let rows := valueRows input budget
+      count := count + 1
+      blockCount := blockCount + (rows.filter fun (flow, _, _) => !flow).size
+      flowCount := flowCount + (rows.filter fun (flow, _, _) => flow).size
+      check state s!"P146 {repr input}, fuel {budget}: every block value leaves its own column unmarked"
+        (rows.all fun (flow, marks, top) => flow || !marks.contains top.toNat)
+  check state "P146 all 108 source/fuel combinations were read"
+    (count == 108)
+  check state "P146 the sweep observes both block and flow value steps"
+    (blockCount > 0 && flowCount > 0)
+  check state "P146 one surviving ancestor is not discarded"
+    ((valueRows "? ? a\n  : - b\n: c\n" 256).contains (false, [0], 2))
+  check state "P146 three surviving ancestors are not discarded"
+    ((valueRows "? ? ? ? a\n      : b\n  : d\n: e\n" 256).contains (false, [0, 2, 4], 6))
+  check state "P146 a non-nil inner sibling tail keeps the same ancestors"
+    (((valueRows "? ? ? ? a\n      : b\n      ? c\n      : d\n  : e\n: f\n" 256).filter
+      fun row => row == (false, [0, 2, 4], 6)).size == 2)
+  check state "P146 the BOM row takes a real block colon step"
+    (valueRows "\ufeff? a\n: b\n" 256 == #[(false, [], 0)])
+  check state "P146 the preceding question has its own mark, so the exclusion is not a global invariant"
+    (P143Test.seedMarks "? a\n: b\n" == some [0])
+  IO.println s!"P146 source/fuel={count} block-values={blockCount} flow-values={flowCount}"
+
+end P146Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20464,6 +20534,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P142Test.testQuestionPark state
   P143Test.testRootEmptyDomain state
   P144Test.testExplicitValueSlot state
+  P146Test.testValueOwnership state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
