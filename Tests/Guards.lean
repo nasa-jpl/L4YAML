@@ -283,5 +283,9 @@ import Tests.Guards.Proofs.TokenEventsCensus
 import Tests.Guards.Proofs.TraceOfFlowAmbiguity
 import Tests.Guards.Proofs.TraceOfBlockAmbiguity
 import Tests.Guards.Proofs.TokenEventExtractors
+import Tests.Guards.Proofs.TagDirectiveRepair
+import Tests.Guards.Proofs.TagDirectiveSoundness
+import Tests.Guards.Proofs.TagDirectiveSoundnessIx
+import Tests.Guards.Proofs.TagDirectiveConsumer
 import Tests.Guards.Proofs.ResumeFramesOne
 import Tests.Guards.Proofs.SeqTopKeyFace

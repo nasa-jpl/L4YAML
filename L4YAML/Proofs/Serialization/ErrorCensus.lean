@@ -52,6 +52,7 @@ def rejectionLayer : ScanError → RejectionLayer
   | .directiveTrailingContent .. => .surface
   | .invalidTagHandle .. => .surface
   | .duplicateYamlDirective .. => .surface
+  | .duplicateTagDirective => .surface
   | .directiveAfterContent .. => .surface
   | .directiveWithoutDocument .. => .surface
   | .documentMarkerInScalar .. => .surface

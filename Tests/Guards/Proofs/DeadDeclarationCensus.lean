@@ -12,7 +12,8 @@ convention, (D) Rule 2 / instrument-only and (B) the roster, and compares two pi
 * `expectedDeadCensus` — the one-line summary (counts); `--write` rewrites it.
 * `expectedDeadRoster` (`DeadDeclarationRoster.lean`) — class (B) as a SET of fully-qualified
   names, shrink-only: a name entering it is a declaration reached by nothing — Rule 1's finding;
-  a name leaving it was deleted or reached by a capstone.
+  a name leaving it was deleted, reached by a library root, or reclassified
+  (including test-only reach).
 
 The guard below ties the two: the roster's line count is the `B-roster=` the summary names, so
 neither can be edited without the other.
@@ -69,6 +70,14 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-22 (item 531, β PR 4): population 14253 → 14260, thm 10215 → 10222, unreached 6549 → 6556 (thm 4624 → 4631),
 -- A-campaign 1334 → 1341 — StreamBridge's `content_step_routed` / `_docStart` / `_docEnd` / `_props`, `quoted_flowOut`,
 -- `TLYamlStream.suffixRoute` and `TCNsProperties.blockIn_of_flowOut`, unreached until the depth-0 fold spends the steps.
+-- 2026-11-21 (TAG directive repair): population +11 = three lemmas, seven defs/instances,
+-- and one error constructor. Four runtime declarations are reached; seven grammar/completeness
+-- helpers are test-only. The actual TagDirectiveConsumer reaches 189 existing B-roster names,
+-- moving B 3533 → 3344 and D 277 → 473 (189 existing + seven new), with no library deletion.
+-- This is test reach, not capstone closure; A/C and the capstone/export/Blueprint roots are unchanged.
+-- Cluster-roots 1459 → 1456 is recomputed on the remaining B set.
+-- Lean v4.36.0 adds the unreached `SerializationWellFormed.decMemString` decision instance.
+-- The standalone native census must recheck this expectation before the PR is updated.
 -- 2026-11-23 (item 532, β PR 5): population 14260 → 14262, thm 10222 → 10224, unreached 6556 → 6558 (thm 4631 → 4633),
 -- A-campaign 1341 → 1343 — ContentBridge's `TFlowContent.of_scalar` and `content_leaf_at`, spent by the unreached
 -- `TPendingNode.content_step_props` (now at every indentation).
@@ -86,8 +95,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- (46 of the list before item 534, and 3 of the 10 the deletion freed); roster and cluster-roots unmoved.
 -- 2026-11-25 (item 538, β PR 7): population 14050 → 14051, unreached 5948 → 5949, A-campaign 1124 → 1125 — `TPendingNode.question_step`
 -- (StreamBridge), the `?` step; A-orphan unmoved (Priority 142's examples spend it; the fold is its consumer).
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedDeadCensus : String :=
-  "population=14051 thm=10171 def=2513 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5949 thm=4245 A-campaign=1125 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14062 thm=10174 def=2520 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5956 thm=4248 A-campaign=1125 A-orphan=102 C-api=1244 D-test-only=468 B-roster=3119 thm=2855 cluster-roots=1456"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

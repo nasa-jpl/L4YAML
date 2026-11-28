@@ -18,6 +18,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 the parser; it mirrors the productions `parseStream`/`parseNode`/… follow
 (`L4YAML/Parser/TokenParser.lean`) so that `parseStream_accepts`
 (`StreamCompleteness.lean`) can be proved by induction on the derivation.
+Its document rule also checks §6.8.2's uniqueness of explicit `%TAG` handles,
+directly over the token span and independently of parser acceptance.
 
 `TokenStateOk ts` is the stateful half: the per-document anchor/tag-handle
 discipline, stated as `SerializationWellFormed` of the event trace the
@@ -48,6 +50,25 @@ def colAt (ts : Toks) (i : Nat) : Nat := (posAt ts i).col
 def isDirective : Option YamlToken → Bool
   | some (.versionDirective ..) | some (.tagDirective ..) => true
   | _ => false
+
+/-- A `%TAG` declaration's handle, including the primary `!` and secondary `!!`
+handles.  The prefix is irrelevant to §6.8.2's per-document uniqueness rule. -/
+def tagDirectiveHandle : Option YamlToken → Option String
+  | some (.tagDirective handle _) => some handle
+  | _ => none
+
+/-- All `%TAG` handles in the token span `[i, d)`, in source order.  This reads
+tokens directly; it neither runs the parser nor uses its serialization events,
+which intentionally omit declarations for the built-in handles. -/
+def directiveHandles (ts : Toks) (i d : Nat) : List String :=
+  (List.range' i (d - i)).filterMap (fun p => tagDirectiveHandle (tok ts p))
+
+/-- YAML §6.8.2: each handle may be declared at most once in one document. -/
+def DirectiveHandlesUnique (ts : Toks) (i d : Nat) : Prop :=
+  (directiveHandles ts i d).Nodup
+
+instance (ts : Toks) (i d : Nat) : Decidable (DirectiveHandlesUnique ts i d) :=
+  inferInstanceAs (Decidable (directiveHandles ts i d).Nodup)
 
 def isProp : Option YamlToken → Bool
   | some (.anchor _) | some (.tag ..) => true
@@ -152,7 +173,8 @@ inductive TG (ts : Toks) : Sym → Nat → Nat → Prop where
       TG ts (.stream .afterDocumentEnd) (m + 1) j → TG ts (.stream st) i j
   -- document (§9.1 [210]): directives, optional `---`, root node
   | document {i d e m} :
-      TG ts .directives i d → DocStart ts i d e → TG ts .node e m → TG ts .document i m
+      TG ts .directives i d → DirectiveHandlesUnique ts i d →
+      DocStart ts i d e → TG ts .node e m → TG ts .document i m
   | directives_nil {i} : isDirective (tok ts i) = false → TG ts .directives i i
   | directives_cons {i j} :
       isDirective (tok ts i) = true → TG ts .directives (i + 1) j → TG ts .directives i j
@@ -264,7 +286,8 @@ inductive TG (ts : Toks) : Sym → Nat → Nat → Prop where
       (tok ts r = some .key ∧ r' = r + 1) ∨ (tok ts r ≠ some .key ∧ r' = r) →
       tok ts r' ≠ some .value → TG ts .flowMapValue r r'
 
-/-- The shape half: a well-formed token stream for `parseStream`. -/
+/-- The syntax half: a well-formed token stream for `parseStream`, including
+per-document uniqueness of every explicitly declared `%TAG` handle. -/
 def TokenGrammar (ts : Toks) : Prop :=
   tok ts 0 = some .streamStart ∧ ∃ j, TG ts (.stream .initial) 1 j ∧ j + 1 = ts.size
 
@@ -361,9 +384,11 @@ def check (ts : Toks) : Nat → Sym → Nat → Option Nat
   | f + 1, .document, i =>
     match check ts f .directives i with
     | some d =>
-      if isDocStart (tok ts d) then
-        if docStartLineOk ts d then check ts f .node (d + 1) else none
-      else if d == i then check ts f .node d else none
+      if DirectiveHandlesUnique ts i d then
+        if isDocStart (tok ts d) then
+          if docStartLineOk ts d then check ts f .node (d + 1) else none
+        else if d == i then check ts f .node d else none
+      else none
     | none => none
   | f + 1, .directives, i =>
     if isDirective (tok ts i) then check ts f .directives (i + 1) else some i
@@ -633,17 +658,20 @@ lemma check_sound (ts : Toks) : ∀ f s i j, check ts f s i = some j → TG ts s
       split at h
       · rename_i d hdir
         split at h
-        · rename_i hds
+        · rename_i hunique
           split at h
-          · exact .document (ih _ _ _ hdir)
-              (Or.inl ⟨(isDocStart_iff _).1 hds, rfl, docStartLineOk_sound ‹_›⟩) (ih _ _ _ h)
-          · cases h
-        · split at h
-          · exact .document (ih _ _ _ hdir)
-              (Or.inr ⟨fun hc => ‹¬ isDocStart (tok ts d) = true› ((isDocStart_iff _).2 hc), rfl,
-                (show i = d from (by simpa using (‹(d == i) = true›) : d = i).symm)⟩)
-              (ih _ _ _ h)
-          · cases h
+          · rename_i hds
+            split at h
+            · exact .document (ih _ _ _ hdir) hunique
+                (Or.inl ⟨(isDocStart_iff _).1 hds, rfl, docStartLineOk_sound ‹_›⟩) (ih _ _ _ h)
+            · cases h
+          · split at h
+            · exact .document (ih _ _ _ hdir) hunique
+                (Or.inr ⟨fun hc => ‹¬ isDocStart (tok ts d) = true› ((isDocStart_iff _).2 hc), rfl,
+                  (show i = d from (by simpa using (‹(d == i) = true›) : d = i).symm)⟩)
+                (ih _ _ _ h)
+            · cases h
+        · cases h
       · cases h
     | directives =>
       simp only [check] at h

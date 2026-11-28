@@ -710,13 +710,16 @@ def parseDirectives (ps : ParseState) : (Array Directive × ParseState) := Id.ru
 
 /-! ## Document Parsing -/
 
-/-- Prepare document state: parse directives, register tag handles,
+/-- Prepare document state: parse directives, reject duplicate `%TAG` handles,
+    register tag handles,
     consume optional `---`, and validate block-collection-on-same-line.
     Extracted from `parseDocument` for proof tractability. -/
 @[yaml_spec "9.1.1" 202 "l-document-prefix"]
 def prepareDocumentState (ps : ParseState) :
     Except ScanError (Array Directive × ParseState) := do
   let (dirs, ps) := parseDirectives ps
+  if !decide (TagDirectivesUnique dirs) then
+    throw .duplicateTagDirective
   let tagHandles := dirs.filterMap fun
     | .tag handle tagPrefix => some (handle, tagPrefix)
     | _ => none

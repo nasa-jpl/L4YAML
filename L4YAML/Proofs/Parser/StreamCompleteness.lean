@@ -438,7 +438,7 @@ lemma last_not_directive {ts : Toks} {s : Sym} {i j : Nat} (h : TG ts s i j) :
   | stream_docEnd _ _ => trivial
   | stream_doc _ _ _ _ _ _ _ _ => trivial
   | stream_docTerminated _ _ _ _ _ _ _ => trivial
-  | document _ _ _ => trivial
+  | document _ _ _ _ => trivial
   | directives_nil _ => trivial
   | directives_cons _ _ => trivial
   | node_alias ha => intro _; exact notDirBefore_of ha rfl
@@ -821,7 +821,7 @@ lemma tg_parse {ts : Toks} (hS : PerTokenOk ts) {s : Sym} {i j : Nat} (h : TG ts
   | stream_docEnd _ _ => trivial
   | stream_doc _ _ _ _ _ _ _ _ => trivial
   | stream_docTerminated _ _ _ _ _ _ _ => trivial
-  | document _ _ _ => trivial
+  | document _ _ _ _ => trivial
   | directives_nil _ => trivial
   | directives_cons _ _ => trivial
   | props_none _ => trivial
@@ -1678,8 +1678,25 @@ lemma doc_env {ts : Toks} {i d e : Nat} (hi : 0 < i) (hd : TG ts .directives i d
     · obtain ⟨ha, hg⟩ := hre rfl
       exact ⟨ha, fun h hm => by rw [hg] at hm; cases hm⟩
 
+lemma directiveHandles_step (ts : Toks) {i d : Nat} (h : i < d) :
+    directiveHandles ts i d =
+      (tagDirectiveHandle (tok ts i)).toList ++ directiveHandles ts (i + 1) d := by
+  unfold directiveHandles
+  rw [show d - i = (d - (i + 1)) + 1 by omega, List.range'_succ]
+  cases hhandle : tagDirectiveHandle (tok ts i) <;> simp [hhandle]
+
+lemma tagDirectiveHandles_push_yaml (dirs : Array Directive) (version : String) :
+    TagDirectiveHandles (dirs.push (.yaml version)) = TagDirectiveHandles dirs := by
+  simp [TagDirectiveHandles]
+
+lemma tagDirectiveHandles_push_tag (dirs : Array Directive) (handle tagPrefix : String) :
+    TagDirectiveHandles (dirs.push (.tag handle tagPrefix)) = TagDirectiveHandles dirs ++ [handle] := by
+  simp [TagDirectiveHandles]
+
 /-- `parseDirectives`'s loop body, abstracted: the loop consumes exactly the
-directive run and records every `%TAG`. -/
+directive run and records every `%TAG`, with the exact source-order handle list.
+The list equality transfers the independent grammar's uniqueness requirement to
+the runtime guard, including handles omitted from serialization events. -/
 lemma dirLoop {ts : Toks} {s : Sym} {i d : Nat} (h : TG ts s i d) :
     (match s with
       | .directives =>
@@ -1693,6 +1710,7 @@ lemma dirLoop {ts : Toks} {s : Sym} {i d : Nat} (h : TG ts s i d) :
           (ps : ParseState) (dirs : Array Directive) (n k : Nat),
           ps.tokens = ts → ps.pos = i → d - i ≤ n →
           ∃ dirs', forIn (List.range' k n) (ps, dirs) f = (({ ps with pos := d } : ParseState), dirs') ∧
+            TagDirectiveHandles dirs' = TagDirectiveHandles dirs ++ directiveHandles ts i d ∧
             (∀ x, x ∈ dirs → x ∈ dirs') ∧
             ∀ p h pre, i ≤ p → p < d → tok ts p = some (.tagDirective h pre) →
               Directive.tag h pre ∈ dirs'
@@ -1702,7 +1720,8 @@ lemma dirLoop {ts : Toks} {s : Sym} {i d : Nat} (h : TG ts s i d) :
     rename_i i0
     intro f _ _ hother ps dirs n k htk hp _
     have hpk : ps.peek? = tok ts i0 := by rw [peek_tok htk, hp]
-    refine ⟨dirs, ?_, fun x hx => hx, fun p h pre h1 h2 _ => absurd h2 (by omega)⟩
+    refine ⟨dirs, ?_, by simp [directiveHandles], fun x hx => hx,
+      fun p h pre h1 h2 _ => absurd h2 (by omega)⟩
     subst hp
     cases n with
     | zero => rfl
@@ -1720,34 +1739,41 @@ lemma dirLoop {ts : Toks} {s : Sym} {i d : Nat} (h : TG ts s i d) :
     rcases ho : tok ts i0 with _ | t <;> (try cases t) <;> simp [ho, isDirective] at hd
     · -- %YAML
       rename_i a b
-      obtain ⟨dirs', hrec, hsub, hmem⟩ := ih f hver htag hother ps.advance
+      obtain ⟨dirs', hrec, hhandles, hsub, hmem⟩ := ih f hver htag hother ps.advance
         (dirs.push (.yaml (toString a ++ toString "." ++ toString b))) n' (k + 1) htk hadv (by omega)
       rw [hver k ps dirs a b (hpk.trans ho)]
-      refine ⟨dirs', hrec, fun x hx => hsub x (Array.mem_push.2 (Or.inl hx)), ?_⟩
-      intro p h pre h1 h2 h3
-      rcases Nat.lt_or_eq_of_le h1 with h1 | h1
-      · exact hmem p h pre h1 h2 h3
-      · subst h1; rw [ho] at h3; cases h3
+      refine ⟨dirs', hrec, ?_, fun x hx => hsub x (Array.mem_push.2 (Or.inl hx)), ?_⟩
+      · rw [tagDirectiveHandles_push_yaml] at hhandles
+        rw [directiveHandles_step ts (by omega), ho]
+        simpa [tagDirectiveHandle] using hhandles
+      · intro p h pre h1 h2 h3
+        rcases Nat.lt_or_eq_of_le h1 with h1 | h1
+        · exact hmem p h pre h1 h2 h3
+        · subst h1; rw [ho] at h3; cases h3
     · -- %TAG
       rename_i h0 pre0
-      obtain ⟨dirs', hrec, hsub, hmem⟩ := ih f hver htag hother ps.advance
+      obtain ⟨dirs', hrec, hhandles, hsub, hmem⟩ := ih f hver htag hother ps.advance
         (dirs.push (.tag h0 pre0)) n' (k + 1) htk hadv (by omega)
       rw [htag k ps dirs h0 pre0 (hpk.trans ho)]
-      refine ⟨dirs', hrec, fun x hx => hsub x (Array.mem_push.2 (Or.inl hx)), ?_⟩
-      intro p h pre h1 h2 h3
-      rcases Nat.lt_or_eq_of_le h1 with h1 | h1
-      · exact hmem p h pre h1 h2 h3
-      · subst h1; rw [ho] at h3; cases h3; exact hsub _ (Array.mem_push.2 (Or.inr rfl))
+      refine ⟨dirs', hrec, ?_, fun x hx => hsub x (Array.mem_push.2 (Or.inl hx)), ?_⟩
+      · rw [tagDirectiveHandles_push_tag] at hhandles
+        rw [directiveHandles_step ts (by omega), ho]
+        simpa [tagDirectiveHandle, List.append_assoc] using hhandles
+      · intro p h pre h1 h2 h3
+        rcases Nat.lt_or_eq_of_le h1 with h1 | h1
+        · exact hmem p h pre h1 h2 h3
+        · subst h1; rw [ho] at h3; cases h3; exact hsub _ (Array.mem_push.2 (Or.inr rfl))
   | _ => trivial
 
 lemma parseDirectives_ok {ts : Toks} {ps : ParseState} {i d : Nat} (hd : TG ts .directives i d)
     (htk : ps.tokens = ts) (hp : ps.pos = i) (hb : d ≤ ts.size) :
     ∃ dirs : Array Directive, parseDirectives ps = (dirs, ({ ps with pos := d } : ParseState)) ∧
+      TagDirectiveHandles dirs = directiveHandles ts i d ∧
       ∀ p h pre, i ≤ p → p < d → tok ts p = some (.tagDirective h pre) →
         Directive.tag h pre ∈ dirs := by
   have key := dirLoop hd
   simp only [] at key
-  obtain ⟨dirs', hloop, _, hmem⟩ := key
+  obtain ⟨dirs', hloop, hhandles, _, hmem⟩ := key
     (fun _ (s : ParseState × Array Directive) => match s.1.peek? with
       | some (.versionDirective major minor) =>
         ForInStep.yield (s.1.advance,
@@ -1761,7 +1787,7 @@ lemma parseDirectives_ok {ts : Toks} {ps : ParseState} {i d : Nat} (hd : TG ts .
       intro k ps dirs hnd
       rcases ho : ps.peek? with _ | t <;> (try cases t) <;> simp [isDirective, ho] at hnd ⊢)
     ps #[] (ps.tokens.size - ps.pos) 0 htk hp (by rw [htk, hp]; omega)
-  refine ⟨dirs', ?_, hmem⟩
+  refine ⟨dirs', ?_, by simpa [TagDirectiveHandles] using hhandles, hmem⟩
   unfold parseDirectives
   simp only [Id.run, bind, pure]
   rw [Std.Legacy.Range.forIn_eq_forIn_range']
@@ -1795,14 +1821,20 @@ lemma tryConsume_docStart_hit' {ts : Toks} {m : Nat} {ps : ParseState} (htk : ps
   rfl
 
 lemma prepare_ok {ts : Toks} {ps : ParseState} {i d e : Nat} (hd : TG ts .directives i d)
-    (hds : DocStart ts i d e) (htk : ps.tokens = ts) (hp : ps.pos = i) (hb : d ≤ ts.size)
+    (hunique : DirectiveHandlesUnique ts i d) (hds : DocStart ts i d e)
+    (htk : ps.tokens = ts) (hp : ps.pos = i) (hb : d ≤ ts.size)
     (henv : DirEnvOk ts i e) :
     ∃ dirs ps', prepareDocumentState ps = .ok (dirs, ps') ∧ Inv ts ps' e := by
-  obtain ⟨dirs, hdirs, hmem⟩ := parseDirectives_ok hd htk hp hb
+  obtain ⟨dirs, hdirs, hhandles, hmem⟩ := parseDirectives_ok hd htk hp hb
+  have hguard : TagDirectivesUnique dirs := by
+    unfold TagDirectivesUnique
+    rw [hhandles]
+    exact hunique
   have hde : e ≤ d + 1 := by rcases hds with ⟨_, rfl, _⟩ | ⟨_, rfl, _⟩ <;> omega
   unfold prepareDocumentState
   rw [hdirs]
-  simp only [bind, Except.bind]
+  simp only [hguard, decide_true, Bool.not_true, Bool.false_eq_true, ↓reduceIte,
+    bind, Except.bind]
   generalize hT : Array.filterMap _ dirs = T
   have htags : ∀ h, h ∈ (envAt ts e).tagHandles → T.any (·.1 == h) = true := by
     intro h hm
@@ -1859,7 +1891,7 @@ lemma parseDocument_ok {ts : Toks} {ps : ParseState} {i m : Nat} (hS : PerTokenO
     (hi : 0 < i) (hpre : DocPre ts i) :
     ∃ doc ps', parseDocument ps = .ok (doc, ps') ∧ ps'.tokens = ts ∧ ps'.pos = m := by
   cases hdoc with
-  | document hd hds hn =>
+  | document hd hunique hds hn =>
     rename_i d e
     have hid := tg_le hd
     have hem := tg_le hn
@@ -1876,7 +1908,7 @@ lemma parseDocument_ok {ts : Toks} {ps : ParseState} {i m : Nat} (hS : PerTokenO
         cases hd with
         | directives_nil hn' => rw [hn'] at h; cases h
         | directives_cons _ hr => have := tg_le hr; omega)
-    obtain ⟨dirs, ps1, hprep, hinv1⟩ := prepare_ok hd hds htk hp hb henv
+    obtain ⟨dirs, ps1, hprep, hinv1⟩ := prepare_ok hd hunique hds htk hp hb henv
     unfold parseDocument
     simp only [hprep, bind, Except.bind]
     rw [hinv1.peek]
@@ -1943,7 +1975,7 @@ lemma doc_empty_of {ts : Toks} {i m : Nat} (hdoc : TG ts .document i m)
     (hnd : isDirective (tok ts i) = false) (hns : tok ts i ≠ some .documentStart)
     (hsn : startsNode (tok ts i) = false) : m = i := by
   cases hdoc with
-  | document hd hds hn =>
+  | document hd hunique hds hn =>
     rename_i d e
     have hdi : d = i := by
       cases hd with
@@ -1984,7 +2016,7 @@ lemma docPre_of {ts : Toks} {ps : ParseState} {i m : Nat} {st : StreamState} {t 
 lemma doc_after {ts : Toks} {i m : Nat} (hdoc : TG ts .document i m) (hlt : i < m) :
     NotDirBefore ts m ∨ (isDirective (tok ts m) = false ∧ tok ts m ≠ some .documentStart) := by
   cases hdoc with
-  | document hd hds hn =>
+  | document hd hunique hds hn =>
     rename_i d e
     have hem := tg_le hn
     rcases Nat.lt_or_eq_of_le hem with hlt' | heq
@@ -2251,7 +2283,7 @@ lemma tg_closed {ts : Toks} {s : Sym} {i j : Nat} (h : TG ts s i j) :
     · rcases Nat.eq_or_lt_of_le h with rfl | h'
       · simp [hm, isDirective] at hq
       · exact ih2 q h' h2 hq
-  | document hd hds hn ihd ihn =>
+  | document hd hunique hds hn ihd ihn =>
     rename_i i d e m
     intro q h1 h2 hq
     rcases hds with ⟨hds, rfl, _⟩ | ⟨hne, rfl, rfl⟩
@@ -2478,7 +2510,9 @@ lemma perTokenOk_of_tokenStateOk {ts : Toks} (hG : TokenGrammar ts) (h : TokenSt
 
 /-- **Stream D, parser half of the converse**: a token array of the right shape
 (`TokenGrammar`) under the right per-document state (`TokenStateOk`) is accepted by
-`parseStream`. -/
+`parseStream`.  Directive uniqueness comes from the independent `TG.document`
+premise and exact collection by `parseDirectives`; no parser-success or
+guard-success assumption is required. -/
 public lemma parseStream_accepts (ts : Array (Positioned YamlToken))
     (h_shape : TokenGrammar ts) (h_state : TokenStateOk ts) :
     ∃ docs, parseStream ts = .ok docs := by
