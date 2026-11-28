@@ -87,7 +87,7 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-25 (item 538, β PR 7): population 14050 → 14051, unreached 5948 → 5949, A-campaign 1124 → 1125 — `TPendingNode.question_step`
 -- (StreamBridge), the `?` step; A-orphan unmoved (Priority 142's examples spend it; the fold is its consumer).
 def expectedDeadCensus : String :=
-  "population=14051 thm=10171 def=2513 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5949 thm=4245 A-campaign=1125 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14058 thm=10177 def=2514 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5949 thm=4245 A-campaign=1125 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do

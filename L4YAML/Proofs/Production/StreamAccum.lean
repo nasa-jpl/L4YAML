@@ -1919,6 +1919,181 @@ def OfferPred (ts : Array (Positioned YamlToken)) : Prop :=
 def NotQuestionPark (sc : ScannerState) : Prop :=
   ∀ i, prevRealIdx? sc.tokens sc.tokens.size = some i → sc.tokens[i]!.val ≠ .key
 
+/- The colon's scanner-owned exclusion, retained by pendingMapValue's
+    negative explicit-entry face and spent by accum_block_pending (7.2/7.3). -/
+namespace ValueOwnership
+open L4YAML.Proofs.PendingKeySound L4YAML.Proofs.PendingKeysStable
+
+def TopUnmarked (s : ScannerState) : Prop :=
+  ∀ l, s.pendingKeys.back? ≠ some (some l)
+
+lemma last_mark_register {s : ScannerState} {l : Nat}
+    (hs : SlotsOk s) (hr : RegOk s) (hfl : s.flowLevel = 0)
+    (marked : s.pendingKeys.back? = some (some l)) :
+    s.explicitKeyLine = some l ∧ s.explicitKeyCol = s.currentIndent := by
+  have size_ne : s.pendingKeys.size ≠ 0 := by
+    intro h
+    have empty : s.pendingKeys = #[] := Array.eq_empty_of_size_eq_zero h
+    simp [empty] at marked
+  have nonempty : 0 < s.pendingKeys.size := by omega
+  have sizes := hs.1
+  have indnonempty : 0 < s.indents.size := by omega
+  have reg := hr hfl
+  rw [innermostPendingKey_eq, innermost_eq_go] at reg
+  have sz : s.pendingKeys.size = (s.pendingKeys.size - 1) + 1 := by omega
+  rw [sz] at reg
+  simp only [go] at reg
+  have atLast : s.pendingKeys[s.pendingKeys.size - 1]?.getD none = some l := by
+    rw [← Array.back?_eq_getElem?]
+    simp [marked]
+  rw [atLast] at reg
+  have cols : s.indentColumns[s.pendingKeys.size - 1]?.getD (-1) = s.currentIndent := by
+    rw [hs.1]
+    simp only [ScannerState.indentColumns, Array.getElem?_map,
+      ScannerState.currentIndent, Array.back?_eq_getElem?]
+    cases s.indents[s.indents.size - 1]? <;> rfl
+  rw [cols] at reg
+  exact Prod.mk.inj reg
+
+lemma prepared_last_mark {s : ScannerState} {l : Nat}
+    (hs : Sound s) (hfl : s.inFlow = false)
+    (marked : (scanValuePrepare s).pendingKeys.back? = some (some l)) :
+    s.explicitKeyLine = some l ∧
+      s.explicitKeyCol = (scanValuePrepare s).currentIndent ∧
+      (s.simpleKey.possible = true → (s.simpleKey.pos.col : Int) ≤ s.explicitKeyCol) := by
+  obtain ⟨slots, inner, flow, line, col, _⟩ := scanValuePrepare_core s hs.slots
+  have reg : RegOk (scanValuePrepare s) := by
+    intro hz
+    rw [line, col, inner]
+    exact hs.reg (by rw [← flow]; exact hz)
+  have prepflow : (scanValuePrepare s).flowLevel = 0 := by
+    rw [flow]
+    exact (inFlow_false_iff s).1 hfl
+  obtain ⟨hl, hc⟩ := last_mark_register slots reg prepflow marked
+  rw [line] at hl
+  rw [col] at hc
+  refine ⟨hl, hc, ?_⟩
+  intro key
+  have mark := marked
+  simp only [scanValuePrepare, key, hfl, Bool.not_false, ite_true] at mark
+  split at mark
+  · simp at mark
+  · rename_i le
+    have eq : (scanValuePrepare s).currentIndent = s.currentIndent := by
+      simp only [scanValuePrepare, key, hfl, Bool.not_false, ite_true, ite_eq_right le]
+      rfl
+    rw [eq] at hc
+    omega
+
+lemma last_column {s : ScannerState} {l : Nat} (slots : SlotsOk s)
+    (marked : s.pendingKeys.back? = some (some l)) :
+    s.indentColumns[s.pendingKeys.size - 1]? = some s.currentIndent := by
+  have nonempty : 0 < s.pendingKeys.size := by
+    have hget : s.pendingKeys[s.pendingKeys.size - 1]? = some (some l) := by
+      simpa only [Array.back?_eq_getElem?] using marked
+    obtain ⟨h, _⟩ := Array.getElem?_eq_some_iff.mp hget
+    omega
+  have positive : 0 < s.indents.size := by have := slots.1; omega
+  rw [slots.1, IndentStackMono.currentIndent_eq_last positive]
+  simp [ScannerState.indentColumns, Array.getElem?_eq_getElem (by omega :
+    s.indents.size - 1 < s.indents.size)]
+
+lemma scanValue_top_unmarked {s s' : ScannerState}
+    (hok : scanValue s = .ok s') (hs : Sound s) (hfl : s.inFlow = false) :
+    TopUnmarked s' := by
+  obtain ⟨ckind, ckpk, ckflow, ckline, ckcol, ckstack⟩ := scanValueClearKey_core s
+  have kcSound : Sound (scanValueClearKey s) :=
+    hs.of_eq ckpk ckind ckflow ckline ckcol ckstack
+  have kcflow : (scanValueClearKey s).inFlow = false := by
+    simpa [ScannerState.inFlow, ckflow] using hfl
+  have noSurvive {l : Nat}
+      (marked : (scanValuePrepare (scanValueClearKey s)).pendingKeys.back? = some (some l)) :
+      scanValueKeySurvives s (scanValueClearKey s) ≠ true := by
+    obtain ⟨line, col, keyBound⟩ := prepared_last_mark kcSound kcflow marked
+    intro survives
+    unfold scanValueKeySurvives at survives
+    simp only [Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', decide_eq_true_eq] at survives
+    rcases survives with ⟨_, dead | ⟨_, gt⟩⟩
+    · simp [line] at dead
+    · by_cases key : (scanValueClearKey s).simpleKey.possible = true
+      · simp only [key, ite_true] at gt
+        have := keyBound key
+        omega
+      · have noKey : (scanValueClearKey s).simpleKey.possible = false := by simpa using key
+        simp only [noKey, Bool.false_eq_true, ite_false] at gt
+        have oldLine : s.explicitKeyLine = some l := ckline ▸ line
+        have actual := (ExplicitKeyCoupling.scanValue_explicit_at_indent hok hfl oldLine noKey).2
+        have prepIndent : (scanValuePrepare (scanValueClearKey s)).currentIndent = s.currentIndent := by
+          simp [scanValuePrepare, noKey, line, ScannerState.currentIndent, ckind]
+        rw [prepIndent] at col
+        omega
+  have core := scanValuePrepare_core (scanValueClearKey s) kcSound.slots
+  have advPk : (((scanValuePrepare (scanValueClearKey s)).emit .value).advance).pendingKeys =
+      (scanValuePrepare (scanValueClearKey s)).pendingKeys := by
+    rw [advance_preserves_pendingKeys, emit_pendingKeys]
+  have advInd : (((scanValuePrepare (scanValueClearKey s)).emit .value).advance).indents =
+      (scanValuePrepare (scanValueClearKey s)).indents := by
+    rw [L4YAML.Proofs.EmitterScannability.advance_preserves_indents]; rfl
+  have advCols : (((scanValuePrepare (scanValueClearKey s)).emit .value).advance).indentColumns =
+      (scanValuePrepare (scanValueClearKey s)).indentColumns := by
+    simp [ScannerState.indentColumns, advInd]
+  unfold scanValue at hok
+  simp only [bind, Except.bind] at hok
+  split at hok <;> try contradiction
+  split at hok <;> try contradiction
+  split at hok <;> try contradiction
+  simp only [Except.ok.injEq] at hok
+  subst hok
+  intro l marked
+  simp only [hfl, Bool.false_eq_true, ite_false] at marked
+  by_cases survives : scanValueKeySurvives s (scanValueClearKey s) = true
+  · simp only [survives, ite_true] at marked
+    change (((scanValuePrepare (scanValueClearKey s)).emit .value).advance).pendingKeys.back? = _ at marked
+    rw [advPk] at marked
+    exact noSurvive marked survives
+  · simp only [survives] at marked
+    change (PendingKeys.closeAt _ _ (scanValueClearKey s).explicitKeyCol).back? = _ at marked
+    rw [Array.back?_eq_getElem?, closeAt_size] at marked
+    obtain ⟨old, different⟩ := closeAt_marked _ _ _ _ _ marked
+    have oldBack : (scanValuePrepare (scanValueClearKey s)).pendingKeys.back? = some (some l) := by
+      simpa only [Array.back?_eq_getElem?, advPk] using old
+    obtain ⟨_, col, _⟩ := prepared_last_mark kcSound kcflow oldBack
+    apply different
+    rw [advCols, advPk, col]
+    exact last_column core.1 oldBack
+
+lemma no_mark_at_or_above_top {s : ScannerState} {own : Nat}
+    (unmarked : TopUnmarked s) (slots : SlotsOk s)
+    (mono : IndentStackMono.Mono s) (top : s.currentIndent ≤ (own : Int)) :
+    own ∉ RegisterWitness.markedCols s := by
+  intro marked
+  obtain ⟨i, l, c, key, column, eq⟩ := RegisterWitness.markedCols_mem.mp marked
+  obtain ⟨size, _⟩ := Array.getElem?_eq_some_iff.mp key
+  have isize : i < s.indents.size := by rw [← slots.1]; exact size
+  have entryColumn : (s.indents[i]'isize).column = c := by
+    simpa [ScannerState.indentColumns, Array.getElem?_eq_getElem isize] using column
+  obtain ⟨cc, ccColumn, nonnegative⟩ := slots.2 i l key
+  have same : cc = c := Option.some.inj (ccColumn.symm.trans column)
+  subst cc
+  have natColumn : (own : Int) = c := by
+    rw [← eq]
+    exact Int.toNat_of_nonneg nonnegative
+  have below := mono.le_currentIndent (s.indents[i]'isize)
+    (Array.mem_iff_getElem.mpr ⟨i, isize, rfl⟩)
+  have noNext : ¬ i + 1 < s.indents.size := by
+    intro next
+    have strictly := mono i next
+    have nextBelow := mono.le_currentIndent (s.indents[i + 1]'next)
+      (Array.mem_iff_getElem.mpr ⟨i + 1, next, rfl⟩)
+    omega
+  have last : i = s.pendingKeys.size - 1 := by have := slots.1; omega
+  apply unmarked l
+  rw [Array.back?_eq_getElem?, ← last]
+  exact key
+
+
+end ValueOwnership
+
 -- ~~**The `[96]` tail window that CROSSED a break**~~ (`PropsWindowCross`,
 -- item 170) is DELETED at item 181.  It named the array whose last real token
 -- has a PROPERTY on a different line directly below it — the configuration
@@ -3205,7 +3380,7 @@ inductive PendingNode (sc : ScannerState) : Bool → SurfPos → SurfPos → Sur
           ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
           ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
           ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)
+          ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ (NotQuestionPark sc ∧ ValueOwnership.TopUnmarked sc))
       -- Item 59: the slot travels with the park's own COLUMN.  Only a `?` or
       -- an explicit `:` opens one, and both stand AT the entry's index, so the
       -- park is one past it — which is what lets the compact fill measure the
@@ -24227,6 +24402,29 @@ lemma indicator_cover_at_col {sc s_prep s' : ScannerState} {sp_prep : SurfPos}
   exact ⟨IndentStackCover.covered_singleton_of_top_le h_mono' h_top,
     IndentStackCover.covered_nil_of_top_le h_mono' h_top⟩
 
+namespace ValueOwnership
+open L4YAML.Proofs.PendingKeySound
+lemma after_colon {sc prep out : ScannerState}
+    (sound : Sound sc) (mono : IndentStackMono.Mono sc)
+    (preprocess : scanNextToken_preprocess sc = .ok (some (prep, ':')))
+    (noflow : prep.inFlow = false)
+    (dispatch : scanNextToken_dispatchBlockIndicators
+      (if prep.allowDirectives then
+        { prep with allowDirectives := false, documentEverStarted := true }
+       else prep) ':' = .ok (some out)) : TopUnmarked out := by
+  have soundPrep := PendingKeySound.preprocess_sound preprocess sound mono
+  have soundDispatch : Sound (if prep.allowDirectives then
+      { prep with allowDirectives := false, documentEverStarted := true }
+      else prep) := by
+    split
+    · exact soundPrep.of_eq rfl rfl rfl rfl rfl rfl
+    · exact soundPrep
+  exact scanValue_top_unmarked (dispatchBlock_colon_scanValue dispatch) soundDispatch
+    (by split <;> exact noflow)
+
+
+end ValueOwnership
+
 lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k : Nat)
     (s_prep s' : ScannerState) (sp_scan' : SurfPos)
     (h_stream_land : SLYamlStream sp_start sp_land)
@@ -24339,7 +24537,8 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_top_in : s'.currentIndent ≤ (k : Int)) :
+    (h_top_in : s'.currentIndent ≤ (k : Int))
+    (h_valueTop : ValueOwnership.TopUnmarked s') :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -24428,7 +24627,7 @@ lemma colon_open_map {sc : ScannerState} (sp_start sp_land sp_ind : SurfPos) (k 
            -- could not consume an explicit pair, so the epilogue stamped.
            (Or.inl (scanValue_stamp_of_src (dispatchBlock_colon_scanValue h_dispatch)
              h_noflow_disp hpeek_disp h_src))
-           (Or.inr (dispatchBlock_colon_notQuestion h_dispatch)) (Or.inr (scanValue_stamp_of_src (dispatchBlock_colon_scanValue h_dispatch)
+           (Or.inr ⟨dispatchBlock_colon_notQuestion h_dispatch, h_valueTop⟩) (Or.inr (scanValue_stamp_of_src (dispatchBlock_colon_scanValue h_dispatch)
              h_noflow_disp hpeek_disp h_src))
            (scanValue_simpleKeyAllowed (dispatchBlock_colon_scanValue h_dispatch))
            -- Item 68: the `:` stands AT the entry index (`s-indent(k)` from a
@@ -24987,7 +25186,8 @@ lemma colon_open_map_explicit (sp_start sp_scan sp_mid sp_ind : SurfPos) (nv : N
     (h_top_in : s'.currentIndent ≤ (nv : Int))
     (h_outer : (PendingKeySound.Sound s_prep ∧ RegisterWitness.MarkedColsIn s_prep [nv] ∧
       (s_prep.simpleKey.possible = true → s_prep.simpleKey.pos.col = s_prep.col)) ∨
-      (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ nv)) :
+      (∃ x ∈ RegisterWitness.markedCols s_prep, x ≠ nv))
+    (h_valueTop : ValueOwnership.TopUnmarked s') :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25026,7 +25226,7 @@ lemma colon_open_map_explicit (sp_start sp_scan sp_mid sp_ind : SurfPos) (nv : N
            -- Item 125: the explicit `:` does not stamp — it pays the face,
            -- the same `[185]` value slot `h_vslot` carries below.
            (Or.inr ⟨park_col_of_indicator hcol_mid h_ind h_lit, h_slot⟩)
-           (Or.inr (dispatchBlock_colon_notQuestion h_dispatch))
+           (Or.inr ⟨dispatchBlock_colon_notQuestion h_dispatch, h_valueTop⟩)
            -- Item 209: and the slot's own stack top, the caller's measurement.
            (Or.inl ⟨h_top_in, park_col_of_indicator hcol_mid h_ind h_lit, h_slot⟩)
            (scanValue_simpleKeyAllowed (dispatchBlock_colon_scanValue h_dispatch))
@@ -25192,7 +25392,8 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
       ∀ sp_v : SurfPos, SBlockIndented nv .blockOut sp_c sp_v →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_v) ∨ PackAlt sc)
     (h_mcstep : ∀ ns : List Nat, RegisterWitness.MarkedColsIn sc ns →
-      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns)) :
+      RegisterWitness.MarkedColsIn s' ((s_prep.col : Int).toNat :: ns))
+    (h_valueTop : c = ':' → ValueOwnership.TopUnmarked s') :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25364,9 +25565,9 @@ lemma compact_open_map (sp_start sp_entry sp_ind : SurfPos) (n m : Nat)
         ∀ sp_v : SurfPos, SBlockMapEntry (n + 1 + m) sp_q sp_v →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
         ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt s')) ∨ NotQuestionPark s' :=
+        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt s')) ∨ (NotQuestionPark s' ∧ ValueOwnership.TopUnmarked s') :=
     match hc with
-    | Or.inl h => Or.inr (dispatchBlock_colon_notQuestion (h ▸ h_dispatch))
+    | Or.inl h => Or.inr ⟨dispatchBlock_colon_notQuestion (h ▸ h_dispatch), h_valueTop h⟩
     -- Item 371: the compact `?`'s route WITH its tail — the compact mapping the
     -- entry heads goes on with its siblings before the awaited node closes.
     | Or.inr h => Or.inl ⟨sp_ind, h_qlit h, fun sp_v h_entry sp_e h_tail =>
@@ -25608,7 +25809,8 @@ lemma indicator_open_map {sc : ScannerState}
       ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc) :
+      ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
+    (h_valueTop : c = ':' → ValueOwnership.TopUnmarked s') :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25634,7 +25836,7 @@ lemma indicator_open_map {sc : ScannerState}
   cases hc with
   | inl h =>
     subst h
-    exact colon_open_map sp_start sp_land sp_ind k s_prep s' sp_scan' h_stream_land
+    exact colon_open_map (h_valueTop := h_valueTop rfl) sp_start sp_land sp_ind k s_prep s' sp_scan' h_stream_land
       hcol_land h_ind hcorr_prep hcorr_result
       (indicator_floor_colon_at_col_of_save hcol_ind hcorr_prep
         h_noflow_disp h_save h_preprocess h_dispatch)
@@ -25781,7 +25983,8 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ alt)
-    (h_top_in : s'.currentIndent ≤ (k : Int)) :
+    (h_top_in : s'.currentIndent ≤ (k : Int))
+    (h_valueTop : ValueOwnership.TopUnmarked s') :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -25827,7 +26030,7 @@ lemma colon_open_map_implicit {alt : Prop} (sp_start sp_block sp_key sp_gram sp_
              h_route sp_v
                (SBlockMapEntry.implicitKeyNode k sp_key sp_ws sp_scan' sp_v h_ik h_lit
                  h_node))
-           h_floor h_top_in hpf.1 hpf.2.1 (Or.inl h_stamp) (Or.inr (dispatchBlock_colon_notQuestion h_dispatch)) (Or.inr h_stamp)
+           h_floor h_top_in hpf.1 hpf.2.1 (Or.inl h_stamp) (Or.inr ⟨dispatchBlock_colon_notQuestion h_dispatch, h_valueTop⟩) (Or.inr h_stamp)
            (scanValue_simpleKeyAllowed (dispatchBlock_colon_scanValue h_dispatch))
            -- Item 68: the `:` is a character, so the park is past column 0.  The
            -- INDEX is the half this producer cannot measure: `k` reaches it
@@ -26006,7 +26209,8 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
       ∀ sp_i sp_c : SurfPos, SIndent nv sp_e sp_i → GLit ':' sp_i sp_c →
       ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)
-    (h_cf : ColFloor.ColFloor sc) (h_lkt : ScalarWalkColFloor.LiveKeyTop sc) :
+    (h_cf : ColFloor.ColFloor sc) (h_lkt : ScalarWalkColFloor.LiveKeyTop sc)
+    (h_valueTop : ValueOwnership.TopUnmarked s') :
     ∃ sp_gram' sp_block' sp_flow' sp_scan',
       SLYamlStream sp_start sp_gram' ∧
       BlockStack sp_gram' sp_block' ∧
@@ -26059,7 +26263,7 @@ lemma colon_open_map_props (sp_start sp_block sp_p sp_scan : SurfPos) (k : Nat)
              h_noflow h_preprocess h_dispatch)
            (implicit_colon_top_le h_lkt h_cf h_preprocess (by rw [h_inh]; exact h_poss) h_kline h_behind
              (by rw [h_inh]; exact h_kcol) h_noflow h_dispatch)
-           hpf.1 hpf.2.1 (Or.inl h_stamp) (Or.inr (dispatchBlock_colon_notQuestion h_dispatch)) (Or.inr h_stamp)
+           hpf.1 hpf.2.1 (Or.inl h_stamp) (Or.inr ⟨dispatchBlock_colon_notQuestion h_dispatch, h_valueTop⟩) (Or.inr h_stamp)
            (scanValue_simpleKeyAllowed (dispatchBlock_colon_scanValue h_dispatch))
            -- Item 68: `colon_open_map_implicit`'s boundary, for its reason — the
            -- run's own column is the pack's optional datum, not this producer's.
@@ -27096,7 +27300,9 @@ lemma accum_block_on_noPending
             else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
               { s_prep with allowDirectives := false, documentEverStarted := true }
             else s_prep).explicitKeyCol) =>
-        indicator_open_map sp_start sp_mid _ k c hcv s_prep s' sp_scan'
+        indicator_open_map
+          (h_valueTop := (by intro hc_value; subst c; exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+          sp_start sp_mid _ k c hcv s_prep s' sp_scan'
           (ssl_comments_extend_stream sp_start sp_block _ h_stream_block h_colN h_ssl_pre)
           hcol_mid h_ind hcorr_prep hcorr_result
           -- Item 76: the seed's flag, not the landing's break — this park is
@@ -27769,7 +27975,9 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
               else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
                 { s_prep with allowDirectives := false, documentEverStarted := true }
               else s_prep).explicitKeyCol) =>
-            compact_open_map sp_start sp_mid _ nv m .blockOut c hcv sc s_prep s'
+            compact_open_map
+              (h_valueTop := (by intro hc_value; subst c; exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+              sp_start sp_mid _ nv m .blockOut c hcv sc s_prep s'
               sp_a sp_scan' h_stream_a (fun sp h_bi => hvs sp h_bi) h_ind h_col_vslot
               h_preprocess hcorr_prep hcorr_result
               (preprocess_some_peek h_preprocess) (noflow_disp_of_noflow h_noflow)
@@ -28325,7 +28533,9 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
           else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
             { s_prep with allowDirectives := false, documentEverStarted := true }
           else s_prep).explicitKeyCol) =>
-        indicator_open_map sp_start sp_mid _ k c hcv s_prep s' sp_scan'
+        indicator_open_map
+          (h_valueTop := (by intro hc_value; subst c; exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+          sp_start sp_mid _ k c hcv s_prep s' sp_scan'
           h_stream_new hcol_mid h_ind hcorr_prep hcorr_result
           (landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess)
           (preprocess_some_peek h_preprocess) (noflow_disp_of_noflow h_noflow)
@@ -28427,7 +28637,9 @@ lemma accum_block_on_closeThenBlock {sp_gram : SurfPos}
             SSLComments sp_gram sp_m → SIndent k sp_m sp_i → GLit ':' sp_i sp_c →
             ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →
             ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) =>
-          colon_open_map_explicit sp_start sp_gram sp_mid _ k s_prep s'
+          colon_open_map_explicit
+            (h_valueTop := (by exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+            sp_start sp_gram sp_mid _ k s_prep s'
             sp_scan' h_stream_new hvp h_ssl hcol_mid h_ind hcorr_prep hcorr_result
             -- Item 76: the explicit VALUE line measures on the same datum the
             -- keyless opener does — `h_vpack` carries no flag, and the
@@ -28668,7 +28880,9 @@ lemma colon_fires_props_key (sc : ScannerState)
       -- key on the `:`'s line and strictly behind its cursor.
       obtain ⟨h_inh, -, h_off_ge, -⟩ := h_mid.2.2.2.1 h_nic h_ska
       obtain ⟨h_line_pp, -, -, -⟩ := h_mid.2.1 h_nic h_real
-      exact colon_open_map_props sp_start sp_block sp_p sp_scan k sc s_prep s'
+      exact colon_open_map_props
+        (h_valueTop := (by exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+        sp_start sp_block sp_p sp_scan k sc s_prep s'
         sp_prep sp_scan' h_route
         -- Item 148: the pack's cover, carried across preprocessing — which
         -- only pops, so a cover of the incoming stack covers the landing's.
@@ -28900,7 +29114,9 @@ lemma colon_fires_implicit_key
           -- Item 81: the same no-break conjuncts place the key on the `:`'s
           -- line, and `KeysBehindCursor` strictly behind its cursor.
           obtain ⟨h_line_pp, -, -, -⟩ := h_mid.2.1 h_st.1 h_st.2.2.1
-          exact colon_open_map_implicit sp_start sp_block sp_key sp_gram sp_prep k
+          exact colon_open_map_implicit
+            (h_valueTop := (by exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+            sp_start sp_block sp_key sp_gram sp_prep k
             s_prep s' sp_scan' h_stream_block
             -- Item 372: the route, or the sequence-top face the `:` refutes.
             (h_route.resolve_right fun h_seq =>
@@ -29592,7 +29808,9 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
             else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
               { s_prep with allowDirectives := false, documentEverStarted := true }
             else s_prep).explicitKeyCol) =>
-          indicator_open_map sp_start sp_mid _ k c hcv s_prep s' sp_scan'
+          indicator_open_map
+            (h_valueTop := (by intro hc_value; subst c; exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+            sp_start sp_mid _ k c hcv s_prep s' sp_scan'
             (h_close_pending h_nd_land h_ui_land _ h_ssl) hcol_mid h_ind hcorr_prep hcorr_result
             (landing_or_park_save h_noflow h_larm (h_park.imp_left And.left) h_preprocess)
             (preprocess_some_peek h_preprocess) (noflow_disp_of_noflow h_noflow)
@@ -29738,7 +29956,9 @@ lemma accum_block_on_pendingBlockContent {sp_gram : SurfPos}
               ∀ sp_i sp_c : SurfPos, SIndent k sp_e sp_i → GLit ':' sp_i sp_c →
               ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →
               ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) =>
-            colon_open_map_explicit sp_start sp_gram sp_mid _ k s_prep s'
+            colon_open_map_explicit
+              (h_valueTop := (by exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+              sp_start sp_gram sp_mid _ k s_prep s'
               sp_scan' (h_close_pending h_nd_land h_ui_land _ h_ssl)
               (fun sp_m sp_i sp_c h_ssl_m h_iv h_lit sp_v h_sbi =>
                 kslot sp_m h_ssl_m sp_m (SCompactSeqTail.nil n sp_m)
@@ -30329,7 +30549,9 @@ lemma accum_block_on_pendingBlock
           else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
             { s_prep with allowDirectives := false, documentEverStarted := true }
           else s_prep).explicitKeyCol) =>
-        indicator_open_map sp_start sp_mid _ k c hcv s_prep s' sp_scan'
+        indicator_open_map
+          (h_valueTop := (by intro hc_value; subst c; exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+          sp_start sp_mid _ k c hcv s_prep s' sp_scan'
           (h_close_pending h_nd_land h_ui_land _ h_ssl) hcol_mid h_ind hcorr_prep hcorr_result
           -- Item 76: this park carries the flag itself (item 59), so the `:`
           -- measures at EVERY input here, landing or not.
@@ -30539,7 +30761,9 @@ lemma accum_block_on_pendingBlock
             ∀ sp_i sp_c : SurfPos, SIndent k sp_e sp_i → GLit ':' sp_i sp_c →
             ∀ sp_v : SurfPos, SBlockIndented k .blockOut sp_c sp_v →
             ResumeFrames (SLYamlStream sp_start) [FrameLevel.map k] sp_v) =>
-          colon_open_map_explicit sp_start sp_scan sp_mid _ k s_prep s'
+          colon_open_map_explicit
+            (h_valueTop := (by exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+            sp_start sp_scan sp_mid _ k s_prep s'
             sp_scan' (h_close_pending h_nd_land h_ui_land _ h_ssl)
             (fun sp_m sp_i sp_c h_ssl_m h_iv h_lit sp_v h_sbi =>
               kslot sp_m (SBlockIndented.empty n .blockIn sp_scan sp_m h_ssl_m)
@@ -30798,7 +31022,9 @@ lemma accum_block_on_pendingBlock
             else s_prep).col : Int) ≠ (if s_prep.allowDirectives then
               { s_prep with allowDirectives := false, documentEverStarted := true }
             else s_prep).explicitKeyCol) =>
-          compact_open_map sp_start sp_mid sp_sc n m .blockIn c hcv sc s_prep s'
+          compact_open_map
+            (h_valueTop := (by intro hc_value; subst c; exact ValueOwnership.after_colon h_sound h_mono h_preprocess h_noflow h_dispatch))
+            sp_start sp_mid sp_sc n m .blockIn c hcv sc s_prep s'
             sp_block sp_scan' h_stream_block h_close_old h_ind h_col_old
             h_preprocess hcorr_prep hcorr_result
             (preprocess_some_peek h_preprocess) (noflow_disp_of_noflow h_noflow)
@@ -31324,12 +31550,13 @@ lemma accum_block_pending (sc : ScannerState)
                         · exact up nvU ((List.mem_cons.1 (hdom.mem hmem)).resolve_left hEq) sp_m
                             (SBlockMapEntry.explicitEmpty nmv sp_q sp_scan sp_m h_qlit h_bo)
                             sp_i sp_c h_iv h_lit sp_v h_sbi
-                   -- Item 541: a chain with no own `?` route (`NotQuestionPark`) — PAID where the slot's own
-                   -- column holds no mark (every mark is then an ancestor's); a marked own column: DECLINED, named.
-                   | Or.inr _ => if hown : nmv ∈ RegisterWitness.markedCols sc then Or.inr trivial else Or.inl
+                   -- Item 541 follow-up: the actual colon retained TopUnmarked, so the slot's own
+                   -- column cannot be marked. Every held mark is an ancestor's and reads this chain.
+                   | Or.inr ⟨_, h_unmarked⟩ => Or.inl
                       fun nvU hmem sp_m h_bo sp_i sp_c h_iv h_lit sp_v h_sbi =>
                         up nvU ((List.mem_cons.1 (hdom.mem hmem)).resolve_left
-                          (fun hEq => hown (hEq ▸ hmem))) sp_m
+                          (fun hEq => ValueOwnership.no_mark_at_or_above_top h_unmarked
+                            h_sound.slots h_mono h_top_mv (hEq ▸ hmem))) sp_m
                           (SBlockMapEntry.explicitEmpty nmv sp_q sp_scan sp_m h_qlit h_bo)
                           sp_i sp_c h_iv h_lit sp_v h_sbi)
               -- Item 541: no ancestors' chain at this park — PAID where every mark held is the slot's own and
@@ -37994,7 +38221,7 @@ lemma accum_content_on_pendingMapValue_indented
         ∀ sp_v : SurfPos, SBlockMapEntry n sp_q sp_v →
         ∀ sp_i sp_c : SurfPos, SIndent nv sp_v sp_i → GLit ':' sp_i sp_c →
         ∀ sp_w : SurfPos, SBlockIndented nv .blockOut sp_c sp_w →
-        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ NotQuestionPark sc)
+        ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w) ∨ PackAlt sc)) ∨ (NotQuestionPark sc ∧ ValueOwnership.TopUnmarked sc))
     -- Item 89: the pending's OPEN `[185]` slot at the entry's index, threaded
     -- exactly as at the root arm (`k:⏎  ? a: b`'s `a`).
     (h_vslot : (sp_scan.col = n + 1 ∧ ∀ sp_v : SurfPos,

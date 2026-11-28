@@ -55,12 +55,13 @@ example {sc : ScannerState} {sp_start sp_block sp_scan : SurfPos} {n : Nat}
     (h_offer : OfferPred sc.tokens) 
     -- Item 350: the two `?`-entry faces take the "not a `?` park" fact instead.
     (h_nq : NotQuestionPark sc)
+    (h_valueTop : ValueOwnership.TopUnmarked sc)
     (h_alt : PackAlt sc)
     (h_next : sc.inFlow = false → NextIsSep sc) :
     PendingNode sc false sp_start sp_block sp_scan :=
   PendingNode.pendingMapValue (h_next := h_next) (h_offer := h_offer) sp_start sp_block sp_scan n h_close h_floor h_top
     -- Item 288: the slot's decline names the stamp this pin carries.
-    h_nic h_real (Or.inl h_ivl) (Or.inr h_nq) (Or.inr h_ivl)
+    h_nic h_real (Or.inl h_ivl) (Or.inr ⟨h_nq, h_valueTop⟩) (Or.inr h_ivl)
     h_sk h_col0 (Or.inr trivial) (Or.inr h_alt)
     (Or.inr trivial) (Or.inr trivial)
     (Or.inr h_alt) (Or.inr h_alt) h_nodir

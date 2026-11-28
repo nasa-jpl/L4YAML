@@ -837,7 +837,7 @@ def expectedRows : List String :=
    "accum_block_pending #6 param:accum_block_on_closeThenBlock.h_vpack := paid:chain/built pos=[ctor:pendingMapValue.h_kslot] origins=[O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O26,O27,O28,O29,O30,O31,O35,O36,O37,O38,O39,O40,O41,O46,O49,O54,O55,O68,O69] none=[stamp] ⊢ some-held 2/38",
    "accum_block_pending #6 param:accum_block_on_closeThenBlock.h_vslot := stamp/stamp pos=[] origins=[] none=[stamp] ⊢ —",
    "accum_block_pending #7 param:accum_block_on_closeThenBlock.h_vpack := via/built pos=[ctor:pendingMapValue.h_kslot,ctor:pendingMapValue.h_explUp] origins=[O3,O4,O5,O6,O7,O8,O9,O10,O11,O12,O13,O14,O15,O16,O17,O18,O19,O20,O21,O22,O26,O27,O28,O29,O30,O31,O35,O36,O37,O38,O39,O40,O41,O46,O49,O54,O55,O68,O69] none=[fact] ⊢ some-held 3/39",
-   "accum_block_pending #7 param:accum_block_on_closeThenBlock.h_vslot := alt/built pos=[ctor:pendingMapValue.h_explUp] origins=[O4,O69] none=[punt,absurd,stamp] ⊢ some-held 1/2",
+   "accum_block_pending #7 param:accum_block_on_closeThenBlock.h_vslot := alt/built pos=[ctor:pendingMapValue.h_explUp] origins=[O4,O69] none=[absurd,punt,stamp] ⊢ some-held 1/2",
    "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_key := via/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O4,O5,O6,O7,O8,O69] none=[fact] ⊢ some-held 1/6",
    "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_kslot := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslot_old] origins=[O4,O69] none=[stamp] ⊢ some-held 1/2",
    "accum_content_on_pendingBlock_indented #1 ctor:pendingBlockContent.h_kslotUp := paid:chain/built pos=[param:accum_content_on_pendingBlock_indented.h_kslotUp_old] origins=[O4,O69] none=[stamp] ⊢ some-held 1/2",
@@ -1226,7 +1226,7 @@ def expectedLine : String :=
 -- Item 519 (review round): term size only — lets 753 → 756, lapps 1204 → 1209, alts 5620 → 5625, liteNodes 688005 → 688691 (the `vslot` writers' fallback funders: `have hnode`, `by_cases`); no row, origin or hold moved.
   -- 2026-11-22 (Lean v4.36.0): liteNodes 693828 → 693938 and nothing else — the walk crosses the same lets, applications,
   -- alternatives and nodes; v4.36.0 elaborates the same proof text to slightly larger terms. No origin row moved.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=195 ctorRows=104 paramRows=91 packagedRows=29 punt=4 stamp=38 built=153 origins=70 originRows=35 route=12 frames=29 tail=15 other=0 concl=8 invariant=6 heldOrigins=15 allHeld=2 someHeld=122 noneHeld=13 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=6 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=397 lets=760 lapps=1235 alts=5688 nodes=14441 liteNodes=694671"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=195 ctorRows=104 paramRows=91 packagedRows=29 punt=4 stamp=38 built=153 origins=70 originRows=35 route=12 frames=29 tail=15 other=0 concl=8 invariant=6 heldOrigins=15 allHeld=2 someHeld=122 noneHeld=13 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=6 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=396 lets=760 lapps=1236 alts=5687 nodes=14465 liteNodes=694756"
 
 /-! ## §4 The reading -/
 

@@ -291,7 +291,7 @@ it may only shrink. -/
 -- 2026-11-17 (item 520, review round 2): or 142 → 140 — `KmSound`'s two `P ∨ True` stamp / marker conjuncts deleted.
 -- 2026-11-17 (item 522): `accum_step_key_pairK` / `accum_step_key_trace` / `dispatchBlock_*` (ContentBridge §12) and
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
-def expectedSummary : String := "carriers=64 snapshot=9 ghost=74 or=139"
+def expectedSummary : String := "carriers=65 snapshot=9 ghost=74 or=139"
 
 -- 2026-10-24 (B3 [66] col-0 threading): carriers 61 → 62 — `SSLCommentsFrom` (the separator-less comment product).
 -- 2026-10-25 (#99 landed): the `FlowLead`/`leadFree`/`closeFree` tally rows go with the deleted carrier and
@@ -367,6 +367,7 @@ def expectedTally : List String :=
    "StaleNodeTail: surface=0 state=1 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "StalePark: surface=0 state=1 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
    "SuffixRun: surface=4 state=0 prop=0 scalar=0 snapshot=0 ghost=0 or=0",
+   "TopUnmarked: surface=0 state=1 prop=0 scalar=1 snapshot=0 ghost=0 or=0",
    "ScannerSurfCorr: surface=1 state=1 prop=7 scalar=4 snapshot=0 ghost=0 or=0"]
 
 /-- The list to shrink.  Read with the header's caveat: `FlowOpenHeld`'s `S` (and
@@ -583,7 +584,7 @@ def expectedDisjuncts : List String :=
    "PendingNode.pendingBlock[15].h_closeFV ∨ True",
    "PendingNode.pendingBlock[19].h_seqTop ∨ e.column = ↑n",
    "PendingNode.pendingMapValue[10].h_ivl ∨ sp_scan.col = n + 1 ∧ ∀ (sp_v : SurfPos), SBlockIndented n YamlContext.blockOut sp_scan sp_v → SLYamlStream sp_start sp_v",
-   "PendingNode.pendingMapValue[11].h_expl ∨ NotQuestionPark sc",
+   "PendingNode.pendingMapValue[11].h_expl ∨ NotQuestionPark sc ∧ ValueOwnership.TopUnmarked sc",
    "PendingNode.pendingMapValue[11].h_expl ∨ PackAlt sc",
    "PendingNode.pendingMapValue[12].h_vslot ∨ sc.implicitValueLine = some sc.line",
    "PendingNode.pendingMapValue[15].h_ncol ∨ True",
