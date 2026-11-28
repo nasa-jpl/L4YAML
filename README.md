@@ -89,12 +89,12 @@ Beyond Lean's standard `propext` / `Classical.choice` / `Quot.sound`, a number o
 finite content-equivalence and character-class facts are discharged by
 `native_decide`, which additionally trusts Lean's compiled evaluator.
 
-**Proof discipline.** The `theorem` keyword is reserved for the 25
+**Proof discipline.** The `theorem` keyword is reserved for the 26
 `@[capstone]`-tagged headline results (whitelist:
 [scripts/capstones.txt](scripts/capstones.txt)); every other proof in the
 library — roughly 4,975 of them — is spelled `lemma` (macro in
 [L4YAML/Init.lean](L4YAML/Init.lean)). The tagged set and each capstone's
-axiom profile (18 pure, 7 `native_decide`-backed) are pinned at build time by
+axiom profile (19 pure, 7 `native_decide`-backed) are pinned at build time by
 `#guard_msgs` in [L4YAML/Capstones.lean](L4YAML/Capstones.lean), and CI
 enforces the discipline with `lake run check-theorem-keyword`,
 `lake run check-import-closure`, and a kernel-accurate

@@ -1,6 +1,7 @@
 module
 
 public import L4YAML.Spec.Types
+public import L4YAML.Spec.CoreSchema
 public import L4YAML.Token.Token
 
 @[expose] public section Blanket
@@ -183,10 +184,11 @@ def isIntL (l : List Char) : Option Int :=
   | '0' :: 'o' :: oct | '0' :: 'O' :: oct => (parseOctal.go 0 oct).map signed
   | _ => (toIntL? rest).map signed
 
-/-- Check if string represents integer in Core Schema (§10.3.2).
-    Handles decimal, hexadecimal (`0x`), and octal (`0o`) formats,
-    with optional sign prefix (`+` or `-`). -/
-def isInt (s : String) : Option Int := isIntL s.toList
+/-- Parse an integer only when its spelling matches Core Schema §10.3.2:
+    optionally signed decimal, or **unsigned** `0o` octal / `0x` hex.
+    This lexical gate rejects extra `String.toNat?` conveniences such as `_`. -/
+def isInt (s : String) : Option Int :=
+  if Spec.CoreSchema.integerSpelling s then isIntL s.toList else none
 
 /-! ### Float Parsing Helpers -/
 
@@ -203,7 +205,7 @@ def parseMantissaL? (l : List Char) : Option Float :=
       -- Decimal: int.frac
       match splitOnChar '.' l with
       | [intPart, fracPart] =>
-        match toIntL? intPart, toNatL? fracPart with
+        match toIntL? intPart, (if fracPart.isEmpty then some 0 else toNatL? fracPart) with
         | some i, some f =>
           let base := Float.ofInt i
           let frac := Float.ofNat f / Float.ofNat (10 ^ fracPart.length)
@@ -251,9 +253,22 @@ def parseFloatL? (l : List Char) : Option Float :=
     Handles standard decimal, scientific notation (`1.5e3`), and integer forms. -/
 def parseFloat? (s : String) : Option Float := parseFloatL? s.toList
 
-/-- Check if string represents float in Core Schema (§10.3.2).
-    Includes special values: `.inf`, `-.inf`, `.nan` -/
+/-- Parse a float only when its spelling matches Core Schema §10.3.2.
+    Recognition is checked before numeric conversion; tag correspondence
+    still requires a separate proof that every allowed spelling converts. -/
 def isFloat (s : String) : Option FloatValue :=
+  if !Spec.CoreSchema.floatSpelling s then none
+  else
+    match s with
+    | ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" => some (.inf true)
+    | "-.inf" | "-.Inf" | "-.INF" => some (.inf false)
+    | ".nan" | ".NaN" | ".NAN" => some .nan
+    | _ => parseFloat? s |>.map FloatValue.finite
+
+/-- Decode an explicitly tagged float without the implicit Core spelling gate.
+    This retains the pre-Core-gate conversion behavior; explicit-tag validity
+    and failure reporting remain a separate schema policy decision. -/
+def parseExplicitFloat (s : String) : Option FloatValue :=
   match s with
   | ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" => some (.inf true)
   | "-.inf" | "-.Inf" | "-.INF" => some (.inf false)
@@ -286,11 +301,11 @@ def resolveScalar (content : String) (tag? : Option String) : YamlType :=
       | some b => .bool b
       | none => .str content
   | some "tag:yaml.org,2002:int" =>
-      match isInt content with
+      match isIntL content.toList with
       | some i => .int i
       | none => .str content
   | some "tag:yaml.org,2002:float" =>
-      match isFloat content with
+      match parseExplicitFloat content with
       | some f => .float f
       | none => .str content
   | some "tag:yaml.org,2002:str" => .str content

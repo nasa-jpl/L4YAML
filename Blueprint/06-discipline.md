@@ -191,7 +191,7 @@ theorem). A verifying grep would have caught this.
 
 Since 2026-07-31 (commit `ae33568f`), the `theorem` keyword is a
 **marker**: it may be used only by the `@[capstone]`-tagged
-blueprint capstones (currently 25 declarations; see
+blueprint capstones (currently 26 declarations; see
 [`04-capstones.md`](04-capstones.md)). **Every other proof is
 written with `lemma`** (~4,975 declarations), a synonym command
 provided by [`L4YAML/Init.lean`](../L4YAML/Init.lean), the project
@@ -219,7 +219,7 @@ the keyword itself carries Rule 1's traceability.
   them while a thirteenth sat between two headings, belonging to
   neither.
 - **Registry**: the `@[capstone]`-tagged set and each capstone's
-  axiom profile (18 `pure`, 7 `native`) are pinned by `#guard_msgs`
+  axiom profile (19 `pure`, 7 `native`) are pinned by `#guard_msgs`
   in [`L4YAML/Capstones.lean`](../L4YAML/Capstones.lean) — silently
   gaining or losing a capstone, or a capstone silently acquiring a
   `native_decide` dependency, fails the build.

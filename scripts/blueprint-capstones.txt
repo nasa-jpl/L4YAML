@@ -59,6 +59,7 @@
 5.5 | Soundness | scalar_content_preserved
 5.6 | SchemaResolution | isNull_* isBool_* isInt_* isFloat_*
 5.7 | SchemaResolution | resolveImplicit_complete
+5.8 | SchemaResolution CoreRecognizerBridge CoreSchema | coreTagCorrespondenceAll
 
 # Group 6
 6.1 | EmitterScannability | universal_roundtrip

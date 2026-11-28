@@ -59,6 +59,13 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-19 (item 528, β PR 2): population 14,242 → 14,249 (thm +2), unreached 6,538 → 6,545, A-campaign 1,323 → 1,330 —
 -- the five content-park constructors, `SSLComments_to_GStar_prefix` and the steps split by source park (five lemmas, were
 -- three), reached by no root until the fold spends them (class (A)); B-roster unmoved.
+-- 2026-11-19 (#302 integrated over item 526 and #349, base 4f31fef): full Lean 4.35.0
+-- build 1,573/1,573; native `dead-census -- --check` measured population
+-- 14,304 → 14,309, thm 10,247 → 10,249, def 2,701 → 2,702, unreached
+-- 6,505 → 6,534 and A-campaign 1,281 → 1,310. The owner S3 development
+-- changed the cluster-root count 1,460 → 1,459; capstone:27, blueprint:223,
+-- C-api:1,414, D-test-only:277 and B-roster:3,533 are unchanged. The pin is
+-- read on the merged tree, not summed from the two parents.
 -- 2026-11-19 (item 529, β PR 3): population 14249 → 14252, thm 10212 → 10215, unreached 6545 → 6548, A-campaign
 -- 1330 → 1333 — `TPendingNode.content_step_noPending` / `TLYamlStream.bareRoute` (StreamBridge) and
 -- `PushesTrace.goOut_at` (ContentBridge), all three unreached until the depth-0 fold `scan_trace` consumes the step
@@ -69,6 +76,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- 2026-11-22 (item 531, β PR 4): population 14253 → 14260, thm 10215 → 10222, unreached 6549 → 6556 (thm 4624 → 4631),
 -- A-campaign 1334 → 1341 — StreamBridge's `content_step_routed` / `_docStart` / `_docEnd` / `_props`, `quoted_flowOut`,
 -- `TLYamlStream.suffixRoute` and `TCNsProperties.blockIn_of_flowOut`, unreached until the depth-0 fold spends the steps.
+-- #302 over item 529: the three additional unreached theorems enter class (A).
+-- Lean v4.36.0: native census population 14332 → 14333, def 2702 → 2703,
+-- unreached 6557 → 6558 and A-campaign 1333 → 1334. The new declaration is
+-- `SerializationWellFormed.decMemString`; the B roster is unchanged.
 -- 2026-11-23 (item 532, β PR 5): population 14260 → 14262, thm 10222 → 10224, unreached 6556 → 6558 (thm 4631 → 4633),
 -- A-campaign 1341 → 1343 — ContentBridge's `TFlowContent.of_scalar` and `content_leaf_at`, spent by the unreached
 -- `TPendingNode.content_step_props` (now at every indentation).
@@ -86,8 +97,10 @@ namespace L4YAML.Tests.Guards.DeadDeclarationCensus
 -- (46 of the list before item 534, and 3 of the 10 the deletion freed); roster and cluster-roots unmoved.
 -- 2026-11-25 (item 538, β PR 7): population 14050 → 14051, unreached 5948 → 5949, A-campaign 1124 → 1125 — `TPendingNode.question_step`
 -- (StreamBridge), the `?` step; A-orphan unmoved (Priority 142's examples spend it; the fold is its consumer).
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedDeadCensus : String :=
-  "population=14051 thm=10171 def=2513 roots=capstone:27+export:37+blueprint:223(unresolved=5) unreached=5949 thm=4245 A-campaign=1125 A-orphan=103 C-api=1244 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
+  "population=14131 thm=10218 def=2540 roots=capstone:28+export:37+blueprint:224(unresolved=5) unreached=5958 thm=4246 A-campaign=1125 A-orphan=103 C-api=1253 D-test-only=272 B-roster=3308 thm=2961 cluster-roots=1459"
 
 /-- `B-roster=N` out of the summary. -/
 def rosterCount (summary : String) : Option Nat := do
