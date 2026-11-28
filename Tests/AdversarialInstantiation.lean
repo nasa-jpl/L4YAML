@@ -20130,8 +20130,70 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
-namespace P145
-/-! **Priority 145 (item 544): the block-indicator steps, priced by source park.**  Every
+/-! ## P145 — the landed `-` and the marks it leaves (item 545, row 12)
+
+Item 545 pays `accum_block_on_closeThenBlock`'s `-` arm where no mark survives the landing (the empty
+domain on `s'`) and routes every surviving mark through the slot's chain at `nv ≤ k`.
+**Risk:** a dedent `-` always leaves an ancestor's mark (the empty-domain payment would be vacuous),
+or never leaves two marks at `nv ≤ k` (the chain payment would be).
+-/
+namespace P145Test
+open P143Test in
+/-- At every block `-` pause among the first `fuel` steps of a `scan` run: (a mark of the park right of
+the `-`?, the marks after the step).  The `-` is the scanner's own `isBlockEntryCandidate` at the preprocessed
+state (blank = space, tab, LF, CR, or EOF), so no offset is read off the input here. -/
+def dashLandings (input : String) (fuel : Nat := 64) : List (Bool × List Nat) :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Bool × List Nat)) : List (Bool × List Nat) :=
+    match fuel with
+    | 0 => acc.reverse
+    | fuel + 1 =>
+      match scanNextToken s with
+      | .ok (some s') =>
+        let row := match scanNextToken_preprocess s with
+          | .ok (some (sp, c)) =>
+            if c == '-' && sp.flowLevel == 0 && isBlockEntryCandidate sp then
+              let pre := markedColsOf s.pendingKeys s.indentColumns
+              if pre.isEmpty then [] else
+                [(pre.any (· > sp.col), markedColsOf s'.pendingKeys s'.indentColumns)]
+            else []
+          | _ => []
+        go s' fuel (row ++ acc)
+      | _ => acc.reverse
+  go (scanSeed input) fuel []
+
+def testDashLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P145: the landed `-` and the marks it leaves (item 545)"
+  let inputs : List String :=
+    [ "- ?\n- b", "- ? a\n- b", "? ?\n- b", "- ?\n  - a\n- b", "k:\n  ? a\n- b", "- - ?\n  - b",
+      "? a\n- b", "?\n- a", "?\n- a\n: b", "- ?\n  - a\n  : b", "- ? a\n  : b", "- a\n- ? b\n  : c",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b",
+      "k:\n  ?\n  - a\n  : b", "- - ? a\n  - b", "- ? a\n  ? b\n- c", "? - a\n- b", "- ? - a\n- b",
+      "k:\n  - ? a\n  - b", "?\n  ?\n  - a\n  : b\n: c", "- ?\n    ?\n      - a\n    : b\n- c",
+      "- ? a\n  : b\n- c", "- - ? a\n- b",
+      "?\n  ?\n  -\n: w", "? - ?\n  - b\n: w", "?\n  - ?\n  - b\n: w", "?\n-\n: w", "", "- a", "? a" ]
+  let rows := inputs.flatMap fun input => (dashLandings input).map fun r => (input, r)
+  let dedent := rows.filter (·.2.1)
+  let paid := dedent.filter (·.2.2.isEmpty)
+  let multi := rows.filter fun r => !r.2.1 && r.2.2.length ≥ 2
+  check state "P145 block `-` pauses at a park holding a mark: 29" (rows.length == 29)
+  check state "P145 a mark of the park right of the `-`: 12" (dedent.length == 12)
+  check state "P145 of those, no mark survives the step (the empty domain, paid): 10" (paid.length == 10)
+  check state "P145 the 2 left hold an ancestor mark only (`[0]`, still declined)" ((dedent.filter (!·.2.2.isEmpty)).all (·.2.2 == [0]))
+  check state "P145 no mark right of the `-`, two marks held (the chain, not the own mark alone): 5" (multi.length == 5)
+  check state "P145 empty / singleton inputs: no pause at a park holding a mark" ((["", "- a", "? a"].flatMap (dashLandings ·)).isEmpty)
+  -- The fuel boundary, on `?\n- a` (step 1 = the `?`, step 2 = the `-` at the marked park).
+  let f := fun n => (dashLandings "?\n- a" n).length
+  IO.println s!"P145 fuel 0/1/2/3 rows={f 0}/{f 1}/{f 2}/{f 3}"
+  check state "P145 fuel 0 / 1: the walk stops before the `-`, no row; fuel 2 / 3: its one row" (f 0 == 0 && f 1 == 0 && f 2 == 1 && f 3 == 1)
+  -- The `-`'s separator is the scanner's (`isBlockEntryCandidate`): tab, CR and EOF behind the `-`, and a
+  -- multi-byte character ahead of it (byte offset ≠ character index).
+  let seps := ["?\n-\tb", "?\n-\r\nb", "?\n-", "- ? é\n- b", "?\n-b"].map fun i => (dashLandings i).length
+  IO.println s!"P145 separators {seps}"
+  check state "P145 a `-` before tab / CR / EOF / behind a multi-byte char is a pause (1 each); `-b` is not (0)" (seps == [1, 1, 1, 1, 0])
+end P145Test
+
+namespace P146
+/-! **Priority 146 (item 544): the block-indicator steps, priced by source park.**  Every
 depth-0 step whose last real token is `-` / `?` / `:`: the park it leaves from, whether it opens a
 collection (a `blockSequenceStart` / `blockMappingStart` pushed by the same step), whether it closes
 levels first (`blockEnd`), whether the step only APPENDS tokens (the `:` behind an implicit key inserts
@@ -20143,7 +20205,12 @@ at about 90 % (the implicit key); `-` and `?` always append; Q5 `?` leaves mostl
 opens a mapping at about 60 %; Q6 a `blockEnd` in the same step at ≥ 1 for each of `-` and `:`.
 Second reading, for `colon_step`'s slot premise (predictions written after the first reading and before
 this one ran): R1 a simple key is saved at about 124 of the 171 `:` steps (the 122 inserts and a few
-that `scanValueClearKey` drops); R2 both of its slots hold a `placeholder` at every one (0 violations). -/
+that `scanValueClearKey` drops); R2 both of its slots hold a `placeholder` at every one (0 violations).
+Third reading (review of the item: R1 / R2 read the state BEFORE `scanNextToken_preprocess`, and
+`colon_step`'s `s_ad` is the state after it, where `saveSimpleKey` may have reserved a new pair;
+predictions written before this reading ran): S1 after the preprocess a key is saved at about 160 of
+the 171 `:` steps (more than 146: the preprocess saves one wherever a key is allowed); S2 both slots
+hold a `placeholder` at every one (0 violations); S3 the preprocess fails or ends at 0 of the 171. -/
 open L4YAML L4YAML.Scanner P107 P111 P113
 open L4YAML.Proofs.Serialization.TokenEvents (goOut)
 
@@ -20155,6 +20222,9 @@ structure Tally where
   appends : List (String × Nat) := []
   inserts : List (String × Nat) := []
   keySaved : Nat := 0
+  keySavedPost : Nat := 0
+  slotBadPost : List String := []
+  noPrep : Nat := 0
   slotBad : List String := []
   moved : List String := []
   deriving Repr
@@ -20182,6 +20252,15 @@ def tally (rows : List String) : Tally := Id.run do
               let slotsOk := ph pre.simpleKey.tokenIndex && ph (pre.simpleKey.tokenIndex + 1)
               t := { t with keySaved := if saved then t.keySaved + 1 else t.keySaved,
                             slotBad := if saved && !slotsOk then t.slotBad ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] else t.slotBad }
+              if k == "value" then
+                match scanNextToken_preprocess pre with
+                | .ok (some (ps, _)) =>
+                  let php (i : Nat) := (ps.tokens[i]?.map (P119.isPlaceholder ·.val)).getD false
+                  let okp := php ps.simpleKey.tokenIndex && php (ps.simpleKey.tokenIndex + 1)
+                  if ps.simpleKey.possible then
+                    t := { t with keySavedPost := t.keySavedPost + 1,
+                                  slotBadPost := if okp then t.slotBadPost else t.slotBadPost ++ [s!"{cell} @{repr (String.ofList (s.toList.take 40))}"] }
+                | _ => t := { t with noPrep := t.noPrep + 1 }
               let same := reprStr (goOut pre.tokens.toList []).1 == reprStr (goOut post.tokens.toList []).1
               t := { t with kinds := bumpS t.kinds k, parks := bumpS t.parks cell,
                             opens := if opened then bumpS t.opens cell else t.opens,
@@ -20249,35 +20328,35 @@ example (n m : Nat) (sp_start sp_block sp_ind sp₁ sp_k : SurfPos) (s_ad s' : S
   exact h_route _ _ _ h_lit h_not (.compactMap n .blockIn m _ _ _ _ (h_cm _ h_lit).1 (h_cm _ h_lit).2)
 
 end Statements
-end P145
+end P146
 
-namespace P145Test
+namespace P146Test
 def testBlockIndicatorSteps (state : IO.Ref TestCollector) : IO Unit := do
-  let t := P145.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
-  IO.println s!"P145 {repr t}"
+  let t := P146.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
+  IO.println s!"P146 {repr t}"
   let sum (l : List (String × Nat)) (k : String) := (l.filter (·.1.startsWith k)).foldl (· + ·.2) 0
-  check state "P145 Q1 (refuted for `-` and `:`, predicted about 200 / 330 / 30): 118 `-`, 171 `:`, 29 `?`"
+  check state "P146 Q1 (refuted for `-` and `:`, predicted about 200 / 330 / 30): 118 `-`, 171 `:`, 29 `?`"
     (t.kinds.lookup "bEntry" == some 118 && t.kinds.lookup "value" == some 171 && t.kinds.lookup "key" == some 29)
-  check state "P145 Q2: the events are unchanged at every one of the 318 steps" t.moved.isEmpty
-  check state "P145 Q3 (refuted, predicted about 60 %): `-` opens a sequence at 92 of 118; its parks: 56 noPending, 15 pendingBlock, 15 pendingContent, 10 pendingMapValue, 9 pendingDocEnd, 6 pendingProps, 5 pendingDocStart, 2 pendingKey"
+  check state "P146 Q2: the events are unchanged at every one of the 318 steps" t.moved.isEmpty
+  check state "P146 Q3 (refuted, predicted about 60 %): `-` opens a sequence at 92 of 118; its parks: 56 noPending, 15 pendingBlock, 15 pendingContent, 10 pendingMapValue, 9 pendingDocEnd, 6 pendingProps, 5 pendingDocStart, 2 pendingKey"
     (sum t.opens "bEntry/" == 92 && t.parks.lookup "bEntry/noPending" == some 56 &&
      t.parks.lookup "bEntry/pendingBlock" == some 15 && t.parks.lookup "bEntry/pendingContent" == some 15 &&
      t.parks.lookup "bEntry/pendingMapValue" == some 10 && t.parks.lookup "bEntry/pendingDocEnd" == some 9 &&
      t.parks.lookup "bEntry/pendingProps" == some 6 && t.parks.lookup "bEntry/pendingDocStart" == some 5 &&
      t.parks.lookup "bEntry/pendingKey" == some 2)
-  check state "P145 Q4 (refuted, predicted about 90 %): `:` writes into the token list (not an append) at 122 of 171, 116 behind content and 6 at noPending; `-` and `?` always append"
+  check state "P146 Q4 (refuted, predicted about 90 %): `:` writes into the token list (not an append) at 122 of 171, 116 behind content and 6 at noPending; `-` and `?` always append"
     (sum t.inserts "value/" == 122 && t.inserts.lookup "value/pendingContent" == some 116 &&
      t.inserts.lookup "value/noPending" == some 6 && t.appends.lookup "bEntry" == some 118 &&
      t.appends.lookup "key" == some 29 && t.appends.lookup "value" == some 49)
-  check state "P145 Q5 (half refuted, predicted about 60 % opening): `?` leaves from noPending at 21 of 29 and opens a mapping at all 29"
+  check state "P146 Q5 (half refuted, predicted about 60 % opening): `?` leaves from noPending at 21 of 29 and opens a mapping at all 29"
     (t.parks.lookup "key/noPending" == some 21 && sum t.opens "key/" == 29)
-  check state "P145 Q6: a `blockEnd` in the same step at 6 `:` and 1 `-`, all behind content"
+  check state "P146 Q6: a `blockEnd` in the same step at 6 `:` and 1 `-`, all behind content"
     (t.closes == [("value/pendingContent", 6), ("bEntry/pendingContent", 1)])
-  check state "P145 R1 (refuted, predicted about 124): a simple key is saved at 146 of the 171 `:` steps"
+  check state "P146 R1 (refuted, predicted about 124): a simple key is saved at 146 of the 171 `:` steps"
     (t.keySaved == 146)
-  check state "P145 R2: both slots of the saved key hold a `placeholder` at every one (`colon_step`'s `h_slots`)"
+  check state "P146 R2: both slots of the saved key hold a `placeholder` at every one (`colon_step`'s `h_slots`)"
     t.slotBad.isEmpty
-end P145Test
+end P146Test
 
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
@@ -20611,9 +20690,10 @@ def collectTests : IO VerifiedSuiteResult := do
   P140Test.testLeafAtIndentation state
   P141Test.testContentBehindParks state
   P142Test.testQuestionPark state
-  P145Test.testBlockIndicatorSteps state
+  P146Test.testBlockIndicatorSteps state
   P143Test.testRootEmptyDomain state
   P144Test.testExplicitValueSlot state
+  P145Test.testDashLandingMarks state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",
