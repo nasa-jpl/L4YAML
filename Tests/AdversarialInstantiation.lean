@@ -20327,6 +20327,83 @@ example (n m : Nat) (sp_start sp_block sp_ind sp₁ sp_k : SurfPos) (s_ad s' : S
   obtain ⟨sp', h_lit, h_not, _, _, _⟩ := TPendingNode.dash_step hS hcorr hpeek h_dispatch h_route
   exact h_route _ _ _ h_lit h_not (.compactMap n .blockIn m _ _ _ _ (h_cm _ h_lit).1 (h_cm _ h_lit).2)
 
+/-- The scanner's own readings at the one-character input `c`, off the preprocessed state. -/
+def rootStepB (c : Char) : Bool := match scanNextToken_preprocess (ScannerState.mk' (String.singleton c)) with
+  | .ok (some (s, c')) => c' == c && s.offset == 0 && s.col == 0 && s.input == String.singleton c &&
+      s.peek? == some c &&
+      s.tokens.toList.all (·.val == .placeholder) &&
+      (match scanNextToken_dispatchBlockIndicators s c with | .ok (some _) => true | _ => false)
+  | _ => false
+
+/-- A REAL indicator step, nothing assumed but the route: at the input `c` the preprocessed state's
+dispatch runs, `indicator_step_park` returns its park, and the park closes the empty node into the
+stream at the end of input. -/
+lemma rootStep_closes (c : Char) (hb : rootStepB c = true)
+    (h_route : TPendingNode.IndicatorRoute ⟨[c], 0⟩ ⟨[c], 0⟩ ([] ++ []) c) :
+    ∃ s' : ScannerState, TLYamlStream ⟨[c], 0⟩ ⟨[], 1⟩ [] ∧ (goOut s'.tokens.toList []).1 = [] := by
+  unfold rootStepB at hb
+  split at hb
+  · rename_i s_ad c' h_pre
+    simp only [Bool.and_eq_true, beq_iff_eq, List.all_eq_true] at hb
+    obtain ⟨⟨⟨⟨⟨⟨hc, hoff⟩, hcol⟩, hin⟩, hpeek⟩, htok⟩, hd⟩ := hb
+    subst hc
+    have hev : goOut s_ad.tokens.toList [] = ([], []) := by
+      have key : ∀ l : List (Positioned YamlToken), (∀ t ∈ l, t.val = .placeholder) →
+          goOut l [] = ([], []) := by
+        intro l hl
+        induction l with
+        | nil => rfl
+        | cons t ts ih =>
+          have ht := hl t (by simp)
+          rw [L4YAML.Proofs.Serialization.TokenEvents.goOut_silent t (by rw [ht]; rfl) (by rw [ht]; simp)
+            (by intro _ _; rw [ht]; simp)]
+          exact ih fun t' ht' => hl t' (by simp [ht'])
+      exact key _ htok
+    split at hd
+    · rename_i s' h_disp
+      have h0 : ScannerSurfCorr (ScannerState.mk' (String.singleton c')) ⟨(String.singleton c').toList, 0⟩ :=
+        initial_corr _ _ (chars_from_zero_toList _)
+      obtain ⟨sp, hcorr⟩ :=
+        L4YAML.Proofs.ScanStrictCoupling.scanNextToken_preprocess_corr _ _ h0 s_ad c' h_pre
+      have hsp : sp = ⟨[c'], 0⟩ := by
+        have h1 := hcorr.chars_from
+        rw [hin, hoff] at h1
+        have h2 := CharsFromOffset_unique h1 (chars_from_zero_toList (String.singleton c'))
+        have h3 := hcorr.col_eq
+        cases sp; simp_all
+      subst hsp
+      have hS : TSLYamlStream ⟨[c'], 0⟩ s_ad ⟨[c'], 0⟩ [] [] [] :=
+        ⟨(TSLYamlStream.seed [c'] (ScannerState.mk' "") (by simp [ScannerState.mk'])).stream, by simpa using hev⟩
+      obtain ⟨sp', h_lit, _, hS', hP⟩ := TPendingNode.indicator_step_park hS hcorr hpeek h_disp
+        (fun _ i t hi ht => htok t (List.mem_of_getElem? ht)) h_route
+      cases h_lit
+      have h_close := TPendingNode.close_with_ssl hS' hP
+        (.withComment _ _ _ (.noSep _ _ (.eof 1)) (.nil _))
+      exact ⟨s', by simpa using h_close, by simpa using congrArg Prod.fst hS'.events⟩
+    · cases hd
+  · cases hb
+
+/-- `-`: the lone entry of a sequence at the document's indentation; the route is BUILT. -/
+example : ∃ s' : ScannerState, TLYamlStream ⟨['-'], 0⟩ ⟨[], 1⟩ [] ∧ (goOut s'.tokens.toList []).1 = [] :=
+  rootStep_closes '-' (by native_decide) <| .dash 0 fun sp' sp_k ev hl hn hi => by
+    simpa using TLYamlStream.bareRoute (GStar.nil _) sp_k ev
+      (TBlockNode.blockSeq 0 .blockIn 0 _ _ _ _ [] ev (.none _) (.startOfLine _ _ (.nil _))
+        (.single 0 _ _ sp' sp' _ ev (.zero _) hl hn hi))
+
+/-- `?`: the lone explicit entry of a mapping at the document's indentation. -/
+example : ∃ s' : ScannerState, TLYamlStream ⟨['?'], 0⟩ ⟨[], 1⟩ [] ∧ (goOut s'.tokens.toList []).1 = [] :=
+  rootStep_closes '?' (by native_decide) <| .question 0 fun sp_k ev h => by
+    simpa using TLYamlStream.bareRoute (GStar.nil _) sp_k ev
+      (TBlockNode.blockMap 0 .blockIn 0 _ _ _ _ [] ev (.none _) (.startOfLine _ _ (.nil _))
+        (.single 0 _ _ _ ev (.zero _) h))
+
+/-- `:`: the lone empty-key entry of a mapping at the document's indentation. -/
+example : ∃ s' : ScannerState, TLYamlStream ⟨[':'], 0⟩ ⟨[], 1⟩ [] ∧ (goOut s'.tokens.toList []).1 = [] :=
+  rootStep_closes ':' (by native_decide) <| .colon 0 fun sp' sp_k ev hl h => by
+    simpa using TLYamlStream.bareRoute (GStar.nil _) sp_k ev
+      (TBlockNode.blockMap 0 .blockIn 0 _ _ _ _ [] ev (.none _) (.startOfLine _ _ (.nil _))
+        (.single 0 _ _ _ ev (.zero _) (.emptyKeyNode 0 _ _ _ ev hl h)))
+
 end Statements
 end P146
 
@@ -20356,6 +20433,17 @@ def testBlockIndicatorSteps (state : IO.Ref TestCollector) : IO Unit := do
     (t.keySaved == 146)
   check state "P146 R2: both slots of the saved key hold a `placeholder` at every one (`colon_step`'s `h_slots`)"
     t.slotBad.isEmpty
+  IO.println s!"P146 third reading: keySavedPost={t.keySavedPost} slotBadPost={t.slotBadPost} noPrep={t.noPrep}"
+  check state "P146 S1 (refuted, predicted about 160): AFTER the preprocess a key is saved at all 171 `:` steps"
+    (t.keySavedPost == 171)
+  check state "P146 S2: both slots of the key the dispatcher sees hold a `placeholder` at every one (`colon_step`'s `h_slots` at `s_ad`)"
+    t.slotBadPost.isEmpty
+  check state "P146 S3: the preprocess ends or fails at none of the 171"
+    (t.noPrep == 0)
+  check state "P146 the one-character inputs `-` / `?` / `:`: the preprocessed state takes the dispatch (the readings `rootStep_closes` spends)"
+    (P146.rootStepB '-' && P146.rootStepB '?' && P146.rootStepB ':')
+  check state "P146 the same reading refuses a non-indicator (`a`) and a `-` that is not an entry's (`-a` is not this input; `!`)"
+    (!P146.rootStepB 'a' && !P146.rootStepB '!')
 end P146Test
 
 namespace P141Test

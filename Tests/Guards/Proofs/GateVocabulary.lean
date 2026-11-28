@@ -132,8 +132,10 @@ namespace L4YAML.Tests.Guards.GateVocabulary
 -- (per-function reading 192 → 195).
 -- 2026-11-24: mentions 527 → 519 — item 535: the docstrings of the eight deleted `ScannerShape` dispatcher-arm corollaries each
 -- named their dispatcher step once (five flow-indicator, three structural; not spelled here: it would move the count).
+-- 2026-11-27: mentions 519 → 520 — item 544 (review): Priority 146's third reading names the scanner's preprocess step once
+-- (not spelled here: it would move the count).
 def expectedGateVocab : String :=
-  "names=115 mentions=519 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
+  "names=115 mentions=520 families=14 refuted=7 wrapped=4 self=2 unresolved=0"
 
 end L4YAML.Tests.Guards.GateVocabulary
 
