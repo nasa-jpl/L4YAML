@@ -701,9 +701,9 @@ def expectedDecisions : List String :=
    "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:empty,E:other(SBlockNode.blockSeq(GOpt.none,prem:SSLComments,lemma:SBlockSeqEntries_of_compactTail(prem:SIndent,prem:GLit,prem:GNot,prem:SBlockIndented,prem:SCompactSeqTail)))×2|paid pos=—",
    "accum_block_on_closeThenBlock dite kn [nv ≤ k] → E:node|punt pos=—",
    "accum_block_on_closeThenBlock dite kn [nn < k] → paid|— pos=—",
-   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:pass,E:node×2|punt pos=—",
-   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → E:carry,E:node×2|punt pos=—",
-   "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass×4|punt pos=—",
+   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:node|punt pos=—",
+   "accum_block_on_closeThenBlock dite kn [nv ≤ k] → paid,E:node|punt pos=—",
+   "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass|punt pos=—",
    "accum_block_on_closeThenBlock dite kn [nv + 1 ≤ k] → E:pass×2|— pos=—",
    "accum_block_on_closeThenBlock dite kmem [k ∈ ns] → E:pass|— pos=—",
    "accum_block_on_pendingBlock Or.elim other [h_land:SSLComments sp_scan sp_mid ∧ sp_mid.col = 0 ∧ (sp_scan.col ≠ 0 → s_prep.…] → E:empty×8,E:pass×16,E:node×4,P:hand,P:spend×3,E:carry|E:prem×2,E:node×5,E:pass pos=above#3,above#4,above#5",
@@ -808,7 +808,7 @@ def expectedLine : String :=
   -- `accum_block_on_closeThenBlock`'s explicit `:` face; no frame row moved.
 -- Item 371 (kslot=4 → 0, kslotUp=4 → 0): the value-line packs end in the one-level
 -- `ResumeFrames`; `question_open_map`'s `h_expl`/`h_closeFV`/`h_framesV` come from the bound tail route `h_route51F`.
-  "asked=5 both=3 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=1 feedTuple=0 entry=3 entrySBI=3 kslot=0 kslotUp=0 closeF=3 closeFV=3 seqF=0 top=3 floor=0 cover=3 cover2=3 floorB=3 aboveKN=0 aboveKMem=0 aboveKNv=0 aboveKEx=0 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=155 decOnK=20 decKN=14 decKMem=6 decKNv=0 apps=60 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
+  "asked=5 both=3 lemmas=1 walked=4 feedFunnel=1 feedExplicit=1 feedDeferred=1 feedTuple=0 entry=3 entrySBI=3 kslot=0 kslotUp=0 closeF=3 closeFV=3 seqF=0 top=3 floor=0 cover=3 cover2=3 floorB=3 aboveKN=0 aboveKMem=0 aboveKNv=0 aboveKEx=0 hands=1 besideKN=1 besideKMem=1 besideKNv=0 puntKN=1 puntKMem=0 besideNone=0 decisions=145 decOnK=20 decKN=14 decKMem=6 decKNv=0 apps=58 funnelArgs=1 doorDropped=4/1 closeSites=5 params=5"
 
 /-! ## §5 The reading -/
 

@@ -413,7 +413,7 @@ def expectedModuleTallyP : String :=
 -- Item 519 (review round): constants / decls +2 (the two `vslot` fallback `match` auxiliaries), READ +8 (the ancestors' covers and `h_expl`'s route / third conjunct read again at the open).
   -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else — the thirteen generated equation lemmas
   -- `HypothesisReaderCensus.expectedModuleTally` names, seen through this peel.
-  "constants=1745 decls=1389 eta=611 FIELD=201 READ=1485 RELAY=2702 RETURN=176 UNUSED=24"
+  "constants=1740 decls=1384 eta=611 FIELD=201 READ=1462 RELAY=2702 RETURN=176 UNUSED=24"
 
 -- Item 287: `accum_block_on_closeThenBlock`'s `h_vslot`, a READ one, left the
 -- `_ ∨ True` population — its sibling's move, under this peel.  Item 288: and
