@@ -1,0 +1,71 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.StreamHeadLandingFace</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.StreamHeadLandingFace";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">StreamHeadLandingFace</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamHeadLandingFace.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.StreamHeadLandingFace" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-landing-s-HEAD-arm-DOCS-item-136" class="markdown-heading">The landing's HEAD arm (DOCS item 136) <a class="hover-link" href="#The-landing-s-HEAD-arm-DOCS-item-136">#</a></h1><p>Item 135 measured the swap surface row 19's 1c breaks and found the seven
+<code>SLAnyDocument.bare</code> sites waiting on ONE carrier rather than seven edits: the
+landings' route face, today <code>SuffixRun sp_start sp_land ∨ <a href="../../.././Init/Prelude.html#True">True</a></code>, made into a
+real disjunction over the three honest routes — the stream's HEAD, an open
+SUFFIX run, a level RESUMED — with the fourth case refused at the scanner by
+items 132–134 rather than carried.</p><p>This item builds the head arm and pays it.  The suffix arm has stood since item
+117 and the resume arm since item 109; what was missing was the one a park that
+has started NO document can pay, which is where <code>rootMapRoute</code>'s implicit
+continuation is at its least honest — it appends a document to a stream that
+has none.</p><p><strong>Four landings, one park.</strong>  <code>noPending.h_nodoc</code> (item 116) carries <code>[202] l-document-prefix*</code> behind a virgin block-context park, and item 135 made it
+spendable by dropping the premise no producer used.  The park reaches four
+landings, and item 135 paid one of them (the block <code>-</code>).  The other three are
+this item:</p><ul><li>the block <code>:</code> and <code>?</code> — <code>colon_open_map</code>/<code>question_open_map</code>, whose entry
+routes become <code>nodocMapRoute</code>/<code>nodocMapRouteF</code> (<code>: v</code>, <code>? k</code>);</li><li>the content dispatch — <code>accum_content_on_noPending</code>, which stops going
+through <code>content_dispatch_after_close</code> altogether and routes the parked node
+by <code>nodocNodeRoute</code> (<code>hello</code>, <code>a: 1</code>);</li><li>the flow open — <code>accum_flow_open_depth0</code>'s virgin arm, whose collection
+routes by <code>nodocFlowResumeSep</code> and whose key routes by <code>nodocMapRoute</code>
+(<code>[1, 2]</code>, <code>[1]: b</code>).</li></ul><p>Two of the four routes are new (<code>nodocNodeRoute</code>, <code>nodocFlowResumeSep</code>); the
+other two are item 116's <code>nodocMapRoute</code>/<code>nodocMapRouteF</code>, which stood
+nineteen items with no consumer and have four between them now.</p><p><strong>Measured, not asserted.</strong>  A reference walk over the elaborated terms in
+<code>StreamAccum</code>, counting each route constant's occurrences inside its holder,
+gives the A/B: <code>accum_content_on_noPending</code> goes from
+<code>content_dispatch_after_close = 2</code> to <code>nodocNodeRoute = 2</code>;
+<code>accum_flow_open_depth0</code> from <code>topLevelFlowResumeSep = 2</code> to
+<code>topLevelFlowResumeSep = 1, nodocFlowResumeSep = 1</code>; and <code>colon_open_map</code>,
+<code>question_open_map</code>, <code>flowKeyRoute_of_root</code> and <code>content_dispatch_routed</code> each
+gain the <code>nodoc</code> twins beside the <code>root</code> and <code>suffix</code> ones they already carried.</p><p>The <code>implicitContinue</code> application count is UNMOVED at eleven — this item adds
+routes and moves callers, it deletes no site.  The seven bare sites are the
+fallback ARMS of shared lemmas, and an arm goes only when its last caller can
+pay something else; three of the four families that reach them still cannot.</p><p>No runtime file is touched, so every verdict in §1 is the one the pipelines
+already gave.</p><p>§1 is the family at the runtime; §2–§4 are the builds at their types; §5 is
+what remains.</p></div><div class="mod_doc"><h2 id="1-The-four-landings-at-the-runtime" class="markdown-heading">§1 The four landings at the runtime <a class="hover-link" href="#1-The-four-landings-at-the-runtime">#</a></h2><p>Every one of them is the stream's FIRST document, which is the whole of the
+claim: <code>[211]</code>'s <code>single</code> takes it, and <code>single</code>'s <code>l-any-document?</code> slot is
+the one 1c leaves alone.</p></div><div class="mod_doc"><h2 id="2-The-two-new-head-twins" class="markdown-heading">§2 The two new head twins <a class="hover-link" href="#2-The-two-new-head-twins">#</a></h2><p>Both are their suffix twin with <code>[202] l-document-prefix*</code> where the open
+suffix run stood, and <code>[211]</code>'s <code>single</code> where <code>suffixContinue</code> stood.  Neither
+takes a stream: that is the content of "the park has started no document".</p></div><div class="mod_doc"><h2 id="3-The-head-key-context-and-the-cascade-arm-that-spends-it" class="markdown-heading">§3 The head key context, and the cascade arm that spends it <a class="hover-link" href="#3-The-head-key-context-and-the-cascade-arm-that-spends-it">#</a></h2><p><code>keyctx_of_preprocess</code> hands the landed key the STREAM closed at a column-0
+line start — one route, and the over-approximating one.  <code>nodocctx_of_preprocess</code>
+hands it the prefix run instead, and the arm below is the cascade's body
+verbatim: the ctx in, item 116's twins out.</p></div><div class="mod_doc"><h2 id="4-The-park-s-witness-at-each-of-the-four-landings" class="markdown-heading">§4 The park's witness at each of the four landings <a class="hover-link" href="#4-The-park-s-witness-at-each-of-the-four-landings">#</a></h2><p>One field, extended over the landing's own <code>[79] s-l-comments</code> where the
+landing is reached across a break, and spent as it stands where the park IS
+the line start (the flow open's arm).</p></div><div class="mod_doc"><h2 id="5-What-remains" class="markdown-heading">§5 What remains <a class="hover-link" href="#5-What-remains">#</a></h2><p>The face is half real.  Its suffix arm (item 117) and its head arm (this item)
+are both routes now, and its resume arm (item 109) was one already; what is
+still written <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code> is the fallback, and the fallback is still
+<code>rootMapRoute</code>'s implicit continuation.</p><p>Three families reach it and none of them can pay a head:</p><ul><li>the landing skeletons' non-<code>...</code> arms — <code>accum_block_on_closeThenBlock</code> and
+<code>accum_content_pending</code> — where the park that closed HAS started a document;</li><li><code>content_dispatch_after_close</code>'s three remaining callers, two of them
+landings inside an open level (<code>accum_content_on_pendingBlock_indented</code>,
+<code>accum_content_on_pendingMapValue_indented</code>) and one the skeleton again;</li><li><code>accum_flow_open_depth0</code>'s shared <code>main</code>, whose three parks
+(<code>pendingContent</code>, <code>pendingBlockContent</code>, <code>pendingFlow</code>) are the same
+completed-document state.</li></ul><p>For the first two the honest answer is the level they land in — the resume arm,
+which <code>content_dispatch_routed</code> already prefers where the park kept its frames
+— and where no level is open and no <code>...</code> intervened, §9.2 refuses the input
+outright (§1's last two pins).  <del>So what the fallback arm needs is not a fourth
+route but the refutation items 132–134 made available at the scanner, threaded
+to the accumulation as a contradiction rather than carried as a document.  That
+is the next item, and it is what empties the <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code>.</del></p><p><strong>One of them did need a fourth route</strong> (item 137, correcting the sentence
+above).  <code>pendingDocStart</code> is in the first family, and a <code>---</code> park has a
+document that is still OPEN: the node its landing starts is that document's own
+content, not a second document and not a level to resume.  The park has carried
+the route since item 135; <code>StreamMarkerLandingFace</code> pays it at the two landings
+that were still on the fallback.  What is left of the sentence holds for the
+rest — see that file's §5.</p><p><del><code>pendingDirective</code>'s <code>[209]</code> witness</del> and the <code>SLAnyDocument.explicit</code> wrapper
+stand where item 135 left them: the first is a missing witness, the second
+comes off at flip time.  (<strong>The witness is PAID by item 138</strong>; the wrapper still
+comes off at flip time.)</p><p><strong>And the "resume arm" half of the paragraph above is wrong too</strong> (item 139,
+correcting it here where it was written).  Where a level IS open the input is
+not served by the resume arm either: it is a DANGLING run, and
+<code>danglingNodePos?</code> reads the run off the TOKEN ARRAY, so the scanner cannot
+refuse it until the run has been scanned.  The step therefore runs and the
+fallback genuinely serves it.  What holds is the OTHER half — no level open, no
+<code>...</code>, no <code>---</code> — and that is exactly what item 139 refutes; see
+<code>StreamBareDocumentFallback</code> §1 for the split, measured on the real scanner.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

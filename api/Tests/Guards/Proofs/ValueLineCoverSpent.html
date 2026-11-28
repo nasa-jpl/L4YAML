@@ -1,0 +1,56 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ValueLineCoverSpent</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ValueLineCoverSpent";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ValueLineCoverSpent</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ValueLineCoverSpent.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ValueLineCoverSpent" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-value-line-stack-carries-its-cover-DOCS-item-150" class="markdown-heading">The value-line stack carries its cover (DOCS item 150) <a class="hover-link" href="#The-value-line-stack-carries-its-cover-DOCS-item-150">#</a></h1><p>Items 147–149 gave the STREAM lane a cover and taught the dedent landing to
+spend it.  The value-line lane — the frames an open <code>[186]</code> explicit key leaves
+standing, bottomed at the <code>?</code>'s own unpaid value line rather than at the
+finished stream — carried none, on either face.  This item gives it one, and
+the dedent's value-line landing pays it with item 149's lemma verbatim.</p><p><strong>The one thing that does not mirror is the floor.</strong>  The stream faces bottom
+at the stream and carry <code>Floor lo n ks</code>; these bottom at the <code>?</code>, and the <code>?</code>'s
+own level is deliberately NOT one of their frames — resuming there is the
+entry's unpaid value line, not a sibling.  So a cover over these frames cannot
+stand at the <code>?</code>'s floor: at <code>ks = []</code> it would have to name a level that is on
+the stack.  One column above, it is the EMPTY cover, and that is a statement
+about the stack rather than a vacuity — the <code>?</code>'s push put the top at <code>k</code>, so
+nothing stands at or right of <code>k + 1</code>.  Hence <code>Floor lo (n + 1) ks</code> on the park
+and premise faces, and <code>IndentStackCover.covered_nil_of_top_le</code> as the seed.</p><p>§1 is the floor's index, and why <code>n</code> is payable by nobody.  §2 is the two hops.
+§3 is the payment composed and the pack field it lands in.  §4 walks the dedent
+families the value lane is live on.  §5 is the membership split, which item 149
+named as the next punt and which is not one.  §6 is the price.</p></div><div class="mod_doc"><h2 id="1-The-floor-s-index" class="markdown-heading">§1  The floor's index <a class="hover-link" href="#1-The-floor-s-index">#</a></h2><p>A <code>?</code> at column 0 pushes a mapping level there, and the value-line frames below
+it are EMPTY.  A cover over that empty list is false at floor 0 and true at
+floor 1 — so the index the <code>Floor</code> conjunct is stated at decides whether the
+seed exists at all.</p></div><div class="mod_doc"><h2 id="2-The-two-hops" class="markdown-heading">§2  The two hops <a class="hover-link" href="#2-The-two-hops">#</a></h2><p>The chain's hop climbs the index by one and leaves the floor where it is; the
+dedent's hop is item 149's, unchanged — <code>dedent_cover_of_landing</code> reads
+<code>Floor</code>'s WIDTHS half and never its index, which is why the lane's higher index
+rides through it untouched.</p></div><div class="mod_doc"><h2 id="3-The-payment-composed" class="markdown-heading">§3  The payment, composed <a class="hover-link" href="#3-The-payment-composed">#</a></h2><p>The value lane's landing calls <code>dedent_cover_of_landing</code> — item 149's lemma, at
+<code>n + 1</code> — and the result lands in the pack field item 108 opened and item 99
+had always punted.</p></div><div class="mod_doc"><h2 id="4-The-lane-against-the-scanner" class="markdown-heading">§4  The lane, against the scanner <a class="hover-link" href="#4-The-lane-against-the-scanner">#</a></h2><p>The value-line cover reaches a landing that stays INSIDE the outermost open
+level — below that the <code>?</code> itself has been closed and the stream lane is the
+one that answers.  The walk counts pops, pops with the landing's own floor, and
+pops whose landing column is strictly right of the outermost non-sentinel
+level, which is the reach.  Counting all three is what keeps the check from
+passing vacuously on a corpus with no dedent in it.</p></div><div class="mod_doc"><h2 id="5-The-membership-split-is-not-a-punt-the-cover-can-remove" class="markdown-heading">§5  The membership split is not a punt the cover can remove <a class="hover-link" href="#5-The-membership-split-is-not-a-punt-the-cover-can-remove">#</a></h2><p>Item 149 named it as the next one: <code>entryKeyPack_of_dispatch</code>'s dedent runs
+<code>by_cases hmem : FrameLevel.map w ∈ ks</code> and returns <code>KeyPackPunt.dedent</code> when the landing names
+no frame, and <code>preprocess_landing_mem_or_seq</code> derives that membership from the
+cover the branch now holds.  Deriving it would change nothing, and the reason is
+one line of Lean.</p><p><code>KeyPackPunt.dedent</code> takes no argument, so the punt disjunct is inhabited for
+EVERY state.  The branch therefore already returns the pack at exactly the
+inputs where <code>FrameLevel.map w ∈ ks</code> holds, and a derivation of <code>FrameLevel.map w ∈ ks</code> from other facts
+cannot add an input to that set — it can only re-prove what the split already
+decided.  What would move the domain is the opposite change: a PAYLOAD on the
+constructor, so that a consumer holding the cover can refute the punt instead of
+the producer deriving around it.  That is the shape the <code>tab</code> and
+<code>implicitValue</code> reasons already have, and the shape <code>noFrame</code> had before it was
+deleted.</p><p><strong>Item 297 deletes <code>dedent</code>.</strong>  The <code>FrameLevel.map w ∉ ks</code> exit keys a fresh document at the
+landing (items 296/297, row 19's over-approximation), so the constructor has no
+production.  The exhibit below stands on <code>noKeyContext</code>, the nullary reason
+that remains.</p></div><div class="mod_doc"><h2 id="6-The-price-and-what-still-does-not-pay" class="markdown-heading">§6  The price, and what still does not pay <a class="hover-link" href="#6-The-price-and-what-still-does-not-pay">#</a></h2><p>ONE new lemma — <code>IndentStackCover.covered_nil_of_top_le</code>, the seed — and one
+conclusion widened: <code>indicator_cover_at_col</code> now reports the top's two readings
+instead of one, which is where the <code>?</code> producer's payment comes from.  Sixteen
+field shapes gain the cover conjunct, ten of them at <code>n + 1</code> (the park, premise
+and relay faces) and six at the pack's own index.  <code>question_open_map</code> gains a
+premise, and the four faces its producer pays go from <code>ks = []</code> with no stack to
+<code>ks = []</code> with the stack that makes it true.</p><p>What still does not pay: the col-0 park (item 147's residue, at three lanes
+now), the sequence parks, whose two faces carry no cover on either side, and
+<del><code>ResumeKeyCtx</code>, which has no cover slot on either lane</del> — so a landing that
+resumes through it projects both covers away, which is the one projection of
+each that item 149 kept and this item matches.</p><p><strong>Item 151 gave <code>ResumeKeyCtx</code> a slot on each lane</strong> (<code>ResumeCtxCoverSpent</code>) and
+<strong>item 152 paid it from the completed content park</strong> (<code>ContentParkCoverSpent</code>),
+so of the three named above only the col-0 park and the sequence parks stand.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

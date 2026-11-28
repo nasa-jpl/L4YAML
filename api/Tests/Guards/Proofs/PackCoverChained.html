@@ -1,0 +1,55 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.PackCoverChained</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.PackCoverChained";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">PackCoverChained</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/PackCoverChained.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.PackCoverChained" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-pack-carries-the-cover-so-the-chain-does-DOCS-item-148" class="markdown-heading">The pack carries the cover, so the chain does (DOCS item 148) <a class="hover-link" href="#The-pack-carries-the-cover-so-the-chain-does-DOCS-item-148">#</a></h1><p>Item 147 gave <code>pendingMapValue.h_frames</code> a cover and seeded it at the two root
+<code>:</code>/<code>?</code> producers.  What it left was a field that is true and unspendable: every
+cover on it was a root's <code>[k]</code>, and the two implicit producers —
+<code>colon_open_map_implicit</code> and <code>colon_open_map_props</code> — paid <code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code>,
+because what they would inherit rides <code>ImplicitKeyPack</code>, which carried none.  A
+cover that stops at the first nested key is a cover of one park.</p><p>This item makes the hop.  <code>ImplicitKeyPack</code> and <code>PropsKeyPack</code> carry the cover
+beside their resume twins; the key dispatch's NESTED branch conses the landed
+key's own level onto the caller's frames and hands both to the pack; and the <code>:</code>
+that resolves the key pays them into the next park's two frame faces.  A cover
+seeded at a root now reaches a park any number of implicit keys deep.</p><p>Two readings had to be corrected to make that work, and both are measured here.</p><p><strong>The bound.</strong>  Item 147 bounded the floor by the park's own index (<code>lo ≤ n</code>).
+The landing that SPENDS a cover stands below that index — that is what a dedent
+is — so <code>preprocess_landing_mem_or_seq</code>'s <code>lo ≤ s_prep.col</code> is exactly what such
+a bound cannot supply.  <code>IndentStackCover.Floor</code> states both halves: at or below
+the level's own index, and at or below every width the frames name.  Dropping
+the first half is vacuity where the frames are empty; dropping the second is
+unspendability at every dedent.</p><p><strong>The list.</strong>  The cover a pack carries is over <code>FrameLevel.map k :: ks</code> — the key's own level
+included — not over <code>ks</code>.  The two branches that pay reach it from opposite
+sides: a key NESTED below the park opens its level at the <code>:</code> still to come, so
+its width is free (<code>Covered.cons</code>); a key that LANDED on an open level finds
+that level already on the stack and cannot drop it.  One list serves both.</p><p>§1 is the bound.  §2 is the transport across the <code>:</code>.  §3 is the hop, composed.
+§4 checks the transport's own premise against the scanner.  §5 is the price and
+the one branch that still does not pay.</p></div><div class="mod_doc"><h2 id="1-The-floor-s-bound" class="markdown-heading">§1  The floor's bound <a class="hover-link" href="#1-The-floor-s-bound">#</a></h2><p><code>Floor lo n ks</code> is two claims, and each answers a way the other fails.</p></div><div class="mod_doc"><h2 id="2-The-transport-across-the" class="markdown-heading">§2  The transport across the <code>:</code> <a class="hover-link" href="#2-The-transport-across-the">#</a></h2><p><code>scanValuePrepare_cover</code> reports the level a step opens with an existential,
+which is all a step-generic caller can say.  A caller holding the live key holds
+its column, and that is the difference between <code>FrameLevel.map c :: ks</code> for an unknown <code>c</code> and
+the <code>FrameLevel.map k :: ks</code> the frames already name.</p></div><div class="mod_doc"><h2 id="3-The-hop-composed" class="markdown-heading">§3  The hop, composed <a class="hover-link" href="#3-The-hop-composed">#</a></h2><p>The two steps between a park and the next park are a content dispatch (the key)
+and a <code>:</code> dispatch (the value indicator), each with its own preprocessing.
+Neither preprocessing pushes and the content dispatch writes no level, so the
+whole of the carriage is the <code>:</code>.</p></div><div class="mod_doc"><h2 id="4-The-transport-s-premise-against-the-scanner" class="markdown-heading">§4  The transport's premise, against the scanner <a class="hover-link" href="#4-The-transport-s-premise-against-the-scanner">#</a></h2><p><code>scanValuePrepare_cover_key</code> rests on one reading of the machine: with a simple
+key live, the level a <code>:</code> opens stands at the KEY's column and not at the
+cursor's.  The walk below checks exactly that, at every <code>:</code> of every input, and
+counts the states it saw so a future change to the prepare cannot make the check
+vacuous by never reaching a push.</p></div><div class="mod_doc"><h2 id="5-The-price-and-the-one-branch-that-does-not-pay" class="markdown-heading">§5  The price, and the one branch that does not pay <a class="hover-link" href="#5-The-price-and-the-one-branch-that-does-not-pay">#</a></h2><p>The field is stated at <strong>14</strong> places — the two packs, the park's two frame
+faces, the two implicit producers' premises, the two key-dispatch lemmas'
+<code>h_nodeF</code>, their two local build helpers, and the two relays' pair, twice.  The
+transport is <strong>5</strong> <code>h_cov_step</code> helpers, one per lemma that crosses a dispatch,
+and <strong>8</strong> new declarations in <code>IndentStackCover</code> — the <code>:</code>'s three
+(<code>scanValueClearKey_arm</code>, <code>scanValuePrepare_cover_key</code>, <code>scanValue_cover_key</code>),
+<code>Covered.dedup_head</code>, and <code>Floor</code> with its three.</p><p>What pays and what does not, named rather than counted:</p><ul><li><strong>The two root <code>:</code>/<code>?</code> producers</strong> seed, as in item 147, now on both faces.</li><li><strong>The NESTED branch</strong> of both key-dispatch lemmas pays the pack: the landed
+key opens its level at the <code>:</code> still to come, so its width joins the frames
+for free and the floor stays strictly left of it (<code>n &lt; w</code> on that branch).</li><li><strong>Both implicit <code>:</code> producers</strong> spend the pack into the next park's two
+faces.  The chain closes: a cover seeded at a root reaches a park any number
+of implicit keys deep, which is what the field was for.</li><li><strong>The DEDENT branch</strong> does not pay, and the reason is a real one rather than
+an unthreaded premise.  The level the landing popped TO is still on the
+scanner's stack, so the pack's cover there is over <code>FrameLevel.map w :: ks'</code> while the
+caller's is over the whole of <code>ks</code> — and <code>resumeAt</code> drops every width above
+<code>w</code>.  Reading the one as the other wants the stack's SHAPE (<code>Mono</code>, which the
+content lane does not carry), the landing's own floor, and <code>resumeAt</code>'s widths
+as a sublist of the ones they came from — <strong>item 149 corrects the last</strong>: the
+sublist is the half the FLOOR spends, and the COVER spends the opposite
+direction, completeness (see <code>DedentCoverSpent</code> §1).  None of the three is at
+that branch.</li><li><strong>A fresh document's root</strong>, a <strong>sequence park</strong>, and the <strong>flow OPEN</strong> carry
+no stack to inherit and pay <code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code>.  The first two are honest: the
+chain is seeded at the <code>:</code>/<code>?</code> producers, which is where <code>Mono</code> rides.</li></ul><p>So the residue is one branch and three readings, which is what the dedent spend
+(<code>preprocess_landing_mem_or_seq</code> at <code>entryKeyPack_of_dispatch</code>'s dedent) needs
+next, beside item 146's base residue there — <strong>5</strong> declarations, <strong>10</strong> sites.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

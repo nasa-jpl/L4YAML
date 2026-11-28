@@ -1,0 +1,40 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerLandingColumnRefusal</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerLandingColumnRefusal";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerLandingColumnRefusal</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerLandingColumnRefusal.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerLandingColumnRefusal" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="9-2-s-landing-refusal-reads-the-landing-s-COLUMN-DOCS-item-145" class="markdown-heading">§9.2's landing refusal reads the landing's COLUMN (DOCS item 145) <a class="hover-link" href="#9-2-s-landing-refusal-reads-the-landing-s-COLUMN-DOCS-item-145">#</a></h1><p><code>scanNextToken_checkBareDocument</code> (item 132) asked four things of a landing: not
+in flow, the break flag up, a completed node behind the cursor, and <strong>the indent
+stack at the sentinel alone</strong>.  Items 139 and 142–144 spent that refusal at four
+route faces, and each of them recorded the same residue on the way past: with a
+level still open the scanner was clean and only <code>TokenParser</code> refused — item
+143's <code>k:⏎␣␣"a"⏎␣␣[1, 2]</code>, item 144's <code>k:⏎␣␣"x"⏎␣␣b: 2</code>.</p><p>The residue was the fourth conjunct reading the wrong thing.  What makes a
+landing a second bare document is not that no collection is open; it is that
+<strong>the landing stands at no OPEN LEVEL</strong> — so the completed node already fills the
+slot its predecessor offered, and the collection this landing would roll in has
+nowhere to go.  The stack holding the sentinel alone is that condition's special
+case, since every landing column is <code>≥ 0</code> and the sentinel sits at <code>-1</code>.</p><p>This file is the widening's measurement.  §1 types it at the check.  §2 is the
+family it newly refuses, three of them real <code>yaml-test-suite</code> error cases.  §3 is
+the half it still stands aside on.  §4 reads both stack conjuncts at every
+landing of three inputs.  §5 is the proof side — the transport the refutation
+actually rests on, and the narrowing at the four guarded routes.  §6 is what
+remains.</p><p>Both pipelines carry the widening (<code>scanNextTokenIx_checkBareDocument</code> is the
+indexed twin), and every verdict below is <code>scan</code>'s, not a model's.</p></div><div class="mod_doc"><h2 id="1-The-widening-at-the-check-s-own-type" class="markdown-heading">§1  The widening, at the check's own type <a class="hover-link" href="#1-The-widening-at-the-check-s-own-type">#</a></h2><p>The check stands aside on four readings and fires on their conjunction.  The
+stack one is the landing's COLUMN: an open block collection does not by itself
+excuse the landing, its own level does.</p></div><div class="mod_doc"><h2 id="2-The-family-the-widening-newly-refuses" class="markdown-heading">§2  The family the widening newly refuses <a class="hover-link" href="#2-The-family-the-widening-newly-refuses">#</a></h2><p>Every row here was <code>parse-bare</code> before item 145 and is <code>scan-bare</code> now, at the
+SAME line and column: the refusal moves one layer up, it does not appear.  The
+first three are real <code>yaml-test-suite</code> cases, all three of them <code>error</code> tests.</p></div><div class="mod_doc"><h2 id="3-The-half-it-still-stands-aside-on" class="markdown-heading">§3  The half it still stands aside on <a class="hover-link" href="#3-The-half-it-still-stands-aside-on">#</a></h2><p>A landing that RESTS on an open level is a sibling, and those are the hottest
+path in real YAML — item 141's census counted 2273 of 2275 dangling parks
+surviving exactly there.  Nothing below moved.</p></div><div class="mod_doc"><h2 id="4-Both-stack-conjuncts-read-at-every-landing" class="markdown-heading">§4  Both stack conjuncts, read at every landing <a class="hover-link" href="#4-Both-stack-conjuncts-read-at-every-landing">#</a></h2><p><code>readings</code> prints what the check compares: the landing, the stack, whether the
+landing rests on one of its levels, whether preprocessing POPPED to get here,
+the flag, whether the tail completes a value, and the verdict.</p></div><div class="mod_doc"><h2 id="5-The-proof-side" class="markdown-heading">§5  The proof side <a class="hover-link" href="#5-The-proof-side">#</a></h2><p>The refutation reads the check on <code>s_prep</code> but holds the completed tail on the
+PARK, <code>sc</code>, so it needs the park's token array to survive preprocessing.  Item
+139 asked for <code>sc.indents.size ≤ 1</code>, which is one way to know the unwind did
+nothing.  The premise it actually rests on is that the unwind did nothing, and
+the unwind announces that itself: one iteration pops, so a loop that ran left
+the stack shorter.</p></div><div class="mod_doc"><h2 id="6-The-dedent-exemption-paid" class="markdown-heading">§6  The dedent exemption, paid <a class="hover-link" href="#6-The-dedent-exemption-paid">#</a></h2><p><code>preprocess_landing_at_level</code> (item 129) says a landing that popped rests at an
+entry the incoming stack already held, so a landing at NO OPEN LEVEL popped
+nothing — <code>pop</code> and <code>¬ open</code> cannot both hold.  That reading asks for
+<code>IndentStackBase.SentinelBase sc</code>, <code>ScannerState.WellFormed</code>'s sixth conjunct,
+and item 146 threads it: <code>BareLandingFacts</code> carries it, the accumulation carries
+it from <code>mk'</code> down, and the refutation takes the landing's column alone.
+<code><a href="../../.././Tests/Guards/Proofs/AccumIndentBaseCarried.html">Tests/Guards/Proofs/AccumIndentBaseCarried.lean</a></code> pins that thread.</p><p>What the widening buys is the residue every landing item recorded and none could
+close: the INDENTED landing is the scanner's refusal, in both pipelines, so the
+accumulation never sees it.  Item 141's park face is the answer for what a park
+can assert about a run, which is a different question; this input family is
+settled at the scanner.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

@@ -1,0 +1,83 @@
+=== scannertests ===
+=== Scanner & TokenParser Tests (Phase 9) ===
+
+--- Scanner basics ---
+  ✓ empty input scans
+  ✓ empty produces 2 tokens
+  ✓ whitespace only
+  ✓ comment only
+  ✓ streamStart is first
+  ✓ streamEnd is last
+
+--- Plain scalars ---
+  ✓ simple word
+  ✓ plain style
+  ✓ plain with spaces
+
+--- Quoted scalars ---
+  ✓ double-quoted content
+  ✓ double-quoted style
+  ✓ double-quoted newline
+  ✓ single-quoted content
+  ✓ single-quoted style
+  ✓ single-quoted escape
+
+--- Block sequences ---
+  ✓ simple list size
+  ✓ single item
+
+--- Block mappings ---
+  ✓ simple mapping size
+  ✓ mapping key
+  ✓ mapping value
+
+--- Flow collections ---
+  ✓ flow sequence size
+  ✓ flow mapping size
+
+--- Document markers ---
+  ✓ explicit doc start
+  ✓ doc start/end
+
+--- Anchors and aliases ---
+  ✓ anchor scan
+  ✓ alias scan
+
+--- Phase 9 regression: b: x: y ---
+  ✓ b: x: y scan-refused
+  ✓ b: x: y pipeline
+  ✓ b: x: y rejected
+
+--- Escape sequences ---
+  ✓ tab escape
+  ✓ hex escape \x41
+  ✓ unicode \u0041
+
+--- ns-char tightening (BOM / control chars) ---
+  ✓ leading BOM accepted (document prefix)
+  ✓ BOM mid-plain-scalar rejected
+  ✓ control char mid-plain-scalar rejected
+  ✓ BOM after colon rejected
+  ✓ BOM as mapping value rejected
+  ✓ BOM in anchor name rejected
+  ✓ raw BOM in double-quoted accepted (nb-json)
+  ✓ escaped control in double-quoted accepted
+  ✓ control char in literal block scalar rejected
+  ✓ BOM in literal block scalar rejected
+  ✓ clean literal block scalar accepted
+  ✓ control char in comment tolerated (loose by design)
+
+--- Directive strictness (Fix B) ---
+  ✓ directive then content rejected
+  ✓ %TAG then content rejected
+  ✓ reserved directive then content rejected
+  ✓ 2nd-doc orphan at EOF rejected
+  ✓ 2nd-doc orphan before ... rejected
+  ✓ 2nd-doc orphan before content rejected
+  ✓ 2nd-doc directive document accepted
+  ✓ blank line before --- accepted
+  ✓ comment line before --- accepted
+  ✓ % as plain-scalar content accepted
+  ✓ empty version part rejected
+
+=== Results: 55/55 passed ===

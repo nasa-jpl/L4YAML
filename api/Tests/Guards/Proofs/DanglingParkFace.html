@@ -1,0 +1,63 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.DanglingParkFace</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.DanglingParkFace";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">DanglingParkFace</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/DanglingParkFace.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.DanglingParkFace" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-park-s-face-built-and-spent-DOCS-item-157" class="markdown-heading">The park's face, built and spent (DOCS item 157) <a class="hover-link" href="#The-park-s-face-built-and-spent-DOCS-item-157">#</a></h1><p>Item 141 named the face and priced it; item 156 derived the reading the
+producer has to hand over and left the consumer side unnamed.  This item builds
+the consumer side, threads it, and spends it.</p><p>The face is a PREMISE on <code>pendingContent.h_closable</code> and on
+<code>PendingNode.close_with_ssl</code>: a park whose completed node is a §9.2-DANGLING
+run has no <code>[211]</code> reading at all, so the close is offered only to a consumer
+that can say the landing already refused one.  Two readings pay it —
+<code>dangling_none_of_check</code> at a landing that crossed a break, and
+<code>dangling_none_of_eof</code> at end of input — and one lemma transports the
+producer's half across preprocessing (<code>preprocess_danglingPred</code>).</p><p>What it BUYS is <code>bareNodeRoute_or_refused_content</code>: at a content landing off a
+completed node, BOTH halves of item 139's discriminator are now refuted — the
+landing at no open level by <code>bareDocument_refutes_landing</code> (item 139), the
+landing ON one by <code>danglingPark_refutes_route</code> (this item) — so the
+bare-document reading has no input to serve at all.</p><p>§1 is the face at its type, with the gating asymmetry measured.  §2 is the
+transport, with the popping half's witness.  §3 is what the face buys, stated
+as a refutation and counted at the routes.  §4 is item 156's named obstacle,
+dissolved.  §5 is what is left: the property lane.</p></div><div class="mod_doc"><h2 id="1-The-face-and-the-flag-it-is-gated-on" class="markdown-heading">§1  The face, and the flag it is gated on <a class="hover-link" href="#1-The-face-and-the-flag-it-is-gated-on">#</a></h2><p>The two readings that pay it are the two §9.2 checks, and they are not alike:
+the mid-stream one is gated on the break the landing crossed, the end-of-input
+one on nothing.  That is the whole asymmetry, and it is what decides WHERE the
+premise can be discharged.</p></div><div class="mod_doc"><h2 id="2-The-transport-and-why-the-premise-is-a-prevRealIdx-fact" class="markdown-heading">§2  The transport, and why the premise is a <code>prevRealIdx?</code> fact <a class="hover-link" href="#2-The-transport-and-why-the-premise-is-a-prevRealIdx-fact">#</a></h2><p><code>danglingNodePos?</code> is read at the PARK's state; the route is refuted at the
+LANDING's, one preprocessing later.  Three writers stand between them and the
+STACK decides all three: <code>skipToContent</code> writes no token, the save reserves two
+placeholders that <code>prevRealIdx?</code> walks past, and the unwind emits <code>blockEnd</code>.</p><p><code>CompletedTail</code> does NOT survive that third writer — a <code>blockEnd</code> completes no
+value — which is why item 156 stated the producer's premise at the reading it
+spends rather than as a completed tail.  <code>DanglingPred</code> does survive, because a
+<code>blockEnd</code> offers the coming run no slot either.</p></div><div class="mod_doc"><h2 id="3-What-the-face-buys-the-bare-document-route-refuted" class="markdown-heading">§3  What the face buys: the bare-document route, refuted <a class="hover-link" href="#3-What-the-face-buys-the-bare-document-route-refuted">#</a></h2><p>Item 139 halved <code>bareNodeRoute</code>'s domain at the content landing: a completed
+node at NO open level is a second bare document, and
+<code>scanNextToken_checkBareDocument</code> fires AT that landing.  The other half — the
+landing that rests ON an open level — is the DANGLING one, and the check that
+refuses it cannot see the run until it is scanned.  The park carries the
+refusal forward and the face brings it back.</p><p>So for a park that finished a node and a landing that completes a value, the
+route has no domain left at all.  That is one statement and it needs no case
+split on the stack:</p></div><div class="mod_doc"><h3 id="The-route-census-after-the-halving" class="markdown-heading">The route census after the halving <a class="hover-link" href="#The-route-census-after-the-halving">#</a></h3><p><code>bareNodeRoute</code> is applied at three places in <code>StreamAccum</code>, and after this item
+they are three different strengths:</p><table><thead><tr><th>site</th><th>form</th><th>what is left of its domain</th></tr></thead><tbody><tr><td><code>accum_content_pending</code> ×2 (the content landing)</td><td><code>bareNodeRoute_or_refused_content</code></td><td><del>the <code>&amp;</code>/<code>!</code> gate, and</del> parks with no completed tail (item 165)</td></tr><tr><td><code>accum_block_on_closeThenBlock</code> (the block landing)</td><td><code>bareNodeRoute_or_refused</code></td><td><del>item 139's <code>h_op = true</code> half, whole</del> <del>the open sequence's next entry, and parks with no completed tail (item 166)</del> <del>the open sequence's next entry where NO PARK NAMES it, and parks with no completed tail (item 167)</del> the open sequence's next entry where no park names it — which after item 168 means the landings crossing TWO open mapping levels, the compact cascade carrying one width — and parks with no completed tail</td></tr><tr><td><code>content_dispatch_after_close</code> (row 19's 1c)</td><td><code>bareNodeRoute</code></td><td>a ROUTE, not a refutation (item 156)</td></tr></tbody></table><p>The <code>[210]</code> constructor flip still reports FIVE errors, at the same five lemma
+definitions — <code>topLevelFlowResumeSep</code>, <code>rootMapRoute</code>, <code>rootMapRouteF</code>,
+<code>bareNodeRoute</code> and <code>structural_dispatch_to_pending</code>.  The routes have not
+moved; their DOMAINS have.</p></div><div class="mod_doc"><h2 id="4-Item-156-s-named-obstacle-dissolved" class="markdown-heading">§4  Item 156's named obstacle, dissolved <a class="hover-link" href="#4-Item-156-s-named-obstacle-dissolved">#</a></h2><p>Item 156 recorded <code>accum_block_pending</code> as the face's one obstacle, and named
+two repairs: move its <code>h_close_pending</code> into the arms that spend it, or stop
+<code>accum_block_on_closeThenBlock</code>'s <code>:</code> fallback taking an unconditional stream.
+Neither was needed, and the reason is precise.</p><p>The premise RIDES with the closure — <code>h_close_pending</code> has the face in its own
+type — so the <code>have</code> before the case split costs nothing, and the premise is
+discharged where the close is SPENT.  And <code>accum_block_on_closeThenBlock</code> spends
+it in exactly one place: the branch where preprocessing produced a landing, and
+there <code>landing_or_park_ska</code> supplies the flag.  The no-break <code>:</code> takes a
+different parameter, <code>h_stream_fallback</code>, and never reaches the park's close.</p><p>Item 141's wall is real about the shape it measured — a DISJUNCT on the
+conclusion has to be discharged wherever the conclusion is used — and empty
+about the shape item 156 chose.  The witness makes that concrete:</p></div><div class="mod_doc"><h2 id="5-What-is-left-the-property-lane" class="markdown-heading">§5  What is left: the property lane <a class="hover-link" href="#5-What-is-left-the-property-lane">#</a></h2><p>The gate's right disjunct is the whole remaining domain of the content
+landing's route, and it names the next item exactly: <code>&amp;</code> and <code>!</code> park as
+<code>pendingProps</code>, which carries its stream route as a FIELD and has no face.</p><p><del>The lane is refutable — <code>danglingNodePos?</code> reads a <code>[96]</code> property run as a
+node run, so a run behind a completed node at an open level is dangling by the
+same reading, and the scanner already refuses all three shapes below.  What is
+missing is the constructor's own premise and the producer lemma behind it
+(<code>dispatchContent_tokens_push</code>'s property twin).</del></p><p><strong>Item 158 struck that.</strong>  The producer lemma landed and the refutation is
+character-uniform now, so the four witnesses below are refused as a theorem
+rather than as a measurement.  But "the scanner already refuses" is true only
+of the BLOCK-bodied lane: a property run whose body is a flow collection scans
+CLEAN (<code>a: 1⏎&amp;p [b]</code>), so the field cannot simply be added.  The lane's two
+halves, and what the second one costs, are measured in
+<code><a href="../../.././Tests/Guards/Proofs/PropsParkDangling.html">Tests/Guards/Proofs/PropsParkDangling.lean</a></code>.</p><p><strong>And item 159 closed the second half.</strong>  <code>[161] ns-flow-node</code> offers a flow
+collection where a scalar stands, so <code>trailingNodeRun?</code> reads a trailing close
+back to its matching open and <code>a: 1⏎&amp;p [b]</code> is a scanner error at <code>1,0</code> now —
+the two halves are one lane again.  What is still missing is a premise shape
+that relays through a PROPERTY push; see
+<code><a href="../../.././Tests/Guards/Proofs/FlowRunDanglingClosed.html">Tests/Guards/Proofs/FlowRunDanglingClosed.lean</a></code> §5.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

@@ -1,0 +1,53 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerLandedSiblingResumes</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerLandedSiblingResumes";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerLandedSiblingResumes</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerLandedSiblingResumes.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerLandedSiblingResumes" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="A-landed-sibling-after-COMPLETED-content-resumes-its-level-DOCS-item-109" class="markdown-heading">A landed sibling after COMPLETED content resumes its level (DOCS item 109) <a class="hover-link" href="#A-landed-sibling-after-COMPLETED-content-resumes-its-level-DOCS-item-109">#</a></h1><p>Item 108 split the sibling family in two and paid one half.  A landing that
+meets a park still AWAITING a node reaches <code>entryKeyPack_of_dispatch</code>'s dedent
+branch, which pops the frames; a landing that meets COMPLETED content does not
+reach that branch at all.  It goes through <code>accum_content_pending</code>'s shared
+landing skeleton (<code>h_defer_split</code>), which closes the park with <code>close_with_ssl</code>
+and hands <code>content_dispatch_after_close</code> a ROOT key context — so the landed key
+opened a fresh <code>[187] l+block-mapping</code> under <code>[211]</code>'s <code>implicitContinue</code>,
+which is a document the parser never starts.  That is row 19's third
+over-approximation, and it is why <code>?⏎  a: b⏎  c: d⏎: - w</code> was not closed.</p><p>This item gives the skeleton the frames.  <code>pendingContent</code> gains the two faces
+the value completion can already state — the stream-bottomed stack and the
+<code>?</code>-frame-bottomed one — <code>resumectx_of_landing</code> reads the landing at the
+ENTRIES level, and <code>content_dispatch_routed</code> prefers that reading where it
+exists.  Then the landed key's entry is the resumed level's next element
+(<code>resumeMapRoute</code>), the levels below it stand ready for the landing after that
+(<code>resumeMapRouteF</code>), and the <code>?</code> entry is still open when its <code>: - w</code> line
+arrives.</p><p>Nothing about the two new fields makes the old ones weaker: <code>h_closable</code> is the
+stream face's <code>ResumeFrames.close</code> and <code>h_vpack</code> is the value face's, which §3
+checks.</p><p>§1 pins the family at the runtime; §2–§5 are the payment at its types; §6 is the
+discrimination — what the resume route does NOT need — and §7 is what the item
+does not close.</p></div><div class="mod_doc"><h2 id="2-The-resumed-route-at-its-type" class="markdown-heading">§2 The resumed route, at its type <a class="hover-link" href="#2-The-resumed-route-at-its-type">#</a></h2><p><code>[195]</code>'s tail is <code>(s-indent(k) ns-l-block-map-entry(k))*</code>, so the landed key's
+entry is that tail's FIRST element and everything below the level closes with
+<code>ResumeFrames.close</code>.  No document is started.</p></div><div class="mod_doc"><h2 id="3-The-two-new-fields-SUBSUME-the-two-closes-they-ride-beside" class="markdown-heading">§3 The two new fields SUBSUME the two closes they ride beside <a class="hover-link" href="#3-The-two-new-fields-SUBSUME-the-two-closes-they-ride-beside">#</a></h2><p>This is why <code>pendingContent</code>'s <code>h_closable</code> and <code>h_vpack</code> do not move: each is
+its face's <code>ks</code>-closed reading.  A park that pays a frames face therefore owes
+nothing new, and a park that punts loses nothing.</p></div><div class="mod_doc"><h2 id="4-The-park-s-payment-the-SAME-node-both-closures-wrap" class="markdown-heading">§4 The park's payment: the SAME node both closures wrap <a class="hover-link" href="#4-The-park-s-payment-the-SAME-node-both-closures-wrap">#</a></h2><p>The producer hands the value node — completed on the landing's
+<code>[79] s-l-comments</code> — to the pending's transport faces instead of to their
+closes.  Nothing is re-derived, which is what makes the field free at the three
+value-completion sites and <code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code> everywhere else.</p></div><div class="mod_doc"><h2 id="5-The-landing-s-context-read-at-the-entries-level" class="markdown-heading">§5 The landing's context, read at the entries level <a class="hover-link" href="#5-The-landing-s-context-read-at-the-entries-level">#</a></h2><p><code>resumectx_of_landing</code> takes the landing the caller already closed with — not a
+fresh derivation of it — because the frames are stated over the park's own
+<code>[79] s-l-comments</code> and a second witness could not be joined to the first.</p></div><div class="mod_doc"><h2 id="6-The-discrimination-what-the-resumed-route-does-NOT-need" class="markdown-heading">§6 The discrimination: what the resumed route does NOT need <a class="hover-link" href="#6-The-discrimination-what-the-resumed-route-does-NOT-need">#</a></h2><p><code>rootMapRoute</code> takes <code>SLYamlStream sp_start sp_land</code> — the stream CLOSED at the
+landing — and that hypothesis is exactly what forces <code>[211]</code>'s
+<code>implicitContinue</code>: having closed, the only way back in is a new document.  The
+resumed route takes no such hypothesis.  The examples in §2 are already stated
+without one; this one says it the other way round, by deriving <code>rootMapRoute</code>'s
+own conclusion from frames alone in a context where no closed stream is
+available at the landing at all.</p></div><div class="mod_doc"><h2 id="7-What-this-item-does-NOT-close" class="markdown-heading">§7 What this item does NOT close <a class="hover-link" href="#7-What-this-item-does-NOT-close">#</a></h2><ul><li><code>pendingBlockContent</code> — the entry-parked completed content — keeps the root
+context; its own producers' payments are not made here.  (CLOSED by item 110,
+which needed no new field: <code>h_closeF</code> was already sized at the entry level.
+<del><code>- a: b⏎  c: d</code></del> was the wrong input to name for it — that one parks
+<code>pendingContent</code>, the <code>b</code> being a completed mapping value; the entry-parked
+family is <code>k:⏎  - a⏎b: 2</code>.)</li><li>The PROPS landing.  <code>content_dispatch_routed</code>'s <code>h_props_key</code> still reads
+only the root key context, so a landed <code>&amp;p c: d</code> sibling re-opens at the root
+as before; <code>PropsKeyPack</code> carries no resume twin to spend.  (CLOSED by item
+111: the pack gains items 99/108's twins and <code>h_props_key</code> resumes first.)</li><li>The block-scalar value arms of the two <code>accum_content_on_pendingMapValue</code>
+(one lemma since item 179)
+lemmas punt their frames: the node there is complete at the park rather than
+at the landing, so the transport face does not apply unchanged.  (CLOSED by
+item 112 — item 95's absorption closure re-reads the node TO the landing and
+every face takes the re-read.  <del><code>? a: |⏎  x⏎  c: d</code></del> was also mis-indented
+for the family: the body must clear its entry's width, and as spelled the
+input is refused; the honest spelling is <code>? a: |⏎    x⏎  c: d⏎: v</code>.)</li><li>The construction sites themselves.  <code>SLYamlStream.implicitContinue</code> still
+takes <code>GOpt SLAnyDocument</code> where <code>[211]</code> writes <code>l-explicit-document?</code> after a
+prefix-only continuation; tightening the CONSTRUCTOR is row 19's own step, and
+what this item removes is the reason the landing skeleton needed it.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

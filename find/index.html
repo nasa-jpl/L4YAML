@@ -1,0 +1,1764 @@
+<!DOCTYPE html><html><head><script>(function(){
+  const {protocol:proto, host:hostName, pathname:path, search:srch, hash:hsh} = window.location;
+  if (!(path.endsWith("/") || path.endsWith(".html"))) {
+    window.location.replace(`${proto}//${hostName}${path}/${srch}${hsh}`);
+  }
+})()</script><script>// Enable TypeScript checking.
+// @ts-check
+
+// Applies a saved table-of-contents width before the first paint.
+//
+// This is a tiny inline counterpart to toc-resize.js: it runs in the page head so that
+// returning desktop readers do not see the default width flash to their saved width.
+// It only records the width in the --verso-toc-user-width custom property; the
+// stylesheet clamps it and ignores it on mobile, and toc-resize.js then takes over the
+// interactive resizing. Keep the storage key in sync with toc-resize.js.
+
+(function () {
+    try {
+        const saved = localStorage.getItem("verso-toc-width");
+        // Parse to a number (as toc-resize.js does) and write that back, so a stored
+        // value with stray whitespace becomes a valid length rather than `" 420 px"`.
+        const width = saved === null ? NaN : Number(saved);
+        if (Number.isFinite(width)) {
+            document.documentElement.style.setProperty("--verso-toc-user-width", `${width}px`);
+        }
+    } catch (_) {
+        // Leave the default width in place when local storage is unavailable.
+    }
+})();
+</script><base href="./../"/><meta charset="utf-8"/><meta name="viewport" content="height=device-height, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"/><title>Cross-Reference Redirection</title><link rel="stylesheet" href="book.css"/><link rel="stylesheet" href="verso-vars.css"/><script defer="defer" src="-verso-search/elasticlunr.min.js"></script><script defer="defer" src="-verso-search/fuzzysort.min.js"></script><script defer="defer" src="-verso-search/searchIndex.js"></script><script defer="defer" src="-verso-search/search-config.js"></script><script type="module" src="-verso-search/search-init.js"></script><link rel="stylesheet" href="-verso-search/search-box.css"/><link rel="stylesheet" href="-verso-search/search-page.css"/><link rel="stylesheet" href="-verso-search/search-highlight.css"/><link rel="stylesheet" href="-verso-search/domain-display.css"/><script src="-verso-search/search-highlight.js" defer="defer"></script><script src="toc-resize.js" defer="defer"></script><script src="-verso-data/katex/katex.js" defer="defer"></script><script src="-verso-data/katex/math.js" defer="defer"></script><link rel="stylesheet" href="-verso-data/katex/katex.css"/><style>
+table.tabular {
+  margin: auto;
+  border-spacing: 1rem;
+}
+table.tabular.left-align {
+  margin-right: auto;
+  margin-left: 0;
+}
+table.tabular.center-align {
+  margin: auto;
+}
+table.tabular.right-align {
+  margin-left auto;
+  margin-right: 0;
+}
+table.tabular td, table.tabular th {
+  text-align: left;
+  vertical-align: top;
+}
+table.tabular td > p:first-child, table.tabular th > p:first-child {
+  margin-top: 0;
+}
+table.tabular td > p:last-child, table.tabular th > p:first-child {
+  margin-bottom: 0;
+}
+</style><style>
+    main .theIndex {
+      padding-left: 0;
+      font-family: var(--verso-text-font-family);
+    }
+
+    main .theIndex nav {
+      position: sticky;
+      top: var(--verso-header-height);
+      background: white;
+      font-family: var(--verso-structure-font-family);
+    }
+
+    main .theIndex [id] {
+      /* This needs the combined height of the index header and the page header. We
+         know the height of the page header, but the index header height varies, so
+         we use the maximum height it gets which also works well for readers with
+         wide screens */
+      scroll-margin-top: calc(var(--verso-header-height) + 7.5rem);
+    }
+
+    @media screen and (max-width: 700px) {
+      /* On mobile, the sticky index takes up half the screen. */
+      main .theIndex nav {
+        position: static;
+      }
+
+      main .theIndex [id] {
+        /* On mobile, the index header is not sticky, so we just need to
+        be below the page header. */
+        scroll-margin-top: var(--verso-header-height);
+      }
+    }
+
+    main .theIndex nav ol {
+      padding: 0;
+    }
+
+    main .theIndex nav ol li {
+      display: inline-block;
+    }
+
+    main .theIndex nav ol li a {
+      /* Padding instead of margin to have a bigger click target */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    /* Increase the size of the touch target on phones */
+    @media screen and (max-width: 700px) {
+      main .theIndex nav ol li a {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+    }
+
+    main .theIndex nav ol li:first-child a {
+      padding-left: 0;
+    }
+
+    main .theIndex nav ol li + li:before {
+      content: "|";
+    }
+
+    main .theIndex h1,
+    main .theIndex h2,
+    main .theIndex h3,
+    main .theIndex h4,
+    main .theIndex h5,
+    main .theIndex h6 {
+      margin-top: 0;
+    }
+
+    main .theIndex ol {
+      list-style-type: none;
+    }
+
+    main .theIndex .division > ol {
+      padding-left: 0;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      overflow-wrap: break-word;
+    }
+
+   main .theIndex .division > ol > li {
+      margin-bottom: 0.5rem;
+    }
+
+    main .theIndex .division ol ol {
+      padding-left: 1rem;
+    }
+
+    main .theIndex .division {
+      break-inside: avoid;
+      counter-reset: none;
+      max-width: none;
+      width: auto;
+    }
+    </style><script>window.xref = {"Verso.Genre.Manual.section":
+ {"title": "Sections or chapters of the manual",
+  "description": null,
+  "contents":
+  {"zero-axiom":
+   [{"id": "zero-axiom",
+     "data":
+     {"title": "Zero-Axiom Policy",
+      "shortTitle": null,
+      "sectionNum": "3.8.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Zero-Axiom Policy", "shortTitle": null, "number": "8"}]},
+     "address": "/Verification/Zero-Axiom-Policy/"}],
+   "verification":
+   [{"id": "verification",
+     "data":
+     {"title": "Verification",
+      "shortTitle": null,
+      "sectionNum": "3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/"}],
+   "type-system":
+   [{"id": "type-system",
+     "data":
+     {"title": "Type System",
+      "shortTitle": null,
+      "sectionNum": "2.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Type System", "shortTitle": null, "number": "3"}]},
+     "address": "/Architecture/Type-System/"}],
+   "token-types":
+   [{"id": "token-types",
+     "data":
+     {"title": "Token Types",
+      "shortTitle": null,
+      "sectionNum": "2.1.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Scanner (Lexical Layer)", "shortTitle": null, "number": "1"},
+       {"title": "Token Types", "shortTitle": null, "number": "1"}]},
+     "address": "/Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/"}],
+   "token-parser":
+   [{"id": "token-parser",
+     "data":
+     {"title": "Token Parser (Syntactic Layer)",
+      "shortTitle": null,
+      "sectionNum": "2.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Token Parser (Syntactic Layer)",
+        "shortTitle": null,
+        "number": "2"}]},
+     "address": "/Architecture/Token-Parser-_LPAR_Syntactic-Layer_RPAR_/"}],
+   "three-layer-strategy":
+   [{"id": "three-layer-strategy",
+     "data":
+     {"title": "Three-Layer Strategy",
+      "shortTitle": null,
+      "sectionNum": "3.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Three-Layer Strategy", "shortTitle": null, "number": "1"}]},
+     "address": "/Verification/Three-Layer-Strategy/"}],
+   "threat-model":
+   [{"id": "threat-model",
+     "data":
+     {"title": "Threat Model",
+      "shortTitle": null,
+      "sectionNum": "4.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Security", "shortTitle": null, "number": "4"},
+       {"title": "Threat Model", "shortTitle": null, "number": "1"}]},
+     "address": "/Security/Threat-Model/"}],
+   "thm-soundness":
+   [{"id": "thm-soundness",
+     "data":
+     {"title": "Soundness",
+      "shortTitle": null,
+      "sectionNum": "3.2.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Soundness", "shortTitle": null, "number": "4"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-scanner":
+   [{"id": "thm-scanner",
+     "data":
+     {"title": "Scanner Correctness",
+      "shortTitle": null,
+      "sectionNum": "3.2.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Scanner Correctness", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-roundtrip":
+   [{"id": "thm-roundtrip",
+     "data":
+     {"title": "Round-Trip Properties",
+      "shortTitle": null,
+      "sectionNum": "3.2.5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Round-Trip Properties", "shortTitle": null, "number": "5"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-pipeline":
+   [{"id": "thm-pipeline",
+     "data":
+     {"title": "Pipeline Composition",
+      "shortTitle": null,
+      "sectionNum": "3.2.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Pipeline Composition", "shortTitle": null, "number": "1"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "thm-parser":
+   [{"id": "thm-parser",
+     "data":
+     {"title": "Parser Correctness",
+      "shortTitle": null,
+      "sectionNum": "3.2.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"},
+       {"title": "Parser Correctness", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "theorem-graphs-values":
+   [{"id": "theorem-graphs-values",
+     "data":
+     {"title": "Values — Soundness",
+      "shortTitle": null,
+      "sectionNum": "3.4.5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Values — Soundness", "shortTitle": null, "number": "5"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-surface-coupling":
+   [{"id": "theorem-graphs-surface-coupling",
+     "data":
+     {"title": "Surface Coupling",
+      "shortTitle": null,
+      "sectionNum": "3.4.8.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Surface Coupling", "shortTitle": null, "number": "8"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-scanner":
+   [{"id": "theorem-graphs-scanner",
+     "data":
+     {"title": "Scanner",
+      "shortTitle": null,
+      "sectionNum": "3.4.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Scanner", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-roundtrip":
+   [{"id": "theorem-graphs-roundtrip",
+     "data":
+     {"title": "Roundtrip",
+      "shortTitle": null,
+      "sectionNum": "3.4.6.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Roundtrip", "shortTitle": null, "number": "6"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-production":
+   [{"id": "theorem-graphs-production",
+     "data":
+     {"title": "Grammar Production",
+      "shortTitle": null,
+      "sectionNum": "3.4.7.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Grammar Production", "shortTitle": null, "number": "7"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-pipeline":
+   [{"id": "theorem-graphs-pipeline",
+     "data":
+     {"title": "Pipeline Composition",
+      "shortTitle": null,
+      "sectionNum": "3.4.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Pipeline Composition", "shortTitle": null, "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-parser":
+   [{"id": "theorem-graphs-parser",
+     "data":
+     {"title": "Parser",
+      "shortTitle": null,
+      "sectionNum": "3.4.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Parser", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs-end-to-end":
+   [{"id": "theorem-graphs-end-to-end",
+     "data":
+     {"title": "End-to-End Correctness",
+      "shortTitle": null,
+      "sectionNum": "3.4.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "End-to-End Correctness", "shortTitle": null, "number": "4"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "theorem-graphs":
+   [{"id": "theorem-graphs",
+     "data":
+     {"title": "What L4YAML Proves",
+      "shortTitle": null,
+      "sectionNum": "3.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "testing":
+   [{"id": "testing",
+     "data":
+     {"title": "Testing",
+      "shortTitle": null,
+      "sectionNum": "7.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Testing", "shortTitle": null, "number": "7"}]},
+     "address": "/Testing/"}],
+   "test-suites":
+   [{"id": "test-suites",
+     "data":
+     {"title": "Test Suites",
+      "shortTitle": null,
+      "sectionNum": "7.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Testing", "shortTitle": null, "number": "7"},
+       {"title": "Test Suites", "shortTitle": null, "number": "2"}]},
+     "address": "/Testing/Test-Suites/"}],
+   "test-results":
+   [{"id": "test-results",
+     "data":
+     {"title": "Test Results",
+      "shortTitle": null,
+      "sectionNum": "8.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"}]},
+     "address": "/Test-Results/"}],
+   "suite-coverage-results":
+   [{"id": "suite-coverage-results",
+     "data":
+     {"title": "yaml-test-suite Coverage",
+      "shortTitle": null,
+      "sectionNum": "8.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"},
+       {"title": "yaml-test-suite Coverage",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Test-Results/yaml-test-suite-Coverage/"}],
+   "spec-coverage":
+   [{"id": "spec-coverage",
+     "data":
+     {"title": "Specification Coverage",
+      "shortTitle": null,
+      "sectionNum": "7.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Testing", "shortTitle": null, "number": "7"},
+       {"title": "Specification Coverage", "shortTitle": null, "number": "1"}]},
+     "address": "/Testing/Specification-Coverage/"}],
+   "security-verification":
+   [{"id": "security-verification",
+     "data":
+     {"title": "Verification of Security Properties",
+      "shortTitle": null,
+      "sectionNum": "4.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Security", "shortTitle": null, "number": "4"},
+       {"title": "Verification of Security Properties",
+        "shortTitle": null,
+        "number": "4"}]},
+     "address": "/Security/Verification-of-Security-Properties/"}],
+   "security":
+   [{"id": "security",
+     "data":
+     {"title": "Security",
+      "shortTitle": null,
+      "sectionNum": "4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Security", "shortTitle": null, "number": "4"}]},
+     "address": "/Security/"}],
+   "scanner":
+   [{"id": "scanner",
+     "data":
+     {"title": "Scanner (Lexical Layer)",
+      "shortTitle": null,
+      "sectionNum": "2.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Scanner (Lexical Layer)",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/"}],
+   "rust-api":
+   [{"id": "rust-api",
+     "data":
+     {"title": "Rust API",
+      "shortTitle": null,
+      "sectionNum": "5.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "FFI Bindings", "shortTitle": null, "number": "5"},
+       {"title": "Rust API", "shortTitle": null, "number": "4"}]},
+     "address": "/FFI-Bindings/Rust-API/"}],
+   "runtime-tests":
+   [{"id": "runtime-tests",
+     "data":
+     {"title": "Layer 3: Runtime Tests",
+      "shortTitle": null,
+      "sectionNum": "3.1.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Three-Layer Strategy", "shortTitle": null, "number": "1"},
+       {"title": "Layer 3: Runtime Tests", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/Three-Layer-Strategy/"}],
+   "running-tests":
+   [{"id": "running-tests",
+     "data":
+     {"title": "Running Tests",
+      "shortTitle": null,
+      "sectionNum": "7.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Testing", "shortTitle": null, "number": "7"},
+       {"title": "Running Tests", "shortTitle": null, "number": "3"}]},
+     "address": "/Testing/Running-Tests/"}],
+   "python-ffi-results":
+   [{"id": "python-ffi-results",
+     "data":
+     {"title": "Python FFI Tests",
+      "shortTitle": null,
+      "sectionNum": "8.4.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"},
+       {"title": "FFI Test Results", "shortTitle": null, "number": "4"},
+       {"title": "Python FFI Tests", "shortTitle": null, "number": "1"}]},
+     "address": "/Test-Results/FFI-Test-Results/"}],
+   "python-api":
+   [{"id": "python-api",
+     "data":
+     {"title": "Python API",
+      "shortTitle": null,
+      "sectionNum": "5.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "FFI Bindings", "shortTitle": null, "number": "5"},
+       {"title": "Python API", "shortTitle": null, "number": "3"}]},
+     "address": "/FFI-Bindings/Python-API/"}],
+   "proof-patterns":
+   [{"id": "proof-patterns",
+     "data":
+     {"title": "Proof Engineering Patterns",
+      "shortTitle": null,
+      "sectionNum": "3.7.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Proof Engineering Patterns",
+        "shortTitle": null,
+        "number": "7"}]},
+     "address": "/Verification/Proof-Engineering-Patterns/"}],
+   "proof-modules":
+   [{"id": "proof-modules",
+     "data":
+     {"title": "Key Proof Modules",
+      "shortTitle": null,
+      "sectionNum": "3.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Proof Modules", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/Key-Proof-Modules/"}],
+   "presets":
+   [{"id": "presets",
+     "data":
+     {"title": "Preset Configurations",
+      "shortTitle": null,
+      "sectionNum": "4.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Security", "shortTitle": null, "number": "4"},
+       {"title": "Preset Configurations", "shortTitle": null, "number": "3"}]},
+     "address": "/Security/Preset-Configurations/"}],
+   "parser-limits":
+   [{"id": "parser-limits",
+     "data":
+     {"title": "ParserLimits",
+      "shortTitle": null,
+      "sectionNum": "4.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Security", "shortTitle": null, "number": "4"},
+       {"title": "ParserLimits", "shortTitle": null, "number": "2"}]},
+     "address": "/Security/ParserLimits/"}],
+   "parse-sound-shallow":
+   [{"id": "parse-sound-shallow",
+     "data":
+     {"title": "parse_sound_shallow  — fibration-hidden",
+      "shortTitle": null,
+      "sectionNum": "3.6.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"},
+       {"title": "parse_sound_shallow  — fibration-hidden",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
+   "parse-sound-deep":
+   [{"id": "parse-sound-deep",
+     "data":
+     {"title": "parse_sound_deep  — fibration-aligned",
+      "shortTitle": null,
+      "sectionNum": "3.6.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"},
+       {"title": "parse_sound_deep  — fibration-aligned",
+        "shortTitle": null,
+        "number": "2"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
+   "overview":
+   [{"id": "overview",
+     "data":
+     {"title": "Overview",
+      "shortTitle": null,
+      "sectionNum": "1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Overview", "shortTitle": null, "number": "1"}]},
+     "address": "/Overview/"}],
+   "module-organization":
+   [{"id": "module-organization",
+     "data":
+     {"title": "Module Organization",
+      "shortTitle": null,
+      "sectionNum": "2.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Module Organization", "shortTitle": null, "number": "4"}]},
+     "address": "/Architecture/Module-Organization/"}],
+   "lean-test-results":
+   [{"id": "lean-test-results",
+     "data":
+     {"title": "Lean Test Suites",
+      "shortTitle": null,
+      "sectionNum": "8.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"},
+       {"title": "Lean Test Suites", "shortTitle": null, "number": "2"}]},
+     "address": "/Test-Results/Lean-Test-Suites/"}],
+   "key-theorems":
+   [{"id": "key-theorems",
+     "data":
+     {"title": "Key Theorems",
+      "shortTitle": null,
+      "sectionNum": "3.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Key Theorems", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Key-Theorems/"}],
+   "index":
+   [{"id": "index",
+     "data":
+     {"title": "Index",
+      "shortTitle": null,
+      "sectionNum": null,
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Index", "shortTitle": null, "number": null}]},
+     "address": "/Index/"}],
+   "import-graph":
+   [{"id": "import-graph",
+     "data":
+     {"title": "Import Graph",
+      "shortTitle": null,
+      "sectionNum": "2.5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Import Graph", "shortTitle": null, "number": "5"}]},
+     "address": "/Architecture/Import-Graph/"}],
+   "formal-proofs":
+   [{"id": "formal-proofs",
+     "data":
+     {"title": "Layer 1: Machine-Checked Proofs",
+      "shortTitle": null,
+      "sectionNum": "3.1.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Three-Layer Strategy", "shortTitle": null, "number": "1"},
+       {"title": "Layer 1: Machine-Checked Proofs",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/Three-Layer-Strategy/"}],
+   "fibration-worked-example":
+   [{"id": "fibration-worked-example",
+     "data":
+     {"title": "Fibration Gap — Worked Example",
+      "shortTitle": null,
+      "sectionNum": "3.6.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
+   "fibration-gap":
+   [{"id": "fibration-gap",
+     "data":
+     {"title": "Mind the Fibration Gap",
+      "shortTitle": null,
+      "sectionNum": "3.5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "fibration-confirmation":
+   [{"id": "fibration-confirmation",
+     "data":
+     {"title": "Chain-Analysis Confirmation",
+      "shortTitle": null,
+      "sectionNum": "3.6.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Fibration Gap — Worked Example",
+        "shortTitle": null,
+        "number": "6"},
+       {"title": "Chain-Analysis Confirmation",
+        "shortTitle": null,
+        "number": "3"}]},
+     "address": "/Verification/Fibration-Gap-___-Worked-Example/"}],
+   "ffi-test-results":
+   [{"id": "ffi-test-results",
+     "data":
+     {"title": "FFI Test Results",
+      "shortTitle": null,
+      "sectionNum": "8.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"},
+       {"title": "FFI Test Results", "shortTitle": null, "number": "4"}]},
+     "address": "/Test-Results/FFI-Test-Results/"}],
+   "ffi-graph":
+   [{"id": "ffi-graph",
+     "data":
+     {"title": "Dependency Graph",
+      "shortTitle": null,
+      "sectionNum": "5.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "FFI Bindings", "shortTitle": null, "number": "5"},
+       {"title": "Dependency Graph", "shortTitle": null, "number": "1"}]},
+     "address": "/FFI-Bindings/Dependency-Graph/"}],
+   "ffi":
+   [{"id": "ffi",
+     "data":
+     {"title": "FFI Bindings",
+      "shortTitle": null,
+      "sectionNum": "5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "FFI Bindings", "shortTitle": null, "number": "5"}]},
+     "address": "/FFI-Bindings/"}],
+   "engineering-rule":
+   [{"id": "engineering-rule",
+     "data":
+     {"title": "The Engineering Rule",
+      "shortTitle": null,
+      "sectionNum": "3.5.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "The Engineering Rule", "shortTitle": null, "number": "4"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "diagnostic-results":
+   [{"id": "diagnostic-results",
+     "data":
+     {"title": "Diagnostic Checks",
+      "shortTitle": null,
+      "sectionNum": "8.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"},
+       {"title": "Diagnostic Checks", "shortTitle": null, "number": "3"}]},
+     "address": "/Test-Results/Diagnostic-Checks/"}],
+   "design-decisions":
+   [{"id": "design-decisions",
+     "data":
+     {"title": "Key Design Decisions",
+      "shortTitle": null,
+      "sectionNum": "1.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Overview", "shortTitle": null, "number": "1"},
+       {"title": "Key Design Decisions", "shortTitle": null, "number": "2"}]},
+     "address": "/Overview/Key-Design-Decisions/"}],
+   "cross-lang-results":
+   [{"id": "cross-lang-results",
+     "data":
+     {"title": "Cross-Language Comparison",
+      "shortTitle": null,
+      "sectionNum": "8.4.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Test Results", "shortTitle": null, "number": "8"},
+       {"title": "FFI Test Results", "shortTitle": null, "number": "4"},
+       {"title": "Cross-Language Comparison",
+        "shortTitle": null,
+        "number": "2"}]},
+     "address": "/Test-Results/FFI-Test-Results/"}],
+   "compile-time-guards":
+   [{"id": "compile-time-guards",
+     "data":
+     {"title": "Layer 2: Compile-Time Guards",
+      "shortTitle": null,
+      "sectionNum": "3.1.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Three-Layer Strategy", "shortTitle": null, "number": "1"},
+       {"title": "Layer 2: Compile-Time Guards",
+        "shortTitle": null,
+        "number": "2"}]},
+     "address": "/Verification/Three-Layer-Strategy/"}],
+   "canary-theorem":
+   [{"id": "canary-theorem",
+     "data":
+     {"title": "Why Fibration Matters: The Canary Theorem",
+      "shortTitle": null,
+      "sectionNum": "3.5.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "Why Fibration Matters: The Canary Theorem",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "c-api":
+   [{"id": "c-api",
+     "data":
+     {"title": "C API",
+      "shortTitle": null,
+      "sectionNum": "5.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "FFI Bindings", "shortTitle": null, "number": "5"},
+       {"title": "C API", "shortTitle": null, "number": "2"}]},
+     "address": "/FFI-Bindings/C-API/"}],
+   "building":
+   [{"id": "building",
+     "data":
+     {"title": "Building",
+      "shortTitle": null,
+      "sectionNum": "6.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"}]},
+     "address": "/Building/"}],
+   "at-a-glance":
+   [{"id": "at-a-glance",
+     "data":
+     {"title": "At a Glance",
+      "shortTitle": null,
+      "sectionNum": "1.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Overview", "shortTitle": null, "number": "1"},
+       {"title": "At a Glance", "shortTitle": null, "number": "1"}]},
+     "address": "/Overview/At-a-Glance/"}],
+   "architecture":
+   [{"id": "architecture",
+     "data":
+     {"title": "Architecture",
+      "shortTitle": null,
+      "sectionNum": "2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"}]},
+     "address": "/Architecture/"}],
+   "append-only":
+   [{"id": "append-only",
+     "data":
+     {"title": "Append-Only Design",
+      "shortTitle": null,
+      "sectionNum": "2.1.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Architecture", "shortTitle": null, "number": "2"},
+       {"title": "Scanner (Lexical Layer)", "shortTitle": null, "number": "1"},
+       {"title": "Append-Only Design", "shortTitle": null, "number": "2"}]},
+     "address": "/Architecture/Scanner-_LPAR_Lexical-Layer_RPAR_/"}],
+   "alignment-rule":
+   [{"id": "alignment-rule",
+     "data":
+     {"title": "The Alignment Rule",
+      "shortTitle": null,
+      "sectionNum": "3.5.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "The Alignment Rule", "shortTitle": null, "number": "2"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "alignment-antipatterns":
+   [{"id": "alignment-antipatterns",
+     "data":
+     {"title": "What Breaks Alignment",
+      "shortTitle": null,
+      "sectionNum": "3.5.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "Mind the Fibration Gap", "shortTitle": null, "number": "5"},
+       {"title": "What Breaks Alignment", "shortTitle": null, "number": "3"}]},
+     "address": "/Verification/Mind-the-Fibration-Gap/"}],
+   "adding-ffi":
+   [{"id": "adding-ffi",
+     "data":
+     {"title": "Adding FFI Bindings",
+      "shortTitle": null,
+      "sectionNum": "5.5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "FFI Bindings", "shortTitle": null, "number": "5"},
+       {"title": "Adding FFI Bindings", "shortTitle": null, "number": "5"}]},
+     "address": "/FFI-Bindings/Adding-FFI-Bindings/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Values-___-Soundness--validYaml_construct--___-weak":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Values-___-Soundness--validYaml_construct--___-weak",
+     "data":
+     {"title": "validYaml_construct  — weak",
+      "shortTitle": null,
+      "sectionNum": "3.4.5.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Values — Soundness", "shortTitle": null, "number": "5"},
+       {"title": "validYaml_construct  — weak",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Surface-Coupling--SIndent_zero--___-weak":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Surface-Coupling--SIndent_zero--___-weak",
+     "data":
+     {"title": "SIndent_zero  — weak",
+      "shortTitle": null,
+      "sectionNum": "3.4.8.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Surface Coupling", "shortTitle": null, "number": "8"},
+       {"title": "SIndent_zero  — weak", "shortTitle": null, "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Scanner--scan_full_consumption--___-deep":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Scanner--scan_full_consumption--___-deep",
+     "data":
+     {"title": "scan_full_consumption  — deep",
+      "shortTitle": null,
+      "sectionNum": "3.4.2.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Scanner", "shortTitle": null, "number": "2"},
+       {"title": "scan_full_consumption  — deep",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Roundtrip--universal_roundtrip--___-deep-_LPAR____-closed-2026-07-04_RPAR_":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Roundtrip--universal_roundtrip--___-deep-_LPAR____-closed-2026-07-04_RPAR_",
+     "data":
+     {"title": "universal_roundtrip  — deep (✅ closed 2026-07-04)",
+      "shortTitle": null,
+      "sectionNum": "3.4.6.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Roundtrip", "shortTitle": null, "number": "6"},
+       {"title": "universal_roundtrip  — deep (✅ closed 2026-07-04)",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Pipeline-Composition--parseYaml_pipeline--___-deep":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Pipeline-Composition--parseYaml_pipeline--___-deep",
+     "data":
+     {"title": "parseYaml_pipeline  — deep",
+      "shortTitle": null,
+      "sectionNum": "3.4.1.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Pipeline Composition", "shortTitle": null, "number": "1"},
+       {"title": "parseYaml_pipeline  — deep",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Parser--parseStream_respects_grammar_unconditional--___-deep":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Parser--parseStream_respects_grammar_unconditional--___-deep",
+     "data":
+     {"title": "parseStream_respects_grammar_unconditional  — deep",
+      "shortTitle": null,
+      "sectionNum": "3.4.3.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Parser", "shortTitle": null, "number": "3"},
+       {"title": "parseStream_respects_grammar_unconditional  — deep",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Grammar-Production--parse_strict_proof--___-deep-_LPAR____-proved-in-v0___4___6_RPAR_":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Grammar-Production--parse_strict_proof--___-deep-_LPAR____-proved-in-v0___4___6_RPAR_",
+     "data":
+     {"title": "parse_strict_proof  — deep (✅ proved in v0.4.6)",
+      "shortTitle": null,
+      "sectionNum": "3.4.7.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Grammar Production", "shortTitle": null, "number": "7"},
+       {"title": "parse_strict_proof  — deep (✅ proved in v0.4.6)",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Generating-graphs-locally":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--Generating-graphs-locally",
+     "data":
+     {"title": "Generating graphs locally",
+      "shortTitle": null,
+      "sectionNum": "3.4.9.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "Generating graphs locally",
+        "shortTitle": null,
+        "number": "9"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_shallow--___-propBridge":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_shallow--___-propBridge",
+     "data":
+     {"title": "parse_sound_shallow  — propBridge",
+      "shortTitle": null,
+      "sectionNum": "3.4.4.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "End-to-End Correctness", "shortTitle": null, "number": "4"},
+       {"title": "parse_sound_shallow  — propBridge",
+        "shortTitle": null,
+        "number": "1"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_deep--___-deep":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_sound_deep--___-deep",
+     "data":
+     {"title": "parse_sound_deep  — deep",
+      "shortTitle": null,
+      "sectionNum": "3.4.4.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "End-to-End Correctness", "shortTitle": null, "number": "4"},
+       {"title": "parse_sound_deep  — deep",
+        "shortTitle": null,
+        "number": "2"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_deterministic--___-weak":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_deterministic--___-weak",
+     "data":
+     {"title": "parse_deterministic  — weak",
+      "shortTitle": null,
+      "sectionNum": "3.4.4.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "End-to-End Correctness", "shortTitle": null, "number": "4"},
+       {"title": "parse_deterministic  — weak",
+        "shortTitle": null,
+        "number": "4"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_complete--___-propBridge":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Verification--What-L4YAML-Proves--End-to-End-Correctness--parse_complete--___-propBridge",
+     "data":
+     {"title": "parse_complete  — propBridge",
+      "shortTitle": null,
+      "sectionNum": "3.4.4.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Verification", "shortTitle": null, "number": "3"},
+       {"title": "What L4YAML Proves", "shortTitle": null, "number": "4"},
+       {"title": "End-to-End Correctness", "shortTitle": null, "number": "4"},
+       {"title": "parse_complete  — propBridge",
+        "shortTitle": null,
+        "number": "3"}]},
+     "address": "/Verification/What-L4YAML-Proves/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Standalone-Per-Binding-Builds":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Standalone-Per-Binding-Builds",
+     "data":
+     {"title": "Standalone Per-Binding Builds",
+      "shortTitle": null,
+      "sectionNum": "6.6.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Standalone Per-Binding Builds",
+        "shortTitle": null,
+        "number": "6"}]},
+     "address": "/Building/Standalone-Per-Binding-Builds/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Recommended-Build":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Recommended-Build",
+     "data":
+     {"title": "Recommended Build",
+      "shortTitle": null,
+      "sectionNum": "6.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Recommended Build", "shortTitle": null, "number": "1"}]},
+     "address": "/Building/Recommended-Build/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Python-Install-Modes--venv-_LPAR_non-ROS_RPAR_":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Python-Install-Modes--venv-_LPAR_non-ROS_RPAR_",
+     "data":
+     {"title": "venv (non-ROS)",
+      "shortTitle": null,
+      "sectionNum": "6.3.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Python Install Modes", "shortTitle": null, "number": "3"},
+       {"title": "venv (non-ROS)", "shortTitle": null, "number": "2"}]},
+     "address": "/Building/Python-Install-Modes/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Python-Install-Modes--ROS-2-___-colcon":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Python-Install-Modes--ROS-2-___-colcon",
+     "data":
+     {"title": "ROS 2 / colcon",
+      "shortTitle": null,
+      "sectionNum": "6.3.1.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Python Install Modes", "shortTitle": null, "number": "3"},
+       {"title": "ROS 2 / colcon", "shortTitle": null, "number": "1"}]},
+     "address": "/Building/Python-Install-Modes/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Python-Install-Modes":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Python-Install-Modes",
+     "data":
+     {"title": "Python Install Modes",
+      "shortTitle": null,
+      "sectionNum": "6.3.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Python Install Modes", "shortTitle": null, "number": "3"}]},
+     "address": "/Building/Python-Install-Modes/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Prerequisites":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Prerequisites",
+     "data":
+     {"title": "Prerequisites",
+      "shortTitle": null,
+      "sectionNum": "6.4.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Prerequisites", "shortTitle": null, "number": "4"}]},
+     "address": "/Building/Prerequisites/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Lean-Only-Build":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--Lean-Only-Build",
+     "data":
+     {"title": "Lean-Only Build",
+      "shortTitle": null,
+      "sectionNum": "6.5.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "Lean-Only Build", "shortTitle": null, "number": "5"}]},
+     "address": "/Building/Lean-Only-Build/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--CMake-Options":
+   [{"id":
+     "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4--Building--CMake-Options",
+     "data":
+     {"title": "CMake Options",
+      "shortTitle": null,
+      "sectionNum": "6.2.",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null},
+       {"title": "Building", "shortTitle": null, "number": "6"},
+       {"title": "CMake Options", "shortTitle": null, "number": "2"}]},
+     "address": "/Building/CMake-Options/"}],
+   "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4":
+   [{"id": "L4YAML___-A-Verified-YAML-1___2___2-Parser-in-Lean-4",
+     "data":
+     {"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+      "shortTitle": "L4YAML",
+      "sectionNum": "",
+      "searchPriority": 50,
+      "context":
+      [{"title": "L4YAML: A Verified YAML 1.2.2 Parser in Lean 4",
+        "shortTitle": "L4YAML",
+        "number": null}]},
+     "address": "/"}]}},
+ "Verso.Genre.Manual.doc.tech":
+ {"title": "Terminology",
+  "description": "Definitions of technical terms",
+  "contents": {}},
+ "Verso.Genre.Manual.doc.tactic.conv":
+ {"title": "Conversion Tactics",
+  "description": "Tactics for performing targeted rewriting of subterms",
+  "contents": {}},
+ "Verso.Genre.Manual.doc.tactic":
+ {"title": "Tactic Documentation",
+  "description": "Detailed descriptions of tactics",
+  "contents": {}},
+ "Verso.Genre.Manual.doc.suggestion":
+ {"title": "Lean constant suggestions",
+  "description": "Search suggestions for Lean constants",
+  "contents": {}},
+ "Verso.Genre.Manual.doc.option":
+ {"title": "Compiler options", "description": null, "contents": {}},
+ "Verso.Genre.Manual.doc":
+ {"title": "Lean constant reference",
+  "description": "Documentation for Lean constants",
+  "contents": {}}};
+/**
+ * Copyright (c) 2024 Lean FRO LLC. All rights reserved.
+ * Released under Apache 2.0 license as described in the file LICENSE.
+ * Author: David Thrane Christiansen
+ */
+
+// Enable typescript
+// @ts-check
+
+/**
+ * @typedef {{id: string, address: string, data: unknown}} Item // Metadata for one particular item. The `data` depends on the domain.
+ * @typedef {Record<string, Item[]>} DomainData // A mapping from canonical names to metadata. The array is usually a singleton.
+ * @typedef {{title: string | null, description: string | null, contents: DomainData}} Domain
+ * @typedef {Record<string, Domain>} XRef
+ * @typedef {Item & {domain: string}} Option // An item together with the name of the domain that contains it.
+ */
+
+/**
+ * The replacements for characters that are not valid in slugs. This mirrors the mangling table in
+ * MultiVerso.Slug.
+ * @type {Record<string, string>}
+ */
+const slugReplacements = {
+    "<": "_LT_",
+    ">": "_GT_",
+    ";": "_SEMI_",
+    "‹": "_FLQ_",
+    "›": "_FRQ_",
+    "«": "_FLQQ_",
+    "»": "_FLQQ_",
+    "⟨": "_LANGLE_",
+    "⟩": "_RANGLE_",
+    "(": "_LPAR_",
+    ")": "_RPAR_",
+    "[": "_LSQ_",
+    "]": "_RSQ_",
+    "→": "_ARR_",
+    "↦": "_MAPSTO_",
+    "⊢": "_VDASH_",
+};
+
+/**
+ * Converts a string to a valid slug, mangling as appropriate. This mirrors the slug computation in
+ * MultiVerso.Slug, so names can be compared with links that were minted from their slugs.
+ * @param {string} s
+ * @returns {string}
+ */
+function sluggify(s) {
+    let out = "";
+    for (const c of s) {
+        if (/^[a-zA-Z0-9_-]$/.test(c)) out += c;
+        else if (c === " " || c === "\t" || c === "\r" || c === "\n") out += "-";
+        else out += slugReplacements[c] ?? "___";
+    }
+    return out;
+}
+
+/**
+ * Creates an element whose children are the given nodes and strings.
+ * @template {keyof HTMLElementTagNameMap} K
+ * @param {K} tag
+ * @param {...(Node | string)} children
+ * @returns {HTMLElementTagNameMap[K]}
+ */
+function el(tag, ...children) {
+    const elem = document.createElement(tag);
+    elem.append(...children);
+    return elem;
+}
+
+/**
+ * Shows a heading and an explanatory message once the page has loaded.
+ * @param {string} title
+ * @param {...Node} message
+ */
+function show(title, ...message) {
+    const render = () => {
+        document.title = title;
+        document.querySelector("#title")?.replaceChildren(title);
+        document.querySelector("#message")?.replaceChildren(...message);
+    };
+    if (document.readyState === "loading") {
+        addEventListener("DOMContentLoaded", render);
+    } else {
+        render();
+    }
+}
+
+/**
+ * Finds the items with the given name in the given domains. If there are none, then it finds the
+ * items whose names have the same slug.
+ * @param {XRef} xref
+ * @param {string[]} domains
+ * @param {string} name
+ * @returns {Option[]}
+ */
+function lookup(xref, domains, name) {
+    /** @type {Option[]} */
+    const options = [];
+    for (const domain of domains) {
+        const items = xref[domain]?.contents;
+        if (items && Object.hasOwn(items, name)) {
+            for (const item of items[name] ?? []) {
+                options.push({ ...item, domain });
+            }
+        }
+    }
+    if (options.length > 0) return options;
+
+    // Permalinks from before a bug fix that separated sections' HTML IDs from their canonical names
+    // in the section domain were mangled as slugs. The slug comparison recovers them. This
+    // workaround was introduced in August 2026 and should be removed when it seems unlikely for old
+    // permalinks to be a significant problem.
+    const nameSlug = sluggify(name);
+    for (const domain of domains) {
+        const items = xref[domain]?.contents ?? {};
+        for (const [key, keyItems] of Object.entries(items)) {
+            if (sluggify(key) === nameSlug) {
+                for (const item of keyItems) {
+                    options.push({ ...item, domain });
+                }
+            }
+        }
+    }
+    return options;
+}
+
+/**
+ * Computes the URL of an item.
+ *
+ * Stored addresses look like absolute paths ('/Axiom'). The URL is relative to the `<base>` tag, so
+ * the leading slash is removed.
+ * @param {Option} option
+ * @returns {URL}
+ */
+function optionUrl(option) {
+    const url = new URL(option.address.replace(/^\//, ""), document.baseURI);
+    url.hash = option.id;
+    return url;
+}
+
+/**
+ * Describes a domain by its title, falling back to its name.
+ * @param {XRef} xref
+ * @param {string} domain
+ * @returns {(Node | string)[]}
+ */
+function describeDomain(xref, domain) {
+    const title = xref[domain]?.title;
+    return title ? [el("code", domain), ": ", title] : [el("code", domain)];
+}
+
+function main() {
+    const params = new URLSearchParams(document.location.search);
+    const name = params.get("name");
+    const xref = /** @type {{xref?: XRef}} */ (/** @type {unknown} */ (window)).xref;
+
+    if (!xref) {
+        show(
+            "Cross-reference data is unavailable",
+            el(
+                "p",
+                "The cross-reference database for this site did not load, so no names can be found.",
+            ),
+        );
+        return;
+    }
+
+    if (!name) {
+        show(
+            "No name provided",
+            el(
+                "p",
+                "This page expects a ",
+                el("code", "name"),
+                " query parameter, along with documentation domains.",
+            ),
+        );
+        return;
+    }
+
+    const requested = [...new Set(params.getAll("domain"))];
+    const unknown = requested.filter((d) => !Object.hasOwn(xref, d));
+    const domains =
+        requested.length > 0 ? requested.filter((d) => Object.hasOwn(xref, d)) : Object.keys(xref);
+
+    /** @type {Node[]} */
+    const unknownNote =
+        unknown.length > 0
+            ? [
+                  el(
+                      "p",
+                      unknown.length === 1
+                          ? "This domain does not exist:"
+                          : "These domains do not exist:",
+                  ),
+                  el("ul", ...unknown.map((d) => el("li", el("code", d)))),
+              ]
+            : [];
+
+    const options = lookup(xref, domains, name);
+    const [only] = options;
+
+    if (only && options.length === 1) {
+        window.location.replace(optionUrl(only));
+    } else if (options.length === 0) {
+        show(
+            `Not found: '${name}'`,
+            el("p", "The name ", el("code", name), " was not found."),
+            ...unknownNote,
+            ...(domains.length > 0
+                ? [
+                      el("p", "Searched domains:"),
+                      el("ul", ...domains.map((d) => el("li", ...describeDomain(xref, d)))),
+                  ]
+                : [el("p", "No domains were searched.")]),
+        );
+    } else {
+        show(
+            `Ambiguous: '${name}'`,
+            el("p", "The name ", el("code", name), " refers to more than one item. Options:"),
+            el(
+                "ul",
+                ...options.map((option) => {
+                    const link = el("a", "From ", ...describeDomain(xref, option.domain));
+                    link.href = optionUrl(option).href;
+                    return el("li", el("p", link));
+                }),
+            ),
+            ...unknownNote,
+        );
+    }
+}
+
+main();
+</script></head><body><header><div class="header-logo-wrapper"></div><div class="header-title-wrapper"><a href class="header-title"><h1>Cross-Reference Redirection</h1></a></div></header><label for="toggle-toc" id="toggle-toc-click"><span class="line line1"></span><span class="line line2"></span><span class="line line3"></span></label><div class="with-toc"><div class="toc-backdrop" onclick="document.getElementById('toggle-toc-click')?.click()"></div><nav id="toc"><input type="checkbox" id="toggle-toc"/><div class="first"><a href class="toc-title"><h1>Cross-Reference Redirection</h1></a><div class="split-tocs"><div class="split-toc book"><div class="title"><label for="--verso-manual-toc-----bookRoot" class="toggle-split-toc"><input type="checkbox" class="toggle-split-toc" id="--verso-manual-toc-----bookRoot" checked="checked"/></label><span class>Table of Contents</span></div><table><tr class="numbered"><td class="num">1.</td><td><a href="Overview/#overview">Overview</a></td></tr><tr class="numbered"><td class="num">2.</td><td><a href="Architecture/#architecture">Architecture</a></td></tr><tr class="numbered"><td class="num">3.</td><td><a href="Verification/#verification">Verification</a></td></tr><tr class="numbered"><td class="num">4.</td><td><a href="Security/#security">Security</a></td></tr><tr class="numbered"><td class="num">5.</td><td><a href="FFI-Bindings/#ffi">FFI Bindings</a></td></tr><tr class="numbered"><td class="num">6.</td><td><a href="Building/#building">Building</a></td></tr><tr class="numbered"><td class="num">7.</td><td><a href="Testing/#testing">Testing</a></td></tr><tr class="numbered"><td class="num">8.</td><td><a href="Test-Results/#test-results">Test Results</a></td></tr><tr class="unnumbered"><td class="num"></td><td><a href="Index/#index">Index</a></td></tr></table></div></div></div><div class="last"></div></nav><div class="toc-resize-handle"></div><main><div class="content-wrapper"><nav class="prev-next-buttons"><div></div><div></div></nav><section><h1 id="title"></h1><div id="message"></div></section><nav class="prev-next-buttons"><div></div><div></div></nav></div></main></div></body></html>

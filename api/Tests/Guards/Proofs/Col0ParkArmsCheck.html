@@ -1,0 +1,74 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.Col0ParkArmsCheck</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.Col0ParkArmsCheck";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">Col0ParkArmsCheck</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/Col0ParkArmsCheck.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.Col0ParkArmsCheck" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-column-0-landing-pays-off-the-park-s-own-indent-check-DOCS-item-154" class="markdown-heading">The column-0 landing pays, off the park's own indent check (DOCS item 154) <a class="hover-link" href="#The-column-0-landing-pays-off-the-park-s-own-indent-check-DOCS-item-154">#</a></h1><p>Item 152 gave <code>pendingContent</code>'s two frames fields a cover and spent it at
+<code>accum_content_pending</code>'s shared landing skeleton.  It could not spend it on
+every landing: the skeleton splits on the park's column, and the COLUMN-0 arm
+punted its payer.  Item 147's reading is why — a landing's floor comes off the
+walk that carried the park down to column 0, and a park already AT a line start
+crosses no such walk.  Item 152 recorded this as item 147's escape "at the
+consumer instead of at a producer", and item 153 recorded it as one of two
+remaining entries.</p><p><strong>The floor is not the walk's.</strong>  It is preprocessing's UNWIND, and the unwind
+runs outside a flow on exactly one condition: <code>needIndentCheck</code>.  A park that
+reached column 0 got there by consuming a break, and every break arms the flag.
+So the datum the arm needs is the PARK's, not the landing's — which is item 77's
+own division of labor (<code>landing_or_park_save</code>: the landing pays for a park off a
+line start, the park's flag pays for one at it), one field over.</p><p><code>pendingContent</code> gains <code>h_nic0</code>, the block-scalar producers fund it, and both
+column-0 landings spend it.</p><p><strong>The escape is measured, not assumed.</strong>  A block-scalar header at end of input
+consumes no break, and <code>"k: |"</code> really does stop with the flag DOWN (§3 makes
+that a checked fact rather than a remark).  It also stops strictly inside its
+line, which is why the field is stated as an implication FROM column 0: the one
+shape that cannot pay is the one shape that cannot reach the premise.</p><p>§1 is the field.  §2 is the producer census.  §3 is the block scalar's arming
+and the escape that survives it.  §4 is the payment at the landing.  §5 walks
+the corpus.  §6 is what still does not pay.  §7 is the price.</p></div><div class="mod_doc"><h2 id="1-The-field" class="markdown-heading">§1  The field <a class="hover-link" href="#1-The-field">#</a></h2><p>A conditional, not a fact: the park claims nothing about a cursor inside a line,
+because nothing is owed there.  <code>h_arm</code>'s shape (item 77) states the same
+division with the other disjunct spelled out; this one states it as the
+implication its consumer reads.</p></div><div class="mod_doc"><h2 id="2-The-producer-census-fourteen-sites-four-pay" class="markdown-heading">§2  The producer census — fourteen sites, four pay <a class="hover-link" href="#2-The-producer-census-fourteen-sites-four-pay">#</a></h2><p>Established by the compiler rather than by reading: the same payment term was
+attempted at every one of the fourteen, and the ten that punt are the ten where
+it does not typecheck.</p><ul><li><strong>4 PAY</strong> — the block-scalar arms, each holding <code>hbs : c = '|' ∨ c = '&gt;'</code>
+from its own <code>dispatchContent_blockScalar_prod</code>.</li><li><strong>8 punt</strong> — the other content arms (flow, properties, quoted, multi-line,
+plain).  None of them has <code>hbs</code>, and none of them can park at column 0:
+item 77's <code>dispatchContent_col_pos_or_armed</code> note is that the block scalar
+is the ONE content scan that reaches a line start.</li><li><strong>2 punt</strong> — the two flow CLOSES (<code>]</code> and <code>}</code>), which run no content
+dispatch at all.</li></ul><p>The punts are therefore free in the strong sense: they name a premise none of
+their parks can satisfy, not a cover that was there to lose.  §5 measures the
+claim that carries this — every column-0 park in the suite is behind a block
+scalar.</p></div><div class="mod_doc"><h2 id="3-The-block-scalar-s-arming-and-the-escape-that-survives-it" class="markdown-heading">§3  The block scalar's arming, and the escape that survives it <a class="hover-link" href="#3-The-block-scalar-s-arming-and-the-escape-that-survives-it">#</a></h2><p><code>[170]</code>/<code>[174]</code> begins its body past a <code>b-break</code>; <code>consumeNewline</code> raises the
+flag on every break and the collection loop only ever raises it again.  The one
+header that consumes no break is the one at end of input.</p><p>The disjunction below is not defensive vagueness — the right disjunct is
+REACHED, and §3b is what makes that a checked fact instead of a claim.</p></div><div class="mod_doc"><h3 id="3b-The-escape-is-real" class="markdown-heading">§3b  The escape is real <a class="hover-link" href="#3b-The-escape-is-real">#</a></h3><p>Both halves are checked.  <code>"k: |"</code> — a header at end of input — leaves the flag
+DOWN, so the unconditional statement would be FALSE and the field's conditional
+form is forced.  The same input stops at column 4, which is the
+disjunct the lemma returns, and the reason a column-0 consumer never meets it.</p></div><div class="mod_doc"><h2 id="4-The-payment" class="markdown-heading">§4  The payment <a class="hover-link" href="#4-The-payment">#</a></h2><p>The same two lemmas item 151 factored, with the floor arriving from the park's
+flag instead of from the landing's arm.  <code>preprocess_top_le_col_of_armed</code> is
+what turns the flag into the floor; its sentinel disjunct falls to
+<code>SentinelBase</code>, exactly as it does inside <code>landing_floor_of_arm</code>.</p></div><div class="mod_doc"><h2 id="5-The-corpus" class="markdown-heading">§5  The corpus <a class="hover-link" href="#5-The-corpus">#</a></h2><p>The tuple is: states seen / states AT column 0 / of those, ARMED / of those,
+facing a dedent / of those, floored / <strong>at column 0 with the flag DOWN</strong>.</p><p>The last component is the item's claim and the one before it is what keeps it
+from passing vacuously: the sweep found column-0 parks with real dedents, and
+every one of them was armed.</p><p><del>The same walk over the 351-file <code>yaml-test-suite</code> reads
+<code>at0=1700 armed=1700 pop=52 popFloor=52 NOT-ARMED=0</code>, and grouping those 1349
+non-initial column-0 states by the token behind them returns ONE kind —
+<code>ScalarStyle.literal</code>.</del></p><p><strong>That sweep read the wrong files</strong> (item 155).  <code>yaml-test-suite/src/*.yaml</code>
+are test DESCRIPTORS, not payloads — each is a root sequence of mappings, and
+the 8661 states it walks take exactly THREE indent-stack shapes.  The payloads
+are in the <code>yaml: |</code> blocks, and <code>Tests.SuiteRunner.parseTestFile</code> extracts
+them.  Re-walked over those, 351 files give 406 cases and 3262 states, and the
+census reads <strong><code>at0=489 armed=489 pop=2 popFloor=2 NOT-ARMED=0</code></strong>.</p><p>The claim stands — no park reaches column 0 with the flag down — and the
+support is thinner than the descriptor sweep suggested: two real dedents, not
+fifty-two.  §2's reading of the ten punting producers is unaffected, since it
+turns on the zero.</p></div><div class="mod_doc"><h2 id="6-What-still-does-not-pay" class="markdown-heading">§6  What still does not pay <a class="hover-link" href="#6-What-still-does-not-pay">#</a></h2><p><del>One entry, and it is the one item 153 named beside this one: the <strong>sequence
+chain</strong>.  <code>pendingProps.h_closeFE</code>, <code>pendingBlockContent.h_closeF</code> and
+<code>pendingBlock.h_closeF</code> carry widths alone on one lane, and the sequence park's
+relay inside <code>accum_content_on_pendingBlock_indented</code> owes a <code>Mono</code> and a
+<code>SentinelBase</code> besides — that lemma takes neither today.</del>  (CLOSED by item
+155, which found the entry mis-stated: the lane's frames were EMPTY, so the
+cover those three fields lacked would have been spendable nowhere.  Item 155
+gives the lane frames off the mapping value the sequence fills, then the cover.)</p><p>Two things are NOT residue here.  The eight non-block content producers and the
+two flow closes punt <code>h_nic0</code> into a premise they cannot reach (§2, §5), so
+nothing is owed there.  And <code>h_noBreak</code>'s own arm is a different split: it is
+the park OFF a line start, which has paid since item 152.</p></div><div class="mod_doc"><h2 id="7-The-price" class="markdown-heading">§7  The price <a class="hover-link" href="#7-The-price">#</a></h2><p>One constructor field, one funding lemma at the accumulation (<code>content_park_nic</code>),
+and a block-scalar family in <code>LineOpenGuard</code> beside item 77's own — the flag
+twin of <code>scanBlockScalar_simpleKeyAllowed</code>, plus the column floor through the
+header that refutes its end-of-input escape.  Four producers pay, ten punt, and
+one <code>have</code> serves both column-0 landings.</p><p>This is the first item since 150 to add declarations, and the reason is that the
+fact it needs is about the SCANNER rather than about the accumulation's own
+bookkeeping: no rearrangement of the frames could produce it.  What it did not
+need is a new invariant threaded through the accumulation — the flag is already
+the park's to state, exactly as its save flag has been since item 77.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

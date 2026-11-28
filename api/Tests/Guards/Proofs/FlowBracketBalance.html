@@ -1,0 +1,47 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.FlowBracketBalance</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.FlowBracketBalance";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">FlowBracketBalance</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlowBracketBalance.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.FlowBracketBalance" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-bracket-balance-read-forward-and-the-gate-priced-to-its-ten-sites" class="markdown-heading">The bracket balance, read forward — and the gate priced to its ten sites <a class="hover-link" href="#The-bracket-balance-read-forward-and-the-gate-priced-to-its-ten-sites">#</a></h1><pre><code>(DOCS item 161)
+</code></pre><p>Item 160 landed the <code>[96]</code> run's reading across the three pushes onto a park
+and found the gate one site short: <code>accum_flow_open_depth0</code> builds
+<code>FlowBaseRoutes.value</code>, a closure with no scanner state in it, so the verdict it
+owes can only be read at the CLOSE.  Reading it there needs
+<code>trailingNodeRun?_flowClose_reads_park</code>, and that lemma holds its own answer as
+a hypothesis — <code>flowOpenIdx? a i = some b.size</code>, "the close finds ITS open".</p><p>This file is that hypothesis, supplied, and the gate it buys, priced.</p><p><strong>Forward, not backward.</strong>  <code>flowOpenIdx?</code> walks the token array BACKWARD from
+the close, counting closes it has yet to balance.  No step invariant can carry
+that: it is a fact about a finished array.  Read FORWARD the same fact is a
+STACK — <code>flowOpenIdxStack</code>, the indices of the opens not yet closed, innermost
+first — and <code>flowOpenIdxLoop_eq_stack</code> says the two readings agree at every
+depth at once.  A stack is maintained one push at a time, which is what §1
+measures and §2 proves: an open conses, a close pops, everything else is inert.</p><p><strong>What it costs to land.</strong>  Guarding <code>FlowBaseRoutes.value</code> and building names
+<strong>ten</strong> sites, and only one of them is work:</p><table><thead><tr><th>class</th><th>sites</th><th>pays with</th></tr></thead><tbody><tr><td><code>FlowBaseRoutes.ofValue</code></td><td>1</td><td>forwards to its own caller</td></tr><tr><td>the six open arms with a non-park route (doc-suffix ×2, fresh document, bare document, block value, compact entry)</td><td>6</td><td>nothing — the gate is ignored</td></tr><tr><td><strong>the props arm</strong> (<code>h_route</code>, item 160's §3)</td><td><strong>1</strong></td><td>the park's own verdict</td></tr><tr><td>the two base closes (<code>resume.value</code>)</td><td>2</td><td>§3, from <code>FlowOpenHeld</code></td></tr></tbody></table></div><div class="mod_doc"><h2 id="1-The-definition-measured-against-the-scanner-it-mirrors" class="markdown-heading">§1  The definition, measured against the scanner it mirrors <a class="hover-link" href="#1-The-definition-measured-against-the-scanner-it-mirrors">#</a></h2><p><code>flowOpenIdxStack</code> is a claim about the scanner: that the opens it has not yet
+closed are exactly the ones the token array has not yet closed.  The scanner
+keeps that count itself, in <code>flowLevel</code>, so the claim is checkable at every
+step of every input — and a definition that mirrors the wrong thing fails here
+rather than in a proof about it.</p><p><code>balanceWalk</code> reports the pair at each step; they agree, and the stack names
+the indices <code>flowLevel</code> only counts.</p></div><div class="mod_doc"><h3 id="The-exhaustive-sweep" class="markdown-heading">The exhaustive sweep <a class="hover-link" href="#The-exhaustive-sweep">#</a></h3><p>The alphabet carries both brackets, both closes, the two separators, a node, a
+<code>[96]</code> property, and the three things that END a token — space, break, comment
+(Reflection 614: adjacency is manufactured by termination, so a sweep whose
+alphabet cannot terminate a token measures nothing).</p><p>Every input of length ≤ 4 over eleven symbols, checked at every scanner step.
+The same sweep at length 6 — 1 771 561 inputs, 1 638 834 steps at item 161's
+runtime — was run out of band and also disagreed nowhere; the length checked
+HERE is the one CI carries.  Step totals move with the runtime (item 172's
+deferred floor lets refused inputs scan further, +50 steps at length 4), so
+each pin names the runtime it measures.</p></div><div class="mod_doc"><h2 id="2-The-three-pushes-proved" class="markdown-heading">§2  The three pushes, proved <a class="hover-link" href="#2-The-three-pushes-proved">#</a></h2><p>An open conses its own index, a close pops the innermost, everything else is
+inert — the whole per-step cost of carrying the balance forward.</p></div><div class="mod_doc"><h2 id="3-What-it-buys-the-close-s-verdict-IS-the-park-s" class="markdown-heading">§3  What it buys: the close's verdict IS the park's <a class="hover-link" href="#3-What-it-buys-the-close-s-verdict-IS-the-park-s">#</a></h2><p>Item 160 measured the equality on the scanner — <code>a: 1⏎&amp;p [b]</code> reads <code>1,0</code> at
+the park and <code>1,0</code> again at the <code>]</code> — and proved it from a hypothesis it could
+not supply.  <code>FlowOpenHeld</code> supplies it.</p></div><div class="mod_doc"><p>The park's own array is 11 tokens when the <code>[</code> arrives, so the open lands at
+index 11 — <code>o = s_park.tokens.size</code>, which is the identity <code>FlowOpenHeld</code>
+carries.</p></div><div class="mod_doc"><p>Read at the CLOSE's own index, the stack still names that open — the hold is
+at depth 0 there, and the backward walk lands on it.</p></div><div class="mod_doc"><p>The refusal this carries is still the one item 160 pinned: the collection
+read as the enclosing construct's own VALUE is refused at the run's start, and
+the same park read as a KEY is accepted — which is why the verdict has to reach
+the close rather than being decided at the open.</p></div><div class="mod_doc"><h2 id="4-What-the-next-item-needs" class="markdown-heading">§4  What the next item needs <a class="hover-link" href="#4-What-the-next-item-needs">#</a></h2><p><code>FlowBaseRoutes.value</code> has to take the gate, and the ten sites above are its
+price.  The gate is a <code>Prop</code> the OPEN chooses and the CLOSE discharges, so it
+rides the structure as a parameter — the shape <code>kc</code> already has (item 75:
+"a PARAMETER, not an index … nests forward it untouched and read nothing from
+it").  Six open arms pass <code><a href="../../.././Init/Prelude.html#True">True</a></code>, the props arm passes
+<code>danglingNodePos? sc = none</code>, and the two base closes pay it with §3.</p><p>Behind that, the block landing's own half — <code>bareNodeRoute_or_refused</code>'s
+<code>h_op = true</code> branch, <del>whose <code>-</code> family the scanner already refuses and whose
+<code>:</code>/<code>?</code> family is legal and routes through the key cascade</del>: a CONSUMER to
+narrow, as item 156 said, not a guard.  (<strong>Item 166 corrected the reason</strong>: the
+<code>-</code> family is legal too wherever a sequence is open at the landing's column, and
+what the branch wants is that collection's own continuation.  See
+<code>BlockLandingOpenSeq.lean</code>.)</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

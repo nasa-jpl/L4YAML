@@ -1,0 +1,63 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.DanglingParkDerived</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.DanglingParkDerived";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">DanglingParkDerived</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/DanglingParkDerived.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.DanglingParkDerived" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-dangling-park-derived-at-the-producer-DOCS-item-156" class="markdown-heading">The dangling park, derived at the producer (DOCS item 156) <a class="hover-link" href="#The-dangling-park-derived-at-the-producer-DOCS-item-156">#</a></h1><p>Item 141 built the CONSUMER half of §9.2's dangling refusal —
+<code>danglingNode_refutes_landing</code> and <code>danglingNode_refutes_eof</code>, in
+<code>StreamDanglingParkRevocable</code> — and left the producer half unnamed: nothing in
+the library said what a content dispatch's park READS.  This file is that half,
+landed in <code>StreamAccum</code> and exercised here.</p><p>The chain is the token array's own, and every link is now a lemma:</p><ul><li><code>dispatchContent_tokens_push</code> — off <code>&amp;</code> and <code>!</code>, every content arm pushes
+exactly ONE node body, and pushes it at the dispatch's own <code>currentPos</code>
+(the block scalar included, through <code>scanBlockScalar_tokens_push</code>);</li><li><code>trailingNodeRun?_push_body</code> — a body pushed on top starts a trailing run of
+one, with the array's own last REAL slot as its predecessor
+(<code>prevRealIdx?_push</code>, <code>prevRealIdx?_lt</code>);</li><li><code>CompletedTail.danglingPred</code> — a completed node tail offers the next run no
+slot, because <code>completesFlowValue</code> and <code>offersNodeSlot</code> are disjoint;</li><li><code>danglingPark_of_dispatch</code> — so the park reads <code>some ⟨line, col⟩</code> at the
+landing's own column, whenever that column names an open level;</li><li><code>danglingPark_refutes_landing</code> / <code>danglingPark_refutes_eof</code> — spent against
+the two §9.2 checks.</li></ul><p>§1 reads the chain's premises and its conclusion off the real scanner, over the
+family item 141 named.  §2 is the correction this item makes to item 144's
+attribution, at its type and over its own three witnesses.  §3 is the
+correction to item 141's corpus.  §4 is the face, re-priced.  §5 is the wall,
+re-confirmed with its witness.</p></div><div class="mod_doc"><h2 id="1-The-chain-read-off-the-real-scanner" class="markdown-heading">§1  The chain, read off the real scanner <a class="hover-link" href="#1-The-chain-read-off-the-real-scanner">#</a></h2><p>Item 141's six-member family, at the landing that MAKES the park.  Every member
+reads the lemma's premises — an open level at the dispatch's column, a last real
+token that offers no slot — and every one gets the lemma's conclusion: <code>some</code> at
+that same column.  The last two are this file's own additions, a sequence entry
+and a plain value, so the family is not one shape.</p></div><div class="mod_doc"><h2 id="2-What-the-face-does-NOT-reach-item-144-s-attribution-corrected" class="markdown-heading">§2  What the face does NOT reach — item 144's attribution, corrected <a class="hover-link" href="#2-What-the-face-does-NOT-reach-item-144-s-attribution-corrected">#</a></h2><p>Item 144 measured that <code>content_dispatch_after_close</code> cannot pay §9.2's landing
+guard and recorded the residue as "row 19's 1c residue for the indented family —
+<strong>item 141's park face</strong>".  The first half is right and the attribution is not:
+the face reads <code>none</code> at all three of that lemma's callers, so it can never
+refute them, and the three inputs are VALID.</p><p>The reason is structural, not a measurement, and it holds at the type — with
+item 177's floor it is the COLUMN's, not the slot's: the three callers park at
+landings indented strictly past every open level (the witness rows below read
+<code>op=false</code>), and a run whose column names no open level reads <code>none</code> on either
+side of the exemption.  The slot's own exemption survives only for the one run
+shape another reading refuses (the props-less flow-close tail, item 172's
+floor — item 178 folded the <code>[96]</code>-headed run into the check's own refusal),
+because the offered slot cannot reach the level's own column —
+<code>s-separate(n+1)</code>, Finding A's floor.</p></div><div class="mod_doc"><h2 id="3-Item-141-s-corpus-corrected" class="markdown-heading">§3  Item 141's corpus, corrected <a class="hover-link" href="#3-Item-141-s-corpus-corrected">#</a></h2><p>Item 141's census walked "the 490 <code>.yaml</code> files in <code>yaml-test-suite/src</code> and
+<code>examples/</code>" and recorded <strong>2275</strong> observations: 2 <code>R</code>, 0 <code>E</code>, 2273 <code>D</code>.  Item
+145 re-ran it and recorded every cell unchanged.  Both readings are over the
+wrong files on the suite side: <code>yaml-test-suite/src/*.yaml</code> are test
+DESCRIPTORS, each a root sequence of mappings — the correction item 155 made to
+item 154's own census, made again here.</p><p>Re-walked with the same instrument, the 490 files read as:</p><table><thead><tr><th>corpus</th><th>obs</th><th><code>R</code></th><th><code>E</code></th><th><code>D</code></th></tr></thead><tbody><tr><td>the 490 files, walked as payloads (item 141's reading)</td><td>2275</td><td>2</td><td>0</td><td>2273</td></tr><tr><td>the suite's 406 extracted payloads</td><td>183</td><td>6</td><td>6</td><td>171</td></tr><tr><td><code>examples/</code>, which are payloads already</td><td>163</td><td>2</td><td>0</td><td>161</td></tr></tbody></table><p>So the honest corpus is <strong>346</strong> observations, <strong>14</strong> of them discharge-able (8
+<code>R</code> + 6 <code>E</code>) and <strong>332</strong> carried — 4.0 %, not item 141's 0.09 %.  The
+descriptor sweep manufactured about 1 930 of its observations out of its own
+nested mappings, and it hid all six of the <code>E</code>s, because a descriptor file never
+ends on a dangling run.</p><p><strong>The structural conclusion is unchanged</strong>, and it never rested on the census:
+what decides the face's shape is §2's revocability measurement, which is over
+hand-built inputs.  What the census decides is how HOT the carried disjunct is,
+and at 96 % it is still the language rather than a corner of it.</p></div><div class="mod_doc"><h2 id="4-The-face-re-priced" class="markdown-heading">§4  The face, re-priced <a class="hover-link" href="#4-The-face-re-priced">#</a></h2><p>Stated as a PREMISE rather than as item 141's conclusion-disjunct —
+<code>h_closable : danglingNodePos? sc = none → ∀ sp_mid, …</code>, with
+<code>PendingNode.close_with_ssl</code> taking the same premise — the face is <strong>32</strong>
+distinct sites in <strong>9</strong> holders at the tree this item stands on:</p><table><thead><tr><th>holder</th><th>sites</th></tr></thead><tbody><tr><td><code>accum_content_pending</code></td><td>11</td></tr><tr><td><code>accum_content_on_pendingMapValue_indented</code></td><td>6</td></tr><tr><td><code>accum_content_on_pendingMapValue</code></td><td>5</td></tr><tr><td><code>content_dispatch_routed</code></td><td>4</td></tr><tr><td><code>accum_step_flow</code></td><td>2</td></tr><tr><td><code>eof_pending</code>, <code>accum_structural_pending</code>, <code>accum_flow_open_depth0</code>, <code>accum_block_pending</code></td><td>1 each</td></tr></tbody></table><p>Item 141 priced the conclusion-disjunct shape at 19 → 28 → 32 over three waves
+(14 producers, 5 consumers).  The producer count is the same 14; the five
+consumers are the same five, one site each, and they are the last four rows
+above plus <code>accum_content_pending</code>'s own.  The premise shape reaches 32 in one
+wave because it never widens a conclusion — which is why it is the shape this
+file records.  (The counts are the tree item 160 measured; item 179 deleted
+<code>accum_content_on_pendingMapValue</code> and <code>accum_content_on_pendingBlock</code> — the
+root instances of their indented twins — so those rows' faces are the twins'
+arms now.)</p></div><div class="mod_doc"><h2 id="5-The-wall-re-confirmed" class="markdown-heading">§5  The wall, re-confirmed <a class="hover-link" href="#5-The-wall-re-confirmed">#</a></h2><p>Four of the five consumers stand where §9.2 gives a refutation: <code>eof_pending</code>
+at <code>scanLoop_checkDanglingNode</code>, which is gated on nothing, and the three
+landing consumers at <code>scanNextToken_checkDanglingNode</code>, gated on the break the
+landing crossed.  <code>accum_block_pending</code> does not: its <code>h_close_pending</code> is built
+BEFORE the case split, and its live arm is a <code>:</code> on the park's own line, where
+the flag is DOWN and the check stands aside by construction.</p><p>Item 141's punting witness is still the one that makes this real rather than
+structural — an ALIAS key, which <code>pendingContent.h_key</code> does not pack, so the
+<code>:</code> reaches <code>accum_block_on_closeThenBlock</code>'s fallback with a dangling park in
+hand.  It scans clean and it parses.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

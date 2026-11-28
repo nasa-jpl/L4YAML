@@ -1,0 +1,83 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerNoDocStartedCarrier</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerNoDocStartedCarrier";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerNoDocStartedCarrier</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerNoDocStartedCarrier.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerNoDocStartedCarrier" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-no-document-started-carrier-DOCS-item-116" class="markdown-heading">The "no document started" carrier (DOCS item 116) <a class="hover-link" href="#The-no-document-started-carrier-DOCS-item-116">#</a></h1><p>Item 110 measured 1c's constructor tightening and found all 16 breaking
+sites blocked by the same missing datum: <code>rootMapRoute</code> and its kin append a
+completed top-level node to the accumulated stream as a fresh bare document
+via <code>[211]</code>'s <code>implicitContinue</code>, which is honest only when the stream has
+started none — and <code>SLYamlStream sp_start sp</code> does not record that.  The
+props landing (the other named prerequisite) was paid at item 111; this item
+pays the record itself.</p><p><strong>The build is one field in <code>noPending</code>'s own style.</strong>  The constructor has
+exactly eight producers, and
+<del><code>h_nodoc : inFlow = false → documentEverStarted = false → GStar SLDocumentPrefix sp_start sp</code></del> <strong><code>h_nodoc : inFlow = false → GStar SLDocumentPrefix sp_start sp</code></strong> (the flag premise came off at item 135, where
+the field was first spent: no producer used it and no consumer could discharge
+it) splits them the way <code>h_col</code>'s disjunction
+does: the seven flow-interior sites refute the premise with the
+<code>inFlow_of_flowLevel_eq h_fl1</code> they already pay the other two fields with
+(<code>nodoc_of_flowLevel_succ</code>), and the seed pays the real witness — <code>[202]</code>'s
+byte order mark if there is one, nothing else — ignoring it.  A
+<code>---</code> parks <code>pendingDocStart</code> and raises the flag, a <code>...</code> parks
+<code>pendingDocEnd</code>, a directive parks the <code>true</code>-indexed <code>pendingDirective</code>,
+and every content and indicator dispatch runs behind the wrapper that raises
+the flag — so a block-context <code>noPending</code> with the flag still down stands on
+prefixes alone.  The spend the tightening will make is landed beside
+<code>rootMapRoute</code>: <code>nodocMapRoute</code>/<code>nodocMapRouteF</code> derive the stream from the
+witness via <code>single</code>, whose <code>l-any-document?</code> slot 1c leaves untouched, and
+<code>ssl_comments_extend_prefixes</code> carries the witness from the park to the
+landing.  Nothing changes hands today — the 16 sites still spend
+<code>implicitContinue</code>, and the constructor migration stays LAST.  (First spent at
+item 135, which also re-measured the 16 as NINE; see §6.)</p><p>§1 is the family at the runtime; §2–§5 are the carrier, the payments, the
+landing extension and the spend at their types; §6 is what this item does
+not close.</p></div><div class="mod_doc"><h2 id="2-The-carrier-the-virgin-park-holds-the-witness" class="markdown-heading">§2 The carrier: the virgin park holds the witness <a class="hover-link" href="#2-The-carrier-the-virgin-park-holds-the-witness">#</a></h2><p>The constructor's arity, stated: a block-context park with nothing pending
+carries, beside its column and its armed save, the fact that there are
+document prefixes and nothing else behind it.  The field is MANDATORY — no
+<code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code> — because its premise already names the two producer families: the
+seed pays, the seven flow sites refute.  (Item 135 dropped the second
+premise, <code>documentEverStarted = false</code>; the block-context park IS the seed,
+so the flag added nothing the <code>inFlow</code> premise did not already carry, and
+asking for it made the field uncashable at every consumer.)</p><p><strong>Item 186 added the SCANNER-side twin.</strong>  <code>h_noek</code> says the same thing about
+the same eight producers on the other side of the coupling: behind a virgin
+block-context park nothing has been scanned, so the explicit-key register is
+dead.  It is paid by the same split — the seed writes <code>none</code> in
+<code>ScannerState.mk'</code>, the seven flow sites refute the premise — and what it buys
+is a REFUTATION at the landed <code>:</code>, which used to split on a stamp source it
+could not decide and now reads it off the park.  See <code>BlockDeferralClasses</code>
+§5.</p></div><div class="mod_doc"><h2 id="3-The-seed-s-payment" class="markdown-heading">§3 The seed's payment <a class="hover-link" href="#3-The-seed-s-payment">#</a></h2><p><code>initial_stream_and_prefix</code> returns the witness beside the stream it always
+built — the byte order mark's prefix in the BOM branch, <code>GStar.nil</code> in the
+other — and the seed park pays <code>h_nodoc</code> with it unconditionally, both
+premises ignored.</p></div><div class="mod_doc"><h2 id="4-The-landing-extension" class="markdown-heading">§4 The landing extension <a class="hover-link" href="#4-The-landing-extension">#</a></h2><p>The comment lines a landing crosses are <code>[202] l-document-prefix</code>'s own, so
+the witness travels from the park to the landing over the same
+<code>[79] s-l-comments</code> that <code>ssl_comments_extend_stream</code> absorbs into the
+stream.</p></div><div class="mod_doc"><h2 id="5-The-spend-rootMapRoute-s-interface-with-no-stream-anywhere" class="markdown-heading">§5 The spend: <code>rootMapRoute</code>'s interface with no stream anywhere <a class="hover-link" href="#5-The-spend-rootMapRoute-s-interface-with-no-stream-anywhere">#</a></h2><p>The tightening's route, end to end: the face fired by the two flags, the
+witness carried to the landing, and both of <code>rootMapRoute</code>'s faces — the
+route and its resume twin — derived via <code>single</code>, whose document slot 1c
+leaves untouched.  No <code>SLYamlStream</code> appears in the premises: where
+<code>rootMapRoute</code> EXTENDS a stream it cannot interrogate, this derivation
+REBUILDS it from the carrier, which is what makes the bare document the
+stream's first rather than <code>[211]</code>'s unmarked continuation.</p></div><div class="mod_doc"><h2 id="6-What-this-item-does-NOT-close" class="markdown-heading">§6 What this item does NOT close <a class="hover-link" href="#6-What-this-item-does-NOT-close">#</a></h2><ul><li>The SUFFIX state.  <code>pendingDocEnd</code> carries no carrier of its own, and its
+close spends <code>suffixContinue</code> with the document slot already empty — so
+<code>...⏎a: 1</code> and its twins (§1's last three pins) still give the bare
+document to <code>implicitContinue</code>.  The mirror carrier — the suffix run held
+open so the next document lands in <code>suffixContinue</code>'s own
+<code>l-any-document?</code> — is its own item.  (CLOSED by item 117 — the landing
+skeleton's <code>h_sfx</code> face, spent through <code>suffixMapRoute</code>/<code>suffixMapRouteF</code>/
+<code>suffixNodeRoute</code>; the content-dispatch landings route through the open
+arm now.)</li><li>The raised-flag side.  <code>sc.allowDirectives = false → sc.documentEverStarted = true</code> is a scanner-state invariant nothing threads; the tightening's
+case split at a raised flag will be served by the suffix carrier and the
+scanner's refusals, not by this witness.</li><li>The 16 sites.  <code>rootMapRoute</code>, <code>rootMapRouteF</code>, <del><code>flowSeq_extends_stream</code></del>
+and their kin still spend <code>implicitContinue</code>'s bare slot; the constructor
+(<code>GOpt SLAnyDocument</code> → explicit-only continuation) is the migration's
+LAST step (item 110), now with both of its measured prerequisites paid
+(the props landing at item 111, the carrier here).
+(<strong>16 is now NINE</strong>, re-measured at item 135, which deleted the two dead
+flow extenders — <code>flowSeq_extends_stream</code> among them — turned
+<code>pendingDocStart</code>'s document builder into a route, and spent THIS field at
+<code>accum_block_on_noPending</code>'s two root-sequence faces, the carrier's first
+consumer.  <del><code>nodocMapRoute</code>/<code>nodocMapRouteF</code> are still unspent: the seed's
+sequence reaches <code>single</code> inline, and the map faces wait on the landing's
+three-way disjunction.</del>  <strong>Spent at item 136</strong>, which gave the landing face
+its HEAD arm and paid it at the park's other three landings — the block
+<code>:</code>/<code>?</code> through <code>nodocMapRoute</code>/<code>nodocMapRouteF</code>, the content dispatch
+through the new <code>nodocNodeRoute</code>, and the flow open through the new
+<code>nodocFlowResumeSep</code> and <code>flowKeyRoute_of_root</code>'s head arm.  See
+<code>StreamRouteSwapSurface</code> and <code>StreamHeadLandingFace</code>.)</li><li>The compact branches' resume twins on both key packs (item 99's
+fused-closure residue) and the flow frame's rider
+(<code>FlowBaseRoutes.key</code>, 67b) are untouched — different rows of the same
+ledger.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

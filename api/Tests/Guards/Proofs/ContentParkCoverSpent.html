@@ -1,0 +1,61 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ContentParkCoverSpent</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ContentParkCoverSpent";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ContentParkCoverSpent</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ContentParkCoverSpent.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ContentParkCoverSpent" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-completed-content-park-carries-the-cover-DOCS-item-152" class="markdown-heading">The completed content park carries the cover (DOCS item 152) <a class="hover-link" href="#The-completed-content-park-carries-the-cover-DOCS-item-152">#</a></h1><p>Item 151 gave <code>ResumeKeyCtx</code> a cover slot on each lane and paid it at the one
+relay that held both readings of the stack.  Every other site filled the slot
+with a punt, and each punt named a CONSTRUCTOR field rather than a missing
+derivation: the faces the landing skeleton is handed carry widths and no cover.</p><p>This item pays two of them.  <code>pendingContent.h_framesS</code> and <code>.h_framesV</code> — the
+faces a completed mapping VALUE leaves behind — gain a cover conjunct, the five
+producers that already hold one on the close face they ride hand it over, and
+<code>accum_content_pending</code>'s shared landing skeleton spends it.</p><p><strong>The index is existential, and that is what makes one slot serve two lanes.</strong>
+This park is depth-0 by construction: it has no <code>n</code> to state a floor against.
+The two faces that fund it are bounded at DIFFERENT indices — the stream face at
+the entry's own level, the value face one column above the <code>?</code> (item 150's
+deliberate stagger) — and <code>IndentStackCover.Floor.pop_to</code> spends the WIDTHS half
+alone.  So the field carries the index and forgets it, exactly as
+<code>resumectx_of_landing</code> does, and the two faces share one shape.</p><p><strong>The payer is the SKELETON's, not the park's.</strong>  What a landing's payment needs
+is <code>s_prep</code>'s own floor, and <code>accum_content_pending</code> already carries the
+<code>SentinelBase</code> and <code>Mono</code> that produce it.  So a park has only to say what it
+kept: the payment is stated once, in the break-crossed landing arm, and serves
+both landing routes there.  The column-0 arm cannot state it at all — that is
+item 147's escape, met here at a CONSUMER instead of at a producer.</p><p>§1 is the slot and its two indices.  §2 is the step that carries a producer's
+cover to the park.  §3 is the skeleton's payment, whose conclusion is a plain
+existential.  §4 walks the corpus.  §5 is what still does not pay.  §6 is the
+price.</p></div><div class="mod_doc"><h2 id="1-One-slot-two-indices" class="markdown-heading">§1  One slot, two indices <a class="hover-link" href="#1-One-slot-two-indices">#</a></h2><p>The two faces are bounded at different levels and both land in the same field,
+because what the field states about the index is only that there IS one.</p></div><div class="mod_doc"><h2 id="2-The-step-that-carries-it" class="markdown-heading">§2  The step that carries it <a class="hover-link" href="#2-The-step-that-carries-it">#</a></h2><p>A producer holds its cover at the state the ENCLOSING park had; the field is
+stated at the state the NEW park has.  Preprocessing only pops and a content
+dispatch writes no level, so the two are the same cover and nothing is
+re-derived — the whole reason paying these two fields costs the producers one
+<code><a href="../../.././Init/SimpLemmas.html#Or.imp">Or.imp</a></code> each.</p></div><div class="mod_doc"><h2 id="3-The-skeleton-s-payment" class="markdown-heading">§3  The skeleton's payment <a class="hover-link" href="#3-The-skeleton-s-payment">#</a></h2><p><code>landing_floor_of_arm</code> turns the anyCol product's landed disjunct into the
+landing's own floor, and <code>dedent_cover_of_floor</code> (item 151's factoring) does the
+hop.  <strong>The conclusion carries no <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code></strong>, so a consumer can tell it was paid
+— which is the interrogability the two items buy together, and the reason the
+payer is worth stating once rather than inlining at each landing route.</p><p>Note what the payment does NOT read: the index <code>m</code> the incoming cover is bounded
+at appears nowhere in the result.  That is the fact §1's two shapes rest on.</p></div><div class="mod_doc"><h2 id="4-The-corpus-walked-against-the-scanner" class="markdown-heading">§4  The corpus, walked against the scanner <a class="hover-link" href="#4-The-corpus-walked-against-the-scanner">#</a></h2><p>The landings this item reaches are dedents off a completed content park, and
+what the derivation needs besides the scanner's own floor is the PARK to be off
+a line start — the break-crossed arm is where the payment can be stated.  A
+block scalar is the one content scan that ends past a break, so its park sits AT
+a line start, and that is what the corpus below discriminates on.</p></div><div class="mod_doc"><h2 id="5-What-still-does-not-pay" class="markdown-heading">§5  What still does not pay <a class="hover-link" href="#5-What-still-does-not-pay">#</a></h2><ul><li><del><strong>The column-0 landing arm</strong>, item 147's escape read at the consumer.  The
+payment wants the walk's re-arm, and a park AT a line start crossed no break.
+Measured above: two of eight.</del>  (CLOSED by item 154.  The payment does not
+want the walk's re-arm — it wants preprocessing's unwind, which runs on
+<code>needIndentCheck</code>, and a park that reached column 0 consumed the break that
+armed it.  The datum is the PARK's, as item 77's own save flag has been.)</li><li><del><strong>The props park.</strong>  <code>accum_content_pending</code>'s <code>pendingProps</code> arm is the one
+punt where the PAYER is not the obstacle — that arm is break-crossed, so the
+floor is there for the asking.  <code>pendingProps</code>'s own two frames fields carry
+no cover, so there is nothing to spend it on, and the five <code>pendingContent</code>
+producers that ride those fields punt for the same reason.</del>  (CLOSED by item
+153 — the two fields gained the same conjunct, three mapping producers pay it,
+two extensions relay it, and both consumers spend it.)</li><li><del><strong>The sequence chain.</strong>  <code>pendingBlockContent.h_closeF</code> carries widths alone,
+and its own payers are <code>pendingBlock.h_closeF</code>, which carries none either —
+two fields on one chain, and the sequence park's relay owes a <code>Mono</code> and a
+<code>SentinelBase</code> besides.</del>  (CLOSED by item 155.  The chain is real and the
+diagnosis was incomplete: those fields carried no FRAMES either, so a cover
+on them would have had no width to be spent at.)</li></ul></div><div class="mod_doc"><h2 id="6-The-price" class="markdown-heading">§6  The price <a class="hover-link" href="#6-The-price">#</a></h2><p><strong>No new declaration.</strong>  The item is two field conjuncts, two <code>have</code>s (the
+producers' step and the skeleton's payment), five producer sites that hand over
+a cover they already hold, and seven sites that say in one <code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code> that
+they hold none.  <code>dedent_cover_of_floor</code> — item 151's factoring — is what makes
+the payment a single line at the point of use; had the hop stayed inside
+<code>dedent_cover_of_landing</code> with that lemma's two escapes attached, this item
+would have had to re-author it.</p><p>What is left of the cover's work is §5's three entries: <del>the col-0 landing
+arm</del> (item 154), <del><code>pendingProps</code>'s two frames fields</del> (item 153), and <del>the
+<code>pendingBlock</code> → <code>pendingBlockContent</code> chain's two <code>h_closeF</code>s — which item
+154's own census finds is a chain of THREE, <code>pendingProps.h_closeFE</code>
+included</del> (item 155).  All three are closed.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

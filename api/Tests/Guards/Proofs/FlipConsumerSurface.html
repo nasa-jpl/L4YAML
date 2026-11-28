@@ -1,0 +1,265 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.FlipConsumerSurface</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.FlipConsumerSurface";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">FlipConsumerSurface</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.FlipConsumerSurface" class="imported-by-list"></ul></details></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.tally"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">tally</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.ns"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">ns</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.raws"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">raws</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.guards"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">guards</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.deferral"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">deferral</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.packPunt"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">packPunt</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.Lane"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">Lane</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">instInhabitedLane</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.surface"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">surface</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.FlipConsumerSurface.pin"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">pin</span></a></div></nav><main><div class="mod_doc"><h1 id="The-210-narrowing-s-consumer-surface-pinned-DOCS-item-183" class="markdown-heading">The <code>[210]</code> narrowing's consumer surface, pinned (DOCS item 183) <a class="hover-link" href="#The-210-narrowing-s-consumer-surface-pinned-DOCS-item-183">#</a></h1><p>Row 19's 1c ends by narrowing <code>[211] l-yaml-stream</code>'s implicit-continuation
+slot from <code>GOpt SLAnyDocument</code> to <code>GOpt SLExplicitDocument</code>.  The narrowing
+instrument — flip the constructor, build — reports FIVE errors, at
+<code>topLevelFlowResumeSep</code>, <code>rootMapRoute</code>, <code>rootMapRouteF</code>, <code>bareNodeRoute</code> and
+<code>structural_dispatch_to_pending</code>, and has reported those same five since item
+166.  That number does not move when a payment lands, because the five are the
+flip's WORK: the four raw routes it deletes and the one <code>SLAnyDocument.explicit</code>
+wrapper it unwraps.  What a payment moves is the surface BELOW them — who still
+reaches a raw route — and this file pins that.</p><p><strong>What is counted.</strong>  Every non-internal constant of
+<code><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML/Proofs/Production/StreamAccum.lean</a></code> whose value applies one of the four
+raw routes, or one of the five guards that stand in front of them
+(<code>rootMapRoute_or_refused</code>, <code>rootMapRouteF_or_refused</code>, <code>bareNodeRoute_or_refused</code>,
+<code>bareNodeRoute_or_refused_content</code>, <code>topLevelFlowResumeSep_or_refused</code>), with
+its application count.  The guards themselves are excluded from their own
+census — they are where the raw term is written, not where it is spent.</p><p><strong>The denominator is the module, not the environment.</strong>  Other
+<code>Tests/Guards/Proofs/</code> files apply the routes and the guards too, in worked
+examples that document their interfaces (<code>StreamBlockLandingRefusal</code>,
+<code>StreamMarkerLandingFace</code>); those are prose, not accumulation, and the module
+filter is what keeps them out of the number.  A new consumer inside
+<code>StreamAccum</code> — the direction that matters — fails this gate.</p><p><strong>Why the guards and not the raw routes alone.</strong>
+<code><a href="../../.././Scratch/CensusRawRoutes.html">Scratch/CensusRawRoutes.lean</a></code> counts the four raw terms and skips the guards,
+which is what says each raw term is written once; it reads TWO holders and has
+since item 181.  It cannot see a payment that removes a guard application,
+which is every payment row 19 has left.  So this census counts both, and the
+number it pins is the one future items have to move.</p><p><strong>And the escape the flip runs into.</strong>  <code>block_dispatch_deferred</code> is
+<code>PendingNode.pendingFlow</code>'s only producer, and <code>pendingFlow</code> is the one park
+that offers the landing faces NO arm to take: its <code>CompletedTail</code> is FALSE by
+construction (the token behind it is a <code>-</code>/<code>?</code>/<code>:</code>), it carries no suffix run,
+no marker route, no document-prefix witness and no resume frames.  Every door
+that reaches a raw route reaches it through that park among others, so the
+deferral's own census is pinned here beside the flip's — R3's deletion is what
+empties these arms, and the two numbers move together.</p><p><strong>By CLASS, since item 184; by ROUTE, since item 185.</strong>  The deferral's
+applications are partitioned in the source by the branch that reaches them.
+Item 184 read three classes — the undecided stamp source (<strong>9</strong>), the mid-line
+inline residue (<strong>2</strong>), and <code>pendingFlow</code>'s own arm (<strong>1</strong>).  Item 185 measured
+the nine and found them three QUESTIONS with three different prices: the park's
+pack stands off the landing's column (<strong>3</strong>), the park carries no pack at all
+(<strong>4</strong>), or the fill is COMPACT and the stamp is the only thing that funds it
+(<strong>2</strong>).  So the DEFERRAL lane counts five names rather than one and a class
+emptying shows as a wrapper leaving the list.  The PACK PUNT lane beside it
+counts <del>what empties the inline class: <code>KeyPackPunt</code>'s two surviving reasons</del>
+the punt's reasons, which are five of the inline class's seven arms (DOCS item
+286; the other two are the no-key arm and the value park whose slot declines).
+Items 288 and 289 refuted the value park's arm and the props consumer's <code>tab</code>,
+so the reasons are four of the five arms left — and item 293 refuted the no-key
+arm, so they are all four.
+Both partitions and the input families they serve are documented at
+<a href="../../.././BlockDeferralClasses.lean"><code>BlockDeferralClasses</code></a>.</p><p><strong>Item 186 took the first site out, and a whole ROW with it.</strong>  Twelve
+applications across five consumer lemmas are now <del><strong>ELEVEN across FOUR</strong></del>
+<strong>NINE across FOUR</strong> (item 209 deleted <code>block_dispatch_deferred_stamp_compact</code>,
+whose class is refuted, and with it two of the eleven):
+<code>accum_block_on_noPending</code> reached the escape once, on the undecided stamp
+source, and <code>noPending</code>'s new <code>h_noek</code> — a virgin block-context park is the
+stream's seed, so its explicit-key register is dead — decides that source
+instead of splitting on it.  A row leaving this census is what a class
+emptying looks like, which is the shape item 184 built the lane for.</p><p><strong>Re-derived from cold at item 210</strong>, independently of this module:
+<code>lake run price -- park-nic0 sites</code> threads a premise through the escape and each
+of its wrappers and reads the census off the failures — <strong>9 applications across
+4 consumer lemmas</strong>, 3 <code>accum_block_on_closeThenBlock</code>, 3
+<code>…_pendingBlockContent</code>, 2 <code>…_pendingBlock</code>, 1 <code>accum_content_pending</code>.  That
+mode had been broken since item 209 (a control pinning the wrapper COUNT) and
+mis-anchored since item 208 (a cascade collapse built for the park modes), so
+the deletion this docstring records went two items without an instrument able to
+confirm it.</p></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.tally"><div class="opaque"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L93-L107">source</a></div><div class="decl_header"><span class="decl_kind">partial def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.tally"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">tally</span></a> </span><span class="decl_args"><span class="fn">(<span class="fn">tgts</span> : <span class="fn"><a href="../../.././Init/Prelude.html#Array">Array</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span>)</span></span> <span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Lean/Expr.html#Lean.Expr">Lean.Expr</a> → <span class="fn"><span class="fn"><a href="../../.././Init/Prelude.html#Array">Array</a> <a href="../../.././Init/Prelude.html#Nat">Nat</a></span> → <span class="fn"><a href="../../.././Init/Prelude.html#Array">Array</a> <a href="../../.././Init/Prelude.html#Nat">Nat</a></span></span></span></div></div><p>Occurrences of each of <code>tgts</code> in an elaborated term, accumulated
+positionally.  ONE traversal for every target: these values are whole
+accumulation proofs and a traversal per name costs minutes.</p></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.ns"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L109-L109">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.ns"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">ns</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></div></div><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.ns">L4YAML.Tests.Guards.FlipConsumerSurface.ns</a> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn">`L4YAML.Proofs.StreamAccum</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.ns" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.raws"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L111-L114">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.raws"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">raws</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span></div></div><p>The four terms that hand <code>[211]</code>'s implicit continuation a BARE document —
+the ones the flip deletes.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.raws">L4YAML.Tests.Guards.FlipConsumerSurface.raws</a> <a href="../../.././Init/Prelude.html#Eq">=</a> <a href="../../.././Init/Prelude.html#List.cons">[</a><span class="fn">`rootMapRoute</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`rootMapRouteF</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`bareNodeRoute</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`topLevelFlowResumeSep</span><a href="../../.././Init/Prelude.html#List.cons">]</a></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.raws" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.guards"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L116-L128">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.guards"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">guards</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span></div></div><p>The five guards that stand in front of them, each with §9.2's landing
+refusal (and, at the content landing, its dangling reading) taken out of
+the raw route's domain.  <strong>Item 296: the two entry pack producers apply
+<code>rootMapRoute_or_refused</code> and <code>rootMapRouteF_or_refused</code> once each</strong>, on the
+dedent branch's frameless exit, with <code>h_ref</code> declined: a landing that
+dedents emits a <code>blockEnd</code> first, which completes no value, so §9.2's
+check stands aside.  They go through the guards so that RAW ROUTES keeps
+its one row.  <strong>Item 297: the <code>w ∉ ks</code> exit applies the same pair</strong>, so
+each producer reads two of each.</p><details><summary>Equations</summary><ul class="equations"><li class="equation">One or more equations did not get rendered due to their size.</li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.guards" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.deferral"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L130-L146">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.deferral"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">deferral</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span></div></div><p><code>pendingFlow</code>'s only producer, and the four wrappers that partition its
+applications by the branch that reaches them (items 184–185): the stamp
+source's three ROUTES — the pack off the landing's column, no pack at all,
+and the compact fill — the mid-line inline residue, and, through the bare
+name, <code>pendingFlow</code>'s own arm, which the escape produces and which goes
+with the constructor.  The counts here are the DOMAIN's classes, so a class
+emptying shows as a wrapper leaving the list rather than as a total
+drifting.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.deferral">L4YAML.Tests.Guards.FlipConsumerSurface.deferral</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <a href="../../.././Init/Prelude.html#List.cons">[</a><span class="fn">`block_dispatch_deferred</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`block_dispatch_deferred_stamp_offcol</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`block_dispatch_deferred_stamp_nopack</span><a href="../../.././Init/Prelude.html#List.cons">,</a>     <span class="fn">`block_dispatch_deferred_inline</span><a href="../../.././Init/Prelude.html#List.cons">]</a></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.deferral" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.packPunt"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L148-L174">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.packPunt"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">packPunt</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span></div></div><p>What empties the inline-residue class: the implicit-key pack's punt
+reasons (item 102 — the mid-line <code>:</code> composes whenever
+<code>colon_fires_implicit_key</code> gets a pack, so the residue IS the punt).</p><p><del>The other two reasons are refuted at their consumers and have no producer
+left.</del>  <strong>Item 211: neither half holds, and this lane's own walk says so
+the moment it is asked.</strong>  <code>tab</code> is produced twice
+(<code>entryKeyPack_of_dispatch</code>, <code>entryPropsKeyPack_of_dispatch</code>) and
+<code>implicitValue</code> three times.  And they are refuted at ONE consumer rather
+than at their consumers: at <code>colon_fires_props_key</code> the <code>tab</code> arm RIDES the
+caller's deferral exactly as <code>dedent</code> and <code>noKeyContext</code> do — three
+unconditionally, and <code>implicitValue</code> on its break branch besides — so the
+inline class has at least THREE surviving reasons there and two at its
+sibling.  The lane
+counts all four now, which is what it would have had to do to see either.
+<strong>Item 289: <code>tab</code> is refuted at both consumers</strong>, the reason carrying the
+saved key's possibility and line, so two reasons ride at each — <code>dedent</code>
+and <code>noKeyContext</code>.  (No break branch rides it either, since item 287:
+each refutes the residue, <code>sslComments_refutes_inline_residue</code>.)</p><p><code>keyPackPunt_transport</code> is skipped for the same reason the wrappers are: it
+re-WRITES a reason it was handed rather than spending one.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.packPunt">L4YAML.Tests.Guards.FlipConsumerSurface.packPunt</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <a href="../../.././Init/Prelude.html#List.cons">[</a><span class="fn">`KeyPackPunt.tab</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`KeyPackPunt.implicitValue</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`KeyPackPunt.markerLine</span><a href="../../.././Init/Prelude.html#List.cons">,</a> <span class="fn">`KeyPackPunt.noKeyContext</span><a href="../../.././Init/Prelude.html#List.cons">]</a></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.packPunt" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.Lane"><div class="structure"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L176-L182">source</a></div><div class="decl_header"><span class="decl_kind">structure</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.Lane"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">Lane</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././foundational_types.html">Type</a></div></div><p>One census: the targets counted, and the definitions where the term is
+WRITTEN rather than spent, excluded.</p><ul class="structure_fields" id="L4YAML.Tests.Guards.FlipConsumerSurface.Lane.mk"><li id="L4YAML.Tests.Guards.FlipConsumerSurface.Lane.tag" class="structure_field"><div class="structure_field_info">tag   :  <a href="../../.././Init/Prelude.html#String">String</a></div></li><li id="L4YAML.Tests.Guards.FlipConsumerSurface.Lane.targets" class="structure_field"><div class="structure_field_info">targets   :  <span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span></div></li><li id="L4YAML.Tests.Guards.FlipConsumerSurface.Lane.skip" class="structure_field"><div class="structure_field_info">skip   :  <span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Lean.Name">Lean.Name</a></span></div></li></ul><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.Lane" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane"><div class="instance"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L182-L182">source</a></div><div class="attributes">@[instance_reducible]</div><div class="decl_header"><span class="decl_kind">instance</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">instInhabitedLane</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Init/Prelude.html#Inhabited">Inhabited</a> <a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.Lane">Lane</a></span></div></div><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane">L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <a href="../../.././Init/Prelude.html#Inhabited.mk">{</a> <span class="fn">default</span> := <a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane">L4YAML.Tests.Guards.FlipConsumerSurface.instInhabitedLane.default</a> <a href="../../.././Init/Prelude.html#Inhabited.mk">}</a></li></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.surface"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L184-L212">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.surface"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">surface</span></a> </span><span class="decl_args"><span class="fn">(<span class="fn">lanes</span> : <span class="fn"><a href="../../.././Init/Prelude.html#Array">Array</a> <a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.Lane">Lane</a></span>)</span></span> <span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Lean/Elab/Command.html#Lean.Elab.Command.CommandElabM">Lean.Elab.Command.CommandElabM</a> <span class="fn">(<a href="../../.././Init/Prelude.html#Array">Array</a> <span class="fn">(<a href="../../.././Init/Prelude.html#Array">Array</a> <a href="../../.././Init/Prelude.html#String">String</a>)</span>)</span></span></div></div><p><code>name: target=count …</code> for every StreamAccum constant that applies one of
+each lane's targets, sorted.  All lanes share ONE walk of the environment —
+the module's values are large and a walk per lane costs minutes.
+<code>allowOpaque := true</code> is required or every theorem reads as valueless and
+the census silently returns nothing.</p><details><summary>Equations</summary><ul class="equations"><li class="equation">One or more equations did not get rendered due to their size.</li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.surface" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.FlipConsumerSurface.pin"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlipConsumerSurface.lean#L214-L224">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.pin"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">FlipConsumerSurface</span>.<span class="name">pin</span></a> </span><span class="decl_args"><span class="fn">(<span class="fn">lanes</span> : <span class="fn"><a href="../../.././Init/Prelude.html#Array">Array</a> (<a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.Lane">Lane</a> <a href="../../.././Init/Prelude.html#Prod">×</a> <span class="fn"><a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#String">String</a></span>)</span>)</span></span> <span class="decl_args"> :</span><div class="decl_type"><span class="fn"><a href="../../.././Lean/Elab/Command.html#Lean.Elab.Command.CommandElabM">Lean.Elab.Command.CommandElabM</a> <a href="../../.././Init/Prelude.html#Unit">Unit</a></span></div></div><p>The gate: each census must be its pinned list, row for row.</p><details><summary>Equations</summary><ul class="equations"><li class="equation">One or more equations did not get rendered due to their size.</li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.FlipConsumerSurface.pin" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="mod_doc"><h2 id="1-The-raw-routes-direct-holders" class="markdown-heading">§1  The raw routes' direct holders <a class="hover-link" href="#1-The-raw-routes-direct-holders">#</a></h2><p>ONE definition, ONE application.  Item 181 deleted the two crossed-window
+payments and took this from three holders to two; item 182's runtime floor left
+it untouched, because that item's kit lands below every one of these.  The
+survivor is the INDENTED content landing, whose three callers park on
+<code>pendingBlock</code>, <code>pendingMapValue</code> and <code>pendingProps</code> — item 156 measured that
+none of the three is refutable (<code>danglingNodePos?</code> reads <code>none</code> at all of them
+and all three inputs parse), so what is missing there is a ROUTE, the enclosing
+park's own, and not a guard.</p></div><div class="mod_doc"><h2 id="2-The-guards-holders-the-surface-a-payment-moves" class="markdown-heading">§2  The guards' holders — the surface a payment moves <a class="hover-link" href="#2-The-guards-holders-the-surface-a-payment-moves">#</a></h2><p>SEVEN definitions, FOURTEEN applications, one row per door:</p><table><thead><tr><th>door</th><th>guard(s)</th><th>what still reaches the raw arm</th></tr></thead><tbody><tr><td><code>accum_block_on_closeThenBlock</code></td><td><code>bareNodeRoute_or_refused</code></td><td>the <code>-</code> lane's on-level landing — a <code>[183]</code> already open at this column (<code>- - a⏎- b</code>, <code>a:⏎- x⏎- y</code>, item 166): a missing ROUTE, the open sequence's continuation</td></tr><tr><td><code>accum_content_pending</code> ×2</td><td><code>bareNodeRoute_or_refused_content</code></td><td><code>pendingFlow</code>'s break-crossed landings ALONE (item 174) — both <code>h_op</code> halves refute for a park with a completed tail</td></tr><tr><td><code>accum_flow_open_depth0</code></td><td><code>topLevelFlowResumeSep_or_refused</code></td><td>the two content parks at <code>h_op = true</code>, whose inputs the scanner REFUSES (§7 of <code>StreamFlipRemainderMap</code>), plus <code>pendingFlow</code></td></tr><tr><td><code>colon_open_map</code>, <code>question_open_map</code></td><td><code>rootMapRoute(F)_or_refused</code></td><td>the sibling <code>:</code>/<code>?</code> landing whose park pays no resume face (item 173's cascade covers the rest)</td></tr><tr><td><code>content_dispatch_routed</code> ×2</td><td><code>rootMapRoute(F)_or_refused</code></td><td>the same, at the content landing's key side</td></tr><tr><td><code>flowKeyRoute_of_root</code></td><td><code>rootMapRoute(F)_or_refused</code></td><td>the sibling flow key whose park pays no frame (item 176's cascade covers the rest)</td></tr></tbody></table><p>Each <code>rootMapRoute_or_refused</code> row is paired with its entries-level twin
+<code>rootMapRouteF_or_refused</code>, which is why those counts come in twos.</p></div><div class="mod_doc"><h2 id="3-The-deferral-beside-it" class="markdown-heading">§3  The deferral beside it <a class="hover-link" href="#3-The-deferral-beside-it">#</a></h2><p><del>FOUR</del> <strong>SEVEN</strong> definitions, <del>ELEVEN</del> <del>NINE</del> <del>FIFTEEN</del> <del>FOURTEEN</del> <del>THIRTEEN</del> <strong>TWELVE</strong> applications
+(item 186 — five and twelve before it; item 209 — the compact wrapper's two,
+refuted and gone; <strong>item 287</strong> — the inline wrapper's two became eight, one at
+each arm of DOCS item 286's measurement: <code>dedent</code>, <code>noKeyContext</code> and the
+no-key arm at <code>colon_fires_implicit_key</code>, <code>tab</code>, <code>dedent</code> and <code>noKeyContext</code> at
+<code>colon_fires_props_key</code>, and <code>accum_block_pending</code>'s frameless value park and
+dead <code>pendingFlow</code> arm).  The count rose and the domain did not: the five
+crossed-break arms that reached the old two sites are refuted now.  <strong>Item
+288</strong> refutes the frameless value park's, which holds the stamp, and <strong>item
+289</strong> the props consumer's <code>tab</code>, whose reason carries the saved key's
+possibility and line, and <strong>item 293</strong> the implicit consumer's <code>¬ possible</code>,
+on the content parks' <code>h_live</code>.
+<code>pendingFlow</code> is not a <code>[210]</code>
+construction site and never appears in the flip's five errors — it is the park
+whose arms have nothing to pay the landing faces WITH, so it keeps the guards'
+fallback arms alive wherever it can reach them.  Pinning it here is what makes
+that dependency checkable rather than remembered: R3's deletion empties arms
+this census counts, and a change to either number should be read against the
+other.</p><p>The rows below are the DOMAIN's shape, not the module's: each landed-<code>:</code>
+consumer contributes one <code>offcol</code> and one <code>nopack</code> because its <code>by_cases</code> on
+the park's pack has exactly those two stuck arms, and the two consumers with a
+compact-fill arm contribute a <code>compact</code> each.  The asymmetric row was
+<code>accum_block_on_noPending</code>'s, and item 186 removed it: that park carries no
+pack because it carries nothing at all, and the register face it does carry
+now says the class-A branch cannot reach it.</p><p>Item 187 left the counts where they are and re-priced what emptying the
+<code>nopack</code> row would cost: not the 23 payments a one-ring flip reported, but a
+surface of <strong>31 pack punts across 16 declarations</strong> — the count this census
+cannot see, because the punts are a field's alternative rather than a
+definition's application.  The two instruments are complements, and
+<code>BlockDeferralClasses</code> §6 carries the one this file does not.</p><p>Item 188 PAID the first of those 31 — the <code>?</code> frame's key, filled by a landed
+sequence — and the counts below do not move by so much as a row.  That is the
+expected reading and the reason to state it: a payment against an escape
+narrows the DOMAIN of a stuck arm, and an arm with a narrower domain is still
+an arm.  This census will register R3's progress only at the step where an arm
+becomes unreachable and its wrapper is deleted; until then a flat table here is
+evidence of nothing either way, and <code>BlockDeferralClasses</code> §7 carries what the
+step actually bought.</p><p>Item 189 paid the second — the same slot filled by a landed MAPPING, where the
+obstacle was not a missing carrier but a SHADOWED one — and again no lane
+moves.  It adds one optional parameter to <code>accum_block_on_closeThenBlock</code> and
+one to the two map openers, which this census does not count either: the DEFERRAL
+lane counts applications of the escape, and a new punting parameter is neither
+an application nor a pack punt.  <code>BlockDeferralClasses</code> §8 carries the
+measurement, including the arm-swap that shows the shadowing was a policy.</p><p>Item 190 paid the COMPACT twin at the remaining two <code>_stamp_offcol</code> sites, and
+this census stays flat for a THIRD reason worth separating from the other two.
+It is not that the payment is small: the item adds a constructor field to
+<code>pendingMapValue</code>, <code>pendingBlock</code> and <code>pendingBlockContent</code>, and touches every
+producer of all three.  It is that none of what it adds is in any lane's
+vocabulary — a new punting FIELD is not an application of the escape and not a
+<code>KeyPackPunt</code> constructor, so all three lanes are blind to constructor growth
+by construction.  The instrument that does see it is the per-field flip, and
+<code>BlockDeferralClasses</code> §9 carries four readings of it taken at one commit: each
+new field against the field it twins.  A census reports the surface it was
+built to report, and saying which questions it cannot answer is part of
+reporting it.</p><p>Item 191 paid the residue item 190 named — a landing two or more frames up —
+and this census is flat again, now for a FOURTH reason, and it is the sharpest
+of them.  The item adds no application, no parameter and no field: it changes
+the TYPE of three fields item 190 already added, from <code>∃ nv</code> to <code>∃ <a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.ns">ns</a> : <a href="../../.././Init/Prelude.html#List">List</a> <a href="../../.././Init/Prelude.html#Nat">Nat</a></code>
+with a membership test at the landing.  Every lane here counts occurrences of
+something, and a generalization in place occurs nowhere.  Even the per-field
+flip cannot see it — re-run at this commit, <code>pendingMapValue.h_explUp</code> reads
+7 declarations / 9 errors and <code>pendingBlock.h_kslotUp</code> reads 6 / 22, both
+exactly item 190's numbers, because widening a field moves no PUNT.  What does
+see it is the composed derivation: <code>BlockDeferralClasses</code> §10 builds the chain
+through two <code>?</code> landings and answers two different landings from ONE funder,
+which is the thing <code>∃ nv</code> cannot do and the thing no count reports.</p><p>Item 192 carried the chain across a CONSTRUCT — the flow open, close and the
+park it re-parks as — and this census is flat a FIFTH time, for item 191's
+reason.  What is new is at the other instrument, and it is a caution about
+reading it across a refactor.  The per-field flip's DECLARATION counts hold
+(<code>FlowBaseRoutes.vslot</code> 3, <code>pendingContent.h_vpack</code> 5, unchanged by the
+widening) but its ERROR counts FALL — 17 → 11 and 35 → 23 — after a payment
+that strictly added reach.  The cause is that the item introduces a combinator
+(<code>frameChainUnion</code>), and a combinator's argument type does not mention the
+field: the punts that used to sit in a preference <code>match</code>'s branches now sit
+inside the helper's arguments, so flipping the field breaks one result position
+per SITE where it used to break every branch.  Item 188 warned that an error
+count is not monotone in the domain; this says something narrower and sharper —
+an error count is not comparable across a change that alters how the punts are
+nested.  Declaration counts still are, which is why they are the number to
+carry forward.</p><p>Item 193 threaded the chain to the entry park's landed <code>?</code>, and this census is
+flat a SIXTH time for item 191's reason.  What is new is that the per-field flip
+was flat for a reason of its own, and the reason is worth separating from the
+five readings before it: <strong>a constructor FIELD's flip and the LEMMA PARAMETER
+that carries it are two different surfaces.</strong>  The field's flip deletes an
+optional constructor argument, so what errors is the PRODUCERS — every site that
+builds the constructor and must now supply the datum.  The parameter's flip
+deletes an optional argument of a consuming lemma, so what errors is the uses
+INSIDE it.  A payment that adds a consumer therefore moves the second and leaves
+the first exactly where it was: <code>pendingBlock.h_kslotUp</code> reads 7 declarations /
+23 errors at this commit and 7 / 23 at the parent, while the parameter of the
+same name on <code>accum_block_on_pendingBlock</code> goes 5 → <strong>6</strong> errors over the two
+declarations it reaches — 4 → 5 inside that lemma itself.  Five items of "the
+census is flat" were all taken on the producer surface.</p><p>And one correction to our own record, found by re-running rather than by
+reading.  Item 191's table reports <code>pendingBlock.h_kslotUp</code> at 6 / 22.  That was
+true when written and went stale one item later: item 192 made
+<code>accum_flow_open_depth0</code> a consumer of the field (0 → 3 mentions of the binder)
+and re-ran the two FLOW fields instead of this pair, so the stale number rode
+forward into item 192's entry as "flat".  The reading at both <code>a16a5566</code> and
+here is 7 / 23.</p><p>Item 194 paid a punt that had waited on a PARAMETER LIST rather than on a
+carrier, and its numbers refine item 193's sentence rather than repeating it.
+The field surface is NOT flat this time: <code>pendingBlockContent.h_closeF</code> reads
+3 declarations / 21 errors at <code>ffc5ef65</code> and <strong>4 / 22</strong> here, the new one being
+<code>accum_block_pending</code> — the <code>match</code> that binds the field and hands it to the
+lemma.  So a field's flip counts every site whose TERM changes type, which is
+the producers that punt it AND the relays that pass it on; item 193 observed the
+first half, because the item it was measuring added no relay.  The payment's own
+surface is the parameter, which did not exist at the parent: <code>h_closeF_old</code> on
+<code>accum_block_on_pendingBlockContent</code> reads <strong>2 declarations / 2 errors</strong>, one in
+the lemma (the payment) and one at the caller.  A number that jumped because the
+item introduced a new KIND of site is not evidence of reach, and the reach here
+is the guards file's §13, not either count.</p><p>Item 195 separates two instruments that had been read as one, and then finds the
+DECLARATION count blind to its own payment.</p><p>A FLIP deletes a field's <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code> and counts who can no longer punt.  A WIDENING
+(<code>∃ nv : <a href="../../.././Init/Prelude.html#Nat">Nat</a></code> → <code>∃ <a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.ns">ns</a> : <a href="../../.././Init/Prelude.html#List">List</a> Nat, ∀ nv ∈ <a href="../../.././Tests/Guards/Proofs/FlipConsumerSurface.html#L4YAML.Tests.Guards.FlipConsumerSurface.ns">ns</a></code>) leaves the escape in place, so
+<code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code> still elaborates and only the sites whose TERM changes type
+move.  On <code>pendingMapValue.h_kslot</code> at <code>f113d701</code> the flip reads <strong>9
+declarations / 16 errors</strong> and the widening <strong>6 / 22</strong>; the difference is exactly
+the three PUNTERS (<code>colon_open_map</code>, <code>colon_open_map_explicit</code>,
+<code>compact_open_map</code>), so a flip over-states a widening's surface — here by half.
+The widening also has a wave structure the flip has not: its sixth declaration
+was the RELAY <code>accum_content_pending</code>, whose one error was the field handed to a
+still-narrow lemma parameter, and widening that parameter swapped in
+<code>accum_content_on_pendingMapValue_indented</code> at 13 errors while the count stayed
+at 6.  <strong>A widen census reports one wave; a relay boundary hides the next</strong>, and
+the count is a price only once it is iterated to a fixpoint.</p><p>And this item's own payment is invisible to the declaration count.
+<code>pendingMapValue.h_explUp</code> reads <strong>8 declarations / 10 errors</strong> at <code>f113d701</code> and
+<strong>8 / 11</strong> here — flat where item 194's field moved 3 → 4 — because the new site
+sits INSIDE <code>accum_block_pending</code>, which the field already reached on the slot
+lane twenty lines away.  A declaration census answers "which proofs read this
+field", not "which of their lanes do"; a lane that was never served is
+indistinguishable in it from one that was.  The payment's reach is §14's
+membership arithmetic, not this count.</p><p>Item 211 asked this lane for the one number the campaign had been carrying by
+hand — <code>dedent</code> 7 sites in 5 declarations and <code>noKeyContext</code> 6 in 5, item 184's
+reading, copied verbatim through twenty-two NEXT lists — and BOTH reproduce,
+row for row, at every build since.  Three things around them do not.</p><p><strong>The lane's own ground was wrong.</strong>  It counted two of four reasons because the
+other two "have no producer left"; asked for all four, the same walk reads <code>tab</code>
+at 2 productions and <code>implicitValue</code> at 3.  A census restricted on a claim it is
+itself able to test is a census that cannot correct its author.</p><p><strong>The two instruments agree on the two reasons that were measured and not on
+the third.</strong>  <code>lake run punt-price</code> is item 184's other half as an
+artifact — delete a constructor, build, group by declaration.  It reads <code>dedent</code>
+7/5 and <code>noKeyContext</code> 6/5, agreeing; it reads <code>tab</code> at <strong>7</strong> where this lane
+reads <strong>5</strong>, because <code>tab</code> is written <code>refine <a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> (KeyPackPunt.tab ?_ ...)</code>
+and the orphaned goal is a second error at each of its two productions.  Item
+189 wrote the reason down in passing — "a <code>match</code> costs more to break than an
+<code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code>" — and never matched it to the agreement item 184 had recorded.</p><p><strong>And the number's UNIT glues two kinds of site.</strong>  <code>dedent</code>'s 7 is 4
+PRODUCTIONS and 3 CONSUMER ARMS; <code>noKeyContext</code>'s 6 is 3 and 3.  A production
+hands the reason over and is emptied by a proof about the input; a consumer arm
+is the <code>cases</code> label that spends it, and it goes when the last production does.
+What R3 has to pay is seven productions, not thirteen sites — and this lane
+cannot make that split, because an application is an application.
+<code>lake run punt-price -- split</code> does, from the source, against this lane's own
+site list.</p><p><strong>Item 296: <code>dedent</code> reads 5 sites, two productions and three consumer arms.</strong>
+The dedent branch's frameless exit keys a fresh document at the landing in both
+entry pack producers, so each writes <code>dedent</code> once, on its <code>w ∉ ks</code> exit.
+<strong>Item 297 deletes it</strong>: the <code>w ∉ ks</code> exit keys a fresh document too, and the
+three consumer arms go with the constructor.</p></div><div class="mod_doc"><h2 id="The-gate" class="markdown-heading">The gate <a class="hover-link" href="#The-gate">#</a></h2><p>All three lanes, in one walk of the module.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

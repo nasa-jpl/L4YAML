@@ -1,0 +1,8 @@
+=== Cross-Language yaml-test-suite Comparison ===
+unlimited   : 869 passed, 0 failed, 151 skipped (1020 total) — all 4 backends identical
+default     : 854 passed, 15 failed, 151 skipped (1020 total) — all 4 backends identical
+strict      : 853 passed, 16 failed, 151 skipped (1020 total) — all 4 backends identical
+permissive  : 854 passed, 15 failed, 151 skipped (1020 total) — all 4 backends identical
+safe_tags   : 853 passed, 16 failed, 151 skipped (1020 total) — all 4 backends identical
+
+✓ All backends produce identical results for every preset

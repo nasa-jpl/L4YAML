@@ -1,0 +1,55 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.PropsCrossWindowRoute</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.PropsCrossWindowRoute";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">PropsCrossWindowRoute</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/PropsCrossWindowRoute.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.PropsCrossWindowRoute" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-crossed-tail-window-the-route-it-needed-and-its-RETIREMENT" class="markdown-heading">The crossed tail window — the route it needed, and its RETIREMENT <a class="hover-link" href="#The-crossed-tail-window-the-route-it-needed-and-its-RETIREMENT">#</a></h1><pre><code>(DOCS items 170 and 181)
+</code></pre><p>Item 165's <code>[96]</code> length gate read a parent node's FULL property run, a break,
+and the first implicit KEY's fresh run as ONE run, and refused 9KAX — found
+when the test matrix ran again at item 169.  The narrowing is measured and
+small: in block context the gate fires only when all three properties share
+the cursor's line (<code>PropsRunLengthGate</code> §1 has the runtime).</p><p>The narrowing's PRICE was this file's first subject.  With cross-line thirds
+deferred, a <code>[96]</code> park's tail window can hold a property on an EARLIER line
+below its tail, and there item 165's verdict relay is not hard but FALSE:
+§9.2's walk-back is capped at <code>[96]</code>'s arity, so a property push SLIDES the
+window, and the park's verdict and the pushed state's are readings of
+different columns.  §1 pins the slide at the runtime, where it still holds.</p><p>Item 170 answered it with a second route — <code>PropsWindowCross</code> naming the
+window, <code>pendingProps.h_routeX</code> carrying a construction that never read the
+verdict, and a same-line extension refuting the premise.  <strong>Item 181 deletes
+all three.</strong>  What retires them is not a better relay but an empty domain: the
+push that slides the window puts a THIRD property adjacent to two others, and
+<code>[96]</code> admits one anchor and one tag — so a kind repeats, §9.2's fourth clause
+(item 180) reads the excess, and <code>danglingNodePos?</code> returns <code>some</code> at exactly
+the states the window named.  The relay's premise is refuted there; the branch
+that could not transport a verdict is the branch that has none to transport.</p><p>§1 pins the slide and the refusal at the runtime, §2 the pigeonhole the
+retirement rests on, §3 the pieces at the proof's own types, §4 the record.</p></div><div class="mod_doc"><h2 id="1-The-slide-at-the-runtime-and-the-two-floors-in-front-of-it" class="markdown-heading">§1  The slide, at the runtime — and the two floors in front of it <a class="hover-link" href="#1-The-slide-at-the-runtime-and-the-two-floors-in-front-of-it">#</a></h2><p>When this file was written (item 170), <code>a:⏎!t⏎&amp;b⏎␣␣!s &amp;c x</code> scanned clean:
+every landing passed §9.2's mid-stream check, the gate deferred every <code>&amp;</code>/<code>!</code>,
+and only <code>TokenParser</code> refused.  Five tokens in, the array ended <code>[.., &amp;b, !s]</code>
+and the window started at <code>&amp;b</code> — column 0, AT the open level; one property
+push later it started at <code>!s</code> — column 2, at no level.  So the pushed state's
+verdict could not relay the park's, which is why <code>h_routeX</code> carried the window
+instead.</p><p>Item 178's floor now stands IN FRONT of the slide for this family: the first
+property lands at the awaiting level's own column, and the first BREAK after
+it is <code>danglingNodePos?</code>'s own refusal (the slot-offered exemption no longer
+covers a <code>[96]</code>-headed run), so the scan dies three tokens in — at the same
+run start <code>TokenParser</code> used to name — and the sliding windows behind it are
+no longer reachable states.  The verdict three tokens in is still the some
+the relay could not carry, pinned below.</p><p>What survived for the crossed-window arms was the family with no offered slot
+in front — the ROOT's (<code>&amp;a⏎!t &amp;b x</code>), where §9.2 read <code>none</code> at every window
+(no level is open) and the route never needed a verdict at all.  <strong>Item 180's
+fourth clause reads that family too</strong>, and item 181 spends the shrinkage.</p></div><div class="mod_doc"><h2 id="2-The-pigeonhole-exhaustively" class="markdown-heading">§2  The pigeonhole, exhaustively <a class="hover-link" href="#2-The-pigeonhole-exhaustively">#</a></h2><p><code>[96] c-ns-properties</code> admits at most one anchor and one tag, so THREE
+adjacent property tokens always duplicate a kind.  All eight assignments,
+against the reader item 180 landed — the excess index is the first token, in
+token order, whose kind already occurs below it.  The two-property controls
+say the reader is not simply counting: <code>&amp;!</code> and <code>!&amp;</code> are one legal run.</p></div><div class="mod_doc"><h2 id="3-The-pieces-at-the-proof-s-own-types" class="markdown-heading">§3  The pieces, at the proof's own types <a class="hover-link" href="#3-The-pieces-at-the-proof-s-own-types">#</a></h2></div><div class="mod_doc"><h2 id="4-The-record" class="markdown-heading">§4  The record <a class="hover-link" href="#4-The-record">#</a></h2><ul><li><p><strong>What item 181 deletes.</strong>  <code>PropsWindowCross</code> (the window), its refutation
+<code>propsWindowCross_push_refute</code>, and <code>pendingProps.h_routeX</code> (the route held
+without the verdict) — with the six payments the field cost: two landed
+births, the entry and value slots' re-handed closers, and the two same-line
+extensions' refutations.  <code>content_dispatch_routed</code>'s route premise is
+<code>ContentRouteGate</code> alone again, and <code>propsPark_dangling_of_prop</code> loses its
+disjunct, its <code>propertyRunFull</code> premise and the tail-line conjunct with it.</p></li><li><p><strong>What it buys.</strong>  <code>accum_content_pending</code>'s two <code>bareNodeRoute</code> fallbacks —
+the arms the crossed window rode — are gone, so the raw-route census drops
+from THREE holders to TWO: <code>bareNodeRoute_or_refused_content</code> (2) and
+<code>content_dispatch_after_close</code> (1).  At the content landing the refined
+route is now the ONLY construction.</p></li><li><p><strong>No refusal weakens, and none is added.</strong>  This item edits no runtime file:
+the refusal it spends is item 180's, already measured against PyYAML and
+already in the matrix.  The gated <code>h_route</code> and both <code>_or_refused</code>
+refinements are untouched; <code>ContentRouteGate</code> is unchanged.</p></li><li><p><strong>The gate stays as measured.</strong>  The slide is a fact about §9.2's READER
+(<code>trailingNodeRun?</code>'s <code>[96]</code>-arity cap), not about item 170's narrowed
+<code>propertyRunFull</code>, and it is still true — §1 pins it.  What changed is that
+the states it describes are refused before any route is owed.</p></li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

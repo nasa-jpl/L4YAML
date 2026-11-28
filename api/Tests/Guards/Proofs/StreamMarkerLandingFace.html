@@ -1,0 +1,70 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.StreamMarkerLandingFace</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.StreamMarkerLandingFace";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">StreamMarkerLandingFace</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamMarkerLandingFace.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.StreamMarkerLandingFace" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-landing-s-MARKER-arm-DOCS-item-137" class="markdown-heading">The landing's MARKER arm (DOCS item 137) <a class="hover-link" href="#The-landing-s-MARKER-arm-DOCS-item-137">#</a></h1><p>Item 136 gave the landing's route face its HEAD arm and paid it at all four of
+the virgin park's landings, leaving one sentence that was too strong: that the
+families still reaching the fallback need no fourth ROUTE.  One of them does.</p><p><strong><code>pendingDocStart</code> is a park with an OPEN document, and the fallback closes
+it.</strong>  <code>[208] l-explicit-document ::= c-directives-end ( l-bare-document | ( e-node s-l-comments ) )</code> — when <code>---</code> is scanned the document it opens is not
+finished, and the node on the next line is that document's own content.  The
+fallback takes the other alternative: it closes the marker's document with
+<code>e-node</code>, then appends the landed node as a SECOND, bare document through
+<code>[211]</code>'s implicit continuation.  The parser emits one document for every one
+of these inputs (§1), so the reading was over-approximating in exactly the
+place row 19's 1c tightening removes — and unlike the other fallback families,
+this one has had the honest route on the park since item 135 reshaped
+<code>h_doc_route</code> into one.</p><p><strong>Four landings, one park — the same shape as item 136's, and two were already
+paid.</strong>  The content dispatch's INLINE arm (<code>--- a</code>) has routed through
+<code>h_doc_route</code> since item 43, and the flow open (<code>--- [1]</code>, <code>---⏎[1, 2]</code>) since
+item 56.  This item pays the other two:</p><ul><li>the block <code>-</code>, <code>:</code> and <code>?</code> — <code>accum_block_on_closeThenBlock</code>, whose sequence
+route becomes <code>markerSeqRoute</code> and whose <code>[188]</code> entry routes become
+<code>markerMapRoute</code>/<code>markerMapRouteF</code> (<code>---⏎- a</code>, <code>---⏎: v</code>, <code>---⏎? k</code>);</li><li>the content dispatch's LANDED arm — <code>accum_content_pending</code>'s shared
+skeleton, where the anchor moves from the landing back to the marker's park
+and <code>content_dispatch_routed</code> takes the anchor as a parameter (<code>---⏎hello</code>,
+<code>---⏎a: 1</code>).</li></ul><p><strong>Why the sequence route is stated over the ENTRIES.</strong>  <code>[199] s-l+block-collection</code> puts <code>s-l-comments</code> in FRONT of the entries, so the break
+this landing crossed belongs INSIDE the node the marker's document wants.  A
+route taking a finished <code>SBlockNode</code> at the landing — which is what
+<code>suffixNodeRoute</code> and <code>nodocNodeRoute</code> are — can no longer absorb it.  Hence
+<code>MarkerNodeRoute</code>: the marker's park and the landing's comments as a pair, with
+<code>markerSeqRoute</code>/<code>markerMapRoute</code> supplying the comments to <code>rootBlockSeq</code> and
+<code>rootBlockMap</code> where the other three routes supply <code>sslComments_refl_of_col0</code>.</p><p><strong>Measured, both directions.</strong>  A reference-count walk over the elaborated
+terms gives <code>accum_block_on_closeThenBlock</code> from <code>rootBlockSeq = 3</code> to
+<code>rootBlockSeq = 1, markerSeqRoute = 1</code>, <code>accum_content_pending</code> from
+<code>content_dispatch_routed = 3</code> to <code>= 5</code>, and <code>colon_open_map</code>,
+<code>question_open_map</code> and <code>content_dispatch_routed</code> each gaining the <code>marker</code>
+twins beside the <code>root</code>, <code>suffix</code> and <code>nodoc</code> ones.  The <code>implicitContinue</code>
+application count is UNMOVED at eleven (NINE since item 209) and the
+constructor flip still gives
+nine errors at the same nine lemmas: this item moves callers, it deletes no
+site.  What it does delete is a family — <code>pendingDocStart</code> no longer reaches
+any fallback arm from any landing.</p><p>No runtime file is touched, so every verdict in §1 is the one the pipelines
+already gave.</p><p>§1 is the family at the runtime; §2–§4 are the builds at their types; §5 is
+what remains.</p></div><div class="mod_doc"><h2 id="1-The-marker-s-landings-at-the-runtime" class="markdown-heading">§1 The marker's landings at the runtime <a class="hover-link" href="#1-The-marker-s-landings-at-the-runtime">#</a></h2><p>Every one of them is ONE explicit document — a single <code>+DOC ---</code> … <code>-DOC</code> pair
+with the landed node inside it.  That is the whole of the claim: the fallback
+these landings used to take emits the node as a second document, and no input
+here has two.</p></div><div class="mod_doc"><h2 id="2-The-marker-routes-at-their-types" class="markdown-heading">§2 The marker routes at their types <a class="hover-link" href="#2-The-marker-routes-at-their-types">#</a></h2><p><code>MarkerNodeRoute</code> is a PAIR — the marker's park and the landing's comments —
+because the comments have to reach <code>[199]</code>, which sits inside the node.  That
+is the one structural difference from the head and suffix arms, whose witnesses
+travel alone.</p></div><div class="mod_doc"><h2 id="3-The-marker-key-context-and-the-cascade-arm-that-spends-it" class="markdown-heading">§3 The marker key context, and the cascade arm that spends it <a class="hover-link" href="#3-The-marker-key-context-and-the-cascade-arm-that-spends-it">#</a></h2><p><code>markerctx_of_landing</code> is <code>suffixctx_of_landing</code> with the marker's route in the
+suffix run's place — the same three facts off the same landing, and the fourth
+context <code>content_dispatch_routed</code>'s cascade prefers over the bare one.</p></div><div class="mod_doc"><h2 id="4-The-park-s-arm-at-each-landing" class="markdown-heading">§4 The park's arm at each landing <a class="hover-link" href="#4-The-park-s-arm-at-each-landing">#</a></h2><p>One field — <code>pendingDocStart.h_doc_route</code> — stated over every landing the park
+may reach, exactly as the <code>...</code> park's suffix arm is (item 117/118).</p></div><div class="mod_doc"><h2 id="5-What-remains" class="markdown-heading">§5 What remains <a class="hover-link" href="#5-What-remains">#</a></h2><p>The face has four arms now — resume (item 109), suffix (item 117), head (item
+136) and marker (this item) — and <code>pendingDocStart</code> is off the fallback at
+every landing it reaches.</p><p>What still writes <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code> is the fallback, and it is still <code>rootMapRoute</code>'s
+implicit continuation.  Two families reach it, and item 136's sentence holds
+for both once the marker is subtracted:</p><ul><li>the landing skeletons' non-<code>...</code>, non-<code>---</code> arms — <code>pendingContent</code>,
+<code>pendingProps</code>, <code>pendingBlockContent</code>, <code>pendingBlock</code>, <code>pendingMapValue</code>,
+<code>pendingFlow</code> — where the park closed a node INSIDE a document that is
+already finished;</li><li><code>accum_flow_open_depth0</code>'s shared <code>main</code> and
+<code>content_dispatch_after_close</code>'s two indented callers, which are the same
+state one dispatch later.</li></ul><p>None of these has a document to hand the node to.  Where a level is open the
+honest answer is the resume arm <code>content_dispatch_routed</code> already prefers;
+where none is and no <code>...</code> and no <code>---</code> intervened, §9.2 refuses the input
+outright (items 132–134).  So what the fallback arm needs is still the
+refutation threaded to the accumulation as a contradiction — with one family
+fewer to argue about.</p><p><strong>Half PAID by DOCS item 139</strong> (2026-09-10), which threaded it — and which
+corrects the paragraph above in the one place it could not have known.  Where a
+level IS open the input is not served by the resume arm either: it is a DANGLING
+run, and <code>danglingNodePos?</code> reads the run off the TOKEN ARRAY, so the scanner
+cannot refuse it until the run has been scanned.  The step therefore runs, the
+park it makes owes a stream, and the fallback genuinely serves it.  Only the
+sentinel-alone half is refutable at the landing, and that is the half item 139
+refutes; see <code>StreamBareDocumentFallback</code> §1 for the split, measured on the real
+scanner.</p><p><code>pendingDirective</code>'s <code>[209]</code> witness and the <code>SLAnyDocument.explicit</code> wrapper
+stand where item 135 left them.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

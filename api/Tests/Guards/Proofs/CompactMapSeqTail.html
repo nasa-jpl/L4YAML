@@ -1,0 +1,59 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.CompactMapSeqTail</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.CompactMapSeqTail";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">CompactMapSeqTail</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/CompactMapSeqTail.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.CompactMapSeqTail" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-compact-mapping-that-fills-a-sequence-entry-and-the-tail-it-owes" class="markdown-heading">The compact mapping that fills a sequence entry, and the tail it owes <a class="hover-link" href="#The-compact-mapping-that-fills-a-sequence-entry-and-the-tail-it-owes">#</a></h1><pre><code>(DOCS item 168)
+</code></pre><p>Item 167 built <code>SeqEntryTail</code> and paid it on the two ENTRY parks, then measured
+that the corpus puts nothing there: over 490 files not one dedenting <code>-</code> crosses
+an open block SEQUENCE.  What the corpus HAS is the other half — <strong>76</strong> landings
+whose unwind drops block MAPPING levels — and <strong>75 of the 76 park after a mapping
+VALUE</strong>, which is <code>pendingContent</code>, a park item 167's field never reaches.  This
+file measures that family and carries the route to it.</p><p><strong>The cascade is three hops and a loop.</strong>  The collection's tail leaves the entry
+park at the compact <code>:</code> (<code>ImplicitKeyPack</code>'s own sequence face), arrives on
+<code>pendingMapValue</code>, comes back out on <code>pendingContent</code> with the value — and then
+has to survive every SIBLING key inside the same mapping before the dedenting <code>-</code>
+arrives.  §2 measures how much of that is load-bearing: <strong>62 of the 68</strong> reachable
+landings dedent out of a MULTI-line entry, so the sibling hop is the item rather
+than a refinement of it.</p><p><strong>One width, not a stack</strong> — item 167's choice, made again and measured again.
+The face names the innermost open mapping level and fuses everything below it, so
+it serves the <strong>68</strong> landings that stand on exactly one open level and punts the
+<strong>8</strong> that stand on two.  A stack here is <code>ResumeFrames (SeqEntryTail sp_start ke)</code>
+— item 108's parameter on a third bottom — and those eight are what it would buy.
+(Item 169 built that stack, and reading the entry HEAD showed it buys more than
+the eight — see <code>SeqTailResumeFrames.lean</code>; this file's fused readings survive as
+the <code>ks = []</code> instance.)</p><p>§1 pins the family at the runtime, §2 records the censuses, §3 composes the route
+hop by hop and then end to end, §4 says what is paid and what is not.</p></div><div class="mod_doc"><h2 id="1-The-family-measured" class="markdown-heading">§1  The family, measured <a class="hover-link" href="#1-The-family-measured">#</a></h2><p>Each landing's park stack beside the levels its unwind drops, and the events
+beside both.  Every one of these emits ONE document whose sequence takes the
+landing as its next ENTRY — which is what says the second <code>-</code> is not a second
+bare document.</p></div><div class="mod_doc"><h2 id="2-The-corpus" class="markdown-heading">§2  The corpus <a class="hover-link" href="#2-The-corpus">#</a></h2><p><code><a href="../../.././Scratch/CensusMapCascade.html">Scratch/CensusMapCascade.lean</a></code> (gitignored) re-reads item 166's 134
+surviving-branch landings and splits the 76 that drop a level by the park's tail
+token and by the level the landing comes back to:</p><pre><code>hits=134  drop=76
+tScalar=73  tAlias=2  tFlowSeqEnd=0  tFlowMapEnd=1
+atSeq=74  atMap=2  atNone=0
+pValue=75  pEntry=0  pOther=1
+</code></pre><p><code>pValue=75</code> is the finding that aimed this item: the token BEFORE the park's
+tail is a <code>:</code> in 75 of the 76, so the park is a mapping value's content and the
+route has to cross the <code>:</code>.  <code>atMap=2</code> is §8.2.1's <code>m = 0</code> (§1's third shape);
+<code>pOther=1</code> is <code>examples/2/example-2.24.yaml</code>, whose tail is a flow mapping's <code>}</code>
+— same family, different token.</p><p><code><a href="../../.././Scratch/CensusDropDepth.html">Scratch/CensusDropDepth.lean</a></code> splits the same 76 by how many levels the unwind
+drops:</p><pre><code>drop1=68  drop1Map=68  drop2=8  drop3p=0
+drop1AtSeq=66  drop1AtMap=2
+</code></pre><p>so one open level covers 68 and two covers the rest, and nothing in the corpus
+needs three.  <code><a href="../../.././Scratch/CensusSiblingHop.html">Scratch/CensusSiblingHop.lean</a></code> then asks of those 68 whether the
+entry they dedent OUT of spans one line or several:</p><pre><code>hits=68  oneLine=6  multiLine=62  unknown=0
+</code></pre><p>which is why §3's hop ⑤ is the item.  Without it the cascade reaches only the
+six one-line entries.</p></div><div class="mod_doc"><h2 id="3-The-route" class="markdown-heading">§3  The route <a class="hover-link" href="#3-The-route">#</a></h2><p>Hop by hop, at the types the proof composes them at, and then the whole of
+<code>- a: X⏎  b: Y⏎- c</code> in one term.</p></div><div class="mod_doc"><h2 id="4-What-is-paid-and-what-is-not" class="markdown-heading">§4  What is paid, and what is not <a class="hover-link" href="#4-What-is-paid-and-what-is-not">#</a></h2><p>The face rides <code>ImplicitKeyPack</code> (a fourth twin beside items 93, 99 and 108),
+<code>pendingMapValue.h_seqF</code>, <code>pendingContent.h_seqF</code> and <code>ResumeKeyCtx</code>, and is
+spent at <code>accum_block_on_pendingContent</code> — which hands it to item 167's
+<code>h_entryTail</code>, where the two readings of the landed <code>-</code> are still chosen once.</p><p>Producers.  <code>entryKeyPack_of_dispatch</code>'s COMPACT branch pays from the caller's
+entry closure (hop ②); its landed branches punt, because their key belongs to a
+mapping nested in the awaited node rather than to one that fills the entry.
+<code>content_dispatch_routed</code>'s RESUMING context pays (hop ⑤); its suffix, head,
+marker and root contexts punt, and each of those opens a document that no
+sequence entry encloses.  <code>accum_content_on_pendingMapValue_indented</code> pays all
+three of its content parks; the ROOT arm has no such parameter at all — a
+<code>pendingMapValue</code> at index 0 is the root mapping's value.</p><p>What is punted, in the corpus's own numbers: the <strong>8</strong> landings that stand on two
+open mapping levels (§1's fourth shape), which want
+<code>ResumeFrames (SeqEntryTail sp_start ke)</code> in place of one width (item 169 built
+it — <code>SeqTailResumeFrames.lean</code> carries them, plus the alone-headed entry this
+file's compact hop ② never reached); and — from item 167 — the
+sequence-crossing dedent the corpus does not contain at all.</p><p>The <code>[210]</code> flip still reports FIVE errors at the same five lemma definitions:
+this item narrows a route's DOMAIN, as item 167 did, and removes no construction
+site.  The census beside <code>DanglingParkFace</code> §3 changes in its last column only:</p></div><div class="mod_doc"><table><thead><tr><th>site</th><th>form</th><th>what is left of its domain</th></tr></thead><tbody><tr><td><code>accum_content_pending</code> ×2 (the content landing)</td><td><code>bareNodeRoute_or_refused_content</code></td><td>parks with no completed tail (item 165)</td></tr><tr><td><code>accum_block_on_closeThenBlock</code> (the block landing)</td><td><code>bareNodeRoute_or_refused</code></td><td>the open sequence's next entry where no park names it, and parks with no completed tail (item 168)</td></tr><tr><td><code>content_dispatch_after_close</code> (row 19's 1c)</td><td><code>bareNodeRoute</code></td><td>a ROUTE, not a refutation (item 156)</td></tr></tbody></table></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

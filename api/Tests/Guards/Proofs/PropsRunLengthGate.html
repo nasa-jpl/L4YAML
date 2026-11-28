@@ -1,0 +1,53 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.PropsRunLengthGate</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.PropsRunLengthGate";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">PropsRunLengthGate</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/PropsRunLengthGate.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.PropsRunLengthGate" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="96-s-LENGTH-and-the-gate-it-pays-for-DOCS-item-165" class="markdown-heading"><code>[96]</code>'s LENGTH, and the gate it pays for (DOCS item 165) <a class="hover-link" href="#96-s-LENGTH-and-the-gate-it-pays-for-DOCS-item-165">#</a></h1><p>Item 164 left row 1c with one gate site unpaid and one guard unbuilt, and named
+them in that order: <code>accum_flow_open_depth0</code>'s props arm, then
+<code>pendingProps.h_route</code> taking <code>danglingNodePos? sc = none</code>.  Building the second
+first is what showed the order was wrong — the guard does not relay through a
+run's own EXTENSION, and item 160 had priced that class as free.</p><p><strong>What blocked it.</strong>  <code>trailingNodeRun?</code> walks back over at most TWO properties,
+because <code>[96] c-ns-properties</code> derives at most one anchor and one tag.  A third
+property therefore MOVES §9.2's start — from the run's first property to its
+second — so the park's reading and the reading one push later are readings of
+different tokens (<code>PropsRunReadingTransport</code> §1 measures the move).</p><p><strong>What unblocks it is the scanner, not the proof.</strong>  Both §6.9 guards decide by
+KIND and, outside a flow, read <code>trailingPropertyRunOnLine</code> — the current LINE's
+run.  That is blind to a run crossing a break: at the <code>&amp;b</code> of <code>&amp;a⏎!t &amp;b x</code> the
+line's run is <code>[!t]</code>, which carries no anchor, so the third property was
+accepted and only <code>TokenParser</code> refused the document.  <code>propertyRunFull</code> decides
+by LENGTH and reads the RUN.</p><p><strong>Item 170 narrowed the block reading back to the cursor's line</strong> — the
+length-only form read a parent's full run, a break, and the first implicit
+KEY's fresh run as ONE run and refused 9KAX — so the cross-line third-property
+shapes are the parser's again, and the walk-back CAN reach its cap at a park
+the scanner produces.  <del>The relay in §2 returns that window
+(<code>PropsWindowCross</code>) instead of forcing the verdict through it, and
+<code>pendingProps.h_routeX</code> — the route held without the verdict — serves it.</del>
+<strong>Item 181: the window's states are scanner-refused</strong> (§9.2's fourth clause,
+item 180), so §2's relay is a plain implication again and the route it would
+have needed is owed by nobody (<code>PropsCrossWindowRoute</code> is that story's own
+guard).</p><p>§1 measures the check, §2 the relay it buys, §3 the props arm's own gate — the
+tenth and last of item 161's ten — and §4 the residue that leaves:
+<code>ContentRouteGate</code>'s right disjunct, DELETED.</p></div><div class="mod_doc"><h2 id="1-The-check-a-SAME-LINE-run-is-at-most-two-properties-long" class="markdown-heading">§1  The check: a SAME-LINE run is at most two properties long <a class="hover-link" href="#1-The-check-a-SAME-LINE-run-is-at-most-two-properties-long">#</a></h2><p><strong>Item 170 narrowed the block-context reading to the cursor's line.</strong>  A full
+run whose tail closed on an EARLIER line may belong to a PARENT node whose
+mapping's first implicit key carries the incoming property — 9KAX's
+<code>&amp;a4 !!map⏎&amp;a5 !!str key5: v</code> is <code>[96]</code>-valid twice over and the two runs
+stand adjacent in the array — so the cross-line shapes are the PARSER's now
+(<code>invalidBareDocument</code> at the run's start, <code>TokenParser.validNextToken</code>'s own
+§9.2), exactly as <code>a: 1⏎&amp;p [b]</code> always was.  On one line, and in a flow, the
+length still decides at the scanner.</p></div><div class="mod_doc"><h2 id="2-The-relay-it-buys" class="markdown-heading">§2  The relay it buys <a class="hover-link" href="#2-The-relay-it-buys">#</a></h2><p><code>pendingProps.h_route</code> takes <code>danglingNodePos? sc = none</code> now, so every step
+that carries the run forward has to hand the verdict back.  Both relays split
+the same way, and the split is the LANDING's: a step that crossed a break has
+already been refused by §9.2's own mid-stream check
+(<code>scanNextToken_checkDanglingNode</code> reads the run at the park and the flag at the
+landing), and a step that crossed none wrote neither a token nor an indent — the
+park's own two DOWN flags are what make that total.</p></div><div class="mod_doc"><h2 id="3-The-props-arm-s-own-gate-item-161-s-tenth-site" class="markdown-heading">§3  The props arm's own gate — item 161's tenth site <a class="hover-link" href="#3-The-props-arm-s-own-gate-item-161-s-tenth-site">#</a></h2><p>The arm does not open at ONE verdict.  Which park the gate names is the
+LANDING's to decide, and the two cases pay differently: a landing that crossed a
+break owes the route unconditionally (§9.2's check already fired ON the park), so
+the frame opens at <code>none</code> and <code>GateOf none</code> is <code><a href="../../.././Init/Prelude.html#True">True</a></code> by definition; a landing
+that crossed none leaves <code>sc</code> itself as the state the bracket extends, so the
+frame opens at <code>some sc</code> and the close hands the park's verdict straight back.</p><p>That is why no transport across preprocessing is needed: the arm where the two
+states differ is the arm where the gate is not wanted.</p></div><div class="mod_doc"><h2 id="4-The-residue-deleted" class="markdown-heading">§4  The residue, deleted <a class="hover-link" href="#4-The-residue-deleted">#</a></h2><p><code>ContentRouteGate</code> was <code>danglingNodePos? s' = none ∨ (c = '&amp;' ∨ c = '!')</code>, and
+item 158 measured what the right disjunct named: not two characters but a
+missing FIELD — <code>pendingProps</code> carried no §9.2 face, so at <code>&amp;</code>/<code>!</code> the landing
+had no reading to hand over.  It has one now, so the gate is the reading, for
+every content character alike.  (<del>Item 170 widened <code>content_dispatch_routed</code>'s
+route PREMISE with <code>PropsWindowCross</code></del> — a different disjunct with a different
+payer, and <strong>item 181 narrowed it back</strong>: §9.2 refuses the crossed window
+itself, so the premise is the gate alone again.  The gate itself was never
+moved by either.)</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

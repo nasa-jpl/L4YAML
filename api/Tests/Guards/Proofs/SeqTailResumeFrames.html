@@ -1,0 +1,53 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.SeqTailResumeFrames</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.SeqTailResumeFrames";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">SeqTailResumeFrames</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/SeqTailResumeFrames.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.SeqTailResumeFrames" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-collection-s-tail-behind-still-open-mapping-levels" class="markdown-heading">The collection's tail behind still-open mapping levels <a class="hover-link" href="#The-collection-s-tail-behind-still-open-mapping-levels">#</a></h1><pre><code>(DOCS item 169)
+</code></pre><p>Item 168 read the corpus's 76 dedenting landings by DROP DEPTH — 68 stand on
+one open mapping level, 8 on two — and paid the ONE branch that depth named:
+the compact key on the <code>-</code>'s own line, one level deep.  What that census did
+not read is the ENTRY HEAD, and the two are independent.  §2's census reads
+both at once and re-sizes the item: the fused face reached <strong>67</strong> of the 76,
+not 68 — one of the one-level landings closes an entry whose <code>-</code> stands ALONE
+on its line, so its key LANDS (<code>[185]</code> reaches the mapping through
+<code>s-l+block-node</code>) and the compact branch that carried item 168's face never
+runs.</p><p>Framing the lane pays the landed head and the two-level family with one move:
+the face becomes <code>ResumeFrames (SeqEntryTail sp_start ke)</code> — item 108's bottom
+parameter on a THIRD lane, beside the stream and the explicit value line — and
+<code>ks</code> lists the still-open mapping levels between the innermost one and the
+collection.  No cover rides here, unlike item 148's: the only consumer of this
+list is a <code>-</code> landing back at the collection's own width, and that landing
+closes every level (<code>ResumeFrames.close</code>) — no width is ever tested for
+membership.</p><p>§1 pins the three newly-reached families at the runtime, §2 records the
+censuses, §3 states the hops at the types the proof composes them at and then
+the two-level family end to end, §4 says what is paid and what is not.</p></div><div class="mod_doc"><h2 id="1-The-families-item-168-could-not-reach-measured" class="markdown-heading">§1  The families item 168 could not reach, measured <a class="hover-link" href="#1-The-families-item-168-could-not-reach-measured">#</a></h2><p>Each landing's park stack beside the levels its unwind drops, and the events
+beside both.  Every one emits ONE document whose sequence takes the landing as
+its next ENTRY.</p></div><div class="mod_doc"><h2 id="2-The-corpus" class="markdown-heading">§2  The corpus <a class="hover-link" href="#2-The-corpus">#</a></h2><p><code><a href="../../.././Scratch/CensusEntryHead.html">Scratch/CensusEntryHead.lean</a></code> (gitignored) re-reads item 166's dedenting
+landings with BOTH axes at once — drop depth × how the entry's <code>-</code> opened:</p><pre><code>d1compact=67  d1alone=1  d1unk=0
+d2compact=3   d2alone=5  d2unk=0
+</code></pre><p>Item 168's face lived on the compact branch at one width, so it reached
+<code>d1compact</code> alone: <strong>67 of 76</strong>, where its own drop-depth census read 68.  The
+other nine are this item: the one landed head at depth one
+(<code>examples/2/example-2.4.yaml</code> L5), and all eight two-level landings.</p><p><code><a href="../../.././Scratch/CensusDrop2.html">Scratch/CensusDrop2.lean</a></code> lists the eight: every one is
+<code>drop=[2M,4M] at=[0S] pen=value</code> in <code>examples/other/anchors-aliases.yaml</code> (3,
+compact) and <code>…/anchors-aliases2.yaml</code> (5, landed) — a mapping two deep inside
+a sequence entry, the park a value's content both times.
+<code><a href="../../.././Scratch/CensusAloneList.html">Scratch/CensusAloneList.lean</a></code> names the six landed heads: example-2.4's one,
+and anchors-aliases2's five.</p></div><div class="mod_doc"><h2 id="3-The-route" class="markdown-heading">§3  The route <a class="hover-link" href="#3-The-route">#</a></h2><p>The hops item 168 did not have, at the types the proof composes them at, and
+then the two-level family whole.</p></div><div class="mod_doc"><h2 id="4-What-is-paid-and-what-is-not" class="markdown-heading">§4  What is paid, and what is not <a class="hover-link" href="#4-What-is-paid-and-what-is-not">#</a></h2><p>The framed face replaces the fused one on every carrier item 168 built —
+<code>ImplicitKeyPack</code>'s fourth twin, <code>pendingMapValue.h_seqF</code>,
+<code>pendingContent.h_seqF</code>, <code>ResumeKeyCtx</code>, <code>content_dispatch_routed</code>'s resuming
+context, the block-landing dispatcher — so the one-width readings survive as
+the <code>ks = []</code> instance and no producer got weaker.</p><p>New payments.  <code>entryKeyPack_of_dispatch</code> gains <code>h_nodeSF</code> (the LANDED key's
+sequence face, hop Ⓐ's shape at <code>≤ n</code> because the list may include <code>n</code>
+itself), spent at its landed branch (hop Ⓒ); the two <code>pendingBlock</code> dispatch
+arms and the root site pay it from <code>h_close_entry_old</code> through
+<code>SBlockIndented.node</code> with the frames bottomed — the landed head's whole
+difference from the compact one.  <code>accum_content_on_pendingMapValue_indented</code>
+pays it with its own level consed on (hop Ⓑ), which is what reaches a mapping
+two levels inside the entry.  The ROOT <code>pendingMapValue</code> arm punts: a value at
+index 0 is the root mapping's, and no sequence entry encloses it.</p><p><code>seqEntryTail_mapCons</code> is DELETED — the sibling cons is <code>resumeMapRouteF</code> at
+the third instantiation of item 108's bottom parameter (hop Ⓓ).</p><p>No cover rides this lane, and that is a difference in KIND from item 148's
+frames: <code>resumeAt</code> funds a membership test, and this lane's only consumer
+closes every level (<code>ResumeFrames.close</code>, hop Ⓔ) — no width is compared, so
+there is nothing for a cover to pay for.</p><p>What is punted, in the corpus's own numbers: nothing the corpus contains —
+67 + 1 + 8 = 76 of 76 dedenting landings now have their producer path.  Still
+open from item 167: the sequence-crossing dedent (<code>dropSeq = 0</code>, no input),
+and — outside this lane entirely — the <code>[210]</code> flip's same five construction
+sites.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

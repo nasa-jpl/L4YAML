@@ -1,0 +1,42 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerBlockScalarEntrySiblingResumes</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerBlockScalarEntrySiblingResumes";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerBlockScalarEntrySiblingResumes</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerBlockScalarEntrySiblingResumes.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerBlockScalarEntrySiblingResumes" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="A-block-ENTRY-s-block-scalar-value-keeps-the-entries-chain-DOCS-item-113" class="markdown-heading">A block ENTRY's block-scalar value keeps the entries chain (DOCS item 113) <a class="hover-link" href="#A-block-ENTRY-s-block-scalar-value-keeps-the-entries-chain-DOCS-item-113">#</a></h1><p>Item 112 paid the MAPPING-value block-scalar arms with item 95's absorption
+closure — the scalar re-read TO the landing.  The sequence side still dropped
+its park: <code>accum_content_on_pendingBlock</code>'s (since item 179, the indented
+lemma's) block-scalar arms closed the entry
+and parked plain <code>pendingContent</code>, so <code>- |⏎  x⏎- y</code>'s second <code>-</code> could only
+re-open through <code>[211]</code>'s bare-document continuation, and
+<code>k:⏎  - |⏎    x⏎b: 2</code>'s landing could not pop to <code>k</code>'s level.  The runtime
+reads ONE sequence in both.</p><p><strong>The build is the flow arm's park with the re-read in place of the fold.</strong>
+Both arms now park <code>pendingBlockContent</code> — the entries-chain park the flow and
+multi-line arms have used since items 99/110 — with <code>h_nodeAt</code> hoisted once
+and every face one application: the two entry-level closures (<code>h_closable</code> /
+<code>h_closable_entry</code>, the sibling <code>-</code>'s snoc), the entry-level value-line pack
+(<code>h_kslot</code>, whose sequence tail now RIDES where item 95's content park could
+only close it <code>nil</code>), and <code>h_close_entry_old</code>'s resume face (<code>h_closeF</code>,
+item 110's landing spend).  <code>content_dispatch_routed</code>'s block-scalar arm takes
+the same re-read at its own route, dropping the last document-suffix reading a
+completed scalar forced.  Zero new lemmas, zero runtime edits.</p><p>§1 is the family at the runtime; §2–§5 are the re-read and the three spends at
+their types; §6 is what this item does not close.</p></div><div class="mod_doc"><h2 id="2-The-re-read-at-the-ENTRY-one-closure-both-entry-level-closures" class="markdown-heading">§2 The re-read at the ENTRY: one closure, both entry-level closures <a class="hover-link" href="#2-The-re-read-at-the-ENTRY-one-closure-both-entry-level-closures">#</a></h2><p>Item 95's closure re-reads the scalar to the landing; <code>[184]</code>'s slot wraps it
+in <code>SBlockIndented.node</code>, so the park keeps the stream close AND the
+entries-level one — the pair <code>pendingBlockContent</code> was built to carry
+(item 99), which the block-scalar arm could not fill before.</p></div><div class="mod_doc"><h2 id="3-The-entries-chain-spend" class="markdown-heading">§3 The entries-chain spend <a class="hover-link" href="#3-The-entries-chain-spend">#</a></h2><p><code>h_close_entry_old</code> is the park's own snoc route — the entry's content plus
+<code>[183]</code>'s remaining tail.  The re-read node fills the content slot at every
+landing, so a sibling <code>-</code> extends the collection across the scalar exactly as
+it does across a flow value.</p></div><div class="mod_doc"><h2 id="4-The-value-line-pack-with-the-tail-RIDING" class="markdown-heading">§4 The value-line pack with the tail RIDING <a class="hover-link" href="#4-The-value-line-pack-with-the-tail-RIDING">#</a></h2><p><code>pendingBlockContent.h_kslot</code> is stated at the entry level — the landing
+closes THIS entry, <code>[183]</code>'s remaining tail rides, and only then does the
+frame's <code>:</code> line read.  Item 95's content park forced the tail <code>nil</code> at the
+park; the entry-level pack recovers <code>? - |⏎    x⏎  - y⏎: v</code>'s sibling, and
+the <code>nil</code> instance IS the old reading.</p></div><div class="mod_doc"><h2 id="5-The-frames-spend-and-the-routed-close" class="markdown-heading">§5 The frames spend, and the routed close <a class="hover-link" href="#5-The-frames-spend-and-the-routed-close">#</a></h2><p><code>pendingBlock.h_closeF</code> awaits the entry's content; the re-read supplies it
+per landing and the tail rides by partial application — item 110's landing
+spend then pops <code>k:⏎  - |⏎    x⏎b: 2</code> to <code>k</code>'s level.  And a route applied
+at the re-read node IS the stream close, with no <code>[211]</code> comment-suffix
+reading left over — the landing's comments live in the scalar's own
+production, where the parser puts them.</p></div><div class="mod_doc"><h2 id="6-What-this-item-does-NOT-close" class="markdown-heading">§6 What this item does NOT close <a class="hover-link" href="#6-What-this-item-does-NOT-close">#</a></h2><ul><li><code>content_dispatch_routed</code>'s block-scalar arm still punts its value-line and
+frames faces — §1 pins both landed-scalar inputs as refused (<code>|</code> heads no
+entry), so the punts have no input; what the arm gained is the re-read
+close.</li><li>The ROOT arm's <code>h_kslot</code>/<code>h_closeF</code> punts, same status: a column-0 <code>-</code>
+owns no <code>?</code> frame, and <code>- |⏎  x⏎b: 2</code> is <code>trailingContent</code> (§1).</li><li>The props-decorated scalar parks (<code>accum_content_on_pendingProps</code>'s
+block-scalar arms) pay their value-line twin from the re-read but not the
+frames — the props park has no <code>h_closeF</code>/<code>h_frames</code> of its own to
+transport (item 111's residue).  (CLOSED by item 114 — the park carries
+five resume faces and every value completion pays them.)</li><li>The construction sites: <code>SLYamlStream.implicitContinue</code> still takes
+<code>GOpt SLAnyDocument</code> — item 110 measured the tightening at 16 sites, LAST.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

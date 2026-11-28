@@ -1,0 +1,40 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.FlowRunDanglingClosed</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.FlowRunDanglingClosed";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">FlowRunDanglingClosed</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/FlowRunDanglingClosed.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.FlowRunDanglingClosed" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-dangling-run-a-FLOW-COLLECTION-carries-DOCS-item-159" class="markdown-heading">The dangling run a FLOW COLLECTION carries (DOCS item 159) <a class="hover-link" href="#The-dangling-run-a-FLOW-COLLECTION-carries-DOCS-item-159">#</a></h1><p>Item 158 measured a family the scanner accepted and the parser refused:
+<code>a: 1⏎&amp;p [b]</code> scans clean and is <code>invalidBareDocument 1 0</code> one layer down.  It
+named two mechanisms that miss it — §9.2's end-of-input check, which reads
+<code>trailingNodeRun?</code> and finds a <code>]</code> there, and §8.1's floor, which measures the
+BRACKET's column that the property run has moved right — and left the remedy as
+a choice between giving the accumulation's flow arm the opaque resume and
+"closing the hole in the scanner".</p><p><strong>The open is not the hole.</strong>  A flow collection can head an implicit KEY, so a
+<code>[</code> on the run's own line ends nothing: <code>a: 1⏎&amp;p [b]: c</code> PARSES, and so does
+<code>k:⏎␣␣m:⏎␣␣␣␣- a⏎␣␣&amp;p [1]: b</code>, which <code>FlowFrameResumeRider</code> has witnessed since
+item 114.  A check fired at the open refuses both — §2 is that measurement.</p><p>What was wrong is the READING.  <code>[161] ns-flow-node</code> is
+<code>c-ns-properties? ns-flow-content</code>, and <code>ns-flow-content</code> is a flow collection
+as readily as a scalar; a collection is simply not ONE token, so a run whose
+body is one ends the array in a <code>]</code> and the first two arms of
+<code>trailingNodeRun?</code> report no run at all.  The third arm reads the close back to
+its own open (<code>flowOpenIdx?</code>) and continues the <code>[96]</code> walk-back from there, so
+the run it reports starts where the parser reports: at the property.  The
+terminator is untouched — the break, or end of input.</p></div><div class="mod_doc"><h2 id="1-The-family-refused-where-the-parser-already-refused-it" class="markdown-heading">§1  The family, refused where the parser already refused it <a class="hover-link" href="#1-The-family-refused-where-the-parser-already-refused-it">#</a></h2><p>Every witness item 158 listed under "scans clean" is a scanner error now, at the
+RUN's start — which is the position the parser had been reporting alone.</p></div><div class="mod_doc"><h2 id="2-Why-the-OPEN-could-not-be-the-trigger" class="markdown-heading">§2  Why the OPEN could not be the trigger <a class="hover-link" href="#2-Why-the-OPEN-could-not-be-the-trigger">#</a></h2><p>The obvious cheap fix — refuse at a <code>[</code>/<code>{</code> whose landing already reads a
+dangling run — is wrong, and the repo's own guards say so.  A flow collection is
+a node like any other, so it can be an implicit KEY, and the <code>:</code> that resolves
+the run comes AFTER the close.  The reading at the props park is revocable
+through a collection exactly as item 141 measured it through a scalar.</p></div><div class="mod_doc"><h2 id="3-The-legal-neighbours-the-widened-reading-leaves-alone" class="markdown-heading">§3  The legal neighbours the widened reading leaves alone <a class="hover-link" href="#3-The-legal-neighbours-the-widened-reading-leaves-alone">#</a></h2><p>A run is dangling when its predecessor offers it no slot AND its start names an
+open level.  Reading through the close changes which token the START is; it
+changes neither condition, so every shape whose collection has a slot or whose
+column names no level reads <code>none</code> exactly as before.</p></div><div class="mod_doc"><h2 id="4-What-the-reading-costs-the-emitter-side" class="markdown-heading">§4  What the reading costs the emitter side <a class="hover-link" href="#4-What-the-reading-costs-the-emitter-side">#</a></h2><p><code>trailingNodeRun?_push_none</code> used to be free at a flow close — the close was
+neither a body nor a property, so the array ended in no run.  It is not free
+now, and the two emitter-scannability sites that spent it there
+(<code>scanNextToken_flow_close_seq_outermost</code> and its mapping twin) pay the indent
+stack instead: the emitter's own output stands on the sentinel alone, where no
+column can match.</p></div><div class="mod_doc"><h2 id="5-What-the-next-item-needs" class="markdown-heading">§5  What the next item needs <a class="hover-link" href="#5-What-the-next-item-needs">#</a></h2><p>Item 158 recorded the property lane as three pieces.  This item closed the
+third, and by the route that leaves <code>scannerDrop</code>'s domain alone (R1 is closed;
+re-widening the opaque resume would reopen it).  Two remain, and the first is
+still the blocker:</p><ol><li>a premise shape for <code>pendingProps.h_route</code> that relays through a PROPERTY
+push — <code>danglingNodePos? sc = none</code> does not, because the run's start moves
+on the third property (<code>PropsParkDangling</code> §4), and what does has to see the
+run's two properties as being on different LINES;</li><li><code>pendingBlockContent.h_closable</code> guarded as <code>pendingContent.h_closable</code>
+already is, since the run's ride into an ENTRY parks there.</li></ol><p>What the flow arm (<code>accum_flow_open_depth0</code>) needed is no longer a decision:
+the input it could not pay for is out of the accumulation's domain now, because
+a dangling run that rides into a collection is refused at the next break or at
+end of input.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

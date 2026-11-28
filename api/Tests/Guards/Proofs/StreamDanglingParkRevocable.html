@@ -1,0 +1,100 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.StreamDanglingParkRevocable</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.StreamDanglingParkRevocable";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">StreamDanglingParkRevocable</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamDanglingParkRevocable.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li><li><a href="../../.././L4YAML/Scanner/State.html">L4YAML.Scanner.State</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.StreamDanglingParkRevocable" class="imported-by-list"></ul></details></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.StreamDanglingParkRevocable.danglingNode_refutes_landing"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">StreamDanglingParkRevocable</span>.<span class="name">danglingNode_refutes_landing</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.StreamDanglingParkRevocable.danglingNode_refutes_eof"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">StreamDanglingParkRevocable</span>.<span class="name">danglingNode_refutes_eof</span></a></div></nav><main><div class="mod_doc"><h1 id="The-dangling-park-is-revocable-DOCS-item-141" class="markdown-heading">The dangling park is revocable (DOCS item 141) <a class="hover-link" href="#The-dangling-park-is-revocable-DOCS-item-141">#</a></h1><p>Items 139 and 140 left one item named: a <code>danglingNodePos?</code> face on
+<code>pendingContent</code>, spent where <code>h_closable</code> is stated, so that the accumulation
+can refute <code>bareNodeRoute</code> — the reading row 19's 1c deletes — instead of
+serving it.  Item 140 gave the mid-stream check its two states, which is what
+made the refusal exist for the indented half of the family.  This file is that
+face SIZED, and the size is not the finding.</p><p>The finding is that <strong>the park's reading is not a fact the park can assert.</strong>  A
+completed node parked at an open level's own column reads <code>some</code> the instant its
+token is appended — and the very next <code>:</code> takes it back, because a run still on
+its own line may yet become a key.  <code>a: 1⏎b</code> and <code>a: 1⏎b: 2</code> are the SAME park:
+<code>some 1,0</code> against a stack of two.  What separates them is the landing, not the
+park.</p><p>That is measurable, and §3 measures it over the family the campaign cares about
+and over ordinary YAML.  The consequence for the face is structural: a
+<code>danglingNodePos?</code> disjunct on <code>h_closable</code> can be REFUTED only where the
+landing crossed a break (<code>scanNextToken_checkDanglingNode</code> is gated on
+<code>simpleKeyAllowed</code>) or at end of input (<code>scanLoop_checkDanglingNode</code> is not
+gated at all).  At a same-line <code>:</code> there is no refutation, so the disjunct must
+be CARRIED — and §4 measures how often that is: <del>2272 of 2275 dangling parks
+observed across 490 real YAML files are a <code>:</code> landing with the flag down, 2179
+of them at a column other than 0</del> — <strong>332 of 346</strong>, corrected at item 156,
+which found §4's corpus walk reading the suite's test DESCRIPTORS rather than
+its payloads.  Every sibling key of every nested block mapping is one.</p><p>So the face cannot be spent until the block landing stops requiring an
+unconditional stream through a park the next <code>:</code> turns into a key — which is
+<code>accum_block_on_closeThenBlock</code> together with <code>rootMapRoute</code>/<code>rootMapRouteF</code>,
+three of the six sites the constructor flip already reports.  Item 139 listed
+that family as a PEER of the dangling window.  It is its PREREQUISITE.</p><p>§1 is the face's would-be domain — the live family, and how each member dies.
+§2 is the contradiction the face would spend, at both of its homes, with the
+gating asymmetry that decides where it can be spent.  §3 is revocability.  §4 is
+the census.  §5 is the block lane's two witnesses.  §6 is what this reorders.</p></div><div class="mod_doc"><h2 id="1-The-face-s-would-be-domain" class="markdown-heading">§1  The face's would-be domain <a class="hover-link" href="#1-The-face-s-would-be-domain">#</a></h2><p>The family item 139 left open, at the park the landing MAKES.  Every member
+reads <code>some</code> against a stack of at least two — which is the half
+<code>bareDocument_refutes_landing</code> cannot reach, because <code>scanNextToken_checkBareDocument</code>
+stands aside above size 1 — and every member dies, but at two different places.</p></div><div class="mod_doc"><h2 id="2-The-contradiction-and-the-asymmetry-that-places-it" class="markdown-heading">§2  The contradiction, and the asymmetry that places it <a class="hover-link" href="#2-The-contradiction-and-the-asymmetry-that-places-it">#</a></h2><p>Both refusals are one rewrite away from <code><a href="../../.././Init/Prelude.html#False">False</a></code> once the park's reading is in
+hand.  What differs is the premise: the mid-stream check is gated on the
+LANDING's <code>simpleKeyAllowed</code>, and the end-of-input check is gated on nothing.
+That asymmetry is the whole reason §4's census decides the shape — it says
+exactly where a disjunct can be discharged.</p></div><div class="decl" id="L4YAML.Tests.Guards.StreamDanglingParkRevocable.danglingNode_refutes_landing"><div class="theorem"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamDanglingParkRevocable.lean#L123-L133">source</a></div><div class="decl_header"><span class="decl_kind">theorem</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/StreamDanglingParkRevocable.html#L4YAML.Tests.Guards.StreamDanglingParkRevocable.danglingNode_refutes_landing"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">StreamDanglingParkRevocable</span>.<span class="name">danglingNode_refutes_landing</span></a> </span><span class="impl_arg"><span class="decl_args"><span class="fn">{<span class="fn">s_run </span><span class="fn">s_land</span> : <a href="../../.././L4YAML/Scanner/State.html#L4YAML.Scanner.ScannerState">Scanner.ScannerState</a>}</span></span> </span><span class="decl_args"><span class="fn">(<span class="fn">h_dn</span> : <span class="fn"><a href="../../.././L4YAML/Scanner/Scanner.html#L4YAML.Scanner.scanNextToken_checkDanglingNode">Scanner.scanNextToken_checkDanglingNode</a> <span class="fn">s_run</span> <span class="fn">s_land</span></span> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn"><a href="../../.././Init/Prelude.html#Except.ok">Except.ok</a> <a href="../../.././Init/Prelude.html#Unit.unit">(</a><a href="../../.././Init/Prelude.html#Unit.unit">)</a></span>)</span></span> <span class="decl_args"><span class="fn">(<span class="fn">h_ska</span> : <span class="fn"><span class="fn">s_land</span>.<a href="../../.././L4YAML/Scanner/State.html#L4YAML.Scanner.ScannerState.simpleKeyAllowed">simpleKeyAllowed</a></span> <a href="../../.././Init/Prelude.html#Eq">=</a> <a href="../../.././Init/Prelude.html#Bool.true">true</a>)</span></span> <span class="impl_arg"><span class="decl_args"><span class="fn">{<span class="fn">p</span> : <a href="../../.././L4YAML/Spec/Types.html#L4YAML.YamlPos">YamlPos</a>}</span></span> </span><span class="decl_args"><span class="fn">(<span class="fn">h_some</span> : <span class="fn"><a href="../../.././L4YAML/Scanner/Scanner.html#L4YAML.Scanner.danglingNodePos?">Scanner.danglingNodePos?</a> <span class="fn">s_run</span></span> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn"><a href="../../.././Init/Prelude.html#Option.some">some</a> <span class="fn">p</span></span>)</span></span> <span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#False">False</a></div></div><p>§9.2's mid-stream refusal, spent as a contradiction — the twin of item 139's
+<code>bareDocument_refutes_landing</code> at the other half of the discriminator.  The
+run is read off <code>s_run</code> (item 140) and the break off <code>s_land</code>, so the two
+states are the landing's own two.</p></div></div><div class="decl" id="L4YAML.Tests.Guards.StreamDanglingParkRevocable.danglingNode_refutes_eof"><div class="theorem"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamDanglingParkRevocable.lean#L135-L143">source</a></div><div class="decl_header"><span class="decl_kind">theorem</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/StreamDanglingParkRevocable.html#L4YAML.Tests.Guards.StreamDanglingParkRevocable.danglingNode_refutes_eof"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">StreamDanglingParkRevocable</span>.<span class="name">danglingNode_refutes_eof</span></a> </span><span class="impl_arg"><span class="decl_args"><span class="fn">{<span class="fn">s</span> : <a href="../../.././L4YAML/Scanner/State.html#L4YAML.Scanner.ScannerState">Scanner.ScannerState</a>}</span></span> </span><span class="decl_args"><span class="fn">(<span class="fn">h_dn</span> : <span class="fn"><a href="../../.././L4YAML/Scanner/Scanner.html#L4YAML.Scanner.scanLoop_checkDanglingNode">Scanner.scanLoop_checkDanglingNode</a> <span class="fn">s</span></span> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn"><a href="../../.././Init/Prelude.html#Except.ok">Except.ok</a> <a href="../../.././Init/Prelude.html#Unit.unit">(</a><a href="../../.././Init/Prelude.html#Unit.unit">)</a></span>)</span></span> <span class="impl_arg"><span class="decl_args"><span class="fn">{<span class="fn">p</span> : <a href="../../.././L4YAML/Spec/Types.html#L4YAML.YamlPos">YamlPos</a>}</span></span> </span><span class="decl_args"><span class="fn">(<span class="fn">h_some</span> : <span class="fn"><a href="../../.././L4YAML/Scanner/Scanner.html#L4YAML.Scanner.danglingNodePos?">Scanner.danglingNodePos?</a> <span class="fn">s</span></span> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn"><a href="../../.././Init/Prelude.html#Option.some">some</a> <span class="fn">p</span></span>)</span></span> <span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#False">False</a></div></div><p>The same contradiction at end of input, and it needs NO flag: <code>scanLoop</code>
+reads the array the run is still in and refuses unconditionally.  This is
+why §1's four EOF members are the half a face could actually discharge.</p></div></div><div class="mod_doc"><h2 id="3-Revocability-the-measurement-that-decides-the-shape" class="markdown-heading">§3  Revocability — the measurement that decides the shape <a class="hover-link" href="#3-Revocability-the-measurement-that-decides-the-shape">#</a></h2><p>The park cannot tell <code>a: 1⏎b</code> from <code>a: 1⏎b: 2</code>.  Both make the same park, with
+the same reading against the same stack; one landing later the second has been
+taken back, because the <code>:</code> resolved the run into a key.  A face stated on the
+park would therefore be asserting something that the next token can falsify,
+which is why it has to be a DISJUNCT and not a field.</p></div><div class="mod_doc"><h2 id="4-The-census" class="markdown-heading">§4  The census <a class="hover-link" href="#4-The-census">#</a></h2><p><code>census</code> walks the real scanner and records one letter per state whose
+<code>danglingNodePos?</code> reads <code>some</code>: <code>R</code> refused at that landing, <code>E</code> the stream
+ended on it, <code>D</code> it survived a landing whose flag was DOWN (no refutation
+available), <code>U</code> it survived with the flag UP (impossible outside a flow — the
+check would have fired).</p><p><del>Over the 490 <code>.yaml</code> files in <code>yaml-test-suite/src</code> and <code>examples/</code> this
+instrument records <strong>2275</strong> observations: <strong>2</strong> <code>R</code>, <strong>0</strong> <code>E</code>, <strong>2273</strong> <code>D</code>,
+<strong>0</strong> <code>U</code>; of the 2272 <code>D</code>s whose landing is a <code>:</code>, <strong>2179</strong> sit at a column
+other than 0.</del>  <strong>Those are DESCRIPTOR numbers</strong> (item 156): the suite's
+<code>src/*.yaml</code> are test descriptors, each a root sequence of mappings, and
+walking them counts their own nested mappings.  Over the 406 payloads
+<code>Tests.SuiteRunner.parseTestFile</code> extracts, plus <code>examples/</code> (payloads
+already), the instrument records <strong>346</strong> observations: <strong>8</strong> <code>R</code>, <strong>6</strong> <code>E</code>,
+<strong>332</strong> <code>D</code>, <strong>0</strong> <code>U</code>.  The split that decides this file's shape is the same
+one — the carried <code>D</code>s are 96 % of it — but the discharge-able half is 14
+rather than 2, and six of those are end-of-input, which a descriptor file can
+never produce.  That corpus walk is not reproduced here — a guard that reads
+files is invisible to Lake — but the same instrument over the fixed list below
+shows the same split, and DOCS items 141 and 156 record the corpus numbers.
+[Re-run at item 145, which widened §9.2's landing refusal to the landing's own
+column, the corpus numbers are unchanged in every cell; what moved is one row
+of the fixed list, noted where it sits.]</p></div><div class="mod_doc"><h2 id="5-The-block-lane-s-witnesses" class="markdown-heading">§5  The block lane's witnesses <a class="hover-link" href="#5-The-block-lane-s-witnesses">#</a></h2><p><code>accum_block_pending</code> builds its <code>h_close_pending</code> BEFORE the case split, so a
+disjunct on <code>h_closable</code> reaches it whatever the park is — and the landing there
+may be a <code>:</code> on the park's own line, where §2's gating leaves nothing to
+discharge with.  The two inputs below are that case, and both scan clean, so the
+carry is not a corner of the language: it is the language.</p><p>The first is the ordinary one — a sibling key one level in.  The second is a
+punting one: <code>pendingContent</code>'s <code>h_key</code> hands <code>ImplicitKeyPack</code> for plain and
+quoted heads and punts on alias content, and an alias key is where the punt
+meets a dangling park.</p></div><div class="mod_doc"><h2 id="6-What-this-reorders" class="markdown-heading">§6  What this reorders <a class="hover-link" href="#6-What-this-reorders">#</a></h2><p>The two lemmas in §2 are the contradiction the face will spend when it is
+spendable, and nothing spends them yet — the same standing <code>nodocMapRoute</code> has
+had since item 116, and for the same reason: the route they refute is not the
+one the accumulation takes until its landing is narrowed.  [Item 156 supplied
+the <code>some</code> reading they take as a premise — <code>danglingPark_of_dispatch</code> and its
+two spent forms, in <code>StreamAccum</code> — and item 157 BUILT the face, as a premise
+on <code>h_closable</code> and on <code>PendingNode.close_with_ssl</code>.  The two lemmas below are
+still unspent, and now for a sharper reason: the face's own refutation
+(<code>danglingPark_refutes_route</code>) is taken at the PRODUCER, where the park is made,
+rather than at the landing that closes it.  See <code>DanglingParkFace</code>.]</p><p>What has to come first is the BLOCK landing.  The disjunct has no home at a
+same-line <code>:</code> (§2's gating, §4's 2272), and that landing's own route is already
+flagged: <code>rootMapRoute</code>, <code>rootMapRouteF</code> and <code>accum_block_on_closeThenBlock</code> are
+three of the six errors the <code>[210]</code> constructor flip reports, and they are
+<code>bareNodeRoute</code>'s KEY-side siblings — the reading the same landings take when
+the completed node turns out to be a key rather than a node.  Item 139 listed
+that family beside the dangling window.  It is underneath it.</p><p>Measured cost of the face itself, by the campaign's own method (state it, build,
+read back the distinct sites Lean reports): <strong>19</strong> sites for the disjunct on
+<code>h_closable</code> plus <code>PendingNode.close_with_ssl</code>'s conclusion — 14 producers and
+5 consumers — then <strong>28</strong> once <code>accum_block_pending</code>'s pre-split <code>have</code> carries
+it, then <strong>32</strong> once the four <code>accum_block_on_*</code> signatures do.  The waves
+converge; <del>what does not converge is the fifth consumer, because §5's witnesses
+have no refutation to be discharged by.</del></p><p><strong>Item 157: the fifth consumer converges too, and the shape is why.</strong>  Stated as
+a PREMISE (item 156's shape) rather than as a disjunct on the conclusion, the
+face rides inside <code>h_close_pending</code>'s own type — so the <code>have</code> before
+<code>accum_block_pending</code>'s case split costs nothing, and the premise is discharged
+where the close is SPENT.  <code>accum_block_on_closeThenBlock</code> spends it in exactly
+one place, the branch where preprocessing produced a landing, and there
+<code>landing_or_park_ska</code> supplies the flag.  §5's two witnesses take the no-break
+arm, which spends <code>h_stream_fallback</code> — a different parameter — and never reach
+the park's close at all.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

@@ -1,0 +1,54 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.GateVocabulary</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.GateVocabulary";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">GateVocabulary</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/GateVocabulary.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.GateVocabulary" class="imported-by-list"></ul></details></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.GateVocabulary.expectedGateVocab"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">GateVocabulary</span>.<span class="name">expectedGateVocab</span></a></div></nav><main><div class="mod_doc"><h1 id="A-name-in-prose-is-a-claim-about-the-environment-DOCS-items-265-266" class="markdown-heading">A name in prose is a claim about the environment (DOCS items 265, 266) <a class="hover-link" href="#A-name-in-prose-is-a-claim-about-the-environment-DOCS-items-265-266">#</a></h1><p>§8.1's floor for a flow open is read at the CLOSE (item 172), and the check
+that reads it is <code>scanNextToken_checkFlowValueIndent</code>.  The name the prose kept
+using for an open-side check, <code>scanNextToken_checkBlockFlowIndent</code>, resolves to
+no constant at all, and item 265 found it in thirty-two places across fourteen
+files — describing a
+dispatcher layer <code>scanNextToken</code> does not have, and in one place carrying a
+claim about a PROOF: that the run-end half of the flow open's under-run "is not
+a deferral at all", two lines above the <code>exact drop_ride</code> that rides β.5's
+escape on exactly that half.</p><p>A backticked identifier in a docstring is a claim, and it is the one class of
+claim nothing in the build checks.  Lean does not read its own comments; a
+census that reads the environment cannot see them.  So the reading is
+<code>lake run check-gate-vocab</code>'s (<code><a href="../../.././Scripts/Lean/GateVocab.html">Scripts/Lean/GateVocab.lean</a></code>) and the LITERAL is here — the same
+pin-from-the-other-side the flip instruments use, turned on prose.</p><p>Two vocabularies are read.  The first is the dispatcher's own:
+<code>scanNextToken_…</code>, <code>scanLoop_…</code> and <code>scanLoopIx_…</code> spelled out, and the short
+<code>check…</code> form the prose usually uses, which is required to carry two
+capitalized segments so that one-letter macros stay out of it.  The second is
+the tree's suffix for a lemma that closes a branch as false, <code>…_refuted</code>, added
+at item 266 after a second phantom of the same kind turned up in exactly the
+place item 265 had just been working: a docstring naming the run-end
+refutation as the twin an existing lemma is one production in from, when
+items 264-266 measured that no such lemma can be stated at that step.  A name
+resolves when it is the final component of a constant in the wide environment,
+bare or under any of the three prefixes.</p><p>Three numbers stand beside the verdict, because each is a way the check could
+pass while reading less than it appears to (§9):</p><ul><li><code>families</code> — references of the form <code>dispatchStructural_none_*</code>, which name a
+family and not a constant.  Excluded from the verdict rather than matched.</li><li><code>wrapped</code> — a name a line break splits, whose closing backtick the scan
+cannot see.  Two are genuine wraps in <code>…FlowMonoChain.Sync.Scenarios.Endpoint</code>
+and resolve when joined; the third is a <code> </code> ``-quoted name in
+<code>PuntCoverInputs</code>, which the elaborator resolves itself.  A gate's wrap is
+found from its opening half, which carries the prefix; a refutation's cannot
+be, since the suffix is the whole discrimination, so those are found from the
+CONTINUATION line instead, and the continuation is recognized
+without requiring the underscore, which the break may leave on either side.</li><li><code>refuted</code> — how many of the names come from the second vocabulary.  A
+widening that read none of them would pass the same verdict as one that read
+them all.</li><li><code>self</code> — this file's own two mentions.  It has to spell the missing gate out
+in order to say what the check is for, so it is the one file the scan skips,
+and the skip is counted rather than silent.</li></ul></div><div class="decl" id="L4YAML.Tests.Guards.GateVocabulary.expectedGateVocab"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/GateVocabulary.lean#L65-L128">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/GateVocabulary.html#L4YAML.Tests.Guards.GateVocabulary.expectedGateVocab"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">GateVocabulary</span>.<span class="name">expectedGateVocab</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><p>What <code>lake run check-gate-vocab</code> reads over <code>L4YAML/</code> and <code>Tests/</code>.</p><p><strong><code>mentions</code> moves whenever prose cites a gate, and that is the point.</strong>
+Item 268's own sections added four, across two dispatcher names it had to
+cite by name, and all four resolve.  Item 269's add six and retire one, over
+three names: the step function whose check its rail measurement prices, the
+check itself, and the step function whose equation its restated source
+spends — six because the scan reads comments and the three new signatures
+that name the last of those are code.  Item 275's add two, over the two
+checks whose success it carries beside §9.2's; both resolve, and <code>names</code>
+does not move because neither check is a new name to the prose.
+Items 280–281's prose in <code>ScannerFlowOpenUnderRun</code> adds four, all resolving,
+over three step functions and one check (<code>names</code> unmoved); one wildcard
+<code>…_preserves_*</code> is the fourteenth family, and one check split by a line
+break is the fourth wrap.  Re-pinned after the fact, when the script
+disagreed with the literal on an otherwise green tree.
+<code>unresolved</code> is what the check is for;
+<code>mentions</code> is the population it was taken over, and a <code>mentions</code> that never
+moved would mean the scan had stopped seeing new prose.  (The names are not
+spelled here: this file is the one the scan skips, so a name written in this
+docstring would move <code>self</code> instead, for no reading.)</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/GateVocabulary.html#L4YAML.Tests.Guards.GateVocabulary.expectedGateVocab">L4YAML.Tests.Guards.GateVocabulary.expectedGateVocab</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <span class="fn">"names=115 mentions=522 families=14 refuted=7 wrapped=4 self=2 unresolved=0"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.GateVocabulary.expectedGateVocab" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

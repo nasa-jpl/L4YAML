@@ -1,0 +1,55 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.LandingFloorCarried</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.LandingFloorCarried";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">LandingFloorCarried</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/LandingFloorCarried.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.LandingFloorCarried" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-landing-s-own-floor-and-the-cover-it-seeds-DOCS-item-147" class="markdown-heading">The landing's own floor, and the cover it seeds (DOCS item 147) <a class="hover-link" href="#The-landing-s-own-floor-and-the-cover-it-seeds-DOCS-item-147">#</a></h1><p>Item 130 built <code>IndentStackCover.Covered</code> a floor and named what it does not do:
+thread the floored cover to the dedent punt.  The path it measured has a step in
+front of it that the ledger did not record.  A producer that opens a mapping at
+the landing can only claim the cover if the landing FLOORED the stack — top at
+or left of the landing column — and <code>preprocess_top_le_col</code> delivers that with an
+escape, <code>s'.indents = s.indents</code>.  That escape is not "the unwind popped
+nothing": an unwind that pops nothing still floors.  It is "the unwind never
+ran", and outside a flow the unwind runs on exactly one condition — the indent
+check is armed when preprocessing reaches it.</p><p>The walk arms it.  <code>consumeNewline</code> raises <code>needIndentCheck</code> on every <code>b-break</code>
+and <code>skipToContentLoop_needIndentCheck_mono</code> keeps it up, so a park that is NOT
+at a line start reaches a column-0 landing with the check armed.  That is the
+same premise item 76 read at the SAVE and item 139 at the FLAG; this item reads
+it at the FLOOR, and appends the floor to the same landed arm.</p><p>§1 is the walk's flag and the floor it buys.  §2 is the indicator's half — a
+<code>?</code> or <code>:</code> pushes at the column the landing already floored.  §3 is the cover
+those two make, and the field it is paid into.  §4 checks both readings against
+the scanner itself.  §5 is the measured price and what it leaves for U3.</p></div><div class="mod_doc"><h2 id="1-The-walk-s-flag-and-the-floor" class="markdown-heading">§1  The walk's flag, and the floor <a class="hover-link" href="#1-The-walk-s-flag-and-the-floor">#</a></h2><p>The flag is what the landed arm hands over; the floor is what preprocessing
+makes of it.  Both are stated for any state, so neither depends on the
+accumulation having reached a particular park.</p></div><div class="mod_doc"><h2 id="2-The-indicator-cannot-undo-it" class="markdown-heading">§2  The indicator cannot undo it <a class="hover-link" href="#2-The-indicator-cannot-undo-it">#</a></h2><p>A floored landing is only half the claim: the step that follows pushes a mapping
+level, and if it pushed to the right of the landing the cover would be false.
+It does not.  <code>[187]</code>'s <code>?</code> pushes at its own column; <code>[193]</code>/<code>[196]</code>'s <code>:</code>
+pushes at the KEY's, which the landing's fresh save puts at the same place.</p></div><div class="mod_doc"><h2 id="3-The-cover-and-the-field-it-is-paid-into" class="markdown-heading">§3  The cover, and the field it is paid into <a class="hover-link" href="#3-The-cover-and-the-field-it-is-paid-into">#</a></h2><p>Monotonicity is the third reading: with it, a top at or left of <code>k</code> leaves <code>k</code>
+as the only open mapping level at or right of <code>k</code>.  That is the cover a producer
+can pay without knowing anything below its own entry — which is the producer's
+situation, since the levels under a column-0 landing are fused into the stream
+its route closes.</p></div><div class="mod_doc"><h2 id="4-Both-readings-against-the-scanner-itself" class="markdown-heading">§4  Both readings, against the scanner itself <a class="hover-link" href="#4-Both-readings-against-the-scanner-itself">#</a></h2><p>A proof that the stack is monotone and a landing floored is worth checking
+against the object it is about.  The walk runs <code>scanNextToken</code> from the seed and
+reports, per state, whether the stack is strictly increasing and — where the
+next step crosses a line — whether preprocessing left its top at or left of the
+landing column.</p></div><div class="mod_doc"><h2 id="5-The-price-and-what-it-leaves" class="markdown-heading">§5  The price, and what it leaves <a class="hover-link" href="#5-The-price-and-what-it-leaves">#</a></h2><p>Three edits, measured at the compiler rather than from a caller closure.</p><ul><li><strong>The landed arm's fourth conjunct</strong> costs the accumulation NOTHING in
+premises, because the sentinel rides as a disjunct instead of as a
+<code>SentinelBase</code> hypothesis on the splitter.  Adding that hypothesis instead was
+measured first: <strong>22</strong> sites in <strong>17</strong> declarations at the FIRST level alone,
+before any of their own callers.  What the disjunct form costs is two
+statement sites (<code>preprocess_some_ssl_comments_anyCol</code> and <code>_landing</code>), the
+two <code>h_larm</code> binders in <code>landing_or_park_save</code>/<code>_ska</code>, three projections that
+move from <code>.2.2</code> to <code>.2.2.1</code>, and two guard files.</li><li><strong><code>Mono</code> on the accumulation</strong> is held by <strong>9</strong> declarations —
+<code>indicator_cover_at_col</code>, the four block landing arms, <code>accum_block_pending</code>,
+<code>accum_step_block</code>, <code>scanNextToken_accum_step</code> and <code>scanLoop_grammar_prod</code> —
+and passed at <strong>47</strong> places.  The FLOW lane carries none: its openers reach no
+<code>:</code>/<code>?</code> producer, so a premise there would be an unused binder.</li><li><strong>The field</strong> raises the <strong>6</strong> sites item 130 measured, and the compiler
+agrees with its ledger exactly: the four producers plus the two relays in
+<code>accum_content_pending</code>'s per-pending match.</li></ul><p><code>SLYamlStream.implicitContinue</code> is unmoved at FIVE <code>[210]</code> flip errors and the
+raw-route census at TWO holders; no runtime file changed.  This item pays
+premises and states a field — it removes no construction site.</p><p>What it leaves, in the order the dedent punt needs it:</p><ul><li><strong>The pack's own cover.</strong>  <code>colon_open_map_implicit</code> and <code>colon_open_map_props</code>
+chain <code>FrameLevel.map k :: ks</code> from <code>ImplicitKeyPack</code>'s resume twin, and the cover they would
+inherit rides that pack, which carries none.  Both pay <code><a href="../../.././Init/Prelude.html#Or.inr">Or.inr</a> <a href="../../.././Init/Core.html#trivial">trivial</a></code> here.
+Until they pay, every cover on the field is a root producer's <code>[k]</code> at floor
+<code>k</code>, which a dedent landing at <code>w &lt; k</code> cannot use — so the pack's field is
+what makes the conjunct spendable rather than merely true.</li><li><strong>U3's spend.</strong>  <code>entryKeyPack_of_dispatch</code>'s <code>h_dframes</code> is still the widths
+alone; the <code>accum_content_on_pendingMapValue*</code> relay (one lemma since item 179) project the route
+and drop the cover at seven places.  Widening it and spending
+<code>preprocess_landing_mem_or_seq</code> at the dedent branch also wants item 146's
+base residue there — <strong>5</strong> declarations, <strong>10</strong>
+sites — and leaves the SEQUENCE disjunct, which the <code>:</code>'s own check refutes a
+step later (<code>landing_mem_of_value</code>) and the pack cannot.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

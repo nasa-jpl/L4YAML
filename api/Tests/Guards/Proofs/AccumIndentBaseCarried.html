@@ -1,0 +1,51 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.AccumIndentBaseCarried</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.AccumIndentBaseCarried";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">AccumIndentBaseCarried</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/AccumIndentBaseCarried.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.AccumIndentBaseCarried" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-indent-stack-s-base-carried-by-the-accumulation-DOCS-item-146" class="markdown-heading">The indent stack's base, carried by the accumulation (DOCS item 146) <a class="hover-link" href="#The-indent-stack-s-base-carried-by-the-accumulation-DOCS-item-146">#</a></h1><p>Item 145 made §9.2's landing refusal read the landing's own COLUMN, and the
+contradiction it supports came out with TWO stack premises: the landing did not
+dedent (<code>h_nopop</code>), and it stands at no open level (<code>h_open</code>).  The first is
+redundant — a landing that popped rests AT the column of the entry it popped
+down to (<code>preprocess_landing_at_level</code>, item 129), so it stands at an open level
+by construction and <code>h_open</code> refutes it outright.</p><p>Saying so needs <code>ScannerState.WellFormed</code>'s sixth conjunct, <code>SentinelBase</code>: a
+stack popped to a single entry is only known to sit below every landing if that
+entry is the sentinel at <code>-1</code>.  Item 128 threaded the conjunct through every
+scanner STEP and seeded it at <code>mk'</code>; what was missing was a carrier through the
+grammar ACCUMULATION, which is what this item adds.  The premise now rides
+<code>scanLoop_grammar_prod</code> beside the other seven, is re-established at each step,
+and reaches §9.2's refusal as a conjunct of <code>BareLandingFacts</code>.</p><p>§1 is the carriage — the three joints a rider has.  §2 is the bridge the
+carriage pays for.  §3 is the refutation at its new type.  §4 checks the
+invariant against the scanner itself rather than only proving it.  §5 is the
+measured price and what it leaves for U3.</p></div><div class="mod_doc"><h2 id="1-The-carriage" class="markdown-heading">§1  The carriage <a class="hover-link" href="#1-The-carriage">#</a></h2><p>A rider on the accumulation needs three things: a seed, a step, and a binder on
+the loop.  Item 128 supplied the first two; this item supplies the third, and
+the binder is what makes them reachable from inside a dispatch.</p></div><div class="mod_doc"><h2 id="2-What-the-carriage-pays-for" class="markdown-heading">§2  What the carriage pays for <a class="hover-link" href="#2-What-the-carriage-pays-for">#</a></h2><p>The bridge is one implication, and it is the whole reason the premise travels:
+<code>¬ open</code> forces <code>nopop</code>, so the dedent exemption §9.2's refusal is stated with
+is a CONSEQUENCE of the column reading rather than a second case to split on.</p></div><div class="mod_doc"><h2 id="3-The-refutation-with-one-stack-premise" class="markdown-heading">§3  The refutation, with one stack premise <a class="hover-link" href="#3-The-refutation-with-one-stack-premise">#</a></h2><p>The transport the contradiction rests on is unchanged — <code>CompletedTail</code> is held
+on the PARK and read at the LANDING, so preprocessing has to carry the token
+tail across — but what buys that transport is now the column reading alone.</p></div><div class="mod_doc"><h2 id="4-The-invariant-checked-against-the-scanner" class="markdown-heading">§4  The invariant, checked against the scanner <a class="hover-link" href="#4-The-invariant-checked-against-the-scanner">#</a></h2><p>The conjunct is proved, so the walk below cannot fail — which is the point of
+running it: it is the statement that the PROVED invariant and the RUNTIME stack
+are the same object, at every state of every input, and it is what would break
+first if a future stack writer forgot index 0.</p></div><div class="mod_doc"><h2 id="5-The-price-and-what-it-leaves" class="markdown-heading">§5  The price, and what it leaves <a class="hover-link" href="#5-The-price-and-what-it-leaves">#</a></h2><p>Measured after the fact rather than before: the premise is held by <strong>16</strong>
+declarations — <code>bareDocument_refutes_landing</code>, <code>bareNodeRoute_or_refused</code>, the
+bridge, and the thirteen accumulation lemmas between <code>scanLoop_grammar_prod</code> and
+the four landing faces — and passed at <strong>35</strong> places in <code>StreamAccum</code> plus
+<strong>9</strong> in this guard tree.  Item 145 priced it at 12 declarations and 59 sites
+from a static caller closure; the closure over-counted the sites (the premise
+went into <code>BareLandingFacts</code>, so the five <code>h_ref</code> pass-through lemmas never see
+it) and under-counted the holders.</p><p><code>SLYamlStream.implicitContinue</code> is unmoved at FIVE <code>[210]</code> flip errors, at
+<code>topLevelFlowResumeSep</code>, <code>rootMapRoute</code>, <code>rootMapRouteF</code>, <code>bareNodeRoute</code> and
+<code>structural_dispatch_to_pending</code>; the raw-route census is unmoved at <del>TWO
+holders</del> two <code>bareNodeRoute</code> holders.  Neither could move: this item pays a
+premise, it removes no construction site.</p><blockquote><p><strong>Corrected by item 167</strong> (2026-09-14).  The census instrument counts all
+four raw routes and prints THREE holders — <code>bareNodeRoute</code> at
+<code>bareNodeRoute_or_refused_content</code> (2 applications) and
+<code>content_dispatch_after_close</code> (1), and <code>rootMapRoute</code> at
+<code>flowKeyRoute_of_root</code> (1).  The third has stood since item 56, so "TWO"
+here and in the log after it is the <code>bareNodeRoute</code> half alone, not the
+census's own total.  Item 167 leaves all three declarations byte-identical
+and moves neither figure.</p></blockquote><p>What it leaves is two premise paths that asked for the same conjunct, each
+measured against the carriage rather than against nothing:</p><ul><li><strong>U3's own spend.</strong>  <code>preprocess_landing_mem_or_seq</code> reads the landing at
+<code>entryKeyPack_of_dispatch</code>'s dedent branch and wants the base beside item
+130's floored cover.  The base's residue there is <strong>5</strong> declarations —
+<code>entryKeyPack_of_dispatch</code> and the four <code>accum_content_on_*</code> lemmas between it
+and <code>accum_content_pending</code> — and <strong>10</strong> call sites.</li><li><strong>Item 130's premise path.</strong>  It measured <code>Mono</code> and <code>SentinelBase</code> reaching
+the four <code>:</code>/<code>?</code> producers at 2 sites, then 4, then 25.  The 25-site level is
+<code>accum_block_pending</code> and its neighbours, which carry the base now, so the
+base's residue is <strong>8</strong> declarations and <strong>12</strong> call sites — <code>indicator_open_map</code>,
+the four producers, and the three lemmas around them.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

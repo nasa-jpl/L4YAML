@@ -1,0 +1,59 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.DedentCoverSpent</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.DedentCoverSpent";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">DedentCoverSpent</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/DedentCoverSpent.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.DedentCoverSpent" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-dedent-landing-spends-the-cover-DOCS-item-149" class="markdown-heading">The dedent landing spends the cover (DOCS item 149) <a class="hover-link" href="#The-dedent-landing-spends-the-cover-DOCS-item-149">#</a></h1><p>Item 148 carried a cover from a root down an unbounded chain of nested implicit
+keys and left ONE branch punting: <code>entryKeyPack_of_dispatch</code>'s dedent, where the
+landing pops to a level below the park's own.  The reason it named was a
+mismatch of lists — the park's cover is over the whole of <code>ks</code>, the pack the
+landing opens carries <code>FrameLevel.map w :: ks'</code>, and <code>ks'</code> drops every width above <code>w</code>.</p><p>The mismatch is real and it is not a list fact.  What reads the one list as the
+other is the landing's own FLOOR: preprocessing's unwind stopped at <code>w</code>, so the
+stack it hands the dispatch has nothing above <code>w</code> left to name.  Three things
+had to be true at once; item 148 named all three, and one of them one half
+short:</p><ul><li><code>ResumeFrames.resumeAt</code> had to say WHICH widths survive, not just that they
+are below <code>w</code>.  The bound is satisfied by the empty list, and so is the
+SUBLIST reading item 148 named — that one is half the answer (it is what the
+floor spends), and the half the cover spends is COMPLETENESS: nothing strictly
+below the landing was dropped (§1).</li><li><code>Mono</code> had to reach the content lane, because the floor bounds the TOP and
+the cover asks about every entry (§2).</li><li>The floor itself had to be measured, which is <code>landing_floor_of_arm</code> off the
+landed arm the pack lemma already destructures (§3).</li></ul><p>Two of the three cost no new scanner reading at all: <code>resumeAt</code>'s own recursion
+already visits the strict decrease it needed, and the floor is item 147's lemma
+applied to an arm the branch already had in hand.  The third is a premise, and
+<code>Mono</code> rides the accumulation down beside item 146's base.</p><p>§1 is what <code>resumeAt</code> reports.  §2 is the two hops and what each needs.  §3 is
+the payment composed, with the punts removed.  §4 checks the floor against the
+scanner.  §5 is the price and what still does not pay.</p></div><div class="mod_doc"><h2 id="1-What-resumeAt-reports" class="markdown-heading">§1  What <code>resumeAt</code> reports <a class="hover-link" href="#1-What-resumeAt-reports">#</a></h2><p>A landing at <code>j</code> closes the levels above it and keeps the rest.  Which rest is
+the question the surface never had to ask and the scanner cannot do without.</p></div><div class="mod_doc"><h2 id="2-The-two-hops" class="markdown-heading">§2  The two hops <a class="hover-link" href="#2-The-two-hops">#</a></h2><p>The frames' bound travels for free; the stack's cover does not.</p></div><div class="mod_doc"><h2 id="3-The-payment-composed" class="markdown-heading">§3  The payment, composed <a class="hover-link" href="#3-The-payment-composed">#</a></h2><p>This is <code>dedent_cover_of_landing</code>'s body with all three of its escapes removed —
+the caller's stack readings, the park's carried cover, and the line-start park —
+so what it produces is the LEFT disjunct rather than the field's <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code>.</p></div><div class="mod_doc"><h2 id="4-The-floor-against-the-scanner" class="markdown-heading">§4  The floor, against the scanner <a class="hover-link" href="#4-The-floor-against-the-scanner">#</a></h2><p><code>landing_floor_of_arm</code> says a landing that crossed a break has its floor — the
+top at or left of the column it unwound to — unless the stack popped all the way
+to the sentinel.  The walk below checks that on every step whose preprocessing
+actually POPPED, and counts those steps so a future change cannot make the check
+vacuous by never reaching one.  It also counts the parks the payment declines:
+a park AT a line start, whose walk crossed nothing and so armed no unwind.</p></div><div class="mod_doc"><h2 id="5-The-price-and-what-still-does-not-pay" class="markdown-heading">§5  The price, and what still does not pay <a class="hover-link" href="#5-The-price-and-what-still-does-not-pay">#</a></h2><p><strong>The price.</strong>  Seven new declarations: <code>ResumeWidths</code> with its three
+projections and <code>dedent_cover_of_landing</code> — the payment, written once for both
+pack lemmas — in <code>StreamAccum</code>, and <code>Floor.pop_to</code> with <code>Covered.pop_to</code> in
+<code>IndentStackCover</code>.  <code>ResumeFrames.resumeAt</code>'s conclusion is restated and its
+thirteen consumers migrated (ten needed a textual change; the three that already
+projected the bound away with <code>_</code> did not).  Six declarations gain a premise:
+<code>h_dframes</code>' cover conjunct and <code>h_cov</code> at both pack lemmas, and <code>Mono</code> with
+<code>SentinelBase</code> threading down the content lane beside item 146's base.  At the
+twelve pack-lemma call sites the bundle is real at the six <code>pendingMapValue</code>
+parks and a punt at the other six, and six of the seven places item 147's field
+was projected down to its widths now pass it through unchanged.</p><p><strong>What still does not pay.</strong></p><ul><li><del><strong>The membership split.</strong>  The branch still runs <code>by_cases hmem : FrameLevel.map w ∈ ks</code> and
+punts when the landing names no frame.  <code>preprocess_landing_mem_or_seq</code> derives
+that membership from the cover it now has in hand — but it wants the park's
+<code>SentinelBase</code>, <code>s_prep.indents ≠ sc.indents</code>, and a refutation of the SEQUENCE
+disjunct, which <code>IndentStackCover.landing_mem_of_value</code> settles a step LATER at
+the <code>:</code> and the pack cannot.</del>  <strong>Item 150: that reading is wrong, and the
+derivation would buy nothing.</strong>  <code>KeyPackPunt.dedent</code> takes no argument, so the
+punt disjunct is inhabited at every state and the branch already returns the
+pack at exactly the inputs where <code>FrameLevel.map w ∈ ks</code> holds — a derivation of <code>FrameLevel.map w ∈ ks</code> can
+only re-prove what the split decided.  What moves the domain is a PAYLOAD on
+the constructor.  There is also a fourth requirement this list did not name:
+<code>preprocess_landing_mem_or_seq</code> wants the landing at or right of the cover's
+floor, and a dedent lands strictly left of the park's index.  Both are
+machine-checked in <code>ValueLineCoverSpent</code>'s §5.  Item 297 deletes <code>dedent</code>:
+the <code>FrameLevel.map w ∉ ks</code> exit keys a fresh document at the landing, row 19's
+over-approximation.</li><li><strong>A park at a line start.</strong>  The walk that reached the landing crossed nothing,
+so preprocessing armed no unwind and there is no floor to measure — item 147's
+own residue, at the indicator lane's payers as well.</li><li><del><strong>The value-line stack.</strong>  <code>h_dframesV</code> carries no cover at all; the <code>?</code> frame's
+levels are a different stack and nothing measures it yet.</del>  <strong>Item 150 gives it
+one</strong> — at a floor one column above the park, because the <code>?</code>'s own level is
+not one of its frames.</li><li><strong>Sequence parks.</strong>  <code>pendingBlock</code>'s two faces carry no cover on either side,
+so their dedent hop has none to spend — the same stop item 148 recorded.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

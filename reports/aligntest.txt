@@ -1,0 +1,8 @@
+=== aligntest ===
+PASS 01-anchored-launch-args
+PASS 02-sequence-of-buttons
+PASS 03-ros-params-aliases
+PASS 04-blank-line-runs
+PASS 05-edge-cases
+PASS 06-bom
+aligntest: 6 passed, 0 failed

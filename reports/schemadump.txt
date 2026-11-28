@@ -1,0 +1,131 @@
+=== schemadump ===
+=== Schema ↔ Dump Integration ===
+
+--- Primitive serialization ---
+  ✓ Bool true → true (bare, not a string)
+  ✓ Bool false → false (bare, not a string)
+  ✓ Nat 0 → 0
+  ✓ Nat 42 → 42
+  ✓ Nat 999 → 999
+  ✓ Int -7 → -7 (plain, leading minus allowed)
+  ✓ Int 100 → 100
+  ✓ Int 0 → 0
+  ✓ String simple → plain
+  ✓ String with space → plain
+  ✓ String empty → ""
+  ✓ String colon-space → quoted
+  ✓ Unit → null (bare, not a string)
+  ✓ String "null" → quoted (a string that spells null)
+  ✓ String "true" → quoted (a string that spells a bool)
+
+--- Collection serialization ---
+  ✓ Array String [a,b] → block sequence
+  ✓ Array String [x] → singleton block
+  ✓ Array String [] → []
+  ✓ List String [a,b] → block sequence
+  ✓ Nested Array → nested block
+  ✓ Array Nat [1,2,3] → block sequence
+  ✓ Array Bool → block of bare booleans
+
+--- Option serialization ---
+  ✓ some String → plain scalar
+  ✓ none String → null (bare)
+  ✓ some Nat → plain scalar
+  ✓ none Nat → null (bare)
+  ✓ some Bool → bare boolean
+
+--- Content round-trip (dump→parse→contentEq) ---
+  ✓ Bool true round-trips
+  ✓ Bool false round-trips
+  ✓ Nat 0 round-trips
+  ✓ Nat 42 round-trips
+  ✓ Nat 999 round-trips
+  ✓ Int -7 round-trips
+  ✓ Int 100 round-trips
+  ✓ String simple round-trips
+  ✓ String with space round-trips
+  ✓ String empty round-trips
+  ✓ String colon-space round-trips
+  ✓ String has #comment round-trips
+  ✓ String {flow} round-trips
+  ✓ String [array] round-trips
+  ✓ Unit round-trips
+  ✓ Array [a,b] round-trips
+  ✓ Array [x] round-trips
+  ✓ Array [] round-trips
+  ✓ List [a,b] round-trips
+  ✓ Nested arrays round-trip
+  ✓ Option some String round-trips
+  ✓ Option some Nat round-trips
+
+--- Typed round-trip (α→String→α) ---
+  ✓ Bool true → String → Bool
+  ✓ Bool false → String → Bool
+  ✓ Nat 42 → String → Nat
+  ✓ Nat 0 → String → Nat
+  ✓ Int 100 → String → Int
+  ✓ Int -7 → String → Int
+  ✓ String hello → String → String
+  ✓ String "" → String → String (quoted, so not null)
+  ✓ String "true" → String → String (quoted, so not a bool)
+  ✓ String "null" → String → String (quoted, so not null)
+  ✓ String "42" → String → String (quoted, so not an int)
+  ✓ String colon-space → String → String
+  ✓ Unit → String → Unit
+
+--- Document serialization ---
+  ✓ dumpTypedDocument Nat no directives
+  ✓ dumpTypedDocument Nat with YAML directive
+  ✓ dumpTypedDocument String with directive
+  ✓ dumpTypedDocuments empty
+  ✓ dumpTypedDocuments single
+  ✓ dumpTypedDocuments two
+
+--- Config variations ---
+  ✓ double-quoted config
+  ✓ single-quoted config
+  ✓ custom indent array
+  ✓ double-quoted round-trips
+  ✓ single-quoted round-trips
+  ✓ indent 4 array round-trips
+
+--- Scalar style and Core Schema intent ---
+  ✓ parseAs String "42" → "42"
+  ✓ parseAs String "true" → "true"
+  ✓ parseAs String 'null' → "null"
+  ✓ parseAs Bool "true" is an error (it is a string)
+  ✓ parseAs Bool true → true
+  ✓ parseAs Bool !!bool "true" → true (explicit tag wins)
+  ✓ parseAs Nat "42" is an error
+  ✓ parseAs (Option String) null → none
+  ✓ parseAs (Option String) ~ → none
+  ✓ parseAs (Option String) "null" → some "null"
+  ✓ field x: null → none
+  ✓ field x: (empty) → none
+  ✓ field x: "null" → some "null"
+  ✓ field x: "" → some ""
+  ✓ dump none field → x: null
+  ✓ dump some "null" field → x: "null"
+  ✓ dump some "" field → x: ""
+  ✓ none field round-trips
+  ✓ some "null" field round-trips
+  ✓ Float 1.5 → 1.500000
+  ✓ Float +inf → .inf
+  ✓ Float -inf → -.inf
+  ✓ Float NaN → .nan
+  ✓ Float 1.5 round-trips
+  ✓ plain -7 (untagged) dumps plain
+  ✓ plain -1.5 (untagged) dumps plain
+  ✓ plain -7 round-trips as an int
+  ✓ plain -x (a string) is still quoted
+  ✓ HashMap key 0xFF stays the string "0xFF" in JSON
+  ✓ HashMap key true stays a string key
+  ✓ DumpConfig YAML round-trip keeps plainCoreScalars := false
+  ✓ yamlToJson (dumpTyped true) = true
+  ✓ yamlToJson (dumpTyped "true") = "true"
+  ✓ yamlToJson (dumpTyped none) = null
+  ✓ yamlToJson (dumpTyped -7) = -7
+  ✓ yamlToJson (dump some "null" field) = {"x":"null"}
+  ✓ yamlToJson (dump none field) = {"x":null}
+
+=== Results: 111/111 passed ===

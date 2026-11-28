@@ -1,0 +1,60 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.StreamBareDocumentFallback</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.StreamBareDocumentFallback";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">StreamBareDocumentFallback</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamBareDocumentFallback.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.StreamBareDocumentFallback" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-bare-document-fallback-named-and-half-refuted-DOCS-item-139" class="markdown-heading">The bare-document fallback, named and half refuted (DOCS item 139) <a class="hover-link" href="#The-bare-document-fallback-named-and-half-refuted-DOCS-item-139">#</a></h1><p>Items 117, 136 and 137 gave the content landing's route face its SUFFIX, HEAD
+and MARKER arms.  What they left is the fallback — a completed top-level node
+appended to a FINISHED stream as a second bare document, <code>[211]</code>'s implicit
+continuation with <code>[207] l-bare-document</code> in its <code>l-any-document?</code> slot — and
+what the fallback owed was items 132–134's refusal, threaded to the
+accumulation as a contradiction rather than restated as prose.</p><p>This item threads it, and MEASURES that it covers exactly half of the
+fallback's domain.  The discriminator is the indent stack, and the two halves
+are two different mechanisms:</p><ul><li><strong>the stack is the sentinel alone</strong> — the landed node is a second bare
+document, <code>scanNextToken_checkBareDocument</code> fires AT the landing, and the
+accumulation step for that node never runs.  Refutable, and refuted;</li><li><strong>a level is still open</strong> — the same input is a DANGLING run, and
+<code>danglingNodePos?</code> reads the run off the TOKEN ARRAY, so the run has to be
+scanned before the check can see it.  The refusal lands at the NEXT landing,
+or at <code>scanLoop</code>'s end.  The step therefore runs, the park it makes owes a
+stream, and this route is the only reading <code>[211]</code> has for it.</li></ul><p>§1 measures that split on the real scanner: <code>fireAt</code> walks <code>scanNextToken</code> and
+reports which check fired and at which landing.  §2 is the same split read off
+the check's own definition.  §3 is <code>CompletedTail</code>, the park face the refutation
+spends, and the one payment every content dispatch makes for it.  §4 is the
+three transports that carry the park's reading to the landing.  §5 is the
+fallback at its type, guarded and unguarded.  §6 is what remains.</p><p>No runtime file is touched, so every verdict below is the one the pipelines
+already gave.</p></div><div class="mod_doc"><h2 id="1-Which-check-fires-and-at-which-landing" class="markdown-heading">§1  Which check fires, and at which landing <a class="hover-link" href="#1-Which-check-fires-and-at-which-landing">#</a></h2><p><code>fireAt</code> is the step chain read back: at every landing it asks
+<code>scanNextToken_checkDanglingNode</code> and <code>scanNextToken_checkBareDocument</code> the
+question <code>scanNextToken</code> asks them, in that order, and then takes the step.
+The landing index counts landings, so <code>bare@2</code> says the refusal happened
+BEFORE the node on line 2 was ever scanned, and <code>eof-dangling@N</code> says the
+scanner accepted every landing and <code>scanLoop</code>'s final validation refused.</p></div><div class="mod_doc"><h2 id="2-The-same-split-read-off-the-check-itself" class="markdown-heading">§2  The same split, read off the check itself <a class="hover-link" href="#2-The-same-split-read-off-the-check-itself">#</a></h2><p>Three of <code>scanNextToken_checkBareDocument</code>'s four conjuncts are what the
+landing already holds; the fourth is the stack, and it is the whole
+discrimination.  Item 145 reads it at the landing's own COLUMN rather than at
+the stack's size.</p></div><div class="mod_doc"><h2 id="3-CompletedTail-and-the-payment-every-content-dispatch-makes" class="markdown-heading">§3  <code>CompletedTail</code>, and the payment every content dispatch makes <a class="hover-link" href="#3-CompletedTail-and-the-payment-every-content-dispatch-makes">#</a></h2><p><code>StaleNodeTail</code> (item 47) is <code>CompletedTail</code> plus two LINE facts — <code>needIndentCheck</code>
+and <code>simpleKeyAllowed</code> both DOWN — and neither survives a park at a line start:
+the block scalar ends past a break with the flag up, and the break sets the
+indent check.  §9.2's landing refusal wants the opposite polarity of the flag
+and never reads the indent check, so the half a park can carry unconditionally
+is the half that mentions neither.</p></div><div class="mod_doc"><h2 id="4-The-three-transports" class="markdown-heading">§4  The three transports <a class="hover-link" href="#4-The-three-transports">#</a></h2><p>The park's reading is about <code>sc</code>; the check reads <code>s_prep</code>.  Preprocessing has
+three writers between them, and the STACK decides all three.</p></div><div class="mod_doc"><h2 id="5-The-fallback-guarded-and-unguarded" class="markdown-heading">§5  The fallback, guarded and unguarded <a class="hover-link" href="#5-The-fallback-guarded-and-unguarded">#</a></h2><p>Naming it is half the item: three call sites built the same term inline, so the
+surface was three applications of <code>implicitContinue</code> where it is now one
+lemma to refute.</p></div><div class="mod_doc"><h2 id="6-What-remains" class="markdown-heading">§6  What remains <a class="hover-link" href="#6-What-remains">#</a></h2><p><code>SLYamlStream.implicitContinue</code> stands at <strong>eight</strong> applications in <strong>eight</strong>
+holders (down from ten in nine), and flipping its <code>[210]</code> slot to
+<code>GOpt SLExplicitDocument</code> gives <strong>six</strong> errors in <code>StreamAccum</code> (down from
+eight) at six lemmas: <code>topLevelFlowResumeSep</code>, <code>rootMapRoute</code>, <code>rootMapRouteF</code>,
+<code>bareNodeRoute</code>, <code>structural_dispatch_to_pending</code> and
+<code>accum_block_on_closeThenBlock</code>.  Two of those are not over-approximations at
+all — <code>structural_dispatch_to_pending</code>'s is a <code>---</code> document continuing a
+stream implicitly, and the flip merely deletes its <code>SLAnyDocument.explicit</code>
+wrapper (<code>DocumentProduction.stream_implicit_continue</code> is the same shape).</p><p>What the fallback still serves, measured in §1:</p><ul><li><strong>the dangling family</strong> — <code>a: 1⏎b</code>, <code>- a⏎b</code>, <code>k:⏎  a⏎# c⏎b</code>.  These reach
+<code>content_dispatch_after_close</code> and the landing skeleton's unrefuted arm, and
+they are NOT a gap in the argument: the scanner accepts the run's own step
+and refuses at the next landing, so the accumulation genuinely owes a stream
+for one token.  Closing this half means giving the park a <code>danglingNodePos?</code>
+face — the run is already in the token array when the park is made — not a
+better reading of <code>[211]</code>.  (Read with DOCS item 140: sizing that face found
+that the INDENTED members of this family were refused by the PARSER only,
+because the landing's unwind displaced the run before the mid-stream check
+saw it.  <code><a href="../../.././Tests/Guards/Proofs/ScannerDanglingNodeDedent.html">Tests/Guards/Proofs/ScannerDanglingNodeDedent.lean</a></code> is that
+refusal, and the face has something to contradict now.);</li><li><strong>the flow lane</strong> — <code>accum_flow_open_depth0</code>'s shared <code>main</code>, where
+<code>topLevelFlowResumeSep</code> is the same fallback for a completed flow
+collection.  Its refutation is this item's, one dispatcher over: <code>h_bare</code>
+threaded through <code>accum_step_flow</code>, and the park arm it already takes for the
+suffix face;</li><li><strong>the block <code>-</code> landing</strong> — <code>accum_block_on_closeThenBlock</code>'s
+<code>rootBlockSeq</code>, and <code>rootMapRoute</code>/<code>rootMapRouteF</code>, the key routes the same
+landings take when the node turns out to be a KEY.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

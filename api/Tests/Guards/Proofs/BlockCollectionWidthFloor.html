@@ -1,0 +1,45 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.BlockCollectionWidthFloor</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.BlockCollectionWidthFloor";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">BlockCollectionWidthFloor</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/BlockCollectionWidthFloor.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.BlockCollectionWidthFloor" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-auto-detected-width-has-no-floor-and-the-truncation-is-why-DOCS-item-107" class="markdown-heading">The auto-detected width has no floor, and the truncation is why (DOCS item 107) <a class="hover-link" href="#The-auto-detected-width-has-no-floor-and-the-truncation-is-why-DOCS-item-107">#</a></h1><p><code>[183] l+block-sequence(n)</code> and <code>[187] l+block-mapping(n)</code> are
+<code>( s-indent(n+m) … )+</code> for some auto-detected <strong><code>m &gt; 0</code></strong>.  <code>SBlockNode.blockSeq</code>
+and <code>.blockMap</code> bind that <code>m</code> as a bare <code><a href="../../.././Init/Prelude.html#Nat">Nat</a></code> (item 22 bound it at the right
+SCOPE — Reflection 647 — and left its RANGE open), which is row 19's fourth
+over-approximation, recorded 2026-08-16 and carried unpriced ever since with the
+note "harmless at the root".</p><p>This file prices it.  The parameter cannot simply be tightened, because in this
+encoding <code>m = 0</code> is doing THREE different jobs and only one of them is the
+over-approximation:</p><ul><li>the ROOT's own mapping — <code>a: 1</code> at column 0 — is <code>SBlockNode 0</code>, and its
+entries are at column 0, so the constructor's <code>n + m</code> forces <code>m = 0</code>.  The
+spec has no such case: the document node is <code>s-l+block-node(-1, block-in)</code>,
+so <code>-1 + 1 = 0</code> with <code>m = 1</code>.</li><li>the SEQ-SPACES key — <code>?⏎- a</code>, whose <code>-</code> sits at the <code>?</code>'s own column — is
+<code>[201] seq-spaces(n, block-out) = n-1</code>, which at <code>n = 0</code> is the spec's <code>-1</code>
+and here is <code>0 - 1 = 0</code>.  Truncating subtraction, so again <code>m = 0</code>.</li><li>the EQUAL-WIDTH landing — <code>k:⏎  a: 1⏎  b: 2</code>'s second key — is the one the
+spec really forbids: a mapping nested inside its enclosing entry at that
+entry's own width, where <code>parseYaml</code> reads a SIBLING.</li></ul><p><code><a href="../../.././Init/Prelude.html#Nat">Nat</a></code> cannot tell the first two from the third, and §2 says why in one line:
+<code>seq-spaces</code> collides at exactly the two indices that matter.  So <code>0 &lt; m</code> is not
+a one-line tightening of a parameter — it is a re-indexing of <code>SBlockNode</code>, and
+the plan row that reads "4 construction sites" is pricing the wrong thing.
+<strong>Item 179 landed that re-indexing</strong> — three crossings add the one
+(<code>SBlockIndented.node</code>, <code>implicitKeyNode</code>, <code>emptyKeyNode</code>), and §§4–5 below
+read the same terms at the landed convention.</p><p>Everything below is either a RUNTIME pin (no runtime file is touched at this
+item) or a TERM whose elaboration is the fact.</p></div><div class="mod_doc"><h2 id="2-The-collision" class="markdown-heading">§2 The collision <a class="hover-link" href="#2-The-collision">#</a></h2><p><code>[201] seq-spaces(n,c)</code> is <code>n-1</code> in block-out and <code>n</code> in block-in, and <code>n</code> is a
+<code><a href="../../.././Init/Prelude.html#Nat">Nat</a></code> here, so the subtraction truncates.  It truncates at exactly one index —
+and that index is the root's.</p></div><div class="mod_doc"><h2 id="3-What-each-family-needs-of-m" class="markdown-heading">§3 What each family needs of <code>m</code> <a class="hover-link" href="#3-What-each-family-needs-of-m">#</a></h2><p>The constructor's entries index is <code>seqSpaces n c + m</code> (sequence) and <code>n + m</code>
+(mapping), so each family's own width IS an equation in <code>m</code>.  Two of the three
+solve to <code>m = 0</code>.</p></div><div class="mod_doc"><h2 id="4-The-over-approximation-RETIRED-by-the-convention-item-179" class="markdown-heading">§4 The over-approximation — RETIRED by the convention (item 179) <a class="hover-link" href="#4-The-over-approximation-RETIRED-by-the-convention-item-179">#</a></h2><p><code>nestedBlockMap</code>'s side condition is <code>n ≤ k</code> — item 39's, and the whole content
+of the landed/dedent split at <code>entryKeyPack_of_dispatch</code>.  With <code>SBlockNode</code>'s
+index shifted, <code>n</code> in that slot names the spec's <code>n - 1</code>, so <code>n ≤ k</code> READS as
+the spec's own strict floor <code>n_spec &lt; k</code>.  The equal-width landing no longer
+reaches it at all: an entry at raw column <code>e</code> awaits its node at <code>e + 1</code>, so a
+landing at <code>k = e</code> fails <code>e + 1 ≤ k</code> and joins the dedent branch — the sibling
+reading, which is the parser's.  The <code><a href="../../.././Init/Prelude.html#Nat.le_refl">Nat.le_refl</a></code> term below still
+elaborates, and what it now constructs is honest: entries exactly one
+spec-level deeper than the slot's index — the root's own shape.</p></div><div class="mod_doc"><h2 id="5-The-price-PAID-item-179" class="markdown-heading">§5 The price — PAID (item 179) <a class="hover-link" href="#5-The-price-PAID-item-179">#</a></h2><p>Tightening <code>m</code> means giving the two collection constructors a FLOOR on their
+entries' width, and the convention pays it with no side condition at all: at
+<code>n_lean = n_spec + 1</code> uniformly, a block-in collection's <code>n + m</code> entries sit
+at or above <code>n = n_spec + 1 &gt; n_spec</code> even at <code>m = 0</code>, a block-out sequence's
+<code>seqSpaces n .blockOut + m = (n - 1) + m</code> sits at or above the spec's
+<code>seq-spaces</code> value (the <code>-1</code> that keeps <code>?⏎- a</code> legal), and the ROOT is
+<code>SBlockNode 0</code> — the spec's <code>-1</code> — whose entries at column 0 are the honest
+<code>m = 0</code>.  What carried the price was not these constructors but the three
+CROSSINGS that feed them raw columns, and the proof surface behind them
+(item 179's ledger row has the census: 75 sites, 13 definitions, all in
+<code>StreamAccum</code>).  <code>widthFloor</code> below is the floor §5 originally asked for,
+kept as the arithmetic the convention now provides for free.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

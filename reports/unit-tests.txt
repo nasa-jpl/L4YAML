@@ -1,0 +1,22 @@
+=== unit-tests ===
+=== Unit Tests ===
+
+--- ScalarStyle ---
+  ✓ All 5 scalar styles defined
+  ✓ BEq distinguishes styles
+
+--- YamlValue construction ---
+  ✓ Scalar content preserved
+  ✓ Sequence has 2 items
+  ✓ Mapping has 1 pair
+  ✓ Null value constructed
+
+--- YamlDocument ---
+  ✓ Document has 1 directive
+  ✓ YAML directive version correct
+
+--- YamlPos ---
+  ✓ YamlPos BEq reflexive
+  ✓ YamlPos BEq distinguishes
+
+=== Results: 10/10 passed ===

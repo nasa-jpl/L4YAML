@@ -1,0 +1,41 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerBlockEntryMappingIndent</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerBlockEntryMappingIndent";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerBlockEntryMappingIndent</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerBlockEntryMappingIndent.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/IndexedDispatch.html">L4YAML.Scanner.IndexedDispatch</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li><li><a href="../../.././L4YAML/Token/Token.html">L4YAML.Token.Token</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerBlockEntryMappingIndent" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-at-a-block-mapping-s-own-column-DOCS-item-134" class="markdown-heading">The <code>-</code> at a block mapping's own column (DOCS item 134) <a class="hover-link" href="#The-at-a-block-mapping-s-own-column-DOCS-item-134">#</a></h1><p>§9.2 <code>[211] l-yaml-stream</code> admits a bare document only as the stream's first or
+after a <code>...</code>.  A <code>-</code> at a column strictly right of the enclosing collection
+opens a sequence — <code>pushSequenceIndent</code>'s guard is <code>col &gt; currentIndent</code>.  A <code>-</code>
+at a MAPPING's own column opens nothing, and is legal only where a NODE is
+expected: <code>[183] l+block-sequence(n)</code> is reached from <code>[185] s-l+block-indented(n,c)</code> with the auto-detected <code>m</code> allowed to be 0, so a
+zero-indented sequence stands exactly in a node's slot.  Item 119 measured the
+refusal as the parser's and named the migration M3; this is the landing.</p><p><strong>Two things expect a node</strong>, and <code>scanBlockEntryValidate</code> is their disjunction:</p><ul><li>the slot the previous indicator opened is still empty — <code>:</code> awaiting its
+value, <code>?</code> awaiting its key, <code>-</code> awaiting its entry, with at most a <code>[96]</code>
+property run standing in between.  That is item 133's own
+<code>YamlToken.offersNodeSlot</code>, read past the run by <code>slotHolderIdx?</code>;</li><li>a zero-indented sequence at this very column is already open and this is its
+next entry — <code>sameIndentSequenceOpen</code>.</li></ul><p><strong>M3 is the one mechanism whose test is a BACKWARD WALK.</strong>  The entries of a
+zero-indented sequence are separated from one another by every token of the
+collections nested inside them (<code>a:⏎- k: 1⏎  m: 2⏎- y</code>), so "is this sequence
+still open?" cannot be read off the array's tail.  The walk is bounded on the
+other side by the mapping level's own opener: <code>pushMappingIndent</code> runs at the
+column of a <code>.key</code>, or of the <code>.value</code> that opens a keyless entry, so a
+<code>.key</code>/<code>.value</code> at a column ≤ this one is always reached, and everything behind
+it belongs to a collection this <code>-</code> cannot continue.</p><p>§1 types the check and the three ways it stands aside.  §2 is the family item
+119 mapped.  §3 is a family it did NOT map — a <code>-</code> at the column of a mapping
+COMPACT IN A SEQUENCE ENTRY, which both pipelines ACCEPTED, and which PyYAML
+and libyaml both reject.  §4 is the boundary the check must not cross.  §5 is
+the discrimination from M1, M2 and §8.2.1's <code>?</code> twin.</p></div><div class="mod_doc"><h2 id="1-The-check-and-the-three-ways-it-stands-aside" class="markdown-heading">§1  The check, and the three ways it stands aside <a class="hover-link" href="#1-The-check-and-the-three-ways-it-stands-aside">#</a></h2></div><div class="mod_doc"><h2 id="2-The-family-item-119-mapped" class="markdown-heading">§2  The family item 119 mapped <a class="hover-link" href="#2-The-family-item-119-mapped">#</a></h2><pre><code>Its seven pins, and the shapes around them.  Every one is reported at the
+`-`'s own line and column — which is where the PARSER reported, so the
+migration is byte-invisible to the matrix and to `eventscore`.
+</code></pre></div><div class="mod_doc"><h2 id="3-The-family-item-119-did-NOT-map" class="markdown-heading">§3  The family item 119 did NOT map <a class="hover-link" href="#3-The-family-item-119-did-NOT-map">#</a></h2><pre><code>A mapping COMPACT IN A SEQUENCE ENTRY (`[185] s-l+block-indented`) has its
+own column too, and a `-` there is the same shape for the same reason.  The
+map never recorded these because both pipelines ACCEPTED them — emitting a
+spurious empty second document for the tokens after the mapping ends — and
+the map's `parserGap` predicate only collects what the parser refuses.
+PyYAML and libyaml reject every one, and the check closes them with the
+rest: verdict CHANGED here, from accept to refuse.
+</code></pre></div><div class="mod_doc"><h2 id="4-The-boundary-the-check-must-not-cross" class="markdown-heading">§4  The boundary the check must not cross <a class="hover-link" href="#4-The-boundary-the-check-must-not-cross">#</a></h2></div><div class="mod_doc"><h2 id="5-The-discrimination-from-M1-M2-and-the-twin" class="markdown-heading">§5  The discrimination from M1, M2 and the <code>?</code> twin <a class="hover-link" href="#5-The-discrimination-from-M1-M2-and-the-twin">#</a></h2><pre><code>M1 (`ScannerBareDocumentRefusal`) needs the indent stack at its sentinel
+alone; M3 needs a MAPPING level at the cursor's column, and a `Nat` is
+never `-1`, so they never overlap.  M2 (`ScannerDanglingNodeRefusal`) reads
+the array's TAIL for an unresolved node run; on M3's whole family that run's
+predecessor offers it a slot, so M2 stands aside — what has no slot is the
+`-` in front of it.  <a href="../../.././Init/Prelude.html#And">And</a> §8.2.1's `atSequenceIndent` (item 131) is the
+OTHER indicator at the OTHER kind of level: a `?` at a sequence's own
+column, refused as `trailingContent`.  These pin the three boundaries by
+the message each mechanism produces.
+</code></pre></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

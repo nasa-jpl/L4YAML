@@ -1,0 +1,59 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ResumeCtxCoverSpent</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ResumeCtxCoverSpent";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ResumeCtxCoverSpent</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ResumeCtxCoverSpent.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ResumeCtxCoverSpent" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-resuming-key-context-carries-the-landing-s-cover-DOCS-item-151" class="markdown-heading">The resuming key context carries the landing's cover (DOCS item 151) <a class="hover-link" href="#The-resuming-key-context-carries-the-landing-s-cover-DOCS-item-151">#</a></h1><p>Items 148–150 gave both lanes a cover and taught the dedent landing to spend it,
+and both items closed naming the same gap: <code>ResumeKeyCtx</code> — the context a landed
+SIBLING key is handed when the park that closed under it kept its frames — had
+no slot for one on either lane.  A landing that resumed through it therefore
+dropped what the relay was holding, at the one relay that holds both.  This item
+gives the context a slot on each lane, pays them where the evidence stands, and
+spends them into the two pack fields the dispatch builds.</p><p><strong>The context's floor index is the PACK's, on both lanes.</strong>  That is where the
+value lane stops mirroring its parks.  A park's value-line frames exclude the
+<code>?</code>'s own level, so their cover stands one column above the park (item 150); the
+key this landing heads is a mapping level of EITHER stack, so nothing is
+excluded here and <code>Floor lo k (FrameLevel.map k :: ks)</code> is what both faces carry.</p><p><strong>The index on the way IN is forgotten.</strong>  The two incoming faces are bounded at
+different indices — <code>n</code> on the stream lane, <code>n + 1</code> on the value lane — and the
+hop reads neither, because <code>IndentStackCover.Floor.pop_to</code> spends the WIDTHS
+half alone.  So one payer argument serves both.</p><p>§1 is the slot and its index.  §2 is <code>dedent_cover_of_floor</code>, the item's one new
+declaration, and what it takes out of item 149's lemma.  §3 is the payment
+composed, from the face to the pack field.  §4 walks the lane against the
+scanner.  §5 is what still does not pay.  §6 is the price.</p></div><div class="mod_doc"><h2 id="1-The-slot-and-why-its-index-is-the-pack-s" class="markdown-heading">§1  The slot, and why its index is the pack's <a class="hover-link" href="#1-The-slot-and-why-its-index-is-the-pack-s">#</a></h2><p>The landing this context describes stands INSIDE an explicit key: the <code>?</code> opened
+a mapping level, a key opened another, and the sibling that lands resumes the
+inner one.  Item 150's seed excluded the <code>?</code>'s own level from the value-line
+frames; the key's level is excluded from neither stack, and that is the whole
+difference between the two floors.</p></div><div class="mod_doc"><h2 id="2-dedent-cover-of-floor-the-hop-with-the-escapes-taken-out" class="markdown-heading">§2  <code>dedent_cover_of_floor</code> — the hop with the escapes taken out <a class="hover-link" href="#2-dedent-cover-of-floor-the-hop-with-the-escapes-taken-out">#</a></h2><p>Item 149's <code>dedent_cover_of_landing</code> answers with a DISJUNCTION, because two of
+its premises are escapes rather than facts: a caller that cannot measure its
+stack, and a park at a line start whose walk armed no unwind.  A caller that has
+discharged both wants the payment itself, and this lemma is that payment.</p></div><div class="mod_doc"><h2 id="3-The-payment-composed" class="markdown-heading">§3  The payment, composed <a class="hover-link" href="#3-The-payment-composed">#</a></h2><p>Three hops carry the park's cover into the pack the dispatch builds: the
+landing's, which pops the widths; the context, which holds the result; and the
+dispatch's, which moves it from the landing's state to the park's.</p></div><div class="mod_doc"><h2 id="4-The-lane-walked-against-the-scanner" class="markdown-heading">§4  The lane, walked against the scanner <a class="hover-link" href="#4-The-lane-walked-against-the-scanner">#</a></h2><p>The relay that pays is the mapping-value park's dedent: the awaited value never
+arrived, the entry closes on <code>[72]</code>'s empty node, and the landed key parks off
+the closed prefix with the landing's <code>s-indent(j)</code> as its context.  What the
+payment needs from the scanner is the landing's own floor, and what the
+DERIVATION needs besides is the park to be off a line start — which is item
+147's residue, and the one thing the corpus below discriminates on.</p></div><div class="mod_doc"><h2 id="5-What-still-does-not-pay" class="markdown-heading">§5  What still does not pay <a class="hover-link" href="#5-What-still-does-not-pay">#</a></h2><p>Three sites hand the new slot its punt, and each names a different missing
+thing rather than a different input.</p><ul><li><strong>The sequence park.</strong>  <code>accum_content_on_pendingBlock_indented</code> relays
+<code>pendingBlock.h_closeF</code>, which carries the widths alone, and the relay has
+neither of the stack's two readings to pay a cover with.  Both the
+constructor field and the relay's <code>Mono</code>/<code>SentinelBase</code> thread are what a
+payment costs there.</li><li><del><strong>The skeleton's two parks.</strong>  <code>pendingContent.h_framesS</code> / <code>.h_framesV</code> and
+<code>pendingBlockContent.h_closeF</code> are the faces <code>h_defer_split</code> passes, and none
+of the three has a cover conjunct.</del>  <strong>Item 152 paid the first two</strong>, and
+the skeleton now states the landing's payment once in its break-crossed arm;
+<code>pendingBlockContent.h_closeF</code> still punts, and so does the column-0 arm.
+See <code>ContentParkCoverSpent</code>.</li><li><strong>The park at a line start</strong>, item 147's residue, measured above.</li></ul><p>The context accepts the punt on either lane, which is what lets those three
+sites keep compiling while the slot exists.</p></div><div class="mod_doc"><h2 id="6-The-price" class="markdown-heading">§6  The price <a class="hover-link" href="#6-The-price">#</a></h2><p>One new declaration, <code>dedent_cover_of_floor</code>, which item 149's lemma now calls
+as well — so the hop is authored once and the escapes stay where they belong.
+<code>ResumeKeyCtx</code> gains two conjuncts, <code>resumectx_of_landing</code> two arguments and a
+payer, <code>content_dispatch_routed</code> one lift and two spends, and the seven relays
+that build a resuming context pass the payer they can.</p><p>What is left of the cover's own work after this item is the three faces §5
+names: <code>pendingBlock.h_closeF</code>, and <code>pendingContent</code>'s two.  All three are
+CONSTRUCTOR fields, which is why none of them is a line in this item — each
+costs its own producers, and the sequence park costs its relay a <code>Mono</code> and a
+<code>SentinelBase</code> besides.</p><p><strong>Item 152 took <code>pendingContent</code>'s two</strong>, at the cost that sentence predicted
+and no more: an <code><a href="../../.././Init/SimpLemmas.html#Or.imp">Or.imp</a></code> at each of the five producers that already held a
+cover.  It also found a field that list did not name — <code>pendingProps</code>'s own two
+frames faces, which fund five further <code>pendingContent</code> producers and are one
+level further up the same chain.</p><p><strong>Item 153 took those</strong>, and at the same price: three mapping producers hand
+over a cover they already hold, two run extensions step one they already carry,
+and the props arm's landing — the one site where the payer was never the
+obstacle — spends it.  What the list has left is the SEQUENCE chain:
+<code>pendingProps.h_closeFE</code>, <code>pendingBlockContent.h_closeF</code> and
+<code>pendingBlock.h_closeF</code>, three fields on one lane.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

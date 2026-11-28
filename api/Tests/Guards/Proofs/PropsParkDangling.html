@@ -1,0 +1,71 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.PropsParkDangling</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.PropsParkDangling";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">PropsParkDangling</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/PropsParkDangling.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.PropsParkDangling" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-property-lane-s-reading-and-the-half-of-it-that-scans-clean-DOCS-item-158" class="markdown-heading">The property lane's reading, and the half of it that scans clean (DOCS item 158) <a class="hover-link" href="#The-property-lane-s-reading-and-the-half-of-it-that-scans-clean-DOCS-item-158">#</a></h1><p>Item 156 derived §9.2's dangling reading at the producer for a content dispatch
+off <code>&amp;</code>/<code>!</code>; item 157 built the consumer face for <code>pendingContent</code> and left the
+property lane as the gate's named residue, recording that "the lane IS
+refutable and the scanner already refuses every shape in it".</p><p>This item lands the producer half for the property arm and measures the second
+claim, which is <strong>half true</strong>:</p><ul><li><code>dispatchContent_tokens_push_prop</code> — a <code>&amp;</code> pushes one <code>.anchor</code> and a <code>!</code> one
+<code>.tag</code>, at the dispatch's own <code>currentPos</code>;</li><li><code>dispatchContent_tokens_push_node</code> — with the body arm beside it, the
+dispatcher's whole token census is ONE statement: exactly one node token, at
+its own position;</li><li><code>trailingNodeRun?_push_prop</code> / <code>_push_node</code> — a property pushed on top starts
+a trailing run of one, exactly as a body does;</li><li>so <code>danglingPark_of_dispatch</code> and its two spent forms lose their <code>c ≠ '&amp;'</code>
+and <code>c ≠ '!'</code> premises, and <code>ContentRouteGate</code>'s left disjunct loses them
+with it.</li></ul><p>What the measurement adds is the lane's SPLIT.  A property run with a BLOCK
+body is refused by the scanner at the run's start, which is the property (§2).
+A property run whose body is a FLOW collection is not refused at all (§3): the
+collection's close ends the trailing run, so §9.2's end-of-input check reads
+<code>none</code>, and §8.1's floor measures the BRACKET's column, which the run has moved
+right.  <code>a: 1⏎&amp;p [b]</code> scans clean and the parser refuses it — so the props park
+really does owe an unconditional route, and the face item 157 named cannot
+simply be added.</p><p>§4 measures what the field would cost and where it stops.</p></div><div class="mod_doc"><h2 id="1-The-dispatcher-s-token-census-in-one-statement" class="markdown-heading">§1  The dispatcher's token census, in one statement <a class="hover-link" href="#1-The-dispatcher-s-token-census-in-one-statement">#</a></h2><p>Off <code>&amp;</code>/<code>!</code> the content dispatch pushes a node BODY (item 156); at <code>&amp;</code>/<code>!</code> it
+pushes a <code>[96] c-ns-properties</code> half.  There is no third arm, so the census is
+one statement — and it is what takes the character premises off everything
+below.</p></div><div class="mod_doc"><h2 id="2-The-refutation-with-no-case-on-the-character" class="markdown-heading">§2  The refutation, with no case on the character <a class="hover-link" href="#2-The-refutation-with-no-case-on-the-character">#</a></h2><p><code>danglingPark_of_dispatch</code> now reads the same at every content character, so
+§9.2's two checks refuse a property park exactly as they refuse a scalar
+one.</p></div><div class="mod_doc"><h2 id="3-The-half-that-scanned-clean-CLOSED-by-item-159" class="markdown-heading">§3  The half that scanned clean — CLOSED by item 159 <a class="hover-link" href="#3-The-half-that-scanned-clean-CLOSED-by-item-159">#</a></h2><p><strong>This section recorded a hole, and half of its diagnosis was wrong.</strong>  What it
+said was that a property run whose body is a FLOW collection is not refused at
+all, because §9.2's end-of-input check reads <code>trailingNodeRun?</code> and a <code>]</code> is
+neither a body nor a property, while §8.1's floor measures the BRACKET's column
+that the run has moved right.  Both halves of that are true.  What does NOT
+follow is the remedy it implied: item 158's own "what remains" offered <em>closing
+the hole at the flow open</em>, and an open cannot be the trigger, because a flow
+collection can head an implicit KEY — <code>a: 1⏎&amp;p [b]: c</code> PARSES, and so does
+<code>k:⏎␣␣m:⏎␣␣␣␣- a⏎␣␣&amp;p [1]: b</code>, which <code>FlowFrameResumeRider</code> already witnessed.</p><p>Item 159 closed it at the READING instead.  <code>[161] ns-flow-node</code> offers
+<code>ns-flow-content</code>, and a flow collection is that as readily as a scalar is — so
+<code>trailingNodeRun?</code> reads a trailing close back to its matching open
+(<code>flowOpenIdx?</code>) and keeps walking the <code>[96]</code> run from there.  The terminator is
+unchanged: the break, or end of input.  §4's flow consumer is what that buys.</p><p>The witnesses below are <code>SCAN-ERR</code> now, at the position they were already
+<code>PARSE-ERR</code> at — the bare-open fifth included, which item 172's deferred floor
+hands to the same dangling reading as its props-headed rows.</p></div><div class="mod_doc"><h2 id="4-What-the-field-would-cost-and-where-it-stops" class="markdown-heading">§4  What the field would cost, and where it stops <a class="hover-link" href="#4-What-the-field-would-cost-and-where-it-stops">#</a></h2><p><code>pendingProps.h_route</code> is the run's stream closure, and it is spent in three
+places.  Two of them could pay a <code>danglingNodePos? sc = none</code> premise and the
+third cannot:</p><table><thead><tr><th>consumer</th><th>what it has</th></tr></thead><tbody><tr><td><code>PendingNode.close_with_ssl</code></td><td><code>h_nd</code>, item 157's own parameter — free</td></tr><tr><td><code>accum_content_pending</code> (the run's extension and its ride into content)</td><td>the NEXT park's premise, one push later — relayed since item 165</td></tr><tr><td><code>accum_flow_open_depth0</code> (the ride into a flow collection)</td><td><del>nothing: §3's park is live there</del> — item 159 took that input out of the domain</td></tr></tbody></table><p><del>The flow consumer is §3's own input read from the accumulation's side.  It can
+be paid only by giving that arm the opaque resume instead of the props route,
+which is a different item's decision, not a lemma.</del>  <strong>Item 159 closed §3
+instead</strong>: a dangling run that rides into a flow collection is refused at the
+next break or at end of input, because the run is visible through the close now.
+The input that arm could not pay for no longer reaches it.</p><p>The second consumer had its own obstacle, and it was a fact about the token
+array rather than about the grammar.  A property run's reading transports across
+a BODY push — the walk-back reaches the same run start — but it did not transport
+across a PROPERTY push, because the start moved.</p><p><strong>Item 165 removed the input rather than the lemma — and item 170 put half of
+it back.</strong>  <code>[96]</code> derives one optional anchor and one optional tag, so a run
+is at most TWO properties long, and both §6.9 guards decide by KIND on the
+current LINE — which is blind to a run that crosses a break.  Item 165's
+<code>propertyRunFull</code> decided by LENGTH alone and over-refused: a parent node's
+full run beside its mapping's first key's fresh run reads the same way (9KAX,
+found at item 169's matrix re-run).  Item 170 narrows the block reading to the
+cursor's line, so <code>&amp;a⏎!t &amp;b x</code> is the PARSER's again and the start DOES move
+at a scanner-reachable park — step 3 below reads <code>1,0</code> where step 2 read
+<code>0,0</code>.  The premise relays through the BODY and OPEN pushes as before; <del>the
+PROPERTY push returns the moved window (<code>PropsWindowCross</code>) and
+<code>pendingProps.h_routeX</code> serves it without the verdict</del> — <strong>item 181: the
+PROPERTY push REFUTES</strong>, because the pushed token is the third of an adjacent
+property block and §9.2's fourth clause reads the duplicate kind, so the
+relay's own premise is false there and the window is deleted
+(<code>PropsCrossWindowRoute</code>).</p></div><div class="mod_doc"><h2 id="5-What-the-next-item-needs" class="markdown-heading">§5  What the next item needs <a class="hover-link" href="#5-What-the-next-item-needs">#</a></h2><p>The gate's right disjunct is unchanged in size and sharper in name: what is
+missing at <code>&amp;</code>/<code>!</code> is the park's own FIELD, not a refutation.  Landing it needs
+three things this item has measured rather than assumed:</p><ol><li>a premise shape that relays through a property push — <code>danglingNodePos? sc = none</code> does not, by §4's witness;</li><li><code>pendingBlockContent.h_closable</code> guarded as <code>pendingContent.h_closable</code>
+already is, since the run's ride into an ENTRY parks there — its only
+consumer is <code>close_with_ssl</code>, which carries <code>h_nd</code> already;</li><li><del>a decision about the flow ride: the opaque resume (<code>scannerDrop</code>, which
+<code>pendingFlow</code> already takes) in place of the props route whenever the park
+is dangling — or §3's hole closed in the scanner, which would make the two
+refusals agree at the position they already agree on.</del>  <strong>DONE (item 159)</strong>,
+by the second route — and not at the flow OPEN, which §3 records is not a
+terminator at all.  See <code><a href="../../.././Tests/Guards/Proofs/FlowRunDanglingClosed.html">Tests/Guards/Proofs/FlowRunDanglingClosed.lean</a></code>.</li></ol></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

@@ -1,0 +1,59 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerIndentFloorCompose</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerIndentFloorCompose";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerIndentFloorCompose</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerIndentFloorCompose.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/IndexedDispatch.html">L4YAML.Scanner.IndexedDispatch</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li><li><a href="../../.././L4YAML/Token/Token.html">L4YAML.Token.Token</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerIndentFloorCompose" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-entry-index-survives-into-the-block-scalar-s-floor-DOCS-items-27-29" class="markdown-heading">The entry index survives into the block scalar's floor (DOCS items 27–29) <a class="hover-link" href="#The-entry-index-survives-into-the-block-scalar-s-floor-DOCS-items-27-29">#</a></h1><p>Item 26 gave <code>[170] c-l+literal(n)</code> / <code>[174] c-l+folded(n)</code> a reading at every
+index the body's collected content indent admits, and left ONE inequality owed:
+<code>n ≤ d</code>, where <code>n</code> is the entry the accumulator parked at and <code>d</code> is the indent
+the scanner collected the body at.  It is true of every accepted input — an
+entry sits at <code>currentIndent</code>, and <code>scanBlockScalarBody</code>'s floor for <code>d</code> is
+<code>(max 0 (currentIndent + 1)).toNat</code> — and it was unstatable, because
+<code>currentIndent</code> occurred in the accumulation invariant zero times.</p><p>Item 27 carries it: <code>IndentFloor sc n</code> rides <code>pendingBlock</code> / <code>pendingMapValue</code>
+/ <code>pendingProps</code>, discharged at the producer from the push the scanner just
+made, and transported across the next preprocessing step by the fact that
+<code>skipToContent</code> never writes <code>indents</code> — only the ARMED <code>unwindIndents</code> does,
+and its arming flag is exactly what the break-free branch already excludes.</p><p>The field is <code>IndentFloor sc n ∨ <a href="../../.././Init/Prelude.html#True">True</a></code>, so a producer that cannot measure hands
+<code><a href="../../.././Init/Prelude.html#True">True</a></code> and no consumer gains a route (Reflection 653).  Item 27 discharged it
+for the two indicators that push at their OWN column (<code>-</code>, <code>?</code>) and for the <code>:</code>
+whose saved key is the fresh one at the indicator itself.</p><p>Item 28 discharges the third: <code>scanValuePrepare</code> pushes at the column of the
+key it RESOLVES, so measuring the push there rather than at the indicator
+reaches item 15's implicit-key entry too (<code>  a: |</code>).  The coupling is one
+conjunct on <code>ImplicitKeyPack</code> — the pack's <code>[63] s-indent(k)</code> read on the
+scanner's side as the saved key's column — and it is optional for the same
+reason the floor is, so the producers that cannot supply it hand <code><a href="../../.././Init/Prelude.html#True">True</a></code>
+(Reflection 654).</p><p>Item 29 supplies it at the two that did.  A property-headed key (<code>  &amp;x a: |</code>)
+is measured to the PROPERTY, which is where the scanner saved the key too, so
+<code>PropsKeyPack</code> carries the column beside the line it already carried; an alias
+key (<code>  *m : |</code>) needed one lemma saying <code>[104]</code>'s scan leaves the saved key's
+position alone.  Both were the SAME one-conjunct move, which is what makes the
+pack's coupling total: all five of its producer families discharge it, across
+the seven construction sites the two routes spend between them.</p><p>Nothing here is new BEHAVIOUR: items 27, 28 and 29 edit no runtime file and no
+grammar file.  These are the shapes whose ACCUMULATION changed, held fixed so a
+later runtime change cannot move them silently.</p></div><div class="mod_doc"><h2 id="1-The-entry-at-every-depth" class="markdown-heading">§1  The <code>-</code> entry, at every depth <a class="hover-link" href="#1-The-entry-at-every-depth">#</a></h2><p><code>scanBlockEntry</code> pushes <code>[183]</code>'s indent at the indicator's own column, and the
+entry index the accumulator reads off the landing IS that column
+(<code>SIndent_col</code>).  So the floor is discharged from the push, at any width.</p></div><div class="mod_doc"><h2 id="2-Siblings-and-the-re-park" class="markdown-heading">§2  Siblings, and the re-park <a class="hover-link" href="#2-Siblings-and-the-re-park">#</a></h2><p>Each sibling <code>-</code> opens a fresh pending, so each measures its own floor; the
+sequence's entries are snoc'd through a closure that never mentions it.</p></div><div class="mod_doc"><h2 id="3-The-two-mapping-indicators-the-runtime-measures-at-the-indicator" class="markdown-heading">§3  The two mapping indicators the runtime measures at the indicator <a class="hover-link" href="#3-The-two-mapping-indicators-the-runtime-measures-at-the-indicator">#</a></h2><p><code>?</code> pushes <code>[187]</code>'s indent at its own column exactly as <code>-</code> does.  So does the
+<code>:</code> that opens <code>[189]</code>'s EMPTY-key entry, because the key it resolves is the
+fresh save taken at the indicator itself.</p></div><div class="mod_doc"><h2 id="4-The-held-property-run-inherits-the-entry-s-floor" class="markdown-heading">§4  The held property run inherits the entry's floor <a class="hover-link" href="#4-The-held-property-run-inherits-the-entry-s-floor">#</a></h2><p>A <code>[96] c-ns-properties</code> scan writes tokens, not indents
+(<code>dispatchContent_props_indents</code>), so the run parked at an entry's route index
+carries the entry's measurement verbatim — <code>  - &amp;a |</code> discharges exactly where
+<code>  - |</code> does, at both the fresh and the extended run.</p></div><div class="mod_doc"><h2 id="5-The-implicit-key-s-own-floor-item-28" class="markdown-heading">§5  The implicit key's own floor (item 28) <a class="hover-link" href="#5-The-implicit-key-s-own-floor-item-28">#</a></h2><p><code>scanValuePrepare</code> pushes <code>[187]</code>'s indent at <code>s.simpleKey.pos.col</code> — the
+column of the key the <code>:</code> RESOLVES, not the <code>:</code>'s own — and declines to push
+exactly when that column is already at or below the stack top.  So an entry
+index bounded by the KEY is bounded by the resulting stack top either way, and
+item 15's <code>  a: |</code> measures its floor where <code>  : |</code> measures it.</p><p>The index is <code>[63] s-indent(k)</code> between a column-0 landing and the key, which
+is the same measurement item 25 gave the pack — read here on the scanner's
+side, which is the whole content of the coupling.</p></div><div class="mod_doc"><h2 id="6-The-two-heads-item-28-left-item-29" class="markdown-heading">§6  The two heads item 28 left (item 29) <a class="hover-link" href="#6-The-two-heads-item-28-left-item-29">#</a></h2><p>A PROPERTY-headed key is <code>[161]</code>'s <code>propsContent</code> arm read at <code>block-key</code>, and
+its <code>[63] s-indent(k)</code> is measured to the PROPERTY — which is exactly where the
+scanner saved the key, because a <code>[96]</code> scan is not a key save and turns fresh
+saves off.  So the run's column is the column the <code>:</code> will push at, and
+<code>PropsKeyPack</code> carries it beside the line datum it already carried.  The
+extension arms transport it: <code>&amp;x !!str a: |</code> keeps the key at the <code>&amp;</code>.  (Item 41
+moved the measurement itself into the pack's ROUTE, where the producer that took
+it spends it; the column conjunct is unchanged and still optional, because a
+COMPACT route cannot measure its own column — <code>- &amp;p a: |</code> reads its body at 0
+where <code>-⏎  &amp;p a: |</code> reads at the entry's index.)</p><p>An ALIAS key needs no new coupling at all, only the observation that <code>[104]</code>'s
+scan leaves the saved key's position alone (<code>dispatchContent_alias_simpleKey</code>)
+— the one datum item 28's alias arm had no way to state.</p></div><div class="mod_doc"><h2 id="7-What-the-floor-does-NOT-reach-accepted-derivation-owed" class="markdown-heading">§7  What the floor does NOT reach — accepted, derivation owed <a class="hover-link" href="#7-What-the-floor-does-NOT-reach-accepted-derivation-owed">#</a></h2><p>Three different causes, none of them the block scalar:</p><ul><li><code>  ? a⏎  : |</code> is the explicit-key <code>:</code>.  <code>scanValueClearKey</code> drops the saved
+key when a <code>?</code> is open, and what survives is <code>[197] l-block-map-explicit-value(n)</code>, measured at the <code>:</code> again — a different arm,
+not a harder instance.</li><li><code>  - - |</code> is a COMPACT nested collection, which is family C of the escape's
+inventory and reaches the pending through a route no item here touched.</li><li>A step that crosses a BREAK before the header is the landing branch, where
+<code>unwindIndents</code> is exactly what may fire — so the transport is unavailable by
+construction, not by omission.</li></ul></div><div class="mod_doc"><h2 id="8-A-tab-still-refutes-the-indentation-reading" class="markdown-heading">§8  A tab still refutes the indentation reading <a class="hover-link" href="#8-A-tab-still-refutes-the-indentation-reading">#</a></h2><p>Unchanged by the floor: the scanner answers first, and <code>[63] s-indent</code> is
+spaces only.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

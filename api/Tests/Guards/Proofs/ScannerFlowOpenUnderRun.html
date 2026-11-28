@@ -1,0 +1,443 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerFlowOpenUnderRun</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerFlowOpenUnderRun";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerFlowOpenUnderRun</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/State.html">L4YAML.Scanner.State</a></li><li><a href="../../.././L4YAML/Scanner/TokenQueries.html">L4YAML.Scanner.TokenQueries</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerFlowOpenUnderRun" class="imported-by-list"></ul></details></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCarrierPrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedCarrierPrice</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedWirePrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedWirePrice</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedArmTable"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedArmTable</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCoordPrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedCoordPrice</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedTransportPrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedTransportPrice</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedRidePrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedRidePrice</span></a></div><div class="nav_link"><a class="break_within" href="#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedClosePrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedClosePrice</span></a></div></nav><main><div class="mod_doc"><h1 id="A-flow-open-below-the-pending-s-index-is-refused-at-the-gate-DOCS-items-66-172" class="markdown-heading">A flow open below the pending's index is refused at the gate (DOCS items 66, 172) <a class="hover-link" href="#A-flow-open-below-the-pending-s-index-is-refused-at-the-gate-DOCS-items-66-172">#</a></h1><p>Item 46 left one deferral at the depth-0 flow open: the landing that under-runs
+<code>s-indent(n)</code> on the OPEN itself, which no <code>[70] s-separate-lines(n)</code> derives.
+Item 66 refused it at the open; item 172 moved §8.1's floor to the CLOSE
+(a flow open at a level's column may be the level's next implicit KEY, so
+key-vs-value is only decidable there), and the under-run family now refuses at
+the break/EOF gate, by whichever of the two gate readings owns the landing:</p><ul><li>§1 <strong>at a level whose slot still OFFERS a node</strong> — the <code>-</code>'s own column, a
+props park's floor, the root value slot — the deferred floor refuses as
+<code>underIndentedFlowContent</code> at the OPEN's position: the collection stood in
+the awaited slot and no <code>:</code> resolved it (<code>underIndentedFlowValuePos?</code>,
+<code>[96]</code>-transparent through the run in front of the open).</li><li>§1' <strong>where the landing DEDENTS past the awaiting level</strong>, preprocessing's
+unwind closes it (<code>blockEnd</code>), the slot holder no longer offers, and the
+same landing is §9.2's dangling node — <code>invalidBareDocument</code> at the open's
+position, the constructor the scalar twin gets.</li><li>§2 <strong>the landing that matches no open level never gets that far</strong>:
+preprocessing's own trailing-content check refuses it while unwinding.  So
+the readings together cover every column below the index.</li><li>§3 <strong>the TAB half is §6.1's</strong> (item 64's <code>LandingTabFacts</code>): a tab in the
+landing's indent run is <code>tabInIndentation</code>, at every column at or left of
+the floor.</li></ul></div><div class="mod_doc"><h2 id="4-The-same-family-SWEPT-and-the-branch-it-prices-DOCS-item-264" class="markdown-heading">§4 The same family SWEPT, and the branch it prices (DOCS item 264) <a class="hover-link" href="#4-The-same-family-SWEPT-and-the-branch-it-prices-DOCS-item-264">#</a></h2><p>The columns above are hand-typed, and a hand-typed knob chooses the answer (§9).
+This section walks the landing column instead and lets the machine name the
+<strong>turnover</strong> — the least column the scanner accepts — at every combination of
+three enclosing contexts, four park kinds, both flow-open characters and four
+park indents.</p><p><strong>Why it is worth sweeping a family already pinned.</strong>  <code>accum_flow_open_depth0</code>
+spends β.5's <code>dropClose</code> at exactly one place, <code>have drop_ride</code>, and three LIVE
+arms take it — <code>pendingProps</code>, <code>pendingBlock</code> and <code>pendingMapValue</code>, one each,
+all on the run-end half of this under-run:</p><pre><code>rcases h_ur with ⟨j, sx, hj, h_ind, _h_ws2, h_end | h_tab⟩
+· exact drop_ride                              -- §4's subject
+· exact (flowOpen_underRunTab_refuted …).elim  -- §3's half, already REFUTED
+</code></pre><p>So this family is not an audit of the scanner — it is the price of the one
+library proof β.5 breaks that is neither a dead branch nor the escape.  The
+source says of those three rides that "no accepted scan ever consults" them; §4
+is that sentence measured instead of asserted, and what it measures is that the
+run-end half is refutable exactly where the tab half already is.</p><p><strong>The props park is why a sweep was needed and not another column.</strong>  Its
+turnover does not track its own column: an anchor at column 3 takes a flow open
+at column 1.  <code>pendingProps.h_floor : IndentFloor sc n</code> carries the floor of the
+context the run stands IN, not the anchor's, so the boundary sits at 1 from
+indent 1 rightwards — and a grid varying only the park's own column would have
+read that as an under-run being accepted.</p></div><div class="mod_doc"><h2 id="5-Where-each-refusal-actually-happens-and-what-that-costs-DOCS-item-265" class="markdown-heading">§5 Where each refusal actually happens, and what that costs (DOCS item 265) <a class="hover-link" href="#5-Where-each-refusal-actually-happens-and-what-that-costs-DOCS-item-265">#</a></h2><p>§4 measured that no accepted scan lands the open below the park's floor.  That
+is a statement about the SCANNER; the proof obligation it was measured for is
+<code>accum_flow_open_depth0</code>'s, and there the question is sharper: <em>is the refusal
+available at the step the arm is proving?</em>  A branch the runtime refuses five
+steps downstream is still a branch the step lemma has to build.</p><p>So this section walks the same grid one reading further in.  For every landing
+column strictly below the park's floor it drives <code>scanNextToken</code> itself and
+records two things: whether the flow OPEN is ever dispatched, and — when it is
+— how far past that dispatch the scan dies and at which gate.</p><p>What it reads splits the family in two, and only one part is the arm's to
+refute:</p><ul><li><strong>54 columns never reach the lemma.</strong>  <code>scanNextToken_preprocess</code> refuses
+them while unwinding, so <code>h_preprocess : … = .ok (some (s_prep, c))</code> is
+already a contradiction and no arm is entered.</li><li><strong>144 columns dispatch the open</strong> and die three or five steps later, at one
+of the two gates that guard a landing: §8.1's floor read on a closed
+collection (90) and §9.2's dangling run (54).  Both gates also run at the
+open's own step — on a state where the collection is not yet closed, so both
+say <code>.ok</code> there.  <code>h_dn</code> and <code>h_bare</code> are those readings AT THE OPEN, which
+is why carrying them buys nothing here: they are the right checks at the
+wrong state.</li></ul><p><code>deathShape</code> then reads what the gate is looking at when it fires, because that
+is the fact a carrier would have to deliver from the open: at every one of the
+144 the collection has closed, the last real token is its flow close, and the
+open's column is still on the indent stack.  One carried fact, not two — the
+two gates partition the 144 by <code>offersNodeSlot</code> alone, with no overlap and no
+remainder.</p></div><div class="mod_doc"><h2 id="6-What-the-carrier-costs-and-who-pays-it-DOCS-item-266" class="markdown-heading">§6 What the carrier costs, and who pays it (DOCS item 266) <a class="hover-link" href="#6-What-the-carrier-costs-and-who-pays-it-DOCS-item-266">#</a></h2><p>§5 showed the run-end half is FALSE and not LOCALLY false: the gates that kill
+the input run three to five steps past the open, so no hypothesis of
+<code>accum_flow_open_depth0</code> can refute the branch and what it costs is a CARRIER.
+§10 prices a missing carrier by the PRODUCERS it touches, and this section is
+the half of that price the runtime decides.  The other half —
+<code>passenger=7 heavy=7 prop=8 consumer=1 gate=1</code>, pinned below — is
+<code>lake run price -- carrier</code>.</p><p><strong>The transport already exists.</strong>  <code>ParkAnchor sc0 s d</code> runs a fact from a
+depth-0 flow OPEN to its CLOSE and is spent there by <code>ParkAnchor.dangling_eq</code>,
+whose premises are §5's <code>deathShape</code> component for component: prefix agreement,
+<code>s_cl.indents = s_bc.indents</code>, <code>s_cl.inFlow = false</code>, the last real token at the
+base open's index, and that token a flow close.  So the question is not what to
+build but what the existing transport refuses to carry.</p><p>Three readings answer it.</p><ul><li><strong>The park is forced.</strong>  <code>carrierCore</code> evaluates the anchor's four transport
+fields at the death state against each candidate park.  Against
+preprocessing's state all four hold at all 144; against the state the step
+began from the hold NEVER resolves, because preprocessing's own pushes sit
+between the two arrays.  There is one park, and it is not the one the
+existing anchor uses.</li><li><strong>At that park the carrier is a PASSENGER.</strong>  <code>carrierPark</code>: preprocessing's
+cursor column IS the open's column, at all 144 — so "the open's column stands
+on the indent stack" is a fact about the park ALONE, with no reference to the
+state it is transported to, and every transport lemma carries it for free.
+At the other park the same membership holds but the column is not the park's,
+which is the difference between a passenger and a premise.</li><li><strong>What blocks the existing anchor is one field.</strong>  <code>anchorProp</code>: <code>parkProp</code>
+("the park's last real token is a node property") holds at 18 of the 144, and
+it is a pure passenger in every transport lemma — read by the genesis and by
+the spend, by nothing in between.</li></ul><p>And <code>preLaw</code> names the carrier's source.  Over all 198 columns, preprocessing
+accepts a landing out of flow exactly when its column stands on the indent
+stack: the 54 it refuses are the 54 whose column stands nowhere, and the 144 it
+accepts all have it.  The datum is preprocessing's own law, one production over
+from <code>FlowIndentStable.preprocess_indents_of_inFlow</code> — not a field threaded
+through the pending-state invariant.</p></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCarrierPrice"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L743-L758">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCarrierPrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedCarrierPrice</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><p>What <code>lake run price -- carrier</code> reads by editing <code>StreamAccum.lean</code> and
+counting the declarations each edit breaks.</p><p>Five probes, five rings, aimed at the BUILT carrier (item 267).  <code>core</code> and
+<code>slot</code> add a required field to the transport core and to the carrier's own
+payload; each is seven declarations, and the two sevens are not the same
+seven — <code>rewriteKey</code> builds its core out of <code>congrKind</code> and <code>pushInert</code> and
+so survives a field on <code>ParkCore</code>, while it builds its <code>ParkSlot</code> directly
+and does not.  <code>prop</code> RENAMES <code>parkProp</code> out from under its readers, which
+is the edit that prices a payload the split left in place; its eight are the
+seven wrappers and the spend, and <code>ofOpen</code> is not among them because it
+takes the property as a parameter rather than reading the field.
+<code>consumer</code> and <code>gate</code> are the two rings below, and each is a single
+declaration.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCarrierPrice">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCarrierPrice</a> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn">"core=7 slot=7 prop=8 consumer=1 gate=1"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCarrierPrice" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="mod_doc"><h2 id="7-What-the-built-carrier-reads-at-both-ends-DOCS-item-267" class="markdown-heading">§7 What the built carrier reads, at both ends (DOCS item 267) <a class="hover-link" href="#7-What-the-built-carrier-reads-at-both-ends-DOCS-item-267">#</a></h2><p>§6 priced the carrier and named its source.  This section is the three readings
+the BUILD rests on — one per design decision that could have gone the other way.</p><ul><li><strong>One carrier, two gates.</strong>  <code>runStart</code> reads where §9.2's run begins on the
+cells that fire it.  It begins AT the open, at all 54, and no cell of the
+family puts a property in front of it — so the position §9.2 reports and the
+position §8.1 reports are the same token's, and one payload serves both
+spends.  A props-headed run would have needed a second reading.</li><li><strong>What is a park fact and what is not.</strong>  <code>parkFacts</code> reads
+<code>offersNodeSlot</code> at the death state and again at the park's own array, and
+they agree cell for cell: which gate owns a landing is fixed before the open
+is written, so the spends can take the slot as a hypothesis about the park
+rather than as a transported field.  Its last count is the genesis's own
+premise — the open token's column IS the park's cursor column.</li><li><strong>Why the carrier is a payload and not a core field.</strong>  <code>acceptedParks</code>
+walks the cells the scanner ACCEPTS.  The open's column stands on neither
+candidate park's indent stack at any of them, so a <code>ParkCore</code> that demanded
+the carrier could not be built where the <code>[96]</code> park builds one today.  The
+same walk is the membership law's control: its conclusion holds at none of
+the 378 and its hypothesis at none of them either, which is what says
+<code>preprocess_landing_on_stack</code>'s <code>h_below</code> decides the law rather than
+decorating it.</li></ul></div><div class="mod_doc"><h2 id="8-Which-check-kills-and-whether-the-carrier-s-source-can-reach-it" class="markdown-heading">§8 Which check kills, and whether the carrier's source can reach it <a class="hover-link" href="#8-Which-check-kills-and-whether-the-carrier-s-source-can-reach-it">#</a></h2><pre><code>   (DOCS item 268)
+</code></pre><p>§7 built the carrier and left it unconsumed: <code>accum_flow_open_depth0</code> hands
+<code>h_kpkg none</code>, so the frame the under-run's open pushes is UNGATED, its node
+reading is unconditional, and only <code>dropClose</code> can supply one.  What it costs to
+gate that frame is the question here, and it has three parts — which check the
+144 actually die at, whether anything on the proof side HOLDS that check, and
+whether the carrier's source can be applied where the arm stands.</p><p><strong>There are four checks, not two.</strong>  §5 read the deaths with no tail and found
+them at the END-OF-INPUT gates; <code>tailSweep</code> read the same 144 dying at a
+MID-STREAM gate with a sibling line after the open.  Both gates exist at both
+depths, so the population splits over four checks — and §1 below reads the same
+<code>offersNodeSlot</code> partition, 90 and 54, at each of them.  One carrier serves all
+four; two consumers does not describe the surface.</p><p><strong>The two halves are not the same bill.</strong>  Resolved in the environment rather
+than grepped, §9.2's mid-stream check is held as a hypothesis by twenty-one
+declarations of the accumulation and its end-of-input twin by five; §8.1's
+checks are held by NONE, at either depth.  §8.1's success is derived once, at
+<code>scanNextToken_accum_step</code>, and discarded on the next line while its twin
+<code>h_dn</code> is threaded into twenty-one signatures.  So the 54 that die at §9.2 have
+a rail that already reaches the arm, and the 90 that die at §8.1 — the majority
+— have no holder to reach at all.  The census is
+<code><a href="../../.././Tests/Guards/Proofs/ParkBill.html">Tests/Guards/Proofs/ParkBill.lean</a></code> §5.</p><p><strong>And the carrier's source cannot be applied at the arm.</strong>  §2 reads the
+hypotheses of <code>preprocess_landing_on_stack</code> at the state the open's step begins
+with.  <code>needIndentCheck</code> is false at every one of the 144 and true at every one
+after <code>skipToContent</code>: the break this family crosses is crossed INSIDE the open's
+own step, so a premise stated on the incoming state names a flag the consumer
+never has.  The conclusion holds at all 144 regardless, which is what says the
+lemma is true and unusable rather than wrong.</p></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedWirePrice"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L1069-L1082">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedWirePrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedWirePrice</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><p><strong>§3 What the wiring costs, by producers</strong> (<code>lake run price -- wire</code>).</p><p>Four probes, four rings.  <code>gate</code> widens <code>GateOf</code>'s arity — who READS the
+frame's gate; <code>anchor</code> adds the carrier as a third conjunct of
+<code>FlowBaseAnchor</code> — who BUILDS a gated frame; <code>route</code> adds a hypothesis to
+<code>FlowBaseRoutes.value</code> — who supplies and who applies the node reading;
+<code>eof</code> adds one to <code>scanNextToken_none_stream</code> — who drives the end-of-input
+consumer.</p><p>The asymmetry is the reading: putting the carrier on the anchor costs TWO
+declarations, a single transport funnel and a single producer, while
+widening the gate that reads it costs FORTY-NINE.  A carrier-aware verdict
+therefore belongs on the route, not on <code>GateOf</code>.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedWirePrice">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedWirePrice</a> <a href="../../.././Init/Prelude.html#Eq">=</a> <span class="fn">"gate=49 anchor=2 route=3 eof=1"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedWirePrice" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedArmTable"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L1084-L1109">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedArmTable"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedArmTable</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><p><strong>§10a What each <code>drop_ride</code> arm HOLDS</strong> (<code>lake run price -- arm</code>).</p><p>Twenty-four cells: eight readings against the three arms that spend the
+ride, each taken by ELABORATION at the spend site — <code>assumption</code> for the
+six that ask whether a type is inhabited in the local context, and a
+reference for the two that ask whether a NAME is bound there.  A cell is
+<code>P</code> when the arm already holds the reading and <code>O</code> when it does not; a
+derivation is a different bill from a binder, and this table is about
+binders.</p><p><strong>The three arms read identically on every row but one.</strong>  They hold
+preprocessing's equation, the sentinel base and the landing's out-of-flow
+fact, and they hold none of <code>preprocess_floor_eq</code>'s two floor premises nor
+the guard item 147's floor sits behind.  §10 reads all four of those as TRUE
+at every one of the 144 the branch admits, so the ride owes a coordinate and
+not a fact.</p><p>The one row that discriminates is <code>gate_gp</code>, and it is the reason this table
+is taken at the arm rather than at the declaration: <code>propsPark_open_gate</code> is
+called once in the module, on the path into the FIRST arm, which obtains its
+<code>gp</code> and then discards it by handing <code>h_kpkg none</code>.  The other two never see
+it.  An environment census of that gate's callers resolves to one
+declaration and cannot say this, because all three arms live inside it.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedArmTable">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedArmTable</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <span class="fn">"cells=24 paid=10 owed=14 hok=PPP base=PPP le=OOO floor=OOO noflow_prep=PPP park_col_ne0=OOO gate_gp=POO sibling_floor_prep=OOO"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedArmTable" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCoordPrice"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L1111-L1143">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCoordPrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedCoordPrice</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><p><strong>§11 What the coordinate costs</strong> (<code>lake run price -- coordinate</code>).</p><p>Four probes, all by elaboration at the three sites that spend the ride.</p><p><code>ident</code> is the 3x3 matrix that fixes the arm NAMES: each of the three
+constructors declares a binder the other two do not, so a probe that merely
+REFERS to one elaborates at its own site and nowhere else.  The matrix is
+diagonal, which is how item 270's third label — <code>pendingContent</code>, an arm of
+the same <code>cases</code> that spends no ride — was caught.</p><p><code>le</code>, <code>park_col_ne0</code> and <code>floor</code> each ask twice: once with <code>assumption</code>,
+which is item 270's question, and once with a NAMED derivation.  <code>P</code> is what
+the arm holds, <code>B</code> what it can derive from what it holds, <code>O</code> neither.
+Reading <code>BBB BBB BBB</code>: none of the three is a fact the arm is handed and
+all three are derivations it can write.  The first two are bridges off the
+under-run's own location and off a constructor field; the third is the
+conjunct <code>preprocess_some_separate_at_floor</code> carries (item 272), spent
+against the park-column bridge above it and item 270's <code>noflow_prep</code>.</p><p><code>lib</code> is the arity flip on that splitter: its under-run disjunct gains a
+component that is true everywhere and is supplied in the splitter's own
+proof, so the census counts sites that must now WRITE something, not sites
+where the fact is hard.  ONE library declaration, three sites, all inside
+<code>accum_flow_open_depth0</code> — which is why item 270's table had to be taken at
+the ARM and why this census cannot read three declarations.  Compare item
+268's <code>gate=49</code>.</p><p>The tree census is held out of this pin and out of the battery: it rebuilds
+every module that imports the patched one.  <code>lake run price -- coordinate wide</code>
+re-derives it.</p><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCoordPrice">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCoordPrice</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <span class="fn">"arms=pendingProps,pendingBlock,pendingMapValue ident=diagonal le=BBB park_col_ne0=BBB floor=BBB lib=1"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedCoordPrice" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="mod_doc"><h2 id="9-The-rail-that-is-not-worth-building-and-the-source-that-is" class="markdown-heading">§9 The rail that is not worth building, and the source that is <a class="hover-link" href="#9-The-rail-that-is-not-worth-building-and-the-source-that-is">#</a></h2><pre><code>(DOCS item 269)
+</code></pre><p>Item 268 measured that §8.1's check is held as a hypothesis by no declaration of
+the accumulation and left one instruction: thread it from
+<code>scanNextToken_accum_step</code> the way §9.2's is threaded.  §5 above already
+answered that, in prose, three items earlier — <em>both gates also run at the
+open's own step, on a state where the collection is not yet closed, so both say
+<code>.ok</code> there</em> — and §9.1 makes the answer a number.  The rail would deliver a
+reading that is true at every landing in the family for a reason that has
+nothing to do with the family, so it is not built.</p><p>What IS built is the carrier's source, restated.  §9.2 reads the landing's own
+floor and finds it AT the landing's column at every one of the 144, which turns
+the membership into a projection of the state the arm is handed, against the
+control §9.2a supplies; §9.3 reads the indent-check flag on the two states
+preprocessing consults, beside a same-line control that holds the other
+answer.</p></div><div class="mod_doc"><h2 id="11-What-the-coordinate-costs-DOCS-item-271" class="markdown-heading">§11 What the coordinate costs (DOCS item 271) <a class="hover-link" href="#11-What-the-coordinate-costs-DOCS-item-271">#</a></h2><p>§10 read every premise <code>preprocess_floor_eq</code> asks for as TRUE at every one of
+the 144 and none of them as nameable inside the arm, and called what the ride
+owes a coordinate.  A coordinate has a price.  Item 268 measured one — <code>anchor=2</code>
+against <code>gate=49</code> — but over a different datum, so the number does not transfer
+without being re-read.</p><p>Re-read, two of the three premises cost <strong>nothing</strong>, because neither is a
+carriage.  The under-run the three arms split on is LOCATED:
+<code>WhiteRunUnderRun n sp_mid sp_prep</code> is <code>j &lt; n</code> spaces off a column-0 line start,
+and on the RUN-END half those spaces ARE the landing.  So the landing's column
+is <code>j</code>, the index it under-ran bounds it, and each arm's own <code>IndentFloor</code>
+bounds that index by the floor the step began with
+(<code>underRunEnd_col_le_currentIndent</code>).  The park-column guard is one step from a
+field each of the three constructors declares — <code>h_col0 : 0 &lt; sp_scan.col</code> at
+<code>pendingProps</code> and <code>pendingMapValue</code>, <code>h_col : sp_scan.col = n + 1</code> at
+<code>pendingBlock</code>.</p><p>This section reads that derivation's premises and its conclusion at the runtime,
+on the family and on a control the family's own boundary supplies.</p></div><div class="mod_doc"><h2 id="12-What-the-APPLIED-source-still-owes-DOCS-item-272" class="markdown-heading">§12 What the APPLIED source still owes (DOCS item 272) <a class="hover-link" href="#12-What-the-APPLIED-source-still-owes-DOCS-item-272">#</a></h2><p>§11 priced the coordinate and item 272 landed it:
+<code>preprocess_some_separate_at_floor</code>'s under-run disjunct carries item 147's
+floor, so all three premises of <code>preprocess_landing_on_stack</code> are readable at
+the arm and <code>underRunEnd_landing_on_stack</code> returns its conclusion there.</p><p>What that conclusion is, exactly, is a membership on the LANDING — the column
+preprocessing came to rest at, standing on the stack it came to rest with.
+What <code>ParkSlot.ofOpen</code> asks for is the same membership over the OPEN TOKEN's
+column, because both gates read the token's own position and not the park's
+cursor (§7).  The two are the same number at every cell of this family and the
+equation between them is carried by nothing: item 165's <code>h_optok</code> names the
+push and the token's kind and says nothing about its position.</p><p>This section reads the two shapes, the equation between them and the gate a
+frame parked at the landing would carry, at the runtime, on the family and on
+the accepted boundary the family's own §4 supplies.</p></div><div class="mod_doc"><h3 id="12a-What-the-applied-source-still-owes-priced" class="markdown-heading">§12a What the applied source still owes, priced <a class="hover-link" href="#12a-What-the-applied-source-still-owes-priced">#</a></h3><p><code>lake run price -- transport</code>, battery stage 22c.  Six probes, read by
+elaboration at the three arms that spend <code>drop_ride</code>:</p><ul><li><code>source</code> — the membership <code>underRunEnd_landing_on_stack</code> returns, at the arm.</li><li><code>hcol</code> — the same membership in the shape <code>ParkSlot.ofOpen</code> names it, over
+the OPEN TOKEN's column, with the source offered as the derivation.  It is
+refused at all three, and the elaborator's message is a type mismatch on the
+column and nothing else.</li><li><code>genesis</code> — <code>ParkSlot s_prep s' 0</code> at the arm GIVEN the position equation.
+<code>B</code> says that equation is the only premise missing: the push, the token's
+kind, the indent equality and the park's flow are all bound already.</li><li><code>optok</code> — the ring.  Adding a conjunct to item 165's <code>h_optok</code> breaks THREE
+sites in two declarations: the two call sites in <code>accum_step_flow</code> and the
+props arm's own destructuring.  Against item 268's four rings — <code>gate=49 anchor=2 route=3 eof=1</code> — the ring an APPLIED source needs is none of them.</li><li><code>pay</code> — the same ring PAID, with the two call sites supplying the column from
+the lemma they already rewrite with (<code>scanFlow…Start_tokens</code> writes the token
+at <code>currentPos</code>; the <code>allowDirectives</code> update preserves it).  <code>B</code> at all
+three says the carrier's genesis is then available with no hypothesis and no
+hole.</li><li><code>frames</code> / <code>ride</code> — the second ring.  The declaration builds <del>SEVEN</del> EIGHT
+frames since item 285, and the one the under-run's open pushes is built by
+<del><code>drop_ride</code></del> <code>slot_ride</code>, a single <code>have</code> that precedes <code>cases h_pending</code>:
+none of the three arms' own binders is in scope there, while a hypothesis of
+the declaration is.  A <code>have</code> has no
+arity, so no flip in this repo can see that ring.</li><li><code>genesis</code> / <code>pay</code> read <code>BBB</code> since item 284: <code>ParkSlot.ofOpen</code>'s <code>hrun</code> is
+<code>slotRun_of_dn</code> at the props arm and <code>slotRun_of_offer</code> at the indicator arms
+(the probes' <code>HRUN</code>), so the carrier's genesis needs nothing but the <code>optok</code>
+ring the <code>pay</code> row simulates.  Every other column read as before.</li><li>Item 285 LANDS the ring and spends the slot, and one column moves: <code>frames</code>
+7 → 8, <code>slot_ride</code>'s frame, the gated one the three arms take.  <code>optok</code>
+re-reads 3 on the ringed <code>h_optok</code> — the two call sites and one site in
+<code>accum_flow_open_depth0</code> — and <code>pay</code> reads the module as it is.  <code>ride</code> stays
+0/3: <code>slot_ride</code> is a <code>have</code> beside <code>drop_ride</code> and takes the arms' three data
+as PARAMETERS, so the ring is paid at the spend rather than in scope.</li></ul></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedTransportPrice"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L1673-L1674">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedTransportPrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedTransportPrice</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedTransportPrice">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedTransportPrice</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <span class="fn">"source=BBB hcol=OOO genesis=BBB optok=3 pay=BBB frames=8 ride=0/3"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedTransportPrice" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="mod_doc"><h2 id="13-What-the-ride-can-carry-and-what-the-frame-will-receive" class="markdown-heading">§13 What the ride can carry, and what the frame will receive <a class="hover-link" href="#13-What-the-ride-can-carry-and-what-the-frame-will-receive">#</a></h2><pre><code>(DOCS item 273)
+</code></pre><p>§12 measured the ring an applied source needs and recorded an order for this
+section: build the ride per arm, then pay <code>optok</code>.  That order was written from
+what each ring BUYS.  This section reads what RECEIVES the carrier.</p><p>A ride that takes a <code>ParkSlot</code> has exactly one place to put it — the frame's
+own <code>FlowBaseAnchor g s' 0</code> argument, which is what <code>FlowStackK</code> carries from
+the open to the close (<code>FlowBaseAnchor.gate</code>).  That definition's <code>some</code> arm
+names <code>ParkAnchor</code>: the same <code>ParkCore</code>, one field apart.  <code>ParkAnchor</code> asks
+that the park's last real token be a node property; <code>ParkSlot</code> asks that the
+open's column stand on the park's indent stack.</p><p>The two are not two ways of naming one fact, and the difference is not a
+nameability gap of the kind §10 measured.  One of them is FALSE at most of this
+family.</p></div><div class="mod_doc"><h3 id="13a-What-the-ride-can-carry-priced" class="markdown-heading">§13a What the ride can carry, priced <a class="hover-link" href="#13a-What-the-ride-can-carry-priced">#</a></h3><p><code>lake run price -- ride</code>, battery stage 22d.  Five rows read by elaboration at
+the three arms that spend <code>drop_ride</code>, on a module with item 272's ring PAID —
+the payment is applied and the probes carry no hypothesis and no hole — and
+four censuses taken by arity flip:</p><ul><li><code>slot</code> / <code>floor</code> — <code>ParkSlot s_prep s' 0</code> and <code>ParkFloor s_prep s' 0</code>, the
+two halves a carrier-holding frame would need.  Both are <code>B</code> at all three:
+with the ring paid the genesis is available outright, and the floor costs
+nothing at depth 0.</li><li><code>prop_sc</code> / <code>prop</code> — <code>ParkAnchor</code>'s own remaining field, at the state the
+step began with and at the landing's park.  <code>BOO</code> against <code>OOO</code>: the props
+arm can name the property, and only at <code>sc</code>, which is the park this family
+cannot open over — preprocessing's pushes sit between the two arrays, so
+<code>ParkCore.ofOpen</code>'s push equation holds at <code>s_prep</code> and fails at <code>sc</code>.</li><li><code>gated</code> — <code>FlowBaseAnchor (some s_prep) s' 0</code>, the frame argument itself.
+<del><code>OOO</code> follows from <code>prop</code>.</del>  Since item 285 it is asked as <code>slot_ride</code>
+builds it, the slot on <code>ParkChoice</code>'s right beside the floor: the <code>ParkAnchor</code>
+route on the left is <code>prop</code>'s question, and asked that way the column read
+<code>OOO</code> once more on the item-285 tree, <code>prop</code>'s refusal again.</li><li><code>ride</code> — the arity flip on <code>have drop_ride</code>: <del>FOUR terms spend the ride, all
+inside one declaration.  Three are the live arms' run-end halves and the
+fourth is</del> ONE term spends the ride since item 285, <code>opaque_resume</code>, which
+<code>pendingFlow</code> takes and which has no under-run to read a membership from.  The
+live arms' run-end halves take <code>slot_ride</code>.</li><li><code>add</code> / <code>swap</code> / <code>anchor</code> — three reshapes of <code>FlowBaseAnchor</code>'s <code>some</code> arm.
+Item 276 PAID the <code>choice</code> reshape, so each flip now prices UN-paying it:
+<code>add</code> puts the slot beside the anchor, <code>swap</code> the slot alone, <code>anchor</code>
+restores item 162's anchor-only arm — and each costs the same three
+declarations, <code>FlowBaseAnchor.gate</code>, <code>FlowBaseAnchor.transport</code>,
+<code>propsPark_open_gate</code> <del>(<code>add</code> reaches <code>gate</code> at two sites)</del> — <code>add</code> reaches
+<code>propsPark_open_gate</code> at two sites and <code>gate</code> at one, in the item-284 run and in
+item 285's.  Since item 285 each reshape also breaks <code>accum_flow_open_depth0</code>
+(<code>add</code> at two sites): <code>slot_ride</code> writes the <code>some</code> arm's term itself, where the
+props arm's gated frame calls <code>propsPark_open_gate</code>.
+<del><code>slot=OOO</code> since item 276: <code>ParkSlot.ofOpen</code> takes <code>hrun</code>, which no arm holds
+(§15).</del>  <code>slot=BBB</code> since item 284: the parks carry the slot face (§18), and
+<code>slotRun_of_dn</code> / <code>slotRun_of_offer</code> are <code>hrun</code> at all three arms.</li><li><code>transport</code> — the arity flip on <code>FlowBaseAnchor.transport</code>, the funnel every
+other carrier lemma is routed through.  Nine sites in seven declarations:
+that is the second wave any of the three reshapes pays, and it is the number
+the <code>anchor=2</code> of item 268 was taken without.</li></ul></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedRidePrice"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L1829-L1831">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedRidePrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedRidePrice</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedRidePrice">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedRidePrice</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <span class="fn">"slot=BBB floor=BBB prop_sc=BOO prop=OOO gated=BBB ride=1/1 add=6/4 swap=4/4 anchor=4/4 transport=9/7"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedRidePrice" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="mod_doc"><h2 id="14-What-the-CLOSE-can-pay-for-a-reshaped-carrier-DOCS-item-274" class="markdown-heading">§14 What the CLOSE can pay for a reshaped carrier (DOCS item 274) <a class="hover-link" href="#14-What-the-CLOSE-can-pay-for-a-reshaped-carrier-DOCS-item-274">#</a></h2><p>§13 read what receives the carrier and recorded the next step: reshape
+<code>FlowBaseAnchor</code>'s <code>some</code> arm, because the close is where the shape is decided.
+The reshape's price is a count of declarations and §13 took it.  What it did
+not take is the question this section is: <strong>what the slot branch of
+<code>FlowBaseAnchor.gate</code> can be closed with.</strong></p><p><code>GateOf (some sc0)</code> is <code>danglingNodePos? sc0 = none</code> — a reading on the PARK's
+state, which an anchor-carried frame relays from the close by an EQUATION
+(<code>ParkAnchor.dangling_eq</code>).  A slot-carried frame has no equation to relay: its
+two spends make a verdict FIRE, and which one fires is the <code>offersNodeSlot</code>
+partition §6 measured.  Where §9.2 fires, the verdict the slot returns is the
+one <code>GateOf</code> reads and it CONTRADICTS the close's own <code>h_closable</code>, so the gate
+is discharged by ex falso.  Where §8.1 fires, the verdict the slot returns is
+the other one, and nothing connects it to the goal.</p><p>So the reshape's real price is arithmetical, and these are the two numbers it
+turns on.</p></div><div class="mod_doc"><h3 id="14a-What-the-close-can-pay-priced" class="markdown-heading">§14a What the close can pay, priced <a class="hover-link" href="#14a-What-the-close-can-pay-priced">#</a></h3><p><code>lake run price -- close</code>, battery stage 22e.  Five rows read by elaboration —
+each a standalone probe of what <code>FlowBaseAnchor.gate</code>'s slot branch could be
+closed with, all five in ONE insertion and one elaboration, each carrying a
+null twin that must FAIL — and five censuses taken by flip:</p><ul><li><p><code>anchor</code> — the control: <code>gate</code>'s existing proof restated over <code>ParkAnchor</code>.
+It must read <code>B</code>, or the four rows below are measuring the scaffolding.</p></li><li><p><code>bare</code> — the slot branch from the premises <code>gate</code> has today: <code>O</code>.  Neither
+slot spend applies without its offer premise and neither returns an equation,
+so there is nothing to relay the close's verdict to the park's.</p></li><li><p><code>nonoffer</code> — with §9.2's own two premises supplied: <code>B</code>, by ex falso.
+<code>ParkSlot.dangling_fires</code> returns <code>danglingNodePos? s_cl = some …</code> and the
+close's <code>h_closable</code> says <code>none</code>.</p></li><li><p><code>offer</code> — with §8.1's premise instead: <code>O</code>.  The verdict that fires there is
+the one <code>GateOf</code> does not read.</p></li><li><p><code>floor</code> — <code>offer</code> plus the close's own §8.1 reading: <code>B</code>, again by ex falso.
+So the missing datum is ONE reading on the close's own state, and item 268
+found no declaration holding it at either depth.</p></li><li><p><code>name</code> — the premise the slot branch needs, written over <code>sc0</code>, on <code>gate</code>
+and on <code>gate_of_close</code>: <code>OO</code>.  Neither declaration binds the park — both
+quantify <code>g : <a href="../../.././Init/Prelude.html#Option">Option</a> ScannerState</code> — so the premise cannot be STATED where
+the spend is written, let alone where it is applied.</p></li><li><p><code>wrap</code> — the same premise written over <code>g</code> (<code>∀ sc0, g = some sc0 → …</code>):
+<code>BB</code>, which is the payable phrasing.</p></li><li><p><code>gate</code> / <code>close</code> — who must WRITE one: <code>1/1</code> and <code>4/1</code>.  The premise on
+<code>gate</code> reaches <code>gate_of_close</code> alone; on <code>gate_of_close</code> it reaches
+<code>accum_step_flow</code> at four locations.</p></li><li><p><code>apps</code> — the same declaration renamed rather than re-arited, which breaks
+each application exactly once: <code>2</code>.  An arity census counts error LOCATIONS,
+so the four above are the TWO base closes reported twice each — the flow
+sequence end and the flow mapping end.</p></li><li><p><code>closable</code> — a second verdict added where the first one lands,
+<code>PendingNode.pendingContent</code>'s <code>h_closable</code>: <strong>20 sites in 5 declarations</strong>
+(<code>content_dispatch_routed</code>, <code>accum_content_on_pendingMapValue_indented</code>,
+<code>accum_content_pending</code>, <code>accum_step_flow</code>, <code>PendingNode.close_with_ssl</code>).
+That is the route's bill arriving from the consumer's side, and it is item
+268's <code>route=3</code> the way <code>3 + 7</code> was item 268's <code>anchor=2</code>.</p></li></ul></div><div class="decl" id="L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedClosePrice"><div class="def"><div class="gh_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerFlowOpenUnderRun.lean#L2035-L2037">source</a></div><div class="decl_header"><span class="decl_kind">def</span><span class="decl_name"> <a class="break_within" href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedClosePrice"><span class="name">L4YAML</span>.<span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">ScannerFlowOpenUnderRun</span>.<span class="name">expectedClosePrice</span></a> </span><span class="decl_args"> :</span><div class="decl_type"><a href="../../.././Init/Prelude.html#String">String</a></div></div><details><summary>Equations</summary><ul class="equations"><li class="equation"><a href="../../.././Tests/Guards/Proofs/ScannerFlowOpenUnderRun.html#L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedClosePrice">L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedClosePrice</a> <a href="../../.././Init/Prelude.html#Eq">=</a>   <span class="fn">"anchor=B bare=O nonoffer=B offer=O floor=B name=OO wrap=BB gate=1/1 close=4/1 closable=20/5 apps=2"</span></li></ul></details><details id="instances-for-list-L4YAML.Tests.Guards.ScannerFlowOpenUnderRun.expectedClosePrice" class="instances-for-list"><summary>Instances For</summary><ul class="instances-for-enum"></ul></details></div></div><div class="mod_doc"><h2 id="15-What-the-reshape-paid-and-what-the-slot-owes-DOCS-item-276" class="markdown-heading">§15 What the reshape paid, and what the slot owes (DOCS item 276) <a class="hover-link" href="#15-What-the-reshape-paid-and-what-the-slot-owes-DOCS-item-276">#</a></h2><p>Item 276 PAID the <code>choice</code> reshape: <code>FlowBaseAnchor</code>'s <code>some</code> arm names
+<code>ParkChoice sc0 s d ∧ ParkFloor sc0 s d</code>, <code>GateOf (some sc0)</code> carries the
+park's own <code>simpleKeyAllowed = false</code> beside §9.2's verdict, and <code>ParkSlot</code>
+grew <code>slotRun</code> — the cell item 274's <code>closeGate</code> never enumerated, a park whose
+<code>[96]</code> run is offered no slot, at which BOTH verdicts are silent at the close.
+Three pins below re-read against the paid tree:</p><ul><li><code>RIDE-PRICE</code>: <code>slot=OOO</code> — <code>ParkSlot.ofOpen</code> now takes <code>hrun</code>, and no arm
+holds it (<code>by assumption</code> stands where it would go, so the refusal names the
+datum) — and §16 measures that no arm CAN hold it, because the fact is false
+on accepted input; <code>gated=OOO</code> for the same reason plus <code>parkSka</code>; the three flips now
+price UN-paying the reshape (<code>anchor</code> restores item 162's arm) and
+<code>transport</code> re-reads the funnel over <code>ParkChoice</code>.</li><li><code>TRANSPORT-PRICE</code>: <code>genesis=OOO pay=OOO</code> — the same <code>hrun</code> at the same arms.</li><li><code>CLOSE-PRICE</code>: <code>anchor=B</code> — the control returns the pair now.</li></ul></div><div class="mod_doc"><h2 id="16-Why-the-slot-the-arms-were-told-to-supply-was-false-and-what-fixed-it" class="markdown-heading">§16 Why the slot the arms were told to supply was false, and what fixed it <a class="hover-link" href="#16-Why-the-slot-the-arms-were-told-to-supply-was-false-and-what-fixed-it">#</a></h2><pre><code>(DOCS items 277, 278)
+</code></pre><p>Item 276 recorded a NEXT — <em>supply <code>slotRun</code> at the three arms</em> — and a supply
+question: price a <code>PendingNode</code> field against an <code>accum_flow_open_depth0</code>
+hypothesis.  Item 277 measured the fact instead of pricing a carrier for it,
+and found it FALSE at the arms: <code>slotRun</code> asks that the <code>[96]</code> run in front of
+the park's cursor be absent or <em>offered a node slot</em>, and <code>offersNodeSlot</code> then
+counted only the three block indicators <code>:</code>, <code>?</code>, <code>-</code>.  A document root is
+exactly where a run can stand with nothing but the start in front of it, so
+<code>&amp;x⏎[1]</code> — accepted, and correctly, since the property and its node may sit on
+separate lines — read <code>slotRun = false</code>.  No carrier supplies a false fact.</p><p>Item 278 settled which of the two readings was wrong, by the measurement item
+277 §5 named rather than by argument.  <code>offersNodeSlot</code> was under-approximating
+its own criterion: <code>[185] l-bare-document</code> is <code>s-l+block-node(-1, block-in)</code>
+just as <code>[186]</code> is the block entry's, so the stream and document starts offer
+the following node a slot in the same sense the three indicators do.  Extending
+it moves <strong>no verdict</strong> — censused over 1420 inputs of this family (700 with the
+run behind a start, 720 with a block level on the indent stack so §8.1's second
+conjunct can hold), the 402-case suite (869 passed / 0 failed / 151 skipped,
+unchanged) and the whole Lean battery (21 suites, zero failures) — and it
+breaks <strong>no proof</strong>.  The structural reason the reading moves and no verdict
+does: §8.1's floor needs the open's column on the indent stack as well, and
+nothing has opened a block level at the point where a run can sit behind a
+start, so the two conditions are mutually exclusive.</p><p>The rows below are therefore the arms' supply, pinned at the open — and each
+pins the PREDECESSOR beside the verdict, so a revert of <code>offersNodeSlot</code> breaks
+them with the reason attached rather than with a bare <code>false</code>.</p><p><strong>The enumeration above is a floor and §17 is the set</strong> (item 281): the
+argument from the second root node does not reach a document SUFFIX, so
+<code>documentEnd</code> was a non-offer standing in front of an accepted depth-0 open,
+and the supply was unpaid again until it joined the three indicators and the
+two starts.</p></div><div class="mod_doc"><h2 id="17-The-offer-set-censused-and-the-carrier-question-answered-by-the" class="markdown-heading">§17 The offer set censused, and the carrier question answered by the <a class="hover-link" href="#17-The-offer-set-censused-and-the-carrier-question-answered-by-the">#</a></h2><pre><code>states (DOCS item 281)
+</code></pre><p>§16 extended <code>offersNodeSlot</code> with the two STARTS and enumerated the rest from
+one refusal: every other non-offering predecessor is a second root node in one
+document, which §9.2 refuses.  <strong>That argument does not reach the document
+SUFFIX.</strong>  A <code>...</code> does not continue a document, it ENDS one, so what stands
+after it is a fresh <code>[185] l-bare-document</code> and a <code>[96]</code> run in front of a
+depth-0 open there is that document's root-node properties — the same slot
+<code>---</code> offers, by the same production.</p><p>So <code>a⏎...⏎&amp;x⏎[1]</code> was accepted with <code>slotRun = false</code>, in seven shapes, and the
+supply item 278 paid was unpaid again.  Item 278's enumeration was a FLOOR, for
+the same reason a one-round flip census is.</p><p>The rows below are the census that argument should have been: one <code>YamlToken</code>
+kind per row, each naming either an accepted witness whose first depth-0 open
+carries that kind as its run's predecessor, or the refusal that makes the kind
+unreachable in that position.  Six of the 23 kinds cannot be the predecessor at
+all and are named here rather than left to a blank: <code>placeholder</code> is what
+<code>prevRealIdx?</code> walks past by construction, <code>comment</code> is what <code>scanFiltered</code>
+filters, <code>streamEnd</code> has nothing after it, and <code>flowEntry</code> /
+<code>flowSequenceStart</code> / <code>flowMappingStart</code> stand only inside a collection, where
+the open they precede is at depth ≥ 1 and this reading does not apply.  Two
+more REDUCE to an offer rather than being reachable: <code>blockSequenceStart</code> and
+<code>blockMappingStart</code> are emitted before the indicator that opens the entry, so
+the predecessor a run sees is that indicator, and their rows pin the reduction.</p><p><strong><code>dispatchedSlot</code> is the supply itself</strong>, and it is the reading to re-take
+before any future carrier is priced: over the same corpus it counts the inputs
+that DISPATCH a depth-0 open and, of those, the ones whose park reads
+<code>slotRun = false</code>.  The third number is what items 277 and 281 each found
+non-zero.</p><p><strong><code>carrierStates</code> answers the question item 279 left open</strong> — a <code>PendingNode</code>
+field against an <code>accum_flow_open_depth0</code> hypothesis — by reading the states
+each candidate would have to hold at, which is cheaper than pricing either:</p><ul><li>a LOOP INVARIANT is false.  The fact would have to be re-established at every
+scanner step, the way <code>scanLoop_grammar_prod</code>'s induction re-establishes
+<code>h_kbc</code>, <code>h_base</code> and <code>h_mono</code> through their own <code>scanNextToken_preserves_*</code>.
+The second column counts states where the predicate is false, the next step
+SUCCEEDS, and the input is accepted — <code>[a, &amp;x b]</code> is one — so no
+unconditional preservation lemma exists.  The third counts the same at depth
+0, so guarding it on <code>flowLevel = 0</code> as <code>h_pending</code> itself is guarded does
+not save it either.</li><li>a <code>PendingNode</code> FIELD is false at a park its own producer must admit.  The
+fourth column counts parks reading <code>slotRun = false</code> whose step's own §9.2
+and §8.1 readings are both SILENT and whose step succeeds — exactly the
+hypotheses a producer holds (items 157 and 275 threaded both) — so the
+field's obligation covers a state no producer can pay at.</li><li>a HYPOTHESIS has no supplier but the loop.  Its ring chain is
+<code>accum_step_flow</code> (2 applications) → <code>scanNextToken_accum_step</code> (1) →
+<code>scanLoop_grammar_prod</code> (1), and the last is the induction that would need
+the invariant the first bullet refutes.</li></ul><p>What that leaves is not a carrier.  The fact is true exactly where the open is
+DISPATCHED, and what decides dispatch is §9.2's and §8.1's readings at that
+step — <code>h_dn</code> and <code>h_fv</code>, hypotheses of the arm since items 157 and 275.  Where
+the predicate fails and an open follows, <code>h_dn</code> FIRES: <code>---⏎k: a⏎&amp;x⏎[1]</code> never
+reaches the arm at all, and the last two rows of <code>parkFace</code> pin that against
+the silent park beside it.</p></div><div class="mod_doc"><h2 id="18-The-bridge-item-281-ordered-measured-before-it-is-written-DOCS-item-283" class="markdown-heading">§18 The bridge item 281 ordered, measured before it is written (DOCS item 283) <a class="hover-link" href="#18-The-bridge-item-281-ordered-measured-before-it-is-written-DOCS-item-283">#</a></h2><p>Item 281 §7 ordered ONE lemma: <code>slotRun_of_dn</code>, from <code>scanNextToken_checkDanglingNode sc s_prep = .ok ()</code> plus the park's own facts to <code>ParkSlot</code>'s payload at <code>s_prep</code>,
+and said to price it "against §9.2's own reading, not as a carrier".  §10's rule
+is that a NEXT naming a construction carries a consumer probe before anything is
+spent on it, so this section is that probe, and it refutes the construction as
+named while confirming the fact it was meant to deliver.</p><p><strong>The counter-model.</strong>  <code>slotCounterModel</code> scans <code>k: a⏎&amp;x⏎[1]</code> to the park after
+<code>&amp;x</code> and then deletes the mapping's level from the indent stack, leaving the
+sentinel alone.  Every TOKEN-side hypothesis <code>accum_flow_open_depth0</code>'s props arm
+holds is unchanged by that edit — the trailing run, <code>simpleKeyAllowed = false</code>,
+<code>needIndentCheck = false</code>, <code>LastTokenReal</code>, <code>IndentFloor</code> at index 0, the
+sentinel base — and the edited state preprocesses to the same landing, where §9.2,
+§8.1 and the bare-document check are all SILENT and <code>slotRun</code> is FALSE, at the
+park and at <code>s_prep</code> alike.  So no lemma over those hypotheses derives the
+payload: the datum that excluded a scalar predecessor was the indent stack, and
+it was consumed one step EARLIER, by <code>scanNextToken_checkBareDocument</code> at the
+run's own landing (<code>k: a⏎&amp;x</code>: the run at the mapping's column is a sibling and
+scans; <code>a⏎&amp;x</code>, with no level at 0, is refused there).  What is left to the arm
+are the GRAMMAR-side fields — <code>h_route</code>, <code>h_key</code>, <code>h_sep</code>, <code>h_run</code>, <code>h_kslot</code> —
+and spending one of those on a token fact is the transport this row does not
+pay.</p><p><strong>The census.</strong>  <code>slotSupply</code> walks 4 752 generated inputs (31 prefixes × 6 runs ×
+6 separators × 3 opens, with the §17 corpora's shapes among them) and reads
+three things at every depth-0 props park: whether the gated face
+<code>danglingNodePos? s = none → slotRun s</code> holds — it does at all 5 562, with the
+predecessor OFFERING at 3 078 and the run's column standing on an open level at
+the other 2 484, and no park paid by the excess clause or by nothing — and, at
+every depth-0 open dispatched from such a park across a break, whether
+<code>slotRun</code> holds at <code>s_prep</code>: it does at all 1 068.  Of those, 108 land at or
+below the park's incoming floor (the half the three rides are taken on); 12 emit
+a <code>blockEnd</code>, which makes the payload's first disjunct free, and the other 96
+have a predecessor that offers — <code>-</code>, <code>?</code> or <code>:</code> — and nothing else.</p><p><strong>So the fact is true where it is needed and the arm cannot see why.</strong>  The price
+is a FIELD on <code>pendingProps</code>, GATED exactly as <code>h_route</code> is:
+<code>danglingNodePos? sc = none → sc.indents.size ≤ 1 ∨ slotRun sc</code>.  It is not the
+field item 281 §5 refuted (<code>slotRun</code> unconditionally, false at <code>---⏎k: a⏎&amp;x b</code>),
+because the gate is false there; the <code>size ≤ 1</code> escape is for the stream-start
+run, where no level exists and the arm's own under-run is vacuous
+(<code>IndentFloor</code> at the base floors the index at 0 and <code>j &lt; 0</code> is the refutation).
+Every producer can pay it from a fact it already holds or from the last real
+token it just pushed, and the per-producer bill is DOCS item 283's.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

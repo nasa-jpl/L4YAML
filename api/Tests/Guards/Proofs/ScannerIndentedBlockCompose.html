@@ -1,0 +1,44 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerIndentedBlockCompose</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerIndentedBlockCompose";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerIndentedBlockCompose</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerIndentedBlockCompose.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/IndexedDispatch.html">L4YAML.Scanner.IndexedDispatch</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li><li><a href="../../.././L4YAML/Token/Token.html">L4YAML.Token.Token</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerIndentedBlockCompose" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-INDENTED-block-collection-composes-DOCS-item-22" class="markdown-heading">The INDENTED block collection composes (DOCS item 22) <a class="hover-link" href="#The-INDENTED-block-collection-composes-DOCS-item-22">#</a></h1><p>Items 13–20 composed the block collections that open at column 0, and item 21
+found why none of the others could: <code>[183] l+block-sequence(n)</code> and
+<code>[187] l+block-mapping(n)</code> are <code>( s-indent(n+m) … )+</code> for an auto-detected
+<code>m &gt; 0</code>, and the surface grammar had inlined that <code>m</code> at its smallest legal
+value — so <code>  -</code>, <code>  ?</code>, <code>  :</code> and every indented collection parsed correctly
+with NO derivation at all.  Item 22 binds <code>m</code> where the production binds it, on
+the constructor that OPENS the collection (<code>SBlockNode.blockSeq</code> / <code>.blockMap</code>),
+and threads it through the pendings, whose awaited node was pinned at
+<code>SBlockNode 0 .blockIn</code>.</p><p>The dispatch arm that reads it is not new: the whites between where
+preprocessing LANDS (item 19) and the indicator ARE <code>[63] s-indent(k)</code>, so the
+<code>nil</code> case is not a separate branch — it is <code>k = 0</code>, and one body serves the
+column-0 collection and the indented one alike.</p><p>What is composed here is the indented FRAME: the entry opener, its siblings and
+its empty close.  An indented entry with CONTENT still defers, on one named
+residue — every content reading in the accumulation is stated at indent 0
+(<code>dispatchContent_evidence</code> concludes <code>SFlowNode 0 .flowOut</code>, <code>SCLLiteral 0</code>,
+<code>SCLFolded 0</code>), and lifting those to the entry's own indent is the next item.
+The last three sections pin those shapes too: they are ACCEPTED, identically in
+both pipelines, and it is only their derivation that is owed.</p><p>Nothing here is new BEHAVIOUR — item 22 edits no runtime file.  These are the
+shapes whose accumulation changed, held fixed so a later runtime change cannot
+move them silently.</p></div><div class="mod_doc"><h2 id="1-An-indented-sequence-entry" class="markdown-heading">§1  An indented sequence entry <a class="hover-link" href="#1-An-indented-sequence-entry">#</a></h2><p><code>[183]</code>'s <code>m</code> is 2 here, and 4 in the second pin — the width is read off the
+landing, not fixed by the constructor.  The entry itself closes as <code>[199]</code>'s
+<code>e-node</code> (<code>SBlockNode.emptyNode</code>, which is indent-INERT and therefore served
+the new index with no edit at all).</p></div><div class="mod_doc"><h2 id="2-Siblings-at-the-SAME-indentation" class="markdown-heading">§2  Siblings at the SAME indentation <a class="hover-link" href="#2-Siblings-at-the-SAME-indentation">#</a></h2><p>The snoc route is item 19's, at the collection's own index: a following <code>-</code>
+joins the sequence exactly when the landing leaves the indentation the
+collection was opened at.  A different width is a nested or dedented
+collection, and still defers (§6).</p></div><div class="mod_doc"><h2 id="3-The-indented-MAPPING-indicators" class="markdown-heading">§3  The indented MAPPING indicators <a class="hover-link" href="#3-The-indented-MAPPING-indicators">#</a></h2><p><code>[189]</code>'s empty-key entry (item 13) and <code>[186]</code>'s explicit key (item 20) reach
+the same generalization through the same pending: <code>pendingMapValue</code> now carries
+the entry index, and its producer's conversion into the <code>.blockOut</code> value slot
+is no longer restricted to <code>n = 0</code> either — <code>seq-spaces</code>' one-step disagreement
+between the two block contexts is absorbed by <code>[183]</code>'s <code>m</code>.</p></div><div class="mod_doc"><h2 id="4-Inside-an-explicit-document-frame" class="markdown-heading">§4  Inside an explicit document frame <a class="hover-link" href="#4-Inside-an-explicit-document-frame">#</a></h2><p>The collection opens after the <code>---</code> marker's own line, so the landing and the
+indentation reading are the same as at stream level.</p></div><div class="mod_doc"><h2 id="5-Indented-entries-WITH-content" class="markdown-heading">§5  Indented entries WITH content <a class="hover-link" href="#5-Indented-entries-WITH-content">#</a></h2><p>The residue item 22 named: the entry frame is built at index <code>k</code>, but the value
+must be READ at <code>k</code> too, and every content reading in <code>StreamAccum</code> was stated
+at 0.  Item 23 closed the first of these — a break-free reading mentions no
+indent, so a one-line scalar value re-reads at the entry's index
+(<code>ScannerIndentedValueCompose</code>).  The other two are still accepted-only, for
+reasons that are no longer the same one: <code>  a: 1</code> needs the IMPLICIT-KEY pack
+off column 0, and <code>  - [1]</code>'s pinned 0 lives in <code>FlowStackB</code>'s resume type
+rather than in a content reading.</p></div><div class="mod_doc"><h2 id="6-Indentation-the-arm-does-NOT-read-as-this-collection-s" class="markdown-heading">§6  Indentation the arm does NOT read as this collection's <a class="hover-link" href="#6-Indentation-the-arm-does-NOT-read-as-this-collection-s">#</a></h2><p>A <code>-</code> at a different width from the pending's is a nested or dedented
+collection; here the scanner folds the second line into the first entry's plain
+scalar instead, which is the reading both pipelines already had.</p></div><div class="mod_doc"><h2 id="7-A-tab-is-not-s-indent" class="markdown-heading">§7  A tab is not <code>s-indent</code> <a class="hover-link" href="#7-A-tab-is-not-s-indent">#</a></h2><p><code>[63] s-indent(n)</code> is spaces only, so the whites-to-indentation reading is a
+disjunction and its other side — a tab — is what the four block-dispatch arms
+now defer on.  For a BLOCK indicator the scanner refuses first, so the branch
+is expected vacuous; refuting it from the scanner is future work, and these
+pins record the verdict it would have to read.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

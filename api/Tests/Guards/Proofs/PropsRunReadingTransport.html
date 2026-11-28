@@ -1,0 +1,87 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.PropsRunReadingTransport</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.PropsRunReadingTransport";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">PropsRunReadingTransport</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/PropsRunReadingTransport.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.PropsRunReadingTransport" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-96-run-s-reading-transported-and-the-gate-s-one-unpayable-site" class="markdown-heading">The <code>[96]</code> run's reading, transported — and the gate's one unpayable site <a class="hover-link" href="#The-96-run-s-reading-transported-and-the-gate-s-one-unpayable-site">#</a></h1><pre><code>(DOCS item 160)
+</code></pre><p>Item 159 left the property lane in two pieces and named the first as "a premise
+shape for <code>pendingProps.h_route</code> that relays through a PROPERTY push".  This
+file is that piece, run: the relay is built, and the gate it was meant to buy
+is measured to the SITE.</p><p><strong>What the gate would be.</strong>  <code>pendingProps.h_route</code> is the run's stream
+closure.  Guarding it with <code>danglingNodePos? sc = none</code> — the face
+<code>pendingContent</code> has carried since item 157 and <code>pendingBlockContent</code> since item
+159 — is what would let <code>ContentRouteGate</code> lose its right disjunct, and with it
+the last CHARACTER residue in the content landing's bare-document route.</p><p><strong>What it costs, exactly.</strong>  Guarding the field and building the module names
+<strong>23</strong> spend sites, and they fall in four classes:</p><table><thead><tr><th>class</th><th>sites</th><th>pays with</th></tr></thead><tbody><tr><td>the park's close (<code>PendingNode.close_with_ssl</code>)</td><td>1</td><td><code>h_nd</code>, its own parameter</td></tr><tr><td>the landing producers (<code>content_dispatch_routed</code> and its four siblings)</td><td>10</td><td>the gate itself, once the right disjunct is gone</td></tr><tr><td>the run's rides — its extension and its content (<code>accum_content_pending</code>)</td><td>12</td><td>the RELAY, below</td></tr><tr><td>the run's ride into a FLOW COLLECTION (<code>accum_flow_open_depth0</code>)</td><td>1</td><td><del><strong>nothing</strong></del> — item 161's gate, spent by item 165's props arm</td></tr></tbody></table><p><strong>All four classes pay as of item 165</strong>, and the table's own two surprises are
+recorded where they were found: the flow row needed a gate on
+<code>FlowBaseRoutes.value</code> (items 161–164), and the extension row needed §6.9's
+length check (item 165's <code>propertyRunFull</code>) before the relay below was true at
+all.  The count is TWELVE rides rather than eleven — the re-count is item 165's.</p><p><strong>The relay, in three pushes.</strong>  A park's own last token is a <code>[96]</code> property,
+so every push onto it is the case item 158's push lemmas exclude, and the three
+that can happen do three different things (§1).  A BODY preserves the reading; a
+PROPERTY moves its start; a flow COLLECTION preserves it, but only through its
+close, and only by item 159's third arm.</p><p><strong>The site that cannot pay</strong> is the flow ride, and §3 is why: it is not a park
+whose reading could be read differently, it is a closure with no scanner state
+in it at all.  <code>FlowBaseRoutes.value</code> is built at the OPEN and spent at the
+CLOSE, and the reading only becomes available at the close.  So the gate belongs
+on that field, and what it needs is the walk's own answer — which is the flow
+stack's to supply.</p></div><div class="mod_doc"><h2 id="1-The-three-pushes-onto-a-96-park" class="markdown-heading">§1  The three pushes onto a <code>[96]</code> park <a class="hover-link" href="#1-The-three-pushes-onto-a-96-park">#</a></h2><h3 id="A-BODY-preserves-the-reading" class="markdown-heading">A BODY preserves the reading <a class="hover-link" href="#A-BODY-preserves-the-reading">#</a></h3><p><code>a: 1⏎&amp;p b</code>: the park after <code>&amp;p</code> reads <code>1,0</code>, and so does the park after the
+scalar it takes as its content.  The walk-back crosses the property and reaches
+the same start, which is why §9.2's refusal rides a run into its own node.</p></div><div class="mod_doc"><h3 id="A-PROPERTY-moves-the-start-the-arm-item-165-emptied-and-item-170-REOPENED" class="markdown-heading">A PROPERTY moves the start — the arm item 165 emptied and item 170 REOPENED <a class="hover-link" href="#A-PROPERTY-moves-the-start-the-arm-item-165-emptied-and-item-170-REOPENED">#</a></h3><p><code>&amp;a⏎!t &amp;b x</code> is this file's witness: at step 2 the run starts at the <code>&amp;a</code> on
+line 0, and the THIRD property pushes the start down to the <code>!t</code> on line 1, so
+the reading at the park and the reading one push later are readings of
+DIFFERENT tokens.  That is why the premise cannot be stated as
+<code>danglingNodePos? sc = none</code> and relayed through a run's own extension.</p><p><strong>Item 165 refused the input; item 170 narrowed that gate back</strong> (the
+length-only form read a parent's full run and a fresh key's run as one — 9KAX
+— so in block context it fires only when all three properties share the
+cursor's line).  The cross-line third is the PARSER's again, and the start
+DOES move at a scanner-reachable park — step 3 below reads <code>1,0</code> where step 2
+read <code>0,0</code>.  <del>The relay serves the moved window by returning it
+(<code>PropsWindowCross</code>), which <code>pendingProps.h_routeX</code> answers without the
+verdict.</del>  <strong>Item 181: the moved window is a REFUSAL</strong> — the third property
+makes three adjacent, <code>[96]</code> admits one anchor and one tag, and §9.2's fourth
+clause (item 180) reads the duplicate, which the park column below shows as
+<code>park=1,3</code>.  So the relay is a plain implication whose premise is false there,
+and both the window and the route are deleted (<code>PropsCrossWindowRoute</code> is that
+guard).</p></div><div class="mod_doc"><h3 id="A-flow-COLLECTION-preserves-it-at-the-CLOSE" class="markdown-heading">A flow COLLECTION preserves it — at the CLOSE <a class="hover-link" href="#A-flow-COLLECTION-preserves-it-at-the-CLOSE">#</a></h3><p><code>a: 1⏎&amp;p [b]</code>: the park after <code>&amp;p</code> reads <code>1,0</code>; inside the collection there is
+no reading at all (in flow); at the <code>]</code> the reading is <code>1,0</code> again.  That is
+item 159's third arm — the close walked back to its open, then the <code>[96]</code>
+walk-back from there — and it is what makes the collection's own close the
+place the run's verdict can be spent.</p></div><div class="mod_doc"><h2 id="2-What-the-reading-is-read-WITH" class="markdown-heading">§2  What the reading is read WITH <a class="hover-link" href="#2-What-the-reading-is-read-WITH">#</a></h2><p><code>danglingNodePos?</code> reads two slots — the run's start and its predecessor — and
+<code>trailingNodeRun?_bounds</code> says both are below the array the reading was taken
+on, in every one of the three arms.  That is what lets a reading be transported
+by an agreement on a PREFIX, which is what all three pushes above are.</p></div><div class="mod_doc"><h2 id="3-The-site-that-could-not-pay-closed-at-item-165" class="markdown-heading">§3  The site that could not pay — closed at item 165 <a class="hover-link" href="#3-The-site-that-could-not-pay-closed-at-item-165">#</a></h2><p>Everything below stood when it was written and is kept as the record of WHY the
+gate went on <code>FlowBaseRoutes.value</code> rather than here.  It is paid now: item 161
+supplied the bracket balance as a forward stack, item 162 carried it across the
+collection's interior, item 164 landed the conjunct and spent the gate at the
+two base closes, and item 165 made this arm open at <code>some</code> — over the park
+itself when the landing crossed no break, and ungated when it did, where §9.2's
+own check pays.</p><p><code>accum_flow_open_depth0</code>'s props arm builds <code>FlowBaseRoutes.value</code> — the
+collection read as the enclosing construct's own node — by applying the park's
+<code>h_route</code> to a grammar argument:</p><pre><code>fun sp_ne sp_m h_content h_ssl =&gt;
+  h_route sp_m (flowInBlock_blockNode h_sep_run (SFlowNode.propsContent …) h_ssl)
+</code></pre><p>Everything that closure receives is GRAMMAR.  There is no scanner state in it,
+so a guard on <code>h_route</code> cannot be discharged inside it, and the open cannot
+discharge it either: at the open the park really is dangling and really does
+need the route.</p><p><strong>It needs it because the route is genuinely owed one step later.</strong>  A dangling
+<code>[96]</code> park that opens a collection has exactly two futures, and they take
+different halves of the frame:</p></div><div class="mod_doc"><p>So <code>resume.value</code>'s domain at a dangling park holds no accepted input, and
+the refusal that empties it is read at the CLOSE — where §1's third measurement
+says the verdict is the park's own, unchanged.  The gate therefore belongs on
+<code>FlowBaseRoutes.value</code>, not on <code>pendingProps.h_route</code> alone, and what it is
+missing is the hypothesis <code>trailingNodeRun?_flowClose_reads_park</code> takes:
+<code>flowOpenIdx? a i = some b.size</code>, the statement that the close finds ITS open.</p><p>That is a fact about the token array's bracket balance, and the balance is
+exactly what the flow stack indexes (<code>FlowOpenStack</code>'s kinds array mirrors
+<code>sc.flowStack</code>).  Relating the two is the piece that is missing.</p><p><strong>And the trade is not available.</strong>  Handing the arm the opaque resume instead
+would widen <code>scannerDrop</code> over an input that is LEGAL — the first <code>#guard</code>
+above — because the drop would be taken at the OPEN, before the <code>:</code> that
+decides which half of the frame is spent.  Item 83 deleted the flow open's last
+two drop rides; this would put one back, on accepted input.</p></div><div class="mod_doc"><h2 id="4-What-the-next-item-needs" class="markdown-heading">§4  What the next item needs <a class="hover-link" href="#4-What-the-next-item-needs">#</a></h2><ol><li><p><del><code>flowOpenIdx? s_cl.tokens i = some s_park.tokens.size</code> at a depth-0 flow
+close</del> — <strong>item 161</strong>, as <code>flowOpenIdxStack</code> read FORWARD.</p></li><li><p><del>Then <code>pendingProps.h_route</code> takes <code>danglingNodePos? sc = none</code>, its 23
+sites pay as the table above says, and <code>ContentRouteGate</code> loses its right
+disjunct.</del> — <strong>item 165</strong>, with §6.9's length check under it.</p></li><li><p>Behind both, the block landing's own half — <code>bareNodeRoute_or_refused</code>'s
+<code>h_op = true</code> branch.  <del>Its <code>-</code> family is already refused by the scanner
+(<code>a: 1⏎- x</code> is <code>invalidBareDocument 1 0</code>, <code>k:⏎␣␣a: 1⏎␣␣- x</code> is <code>2,2</code>), so
+what is left there is the <code>:</code>/<code>?</code> family, which is LEGAL and routes through
+the key cascade — a CONSUMER to narrow, as item 156 said, not a guard.</del></p><p><strong>Corrected by item 166.</strong>  Those two inputs are refused, but not for resting
+on an open level: <code>scanBlockEntryValidate</code> refuses a <code>-</code> at a block MAPPING's
+own indent with no node slot awaited AND no same-indent sequence open.  Lift
+the last conjunct and the <code>-</code> family is legal too — <code>a:⏎- x⏎- y</code>,
+<code>- - a⏎- b</code>, <code>- a:⏎␣␣␣␣b: 1⏎- c</code> all scan and parse clean at the same
+landing.  It IS a consumer to narrow, and the route it wants is the open
+collection's continuation.  See <code>BlockLandingOpenSeq.lean</code>.</p></li></ol></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

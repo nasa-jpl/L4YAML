@@ -1,0 +1,52 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerKeyPackPunt</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerKeyPackPunt";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerKeyPackPunt</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerKeyPackPunt.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerKeyPackPunt" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="What-the-entry-key-pack-punts-on-and-where-each-one-is-answered-DOCS-item-65" class="markdown-heading">What the entry key pack punts on, and where each one is answered (DOCS item 65) <a class="hover-link" href="#What-the-entry-key-pack-punts-on-and-where-each-one-is-answered-DOCS-item-65">#</a></h1><p><code>entryKeyPack_of_dispatch</code> used to hand <code><a href="../../.././Init/Prelude.html#True">True</a></code> for every shape it could not
+read back as <code>[193]</code>/<code>[194]</code>'s implicit key, so the <code>:</code> step that consumes the
+pack could not tell one from another and deferred on all of them.  Item 65
+replaces that <code><a href="../../.././Init/Prelude.html#True">True</a></code> with <code>KeyPackPunt</code>'s five named reasons and spends the one
+that is the <code>:</code>'s own.  Everything below is RUNTIME behavior — none of it
+changed at this item; the pins say what the proof's new case split has to be
+consistent with.  They pin the SHAPES the reasons name and how the scanner
+answers them, not which arm a given input takes: an escape is silent, so no
+runtime observation can say that.</p><ul><li>§1 <strong>the tab is the <code>:</code>'s to refuse, not preprocessing's.</strong>  A tab in the
+whitespace in front of a KEY sits past <code>currentIndent</code>, so §6.1's
+preprocessing gate lets it through and the same run reads fine in front of a
+VALUE.  What refuses <code>k:⏎␣→a: 1</code> is <code>scanValueIndentTabCheck</code>, one step
+later, walking back from <code>simpleKey.pos</code> — which is exactly the reading
+<code>KeyPackPunt.tab</code> carries.  The error's own line and column name the KEY, not
+the <code>:</code>.</li><li>§2 <strong>and the tab in front of a <code>:</code> is legal</strong>, because <code>[154]</code>'s trailing
+<code>s-separate-in-line?</code> admits <code>s-white</code>: only the run in front of the ENTRY is
+<code>[63] s-indent</code>.  This is the boundary the refutation must not cross.</li><li>§3 <strong>the key HEAD was never what was missing.</strong>  A block scalar is a node and
+never a key, and the scanner says so by clearing the saved key — the <code>:</code> after
+<code>k: |⏎  x</code> opens a SECOND entry with an empty key rather than resolving the
+scalar.  An alias IS a key wherever a park offers one.</li><li>§4 <strong>the reasons that remain are claims, not formalities.</strong>  <code>dedent</code> and
+<del><code>noFrame</code></del> each name a shape the scanner ACCEPTS, so the deferral they ride
+is carrying real inputs — row 19's frame stack and item 51's explicit-entry
+threading respectively.  (<code>noFrame</code>'s shape is <code>- ? a: b</code>, not the
+<code>? a⏎: b: c</code> pinned below — item 105's correction; the landed <code>:</code> pays its
+own slot and the COMPACT <code>?</code> was the one that did not.)
+<strong>Half of <code>noFrame</code> did not</strong> — struck 2026-09-06 by
+item 101, which read the two pins below against each other: <code>? a⏎: b: c</code> is
+accepted and <code>k: a: 1</code> is refused, so one name was covering two reasons.  The
+refused half is <code>[189]</code>'s IMPLICIT value, whose indicator stamped its line;
+it is now <code>KeyPackPunt.implicitValue</code> and it is REFUTED at the same place the
+tab is.  See <code>ScannerImplicitValueSameLineKey</code>.  <strong>And half of <code>noKeyContext</code>
+did not either</strong> — struck 2026-09-06 by item 103, which read the same pair one
+construct over: <code>k: [1]: 2</code> is refused where <code>[1]: 2</code> is accepted, so a flow
+close in a stamped value slot was riding the CALLER's name for the INPUT's
+reason.  It hands <code>implicitValue</code> now, carried across the whole collection on
+the mask's base slot; see <code>ScannerFlowCloseSameLineKey</code>.  What keeps the name
+is a frame with no route at all, and its complement is what is pinnable: where
+item 56's frame does carry a route, the closed flow collection reads as
+<code>[194]</code>'s JSON key.</li><li>§5 <strong>the phantom question, asked where the reason is BUILT</strong> (item 211).
+Item 184 recorded <code>noKeyContext</code> as having no named input, "which by R646 is
+the signature of a branch that may be a phantom", and the note rode
+twenty-two NEXT lists unexamined.  <code>lake run punt-price -- reaches</code>
+asks it at the production instead:
+<code>content_dispatch_routed</code> reaches the punt only when FIVE optional contexts
+decline at once, and of its eight applications exactly ONE does — the <code>---</code>
+park's mid-line dispatch — while SEVEN relay their own <code>h_keyctx</code> to their
+callers.  The one that declines is the park whose implicit-key class the
+scanner refuses outright, which is what the rows below pin.  At
+<code>flowKeyPack_of_close</code> the question moves down a construct again: both
+callers pay with <code>close_col_of_base</code> and <code>resume.key</code>, and each of those
+carries the same <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code>.  So the doubt was right and its reason was not —
+the branch is not missing an input, it is behind a RELAY.</li></ul></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

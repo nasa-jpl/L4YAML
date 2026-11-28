@@ -1,0 +1,40 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerDanglingNodeDedent</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerDanglingNodeDedent";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerDanglingNodeDedent</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerDanglingNodeDedent.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/IndexedDispatch.html">L4YAML.Scanner.IndexedDispatch</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li><li><a href="../../.././L4YAML/Scanner/State.html">L4YAML.Scanner.State</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerDanglingNodeDedent" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-dangling-run-a-dedent-hid-DOCS-item-140" class="markdown-heading">The dangling run a dedent hid (DOCS item 140) <a class="hover-link" href="#The-dangling-run-a-dedent-hid-DOCS-item-140">#</a></h1><p>Item 133 landed §9.2 <code>[211]</code>'s two refusals for a node that belongs to nothing:
+<code>scanLoop_checkDanglingNode</code> for the run the stream itself ends, and
+<code>scanNextToken_checkDanglingNode</code> for the run a line break ends.  The two were
+not the same check read at two places — they read DIFFERENT token arrays, and
+the difference was the landing's unwind.</p><p><code>scanLoop</code> runs its check and only then calls <code>unwindIndents s (-1)</code>, so it reads
+the array the run is still in.  <code>scanNextToken</code> ran its check on the state
+<code>scanNextToken_preprocess</code> RETURNS, and preprocessing unwinds: it emits a
+<code>blockEnd</code> for every level the landing dedents past and pops them.  A run whose
+own level the landing dedents past is therefore no longer trailing (the
+<code>blockEnd</code> is behind it) and no longer sits at any open column (the level is
+gone) — so the check read <code>none</code> where the run was plainly there.</p><p><code>k:⏎␣␣a: 1⏎␣␣b⏎c: 2</code> is that shape, and it scanned CLEAN.  Only
+<code>TokenParser.parseStreamLoop</code>'s <code>validNextToken</code> refused it, at the same
+position the scanner would have named.  Item 140 gives the check its two
+states — the break off the landing, the RUN off the state the landing arrived
+with — which makes the mid-stream check the end-of-input check's exact twin and
+the scanner's acceptance the parser's.</p><p>§1 measures the displacement at the real landing of the real scanner.  §2 is the
+family the narrowing adds, with the two pipelines and the parser's own position
+beside it.  §3 is the check at its type and the three ways it stands aside.  §4
+shows the narrowing is a narrowing.  §5 is what it buys.</p></div><div class="mod_doc"><h2 id="1-The-displacement-at-the-landing-where-it-happens" class="markdown-heading">§1  The displacement, at the landing where it happens <a class="hover-link" href="#1-The-displacement-at-the-landing-where-it-happens">#</a></h2><p><code>readingAt input n</code> runs the real scanner <code>n</code> landings in and reports
+<code>danglingNodePos?</code> at BOTH of the landing's states: <code>run=</code> off the state the
+landing arrived with, <code>land=</code> off the state preprocessing returns.  The two
+agree at every landing that does not dedent, and that is the point — the check
+was not wrong, it was reading one writer too late.</p></div><div class="mod_doc"><h2 id="2-The-family-the-narrowing-adds" class="markdown-heading">§2  The family the narrowing adds <a class="hover-link" href="#2-The-family-the-narrowing-adds">#</a></h2><p>Every input here scanned CLEAN before item 140 and was refused by the parser
+alone.  Both scanners refuse it now, both pipelines still refuse it, and the
+position is the one the parser had already reported — which is what says the
+two are one refusal read at two depths rather than two different rules.</p></div><div class="mod_doc"><h2 id="3-The-check-at-its-two-states" class="markdown-heading">§3  The check, at its two states <a class="hover-link" href="#3-The-check-at-its-two-states">#</a></h2><p>The break is a fact about the LANDING; the run is a fact about the array.  Each
+of the three exemptions belongs to exactly one of them.</p></div><div class="mod_doc"><h2 id="4-The-narrowing-is-a-narrowing" class="markdown-heading">§4  The narrowing is a narrowing <a class="hover-link" href="#4-The-narrowing-is-a-narrowing">#</a></h2><p><code>unwindIndents</code> only APPENDS to the array and only POPS the stack, so the
+post-unwind reading is <code>none</code> wherever the pre-unwind one is — the new check
+refuses a superset.  What matters is that the superset is not bigger than the
+parser's, and these are the shapes a dedent walks past legally.</p></div><div class="mod_doc"><h2 id="5-What-it-buys" class="markdown-heading">§5  What it buys <a class="hover-link" href="#5-What-it-buys">#</a></h2><p>The accumulation is a SCANNER invariant: every step the scanner accepts has to
+come out of <code>StreamAccum</code> with a production in hand.  The indented dangling run
+was a step the scanner accepted, so <code>[211]</code>'s bare-document fallback
+(<code>bareNodeRoute</code>, item 139) was the only reading available for it — and no park
+face could have refuted it, because there was no refusal to thread.  Row 19's
+1c therefore could not be closed at any price while this landing scanned clean;
+the parser's verdict is not available to an invariant about the scanner.</p><p>With the check at its two states the whole dangling family is refused by the
+scanner, one landing after the run — <code>dangling@6</code> for the input in §1 — which is
+exactly where the park that owes the stream is consumed.  What that leaves is
+the item item 139 named: a <code>danglingNodePos?</code> face on <code>pendingContent</code>, spent at
+the landing where <code>h_closable</code> is, with this refusal as its contradiction.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

@@ -1,0 +1,73 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.StreamRouteSwapSurface</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.StreamRouteSwapSurface";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">StreamRouteSwapSurface</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/StreamRouteSwapSurface.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Proofs/Production/StreamAccum.html">L4YAML.Proofs.Production.StreamAccum</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.StreamRouteSwapSurface" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-swap-surface-DOCS-item-135" class="markdown-heading">The swap surface (DOCS item 135) <a class="hover-link" href="#The-swap-surface-DOCS-item-135">#</a></h1><p>Row 19's 1c tightens <code>[211]</code>'s <code>implicitContinue</code> from <code>GOpt SLAnyDocument</code> to
+<code>GOpt SLExplicitDocument</code>, which is what stops the grammar admitting a second
+BARE document with no <code>...</code> in front of it.  Item 110 built the tightening and
+measured the sites it breaks: <strong>16, every one in <code>StreamAccum</code></strong>.  The ledger has
+carried "the 16 fallback swaps" as the step before the constructor ever since.</p><p><strong>Re-measured here, and the number moved.</strong>  Two instruments agree: an
+environment scan over the elaborated terms (which <code>SLYamlStream.implicitContinue</code>
+applications exist, and what each passes in the <code>l-any-document?</code> slot), and the
+tightening itself, built and reverted.  The compiler names <strong>nine</strong> sites, and
+they are not one kind of problem:</p><ul><li><strong>seven</strong> pass <code>SLAnyDocument.bare</code> — the fallback proper, each needing the
+route decision the remaining items owe: the stream's own head (<code>single</code>), the
+slot a <code>...</code> opens (<code>suffixContinue</code>), a level resumed through <code>ResumeFrames</code>,
+or the refusal M1–M3 landed at items 132–134;</li><li><strong>one</strong> passes <code>SLAnyDocument.explicit</code> — <code>[208]</code> is exactly what the
+tightened arm takes, so the wrapper comes off at flip time and nothing is
+decided (<code>DocumentProduction.stream_implicit_continue</code> is the same edit, one
+module downstream);</li><li><strong>one</strong> passes <code>SLAnyDocument.directive</code> — <code>[209] l-directive-document</code> is
+neither a bare nor an explicit document, so the implicit continuation is the
+wrong arm for it outright.  The runtime already refuses the third reading
+(§1's last pin), so what is missing is a witness, not a refusal.</li></ul><p>Item 135 is what took 16 to 9:</p><ul><li><strong>two sites were dead.</strong>  <code>flowSeq_extends_stream</code> and <code>flowMap_extends_stream</code>
+extended the stream with a completed top-level flow node as a bare document;
+the flow-open stack has carried that job since items 44–46, and an environment
+scan for consumers finds neither lemma referenced by any declaration in the
+closure.  Deleted.</li><li><strong>three were one field read wrong.</strong>  <code>pendingDocStart</code> handed back an
+<code>SLAnyDocument</code> and left <code>close_with_ssl</code>, <code>accum_flow_open_depth0</code> and
+<code>accum_content_pending</code> to append it with <code>implicitContinue</code> — three copies of
+a term built from a document whose <code>[210]</code> alternative only the PRODUCER knows.
+The field is a ROUTE now (§2), the three consumers apply it, and the two
+producers spend the arm each of them can actually justify.</li><li><strong>two were the seed's own root sequence.</strong>  <code>accum_block_on_noPending</code>'s <code>-</code>
+arm opened <code>[183]</code> under a bare document appended to the accumulated stream.
+A block-context <code>noPending</code> is the stream's seed, so the region behind it is
+<code>[202] l-document-prefix*</code> and the sequence heads the stream's FIRST document:
+<code>[211]</code>'s <code>single</code>, whose <code>l-any-document?</code> slot the tightening leaves
+untouched (§4).  What made the park's <code>h_nodoc</code> spendable was dropping its
+<code>documentEverStarted = false</code> premise (§3) — a premise no producer used and no
+consumer could discharge.</li></ul><p>No runtime file is touched, so every verdict below is the one the pipelines
+already gave.</p><p>§1 is the family at the runtime; §2–§4 are the three builds at their types; §5
+is the surface that remains.</p></div><div class="mod_doc"><h2 id="1-The-family-at-the-runtime" class="markdown-heading">§1 The family at the runtime <a class="hover-link" href="#1-The-family-at-the-runtime">#</a></h2><p>The seed's root sequence — the two sites §4 re-reads through <code>single</code> — with
+every prefix run <code>[202]</code> admits in front of it.</p></div><div class="mod_doc"><h2 id="2-pendingDocStart-carries-a-ROUTE" class="markdown-heading">§2 <code>pendingDocStart</code> carries a ROUTE <a class="hover-link" href="#2-pendingDocStart-carries-a-ROUTE">#</a></h2><p>The field's type is the whole of the change: given the content evidence after
+<code>---</code>, it produces the extended STREAM rather than the document the consumers
+then had to place.</p></div><div class="mod_doc"><h2 id="3-h-nodoc-without-the-flag-premise" class="markdown-heading">§3 <code>h_nodoc</code> without the flag premise <a class="hover-link" href="#3-h-nodoc-without-the-flag-premise">#</a></h2><p>Item 116 wrote <code>inFlow = false → documentEverStarted = false → …</code> because the
+two premises name the constructor's two producer families.  They do — but the
+seven flow-interior sites refute on <code>inFlow</code> ALONE and the seed pays
+unconditionally, so the second premise was load-bearing at neither producer,
+while at every consumer it is a scanner-state fact nothing threads.  Off it
+comes, and the field becomes spendable.</p></div><div class="mod_doc"><h2 id="4-The-seed-s-root-sequence-through-single" class="markdown-heading">§4 The seed's root sequence, through <code>single</code> <a class="hover-link" href="#4-The-seed-s-root-sequence-through-single">#</a></h2><p>Both faces <code>accum_block_on_noPending</code> builds — the entry alone and the entry
+with its <code>[186]</code> tail — reach the stream without <code>implicitContinue</code>: the
+prefixes ARE the whole region in front, so <code>[211]</code>'s first alternative carries
+the document and no earlier document has to be invented to continue from.</p></div><div class="mod_doc"><h2 id="5-The-surface-that-remains" class="markdown-heading">§5 The surface that remains <a class="hover-link" href="#5-The-surface-that-remains">#</a></h2><p>Seven <code>SLAnyDocument.bare</code> applications, each owing a route decision:</p><ul><li><code>topLevelFlowResumeSep</code> — the completed top-level flow node.  Its suffix twin
+exists (<code>suffixFlowResumeSep</code>, item 118); <del>the head twin does not</del> <strong>the
+head twin is <code>nodocFlowResumeSep</code>, item 136</strong>, and the virgin park's flow open
+spends it.</li><li><code>rootMapRoute</code> and <code>rootMapRouteF</code> — the fallback every punting park uses.
+BOTH twins exist on both faces (<code>nodocMapRoute</code>/<code>nodocMapRouteF</code>, item 116;
+<code>suffixMapRoute</code>/<code>suffixMapRouteF</code>, item 117) <del>and neither <code>nodoc</code> twin has a
+consumer yet: what is missing is the FACE at the landing, a real disjunction
+where <code>h_sfx_land</code> today carries <code>SuffixRun … ∨ <a href="../../.././Init/Prelude.html#True">True</a></code></del> — <strong>item 136 gave the
+landing its HEAD arm</strong> (<code>colon_open_map</code>/<code>question_open_map</code> take it,
+<code>flowKeyRoute_of_root</code> takes it, <code>content_dispatch_routed</code>'s cascade prefers
+the matching key context), so both <code>nodoc</code> twins have consumers.  What is
+still <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code> is the FALLBACK, and what it owes is not a fourth route but
+items 132–134's refusal.</li><li><code>accum_block_on_closeThenBlock</code> and <code>content_dispatch_after_close</code> — the two
+landing skeletons, whose suffix arm routes through <code>suffixNodeRoute</code> and whose
+other arm is the bare document.</li><li><code>accum_content_pending</code>, twice — the same landing at the two column cases.</li></ul><p>Plus the two that decide nothing: <code>structural_dispatch_after_directives</code> passes
+<code>[209]</code>, which wants the head or the suffix arm and carries no witness of either
+(<code>pendingDirective</code> records none — its producers hold the stream and nothing
+else); and <code>structural_dispatch_to_pending</code> passes <code>[208]</code> through the
+<code>SLAnyDocument.explicit</code> wrapper, which the flip deletes.</p><p>What the seven are waiting on is one carrier, not seven: the landings' <code>∨ <a href="../../.././Init/Prelude.html#True">True</a></code>
+made into a three-way face — the stream's head, an open suffix run, or a level
+resumed — with the fourth case refuted rather than carried.  That fourth case is
+what items 132–134 made refusable: a completed root node followed by content
+with no marker between is <code>invalidBareDocument</code> at the SCANNER now.</p><p><strong>Item 136 built the head arm and paid it</strong>; the count stayed at nine, because
+the seven are the fallback ARMS of lemmas several families share and an arm goes
+only when its last caller can pay something else.  See <code>StreamHeadLandingFace</code>
+for what each of the three remaining families is, and why the refutation rather
+than a fourth route is what they owe.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

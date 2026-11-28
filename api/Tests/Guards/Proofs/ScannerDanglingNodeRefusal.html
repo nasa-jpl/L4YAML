@@ -1,0 +1,41 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerDanglingNodeRefusal</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerDanglingNodeRefusal";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerDanglingNodeRefusal</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerDanglingNodeRefusal.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/IndexedDispatch.html">L4YAML.Scanner.IndexedDispatch</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li><li><a href="../../.././L4YAML/Token/Token.html">L4YAML.Token.Token</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerDanglingNodeRefusal" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-dangling-node-run-refused-at-the-scanner-DOCS-item-133" class="markdown-heading">The dangling node run, refused at the scanner (DOCS item 133) <a class="hover-link" href="#The-dangling-node-run-refused-at-the-scanner-DOCS-item-133">#</a></h1><p>§9.2 <code>[211] l-yaml-stream</code> has no production for a node that belongs to nothing.
+A trailing <code>[96]* (scalar|alias)?</code> run whose START sits at an OPEN indent
+level's own column is exactly that shape: the level is already occupied by the
+collection that opened it, so the run is neither that collection's next key nor
+any indicator's content.  Item 119 measured the refusal as the parser's and
+named the migration M2; this is the landing.</p><p><code>scanNextToken_checkDanglingNode</code> runs BEFORE the structural dispatch — a
+dangler dies at a <code>...</code>/<code>---</code> too, and the marker would otherwise consume the
+step — and <code>scanLoop_checkDanglingNode</code> runs beside <code>scanLoop</code>'s other two final
+validations, for the run the stream itself ends.  The mid-stream check takes TWO
+states since item 140: the break off the landing, the RUN off the state the
+landing arrived with, because preprocessing's unwind displaces the run from the
+array it would otherwise be read in.  See
+<code><a href="../../.././Tests/Guards/Proofs/ScannerDanglingNodeDedent.html">Tests/Guards/Proofs/ScannerDanglingNodeDedent.lean</a></code>.</p><p><strong>What separates a dangler from a value is its PREDECESSOR</strong>, and the three that
+offer a slot are <code>YamlToken.offersNodeSlot</code>'s: <code>:</code>, <code>?</code> and <code>-</code>, whose own
+productions are followed by <code>s-l+block-node</code>/<code>s-l+block-indented</code>.  So <code>a:⏎b</code> is
+<code>{a: b}</code>, <code>?⏎b⏎: v</code> is the explicit key's content and <code>-⏎b</code> is the entry's,
+while <code>a: 1⏎b</code> has a finished scalar behind it and no slot at all.</p><p><strong>The mid-stream check needs the break; the EOF one does not.</strong>  A run still on
+its own line may yet be resolved by a <code>:</code> (<code>a: 1⏎b: 2</code> — <code>b</code> becomes a key), and
+<code>simpleKeyAllowed</code> is down there; at the end of input there is no <code>:</code> left to
+come, so the flag is not asked for.  §2 pins both arms.</p><p><strong>The position reported is the RUN's start, not the cursor's</strong> — that is where
+the offending node begins, and where the parser reported.  §4 pins it.</p><p>§1 types the check and the four ways it stands aside.  §2 is the refused family.
+§3 is the boundary.  §4 is the identity of the refusal.  §5 is the
+discrimination from M1 and M3.</p></div><div class="mod_doc"><h2 id="1-The-check-and-the-four-ways-it-stands-aside" class="markdown-heading">§1  The check, and the four ways it stands aside <a class="hover-link" href="#1-The-check-and-the-four-ways-it-stands-aside">#</a></h2></div><div class="mod_doc"><h2 id="2-The-family-the-check-refuses" class="markdown-heading">§2  The family the check refuses <a class="hover-link" href="#2-The-family-the-check-refuses">#</a></h2></div><div class="mod_doc"><h2 id="3-The-boundary-the-check-must-not-cross" class="markdown-heading">§3  The boundary the check must not cross <a class="hover-link" href="#3-The-boundary-the-check-must-not-cross">#</a></h2><p>Items 177/178 MOVED this boundary: the three offered predecessors' equal-column
+readings (<code>a:⏎b</code> = <code>{a: b}</code>, <code>?⏎b⏎: v</code>, <code>-⏎b</code>) were the slot exemption's own
+over-acceptances — <code>s-separate(n+1)</code> cannot reach the level's column — and
+they now refuse with the slot-less family's constructor and position; item 178
+folded the <code>[96]</code>-headed runs in behind the same separator (<code>k:⏎&amp;x a</code>,
+<code>-⏎&amp;x a</code>, <code>?⏎&amp;x a⏎: v</code>).  What the exemption keeps is the one run shape
+another reading owns (the props-less flow-close tail, item 172's floor), and
+the boundary the check must not cross is the rest of this section: keys the
+flag still allows, absorbed continuations, and every strictly deeper
+landing.</p></div><div class="mod_doc"><h2 id="4-The-refusal-is-the-SCANNER-s-and-it-names-the-RUN" class="markdown-heading">§4  The refusal is the SCANNER's, and it names the RUN <a class="hover-link" href="#4-The-refusal-is-the-SCANNER-s-and-it-names-the-RUN">#</a></h2></div><div class="mod_doc"><h2 id="5-The-discrimination-from-M1-and-M3" class="markdown-heading">§5  The discrimination from M1 and M3 <a class="hover-link" href="#5-The-discrimination-from-M1-and-M3">#</a></h2><pre><code>M1 (`ScannerBareDocumentRefusal`) is the completed ROOT document, where the
+indent stack is the sentinel alone; M2 is a run at an OPEN level's column.
+The two never overlap, because a column is a `Nat` and the sentinel's is
+`-1`.  M3 — the `-` at a mapping top's own column with the entry complete —
+landed at item 134, and this check stands aside on its whole family for the
+reason §1 gives: the trailing run's PREDECESSOR offers it a slot (`k` is the
+explicit key's content, `1` is `a`'s value), so nothing is dangling.  What
+has no slot is the `-` in front of it, and that is
+`scanBlockEntryValidate`'s question, not this one's.
+</code></pre></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

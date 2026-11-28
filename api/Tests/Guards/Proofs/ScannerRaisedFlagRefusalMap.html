@@ -1,0 +1,92 @@
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../../.././style.css"/><link rel="icon" href="../../.././favicon.svg"/><link rel="mask-icon" href="../../.././favicon.svg" color="#000000"/><link rel="prefetch" href="../../.././/declarations/declaration-data.bmp" as="image"/><title>Tests.Guards.Proofs.ScannerRaisedFlagRefusalMap</title><script defer="true" src="../../.././mathjax-config.js"></script><script defer="true" src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script><script defer="true" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script><script>const SITE_ROOT="../../.././";</script><script>const MODULE_NAME="Tests.Guards.Proofs.ScannerRaisedFlagRefusalMap";</script><script type="module" src="../../.././jump-src.js"></script><script type="module" src="../../.././search.js"></script><script type="module" src="../../.././expand-nav.js"></script><script type="module" src="../../.././how-about.js"></script><script type="module" src="../../.././instances.js"></script><script type="module" src="../../.././importedBy.js"></script></head><body><input id="nav_toggle" type="checkbox"/><header><h1><label for="nav_toggle"></label><span>Documentation</span></h1><h2 class="header_filename break_within"><span class="name">Tests</span>.<span class="name">Guards</span>.<span class="name">Proofs</span>.<span class="name">ScannerRaisedFlagRefusalMap</span></h2><form id="search_form"><input type="text" name="q" autocomplete="off"/>&#32;<button id="search_button" onclick="javascript: form.action='../../.././search.html';">Search</button></form></header><nav class="internal_nav"><p><a href="#top">return to top</a></p><p class="gh_nav_link"><a href="https://github.com/nasa-jpl/L4YAML/blob/d5cf364dd623863b4c4ccae06bb6753e2c12df72/Tests/Guards/Proofs/ScannerRaisedFlagRefusalMap.lean">source</a></p><div class="imports"><details><summary>Imports</summary><ul><li><a href="../../.././Init.html">Init</a></li><li><a href="../../.././L4YAML/Output/Events.html">L4YAML.Output.Events</a></li><li><a href="../../.././L4YAML/Output/EventsIx.html">L4YAML.Output.EventsIx</a></li><li><a href="../../.././L4YAML/Scanner/IndexedDispatch.html">L4YAML.Scanner.IndexedDispatch</a></li><li><a href="../../.././L4YAML/Scanner/Scanner.html">L4YAML.Scanner.Scanner</a></li></ul></details><details><summary>Imported by</summary><ul id="imported-by-Tests.Guards.Proofs.ScannerRaisedFlagRefusalMap" class="imported-by-list"></ul></details></div></nav><main><div class="mod_doc"><h1 id="The-raised-flag-refusal-map-DOCS-item-119" class="markdown-heading">The raised-flag refusal map (DOCS item 119) <a class="hover-link" href="#The-raised-flag-refusal-map-DOCS-item-119">#</a></h1><p>The tightening's last prerequisite (items 110/116–118) reads: where
+<code>documentEverStarted</code> is up and no suffix intervened, every input the
+fallback <code>.bare</code> sites still serve must be scanner-refused.  This item
+MEASURED that sentence instead of building on it, and the measurement
+repriced it:</p><p><strong>The §9.2 refusal lives in the parser, not the scanner.</strong>  Every family
+below scans clean in BOTH pipelines and dies downstream in
+<code>parseStreamLoop</code> (<code>StreamState.validNextToken</code>,
+<code><a href="../../.././Parser/TokenParser.html">Parser/TokenParser.lean</a></code>) or the emitters' twins — as
+<code>invalidBareDocument</code>, "expected '---' or '...' before new document".
+So the refusal half is a runtime MIGRATION — the scanner must learn the
+check — and it decomposes into exactly three mechanisms, each validated
+here against the runtime's own verdicts:</p><ul><li><strong>M1 — the completed root document</strong> (§2): block context, the indent
+stack at its sentinel alone, the last real token a flow close or a
+scalar of any style, and a line break crossed since its end.  Placed
+after the structural dispatch, so <code>---</code>/<code>...</code>/directives stay legal.
+Same-line junk is already refused (<code>validateFlowClose</code>,
+<code>validateTrailingContent</code> — §5); a root plain scalar completes only
+where its walk stops (a comment line), and the alias-as-root case is
+unreachable (<code>undefinedAlias</code> fires first).
+<strong>LANDED</strong> as <code>scanNextToken_checkBareDocument</code> (item 132), so §2's pins
+are <code>scannerRefuses</code> now — <code>ScannerBareDocumentRefusal</code> carries the
+mechanism's own boundary.  The break condition is read off
+<code>simpleKeyAllowed</code> rather than off the completing token's position: a
+scalar's <code>endPos</code> is not populated, so a line test on the TOKEN reads a
+multi-line scalar's START.</li><li><strong>M2 — the dangling node run at an open level's column</strong> (§3): a
+trailing token run <code>[anchor|tag]* (scalar|alias)?</code> whose start sits at
+an open indent level's exact column, whose structural predecessor is
+NOT <code>.value</code>/<code>.key</code>/<code>.blockEntry</code>, with a break crossed (or EOF, in
+<code>scanLoop</code>).  The three exempt predecessors are the equal-column value
+readings the pipeline ACCEPTS — <code>a:⏎b</code> = <code>{a: b}</code>, <code>?⏎b⏎: v</code>,
+<code>-⏎b</code> — pinned in §6.
+<strong>LANDED</strong> as <code>scanNextToken_checkDanglingNode</code> and its EOF twin
+<code>scanLoop_checkDanglingNode</code> (item 133), so §3's pins are
+<code>scannerRefuses</code> now — <code>ScannerDanglingNodeRefusal</code> carries the
+mechanism's own boundary.  The exempt predecessors are
+<code>YamlToken.offersNodeSlot</code>; the position reported is the RUN's start,
+which is where the parser reported.</li><li><strong>M3 — the <code>-</code> at a mapping top's own column</strong> (§4): valid iff a node
+is still awaited (the last real token, read past a <code>[96]</code> run, is one
+of <code>YamlToken.offersNodeSlot</code>'s) or a same-indent sequence is
+continuing (a <code>.blockEntry</code> at this column stands before any
+<code>.key</code>/<code>.value</code> at a column ≤ it, walking the array BACKWARD);
+otherwise refused.  <code>?</code> and <code>:</code> at the column open new entries and
+stay legal (§6).  <strong>LANDED</strong> as <code>scanBlockEntryValidate</code> (item 134),
+so §4's pins are <code>scannerRefuses</code> now, and
+<code>ScannerBlockEntryMappingIndent</code> carries the mechanism's own boundary
+— including the family this map did NOT record, a <code>-</code> at the column of
+a mapping COMPACT IN A SEQUENCE ENTRY (<code>- a: 1⏎␣␣- y</code>), which both
+pipelines ACCEPTED and which the check also closes.</li></ul><p>All three reuse <code>.invalidBareDocument</code>; on every probed input the
+parser's message AND position are what the scanner check would produce,
+so the migration is byte-invisible to the matrix and eventscore.  Item 132
+confirmed that for M1 by running its condition over the whole suite before
+editing the runtime: two tests reach it (BS4K, KS4U), both error tests,
+both with the identical message and position.</p><p><strong>The price, measured (and why this landed as a map, not a build).</strong>
+The emitter-scannability trees re-verify the scanning of emitted output
+through <code>scanNextToken</code>'s decomposition: the <code>scanNextToken_via_*</code>
+composition lemmas have ~105 call sites across ~20 files in the two
+trees, the <code>dispatchStructural</code>-shape facts ~145 references, and
+<code>scanBlockEntry</code> 276 references.  Every placement of a new refusal —
+a new bind in <code>scanNextToken</code>'s chain, a throw inside
+<code>dispatchStructural</code>, or one inside <code>scanBlockEntry</code> — lands its
+discharge burden on one of those ladders, a 100+-site absorption PER
+MECHANISM.  So the refusal half is at least three items (one mechanism
+plus its absorption each), not one, and this guard pins today's
+verdicts so each landing flips its section loudly and intentionally.
+M1's absorption, measured by building it and counting what the
+compiler asked for: <strong>41</strong> extra <code>split</code>s across <strong>24</strong> files that
+decompose <code>scanNextToken</code>/<code>scanNextTokenIx</code>, and <strong>56</strong> discharges across
+<strong>17</strong> files on the <code>via_*</code> ladder — which cost one ARGUMENT each rather
+than a proof, because those lemmas take the checks as premises and the
+converse extractor reads the new one off an <code>.ok</code> witness the site
+already holds.  So the "100+-site absorption per mechanism" above is the
+right order of magnitude and the right shape; what it is not is 100 sites
+of REASONING.  M2's (item 133) is 63 + 84, and the difference is the
+PLACEMENT: a bind before the structural dispatch lands in the preprocess
+arm of every chain decomposition, <code>scanLoop</code> included, while one after it
+is reached through a single <code>split</code>.</p><p>§2–§4 pin what WAS the gap (<code>parserGap</code>: both scanners accept, both
+pipelines refuse) and is now <code>scannerRefuses</code> throughout, the class
+itself pinned empty at the end of §4; §5 the neighbors the scanner
+already refused; §6 the valid boundary each mechanism must not cross.</p></div><div class="mod_doc"><p>§7 The props-only run whose structural predecessor is <code>.value</code>
+(<code>a:⏎&amp;p⏎- y</code>) refuses at §9.2's own check as of item 178 — the residue
+this section recorded is paid: the properties stand at the awaiting
+level's own column, behind the same <code>s-separate(n+1)</code> every scalar
+alternative spends, so the slot-offered exemption no longer covers a
+<code>[96]</code>-headed run and the refusal moved up from the parser's
+<code>trailing content</code> to <code>invalidBareDocument</code> at the run's start.  The
+root twin <code>&amp;p⏎c: 2</code> stays a legal anchored mapping: its predecessor
+offers no slot and no level is open at its column.</p></div><div class="mod_doc"><p>§8 A measured SCANNER asymmetry, found by these pins: same-line junk
+after a completed root flow close or quoted scalar is refused by the
+LEGACY scanner (<code>validateFlowClose</code> / <code>validateTrailingContent</code>) but
+accepted by the INDEXED one, which leaves it to the parser (verdict
+parity holds; the LAYER differs).  The comma twin is symmetric.  M1's
+landing inherits the indexed same-line boundary as its own obligation.</p></div></main><nav class="nav"><iframe src="../../.././navbar.html" class="navframe" frameBorder="0"></iframe></nav></body></html>

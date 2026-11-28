@@ -1,0 +1,24 @@
+=== derivingconsumer ===
+=== Deriving from a module consumer ===
+
+--- Parsing into private-named types ---
+  ✓ structure, required fields only
+  ✓ structure, optional field present
+  ✓ structure, missing required field is an error
+  ✓ enum, known constructor
+  ✓ enum, unknown constructor is an error
+  ✓ nested structure with an array of enums
+
+--- Dumping private-named types ---
+  ✓ structure fields in declaration order
+  ✓ enum as its constructor name
+  ✓ nested structure
+
+--- Round trip ---
+  ✓ private structure
+  ✓ private structure, optional field absent
+  ✓ private enum
+  ✓ private nested structure
+  ✓ public structure
+
+=== Results: 14/14 passed ===
