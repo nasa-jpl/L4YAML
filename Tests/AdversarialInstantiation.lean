@@ -18793,6 +18793,44 @@ def routeShapes (rows : List String) : RouteTally := Id.run do
     | .error _ => pure ()
   return t
 
+
+structure ReadyTally where
+  runs : Nat := 0
+  seed : Nat := 0
+  suffix : Nat := 0
+  other : List String := []
+  deriving Repr
+
+/-- Item 543 (review): `TDirReady` on the scanner's own tokens.  A `%` run is ready when the real token before
+it is `streamStart` (only `[202]*` behind it — `seed`) or `documentEnd` (a stream and `[205]+` — `suffix`);
+any other predecessor is a run only `implicitContinue` could have placed.  Predicted: none, over ≈ 45 runs. -/
+def dirReady (rows : List String) : ReadyTally := Id.run do
+  let mut t : ReadyTally := {}
+  for s in rows do
+    match scanFiltered s with
+    | .ok toks =>
+      let mut prev : Option L4YAML.YamlToken := none
+      for tk in toks.toList do
+        if P119.isPlaceholder tk.val then continue
+        if isDirective tk.val then
+          match prev with
+          | some (.tagDirective _ _) | some (.versionDirective _ _) => pure ()
+          | some .streamStart => t := { t with runs := t.runs + 1, seed := t.seed + 1 }
+          | some .documentEnd => t := { t with runs := t.runs + 1, suffix := t.suffix + 1 }
+          | _ => t := { t with runs := t.runs + 1, other := t.other ++ [s] }
+        prev := some tk.val
+    | .error _ => pure ()
+  return t
+
+/-- Concrete rows for `TDirReady`: stream start, a comment first, after a bare document's `...`, after a leading
+`...`, and after `...` then a comment. -/
+def readyRows : List String :=
+  ["%TAG !a! x\n---\n", "# c\n%YAML 1.2\n---\n", "a\n...\n%TAG !a! x\n---\nb", "...\n%TAG !a! x\n---\n",
+   "a: b\n...\n# c\n%TAG !a! x\n---\n"]
+
+/-- Rows where a `%` line follows content with no `...`: no directive token may come out of them. -/
+def unreadyRows : List String :=
+  ["---\n%TAG !a! x\n", "a\n%TAG !a! x\n---\nb", "--- a\n%TAG !a! x\n", "- a\n%TAG !a! x\n---\n"]
 end P135
 
 namespace P136
@@ -20312,6 +20350,21 @@ def testStreamPrefix (state : IO.Ref TestCollector) : IO Unit := do
   -- the `---`-opened documents, P3's 115) — HELD on the rest: 38 with declarations, 97 `endDocument`s, 115 / 115 shaped.
   check state "P135 routes: 115 documents, 38 carry declarations, 97 endDocuments"
     (r.docs == 115 && r.withDecls == 38 && r.endDocs == 97)
+  let d := P135.dirReady (P113.allRows ++ P118.extraRows ++ P135.extraRows ++ P135.readyRows ++ P135.unreadyRows)
+  IO.println s!"P135 ready {repr d}"
+  IO.println s!"P135 ready rows {repr (P135.readyRows.map fun s => let r := P135.dirReady [s]; (r.seed, r.suffix, r.other.length))}"
+  IO.println s!"P135 unready rows {repr (P135.unreadyRows.map fun s => ((scanFiltered s).toOption.isSome, (P135.dirReady [s]).runs))}"
+  check state "P135 ready: every % run starts behind streamStart or documentEnd" (d.other.isEmpty)
+  -- Scored (item 543's P8–P10, filed before the run): P8 HELD on `other = 0`, REFUTED on the counts (60 runs, 48 seed / 12 suffix, not ≈ 45 / 35 / 10);
+  -- P9 REFUTED on "a⏎%TAG !a! x⏎---⏎b" — accepted, the `%` line is the plain scalar's continuation, no directive
+  -- token — HELD on the other three; P10 HELD.
+  check state "P135 ready: 60 runs, 48 seed / 12 suffix" (d.runs == 60 && d.seed == 48 && d.suffix == 12)
+  check state "P135 ready rows: seed, seed, suffix, suffix, suffix"
+    ((P135.readyRows.map fun s => let r := P135.dirReady [s]; (r.seed, r.suffix, r.other.length))
+      == [(1, 0, 0), (1, 0, 0), (0, 1, 0), (0, 1, 0), (0, 1, 0)])
+  check state "P135 unready rows: refused or no directive token"
+    ((P135.unreadyRows.map fun s => ((scanFiltered s).toOption.isSome, (P135.dirReady [s]).runs))
+      == [(false, 0), (true, 0), (true, 0), (false, 0)])
   check state "P135 the three refused rows"
     ((P135.extraRows.filter fun s => (scanFiltered s).toOption.isNone) == ["%TAG !a! x\n...", "%TAG !a! x", "---\n%TAG !a! x\n"])
 end P135Test
