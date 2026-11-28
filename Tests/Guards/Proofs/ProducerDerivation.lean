@@ -262,6 +262,10 @@ def readDecl (n : Name) : MetaM Readings := do
 -- take a `ScannerSurfCorr` hypothesis), streamConcl 87 → 88 / both 40 → 41 (the renamed body concludes the stream).
 -- 2026-11-17 (item 522): `accum_step_key_pairK` holds `ScannerSurfCorr` and concludes `SLYamlStream` (corrHyp / streamConcl /
 -- both +1; the producer's thread prodThread 23 → 24, withCorr 18 → 19; against T prodInT 14 → 15, union 27 → 28).
+-- 2026-11-26 (actual marked-column correspondence):
+-- The unused off-column wrapper leaves the producer ring; the consumed actual-column lemma and helper retirement remeasure the authored population.
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedCensus : String :=
 -- 2026-10-23 ([147] glued value): corrHyp 545 → 546 — `flowGluedCollectionValue_false_of_corr_colon_blank` reads
 -- the `": "` surface through a `ScannerSurfCorr` hypothesis; the thread, held and pair rows are unchanged.
@@ -307,9 +311,7 @@ def expectedCensus : String :=
 -- hold `ScannerSurfCorr`, were three); they conclude the T pair, not `SLYamlStream`.
 -- 2026-11-24 (item 535): corrHyp 643 → 635 — the eight dispatcher-arm corollaries of `ScannerShape` (`dispatchStructural_*_trace` ×3,
 -- `dispatchFlowIndicators_*_trace` ×5) are deleted: each held `ScannerSurfCorr`, no constant and no `example` referenced them.
--- 2026-11-25 (item 538, β PR 7): corrHyp 635 → 636 — `TPendingNode.question_step` (StreamBridge) holds `hcorr`: the `?` step,
--- the twin of `question_open_map`; unreached until the depth-0 fold.
-  "corrHyp=636 streamConcl=92 both=45 free=0 pairConcl=1 held=3 pairAny=8"
+  "corrHyp=635 streamConcl=91 both=44 free=0 pairConcl=1 held=3 pairAny=8"
 
 /-- The one conclusion that pairs them, and it is the stream's origin. -/
 def expectedSeedConcl : List Name :=
@@ -334,7 +336,7 @@ def expectedHeldOnThreads : String := "onProdThread=0 onThread=0"
 -- 2026-11-11 (item 484, ContentArm): prodThread 20 → 21, rings 8 → 9, withCorr 15 → 16 — `accum_step_content_core`
 -- (the renamed body) sits one ring below its `accum_step_content` wrapper and carries the same correspondences.
 def expectedProdThread : String :=
-  "prodThread=24 rings=9 withCorr=19 covered=0"  -- 2026-11-13 (item 489): +1 with the thread, `accum_step_content_pairB` holds `h_corr`; 2026-11-14 (item 490): +1, `accum_step_content_pairK` holds `h_corr`
+  "prodThread=23 rings=9 withCorr=18 covered=0"  -- 2026-11-13 (item 489): +1 with the thread, `accum_step_content_pairB` holds `h_corr`; 2026-11-14 (item 490): +1, `accum_step_content_pairK` holds `h_corr`
 
 /-- The first ring — the four definitions `--end producer` breaks, which is
     the same four this walk reads.
@@ -347,8 +349,7 @@ def expectedProdThread : String :=
 def expectedProdRing1 : List Name :=
   [`L4YAML.Proofs.StreamAccum.accum_content_pending,
    `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline,
-   `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack,
-   `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol]
+   `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack]
 
 /-- **The producer's thread leaves β.5's bill and the supplier's does not.**
     Item 240 measured `thread \ T = []`; this is the other side. -/
@@ -357,7 +358,7 @@ def expectedProdRing1 : List Name :=
 -- producer's own rows are unchanged.
 -- 2026-11-11 (item 484): `accum_step_content_core` joins both the producer's thread and T (prodInT=11 prodOutsideT=9 union=23 unionOutsideT=9 → prodInT=12 prodOutsideT=9 union=24 unionOutsideT=9).
 -- 2026-11-15 (item 520): union 26 → 27 — `accum_step_flow_pairK` joins the thread ∪ producers set inside T.
-def expectedProdInT : String := "prodInT=15 prodOutsideT=9 union=28 unionOutsideT=9"  -- 2026-11-13 (item 489): +1 in T with the thread; 2026-11-14 (item 490): +1 (`accum_step_content_pairK`)
+def expectedProdInT : String := "prodInT=15 prodOutsideT=8 union=27 unionOutsideT=8"  -- 2026-11-13 (item 489): +1 in T with the thread; 2026-11-14 (item 490): +1 (`accum_step_content_pairK`)
 
 /-- **The ~~seven~~ nine, named.**  Three wrappers that partition the escape's
     own applications, four `accum_block_on_*` arms, and (DOCS item 287) the two
@@ -374,7 +375,6 @@ def expectedProdOutsideT : List Name :=
    `L4YAML.Proofs.StreamAccum.accum_block_on_pendingContent,
    `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline,
    `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack,
-   `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol,
    `L4YAML.Proofs.StreamAccum.colon_fires_implicit_key,
    `L4YAML.Proofs.StreamAccum.colon_fires_props_key]
 

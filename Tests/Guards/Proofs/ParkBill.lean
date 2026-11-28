@@ -148,6 +148,8 @@ capstonesInTp={b.capstonesInTrans.size}"
     260 on 2026-10-23 (after `Serialization.EventsOf` and `RefLex`), when `Proofs.Production.Acceptance.Quoted` joined the
     library — the one-line quoted-scalar scanner converses. -/
 -- +1 on 2026-11-18: `Proofs.Serialization.TraceOf.StreamBridge` (S3 slice (4) PR 17, item 527, the depth-0 pending node's T twin).
+-- 2026-11-26 (actual marked-column correspondence):
+-- Recount the proof closure after retiring the off-column wrapper and singleton helper; no library import or toolchain changes.
 def expectedClosure : Nat := 288  -- -1 on 2026-11-14: `Proofs.Scanner.StructDepth` deleted (items 446–452's unreached scanner facts; the owner's ruling)
 --  -- +1 on 2026-11-12: `Proofs.Serialization.TraceOf.ContentBridge` (S3 slice (4) PR 1, item 486); 287 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowWalk` (S3 slice (3) PR 2a, item 466); 286 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.DocBridge` (S3 slice (2)); 284 was +1 on 2026-11-08: `Proofs.Serialization.TraceOf.LeafBridge` (S3 slice (1)); 283 was +1 on 2026-11-08: `Proofs.Scanner.StructDepth` ((γ1)); 282 was +1 on 2026-11-08: `Proofs.Scanner.TagShape` (S3 (a)); 281 was +1 on 2026-11-07: `Proofs.Scanner.DocStartLiveInv` (S3 (β2b)); 280 was +1 on 2026-11-07: `Proofs.Scanner.FlowSync` (S3 (β2a)); 279 was +1 `Proofs.Scanner.DocStartLive` (S3 (β1)); 278 was +3 on 2026-11-05: `Proofs.Scanner.ScannerDirectivesPresent`, `Proofs.Scanner.DirectiveRuns`,
   -- +1 on 2026-11-08: `Proofs.Serialization.TraceOf.FlowBridge` (S3 slice (3) first PR, item 464)
@@ -168,7 +170,7 @@ def expectedClosure : Nat := 288  -- -1 on 2026-11-14: `Proofs.Scanner.StructDep
 def expectedBill : String :=
 -- 2026-11-15 (item 520): Tp 38 → 39, T 30 → 31, shared 23 → 24; holders elsewhere dn/mid 11 → 12, fv/mid 13 → 14 —
 -- `accum_step_flow_pairK` holds `h_dn` / `h_fv` mid-stream for `accum_step_flow`, as `accum_step_content_pairK` does.
-  "Dp=11 Sp=0 Tp=40 T=32 shared=25 extra=15 capstonesInTp=2"
+  "Dp=11 Sp=0 Tp=39 T=32 shared=25 extra=14 capstonesInTp=2"
 
 /-- Names the park in a PROOF TERM — builders and case splits together, which
     no syntactic reading separates (item 240).  **Seven of the nine break and

@@ -279,7 +279,12 @@ def surfaceControl : CommandElabM (Array String) := do
 -- 2026-10-29 (item 394, option B): FlowBaseRoutes.valueF's frame list now occurs three
 -- times in its position (Floor, Covered, the resume route) instead of once — two
 -- stream/frames positions move occ=1 → occ=3 (×5 → ×3, ×7 → ×9).
+-- 2026-11-26 (actual marked-column correspondence):
+-- Both formerly free value-pack lists retain MarkedColsIn sc ns, tying their indices to the actual scanner state.
 def expected : List String :=
+  -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` and its two close relays read `ResumeFrames (SLYamlStream sp_start) ks` once each (×3 → ×5).
+  -- 2026-10-30 (item 405, Rule 8 fix): `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` re-indexed by the projection `markedCols sc` (no `∃ ns` binder): the ten `⟨nv0 :: ns, …⟩` relays into the `∃ ns` faces now pass `markedCols sc`, so the stream-class binders read twice fall 26 → 16.
+  -- Item 519: two `∃ ns : List Nat` stream-lane occurrences gone with `FlowBaseRoutes.vslot`'s restatement (6 → 4).
   ["seq/bottom/occ=1  ×9",
    "seq/frames/occ=2  ×9",
    "seq/other/occ=2  ×3",
@@ -291,8 +296,8 @@ def expected : List String :=
    "stream/frames/occ=5  ×6",
   -- 2026-10-30 (item 405, Rule 8 fix): `pendingBlock.h_kslot`/`pendingBlockContent.h_kslot` re-indexed by the projection `markedCols sc` (no `∃ ns` binder): the ten `⟨nv0 :: ns, …⟩` relays into the `∃ ns` faces now pass `markedCols sc`, so the stream-class binders read twice fall 26 → 16.
 -- Item 519: two `∃ ns : List Nat` stream-lane occurrences gone with `FlowBaseRoutes.vslot`'s restatement (6 → 4).
-   "stream/other/occ=1  ×4",
-   "stream/other/occ=2  ×29",
+   "stream/other/occ=1  ×2",
+   "stream/other/occ=2  ×31",
    "stream/other/occ=3  ×1",
    "stream/other/occ=4  ×5",
    "stream/other/occ=6  ×1",

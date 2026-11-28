@@ -832,6 +832,8 @@ sixth component (`nodes` 95163 → 96024). -/
 -- 2026-10-29 (item 394, option B): accum_step_flow's two h_framesS relays now carry the cover
 -- from valueF (paid, not punted); accum_content_pending's h_fS local re-read with the restated
 -- h_closeF cover (`∃ lo, Floor lo n ks`).
+-- 2026-11-26 (actual marked-column correspondence):
+-- The two block-consumer off-column feeds disappear: the watched sites are 8 → 6; the inline equality follows those sites.
 def expectedRows : List String :=
   ["accum_block_on_closeThenBlock #1 param:landing_frame_of_cover.h_cov := via:Covered.of_indents_eq(via:IndentStackCover.preprocess_cover(relay(λ:h✝)))",
    "accum_block_on_closeThenBlock #1 fn:accum_block_on_closeThenBlock.h_cov_step := via:IndentStackCover.scanBlockEntry_cover(via:Covered.of_indents_eq(via:IndentStackCover.preprocess_cover(relay(fnp:accum_block_on_closeThenBlock.h_cov_step.hc))))",
@@ -981,11 +983,9 @@ def expectedEight : List String :=
   -- (`h_lvl_old`, `IndentFloor`'s second conjunct) beside the top's bound (`h_top_old`).
   ["accum_block_on_pendingBlock indicator_open_map.h_stream_land indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
    "accum_block_on_pendingBlock colon_open_map_explicit.h_stream_mid indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
-   "accum_block_on_pendingBlock block_dispatch_deferred_stamp_offcol.h_stream indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
    "accum_block_on_pendingBlock block_dispatch_deferred_stamp_nopack.h_stream indents=0 top=2(h_top_old,h_lvl_old) floor=0 minCI=0 nic=1(h_nic_old) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeFV_old@2,h_closeF_old@2)",
    "accum_block_on_pendingBlockContent indicator_open_map.h_stream_land indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
    "accum_block_on_pendingBlockContent colon_open_map_explicit.h_stream_mid indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
-   "accum_block_on_pendingBlockContent block_dispatch_deferred_stamp_offcol.h_stream indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)",
    "accum_block_on_pendingBlockContent block_dispatch_deferred_stamp_nopack.h_stream indents=0 top=0 floor=0 minCI=0 nic=1(h_nic0) prep=1(h_preprocess) base=1(h_base) mono=1(h_mono) cover=2(h_closeF_old@2,h_closeFV_old@2)"]
 -- 2026-10-26 (item 369): the `-` park's `h_closeF` now feeds `accum_block_on_pendingBlock` (was dropped).
 -- 2026-10-29 (item 394, option B): +1 door — accum_flow_open_depth0 reads pendingMapValue.h_closeF's
@@ -1153,8 +1153,6 @@ def expectedDoor : List String :=
 -- Item 508 (2026-11-14): nodes 124521 → 124529 — the two entry producers took the `h_dead`
 -- premise (one binder each on the walked headers); every other field unchanged.
 -- 2026-11-17 (item 520, rebased over item 521 + review round 1): nodes 123,560 → 125,681 (round 2: the stamp witnesses and their readers gone) — `accum_step_flow_pairK`'s proof term joins the walk; the base-mask witness reads each arm's own stamps (round 1); every structural field unmoved.
--- 2026-11-26: nodes 125681 → 125693, measured after the root key-slot
--- payment from actual marked columns. All structural fields and cover rows match.
 def expectedLine : String :=
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); nodes 117690 → 117529 (walked-term total; the `elim[punt|punt]` face rows unchanged).
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`); the three `match h_kslot_* with` blocks go — nodes 117529 → 117431 (walked-term total).
@@ -1171,7 +1169,7 @@ def expectedLine : String :=
   -- `closeThenBlock`'s `ResumeFrames.strict` read off the empty-value close; no row of this guard moved.
 -- Item 519: `nodes` 124487 → 124358 (123677 before the review round: the `pendingBlock` / `pendingMapValue` writers keep the ancestors' covers and `h_expl` as fallback funders, read in order) — the depth-0 open's three `frameChainUnion` ladders are gone
 -- (`FlowBaseRoutes.vslot` every-mark); no row, door or leaf moved.
-  "positions=24 ctorFields=7 lemParams=23 lemmas=19 walked=26 doors=9 rows=125 ctorRows=49 lemRows=47 localRows=4 fnRows=19 fnpRows=4 valRows=2 coverTypes=5 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=8 eightPB=4 eightPBC=4 eightIndents=0 eightTop=4 eightFloor=0 eightMinCI=0 eightNic=8 eightPrep=8 eightCover=8 doorUses=49 doorKept=9 doorForgotten=17 doorDropped=23 doorsOther=5 nodes=125599"
+  "positions=24 ctorFields=7 lemParams=23 lemmas=19 walked=26 doors=9 rows=125 ctorRows=49 lemRows=47 localRows=4 fnRows=19 fnpRows=4 valRows=2 coverTypes=5 mentions=0 pbc=6 pbcRelay=6 pbcPaid=0 pbcPunt=0 pbcCoverPunt=0 pb=7 pbRelay=3 pbPaid=4 pbPunt=0 pbCoverPunt=0 pmv=6 pmvRelay=4 pmvPaid=1 pmvPunt=0 pmvCoverPunt=1 valF=11 valFRelay=2 valFPaid=0 valFPunt=9 contentPaid=6 contentPunt=13 contentCoverPunt=4 contentLemma=0 contentOpen=2 contentPos=17 entryPaid=6 entryPunt=13 entryCoverPunt=4 entryLemma=0 entryOpen=2 entryPos=17 eight=6 eightPB=3 eightPBC=3 eightIndents=0 eightTop=3 eightFloor=0 eightMinCI=0 eightNic=6 eightPrep=6 eightCover=6 doorUses=49 doorKept=9 doorForgotten=17 doorDropped=23 doorsOther=5 nodes=126457"
 
 /-! ## §6 The reading -/
 
@@ -1249,7 +1247,7 @@ run_cmd Lean.Elab.Command.liftTermElabM do
   posLines := posLines.qsort (· < ·)
   -- the eight's feeds
   for (l, p) in [(``indicator_open_map, `h_stream_land), (``colon_open_map_explicit, `h_stream_mid),
-      (``block_dispatch_deferred_stamp_offcol, `h_stream), (``block_dispatch_deferred_stamp_nopack, `h_stream)] do
+      (``block_dispatch_deferred_stamp_nopack, `h_stream)] do
     let some ci := env.find? l | throwError "{l}: missing"
     let some idx := ci.type.getForallBinderNames.toArray.findIdx? (· == p) | throwError "{l}.{p}: missing"
     cd := { cd with funnels := cd.funnels.insert l (idx, p), consts := cd.consts.insert l }
@@ -1346,7 +1344,7 @@ doorUses={doorLines.size} doorKept={doorKept} doorForgotten={doorForgotten} door
     let extraL := gotL.filter fun g => !exp.contains g
     unless missingL.isEmpty && extraL.isEmpty && gotL.size == exp.length do
       throwError "{name}: pinned {exp.length}, got {gotL.size}; missing {missingL}; extra {extraL.toList}"
-  unless w.eight.size == 8 do throwError "item 252's eight moved under this pass: eight={w.eight.size}"
+  unless w.eight.size == 6 do throwError "item 252's eight moved under this pass: eight={w.eight.size}"
   check "expectedRows" rowLines expectedRows
   check "expectedTrees" treeLines expectedTrees
   check "expectedEight" eightLines expectedEight

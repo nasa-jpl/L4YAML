@@ -298,9 +298,11 @@ is `colon_fires_implicit_key` alone.  Disjoint readers, from the term. -/
 -- `PackAltG g`); the rows are re-indexed, the verdicts stand (the index is fixed in the table below, the name is printed from it).
 -- 2026-10-24 (B3 [66] col-0 threading): `preprocess_flow_thread#9 (h_park)` READ → RELAY: the
 -- park is now handed on to the `sp_gram`-stated step frames instead of being destructured here.
+-- The retired off-column wrapper is now a private adversarial test, outside this library calibration.
+-- 2026-11-26 (actual marked-column correspondence):
+-- State coverage is retained through both value-pack interfaces; the retired off-column wrapper leaves the calibration and reader population.
 def expectedCalibration : List String :=
   [ "FIELD block_dispatch_deferred#5 (h_arm)",
-    "RELAY block_dispatch_deferred_stamp_offcol#8 (h_arm)",
     "RELAY block_dispatch_deferred_stamp_nopack#7 (h_arm)",
     "RELAY block_dispatch_deferred_inline#7 (h_arm)",
     "RELAY accum_block_on_closeThenBlock#17 (h_park)",
@@ -320,7 +322,6 @@ run_cmd do
   let env ← getEnv
   let rows : List (Name × Nat × Name) :=
     [ (``block_dispatch_deferred, 5, `h_arm),
-      (``block_dispatch_deferred_stamp_offcol, 8, `h_arm),
       (``block_dispatch_deferred_stamp_nopack, 7, `h_arm),
       (``block_dispatch_deferred_inline, 7, `h_arm),
       (``accum_block_on_closeThenBlock, 17, `h_park),
@@ -644,9 +645,6 @@ adds.**   `constants` counts the module's non-internal constants, generated ones
 -- `scanValue_km_transport` join the walk; `KeyArm.colonQuestion.h_lead` loses its `∨ sp_prep = sp_flow` disjunct.
 -- 2026-11-17 (item 524, the deletion): constants 1763 → 1760, decls 1393 → 1391, RELAY 2917 → 2913 — the three `StreamAccum`
 -- preservation lemmas deleted on the owner's ruling (item 520's roster); eta / FIELD / READ unmoved.
--- 2026-11-26: RELAY +1 measured by the compiler: the existing h_sound
--- invariant is passed from accum_block_pending to accum_block_on_noPending
--- to pay the root key-slot supply. No declaration or UNUSED count changes.
 def expectedModuleTally : String :=
   -- 2026-10-26 (item 365): RELAY 2830 → 2836 — `h_sound` ×3, `h_fl0` ×2 and `h_alt` ×1 passed whole from
   -- `accum_step_content`/`accum_content_pending`/the `_indented` pair to the content lane's payers.
@@ -658,8 +656,7 @@ def expectedModuleTally : String :=
   -- 2026-11-22 (Lean v4.36.0): constants 1760 → 1747 and nothing else. The thirteen are generated equation lemmas
   -- v4.35.0 realized in this module and v4.36.0 does not: `FrameTail.leadFree.match_1.eq_1..4`,
   -- `propertyScanFollowerOk.match_1.eq_1..2`, `SNbDoubleText.match_1.eq_1..6`, `propsBlockLineCrossLoop.eq_def`.
-  "constants=1742 decls=1386 eta=611 FIELD=175 READ=1400 RELAY=2915 RETURN=57 \
-UNUSED=27"
+  "constants=1740 decls=1384 eta=611 FIELD=175 READ=1399 RELAY=2910 RETURN=57 UNUSED=24"
 -- 2026-10-25 (#112 review): the `FlowStackK` `MarkedColsIn` carrier reverted (Rule 8: a projection of the closed state is decided at the close by `Classical.em`); the two transport helpers and `h_pk'` go (constants 1683 → 1681, decls 1322 → 1320, READ 1325 → 1323, RELAY 2838 → 2830); `Mono sc` stays on `accum_step_flow`.
 -- 2026-10-25 (item 363): the flow OPEN lane read off the block state (`h_refused`, one `Classical.em`; five `match` blocks deleted): the five deleted `match` auxiliaries: constants 1681 → 1676, decls 1320 → 1315, READ 1323 → 1306.
 
@@ -675,33 +672,30 @@ def expectedUnused : List String :=
   -- its thirteenth binder.
   -- Item 519: `accum_step_flow`'s `h_mono` is read by nothing now — its only readers were the four flow-close
   -- `Classical.em` splits on the closed state's marks (`PendingKeySound.preprocess_sound`), PAID from `vslot`.
-  [ "accum_step_flow#15 (h_mono)",
-    "block_dispatch_deferred_inline#12 (_h_res)",
-    "block_dispatch_deferred_stamp_nopack#10 (_h_src)",
-    "block_dispatch_deferred_stamp_nopack#11 (_h_indent)",
-    "block_dispatch_deferred_stamp_nopack#12 (_h_park)",
-    "block_dispatch_deferred_stamp_offcol#11 (_h_src)",
-    "block_dispatch_deferred_stamp_offcol#12 (_h_indent)",
-    "block_dispatch_deferred_stamp_offcol#13 (_h_ne)",
-    "flowKeyPack_of_close#11 (_)",
-    "ofGateClose#2 (_h)",
-    "ofPark#2 (_h)",
-    "ofRefused#1 (_h)",
-    "park_gate_of_peek#2 (_)",
-    "step_blockEntry#3 (_h_preprocess)",
-    "step_blockEntry#4 (_h_dispatch)",
-    "step_blockEntry#5 (_h)",
-    "step_content#4 (_h_preprocess)",
-    "step_content#5 (_h_dispatch)",
-    "step_content#6 (_h)",
-    "step_dispatch#3 (_h_dispatch)",
-    "step_dispatch#4 (_h)",
-    "step_preprocess#3 (_h_preprocess)",
-    "step_preprocess#4 (_h)",
-    "step_value#3 (_h_preprocess)",
-    "step_value#4 (_h_dispatch)",
-    "step_value#5 (_h_noflow)",
-    "step_value#6 (_h)" ]
+  ["accum_step_flow#15 (h_mono)",
+   "block_dispatch_deferred_inline#12 (_h_res)",
+   "block_dispatch_deferred_stamp_nopack#10 (_h_src)",
+   "block_dispatch_deferred_stamp_nopack#11 (_h_indent)",
+   "block_dispatch_deferred_stamp_nopack#12 (_h_park)",
+   "flowKeyPack_of_close#11 (_)",
+   "ofGateClose#2 (_h)",
+   "ofPark#2 (_h)",
+   "ofRefused#1 (_h)",
+   "park_gate_of_peek#2 (_)",
+   "step_blockEntry#3 (_h_preprocess)",
+   "step_blockEntry#4 (_h_dispatch)",
+   "step_blockEntry#5 (_h)",
+   "step_content#4 (_h_preprocess)",
+   "step_content#5 (_h_dispatch)",
+   "step_content#6 (_h)",
+   "step_dispatch#3 (_h_dispatch)",
+   "step_dispatch#4 (_h)",
+   "step_preprocess#3 (_h_preprocess)",
+   "step_preprocess#4 (_h)",
+   "step_value#3 (_h_preprocess)",
+   "step_value#4 (_h_dispatch)",
+   "step_value#5 (_h_noflow)",
+   "step_value#6 (_h)"]
 
 run_cmd do
   let env ← getEnv

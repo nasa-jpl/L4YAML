@@ -300,7 +300,9 @@ def isSurfFace (env : Environment) (lhs : Expr) : MetaM Bool := do
 -- one strict head shape fewer; binders/faces unchanged.
 -- 2026-11-17 (item 520, review round 2): `flowOpen_stamp` / `flowOpen_marker` and the stamp / marker readers deleted with
 -- `KmSound`'s base-slot `∨ True` conjuncts.
-def expectedFaceTally : String := "binders=158 faces=63 heads=18"
+-- 2026-11-26 (actual marked-column correspondence):
+-- Two free-chain faces now carry MarkedColsIn (6 → 4); the retired library helpers leave the authored theorem population.
+def expectedFaceTally : String := "binders=158 faces=62 heads=18"
 
 /-- The conclusion head of every left disjunct.  `FVAR 2` is `frameChainUnion`,
     whose face is schematic in `P` — the two rows no census of any kind can
@@ -324,6 +326,12 @@ def expectedHeadCensus : List String :=
   -- three restating premises, `≤` on `closeThenBlock`'s `h_valFV`) is that conjunct at six sites.
   -- Item 350: `GLit 4` left — the four `GLit '?'` faces were `h_expl`/`h_explUp`'s optional reading;
   -- the field is required now (its alternative is `NotQuestionPark sc`, paid by the `:` producers).
+  -- Item 409 (2026-10-30): the pack faces carry a `MarkedColsIn` head (+2); `explFrameValueLine`'s
+  -- three `ResumeFrames` heads are gone (18 → 15).
+  -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
+  -- conclusion is a singleton `ResumeFrames` over the stream.
+  -- 2026-11-10 (item 473, option (A)): `lt 26` + `le 15` → `le 41`: no strict width head remains — the level
+  -- constructors, the park faces and the in-proof ascriptions all read `≤`.
   ["BareLandingFacts 7",
    "CompletedTail 4",
    "Covered 3",
@@ -335,13 +343,13 @@ def expectedHeadCensus : List String :=
    "KeyFrames 2",
    -- Item 409 (2026-10-30): the pack faces carry a `MarkedColsIn` head (+2); `explFrameValueLine`'s
    -- three `ResumeFrames` heads are gone (18 → 15).
-   "MarkedColsIn 18",
+   "MarkedColsIn 20",
    "MarkerNodeRoute 5",
    "Mono 4",
    "PropsNodeRoute 4",
    -- 2026-10-27 (item 371): ResumeFrames 3 → 18, SLYamlStream 20 → 5 — every value-line pack's
    -- conclusion is a singleton `ResumeFrames` over the stream.
-   "ResumeFrames 15",
+   "ResumeFrames 13",
    "SLYamlStream 5",
    "SeqEntryTail 1",
    "SuffixRun 6",
@@ -374,12 +382,9 @@ def expectedChainFaces : List String :=
   -- Item 357: the marked-column domain reaches the `:`/`?` producers (`h_kslotD`, `h_explUp_chainD`) and the
   -- block-step `h_kslotUp` twins; the rung-1 faces read off the build.
 -- Item 519: `FlowBaseRoutes.mk#9 (vslot)` left the rung-1 chain faces — its free `∃ ns` is gone (`∀ nv ∈ markedCols s0`).
-  [
-   "accum_block_on_closeThenBlock#10 (h_vpack)",
-   "accum_block_on_pendingContent#16 (h_vpack)",
-   -- Item 409 (2026-10-30): the two `h_nodeV` faces left rung 1 (they carry `MarkedColsIn` now);
-   -- `explFrameValueLine` deleted (11 → 8).
-   "frameChainUnion#2 (h₁)",
+  -- Item 409 (2026-10-30): the two `h_nodeV` faces left rung 1 (they carry `MarkedColsIn` now);
+  -- `explFrameValueLine` deleted (11 → 8).
+  ["frameChainUnion#2 (h₁)",
    "frameChainUnion#3 (h₂)",
    "indicator_open_map#29 (h_explUp_chain)",
    "question_open_map#26 (h_explUp_chain)"]
@@ -919,7 +924,7 @@ one unfolding, and §6 is the item where those two disagreed about binders. -/
 -- 2026-11-22 (Lean v4.36.0): theorems 6450 → 6422, the no-op readings unmoved. The 28 are generated theorems v4.35.0 realized
 -- and v4.36.0 does not: 26 `eq_def` unfold lemmas (the `YamlValue.resolveAliases*` / `adaptForFlowContext` / `stripAnchors` and
 -- `Grammar.toYamlValue` / `stripAnnotations` families, `Emit.emit`, three scanner loops, …) and `ValidNode.plainScalar{Block,Flow}.congr_simp`.
-def expectedNoopTally : String := "theorems=6422 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
+def expectedNoopTally : String := "theorems=6421 byElab=14 byWhnf=14 elabOnly=0 whnfOnly=0"
 -- 5302 → 5344 on 2026-10-18 (plan row 20's close, closure-log item 280): the
 -- parse-side alias obligation moved to §7.1's DECLARATION set, so the carrier
 -- grew and the predicate gained its tools.  What is new in kind: `AG` carries

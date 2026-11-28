@@ -15,6 +15,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 /-! # The block-indicator escape, by CLASS and by ROUTE (DOCS items 184–203)
 
+The off-column class is retired from the library: its actual-column witness
+now comes from scanner state. The old interface is retained below as a private
+adversarial control, together with its singleton-chain helper.
+
 `block_dispatch_deferred` is `PendingNode.pendingFlow`'s only producer, so
 R3 — row 12's β.5 deletion — is the emptying of this escape.  Its applications
 have been counted since item 183 (`FlipConsumerSurface`, FOUR definitions and
@@ -149,6 +153,38 @@ open L4YAML L4YAML.Scanner L4YAML.Surface L4YAML.Proofs.StreamAccum
   L4YAML.Proofs.CouplingBridge
 open L4YAML.Proofs.IndentStackCover (FrameLevel)
 
+/- The old free-domain witnesses remain local to these adversarial controls.
+   Production consumers now use actual marked-column coverage. -/
+private lemma frameChainOneTest {P : Nat → Prop} {a : Nat} (ha : P a) : ∀ x ∈ [a], P x := by
+  rintro x hx
+  rcases List.mem_cons.mp hx with rfl | hx'
+  · exact ha
+  · exact absurd hx' List.not_mem_nil
+
+private lemma stampOffcolTest
+    (sp_start sp_X sp_scan' : SurfPos) (s' : ScannerState) {s_dis : ScannerState}
+    {ns : List Nat} {k : Nat}
+    (h_stream : SLYamlStream sp_start sp_X)
+    (h_arm : (s'.simpleKeyAllowed = true ∧ s'.simpleKey.possible = false) ∨ 0 < sp_scan'.col)
+    (hcorr : ScannerSurfCorr s' sp_scan')
+    (h_nodir : s'.allowDirectives = false)
+    (_h_src : ¬(s_dis.explicitKeyLine = none ∨
+      (scanValueClearKey s_dis).simpleKey.possible = true ∨
+      (s_dis.col : Int) ≠ s_dis.explicitKeyCol))
+    (_h_indent : (s_dis.col : Int) = s_dis.currentIndent)
+    (_h_ne : k ∉ ns)
+    (h_nic0 : sp_scan'.col = 0 → s'.needIndentCheck = true)
+    (h_live0 : s'.simpleKeyAllowed = true ∨ s'.simpleKey.possible = true)
+    (h_gate : ∃ sp_g, GStar SSWhite sp_g sp_scan' ∧
+        (sp_g = sp_scan' → s'.col ≠ 0 → ¬ (L4YAML.Proofs.ScannerCoupling.CommentOk s' ∧ s'.peek? = some '#'))) :
+    ∃ sp_gram' sp_block' sp_flow' sp_scan',
+      SLYamlStream sp_start sp_gram' ∧
+      BlockStack sp_gram' sp_block' ∧
+      FlowStackB sp_start 0 0 none s' 0 #[] #[] .sep sp_block' sp_flow' ∧
+      PendingNode s' false sp_start sp_flow' sp_scan' ∧
+      ScannerSurfCorr s' sp_scan' :=
+  block_dispatch_deferred sp_start sp_X sp_scan' s' h_stream h_arm hcorr h_nodir h_nic0 h_live0 h_gate
+
 /-! ## §1  The wrappers, pinned by APPLICATION
 
 Each `example` applies its wrapper at the exact hypotheses the branch holds.
@@ -209,7 +245,7 @@ example (sp_start sp_X sp_scan' : SurfPos) (s' s_dis : ScannerState)
       FlowStackB sp_start 0 0 none s' 0 #[] #[] .sep sp_block' sp_flow' ∧
       PendingNode s' false sp_start sp_flow' sp_scan'' ∧
       ScannerSurfCorr s' sp_scan'' :=
-  block_dispatch_deferred_stamp_offcol sp_start sp_X sp_scan' s' h_stream h_arm
+  stampOffcolTest sp_start sp_X sp_scan' s' h_stream h_arm
     hcorr h_nodir h_src h_indent h_ne h_nic0 h_live0
     ⟨sp_scan', GStar.nil _, fun _ => h_gate⟩
 
@@ -441,6 +477,8 @@ argument list, so the arm's carrier is named and its first ring measured. -/
 /-- `lake run price -- inline-class feeders`, checked from the script's side —
     the tree as it stood at item 286.  Item 287 retired the fallback the mode
     narrows, so on a later tree it says so and stops. -/
+-- 2026-11-26 (actual marked-column correspondence):
+-- The retired off-column and singleton witnesses are private test controls; production callers use the maintained scanner-state domain.
 def expectedInlineFeeders : String :=
   "errors=6 decls=2 feeders=accum_block_on_pendingBlock/-,accum_block_pending/pendingBlockContent,accum_block_pending/pendingContent,accum_block_pending/pendingFlow,accum_block_pending/pendingMapValue,accum_block_pending/pendingProps"
 
@@ -2233,7 +2271,7 @@ example {k : Nat} {sp_start sp_land sp_ind : SurfPos} {ks : List FrameLevel}
     (∃ ns : List Nat, ∀ nv ∈ ns, ∀ sp_v : SurfPos, SBlockMapEntry k sp_ind sp_v →
       ExplValueLine sp_start nv sp_v) ∨ True :=
   frameChainUnion (Or.inl ⟨[4], nested⟩)
-    (Or.inl ⟨[0], frameChainOne (a := 0) (resumeFrameRoute h_ind cont)⟩)
+    (Or.inl ⟨[0], frameChainOneTest (a := 0) (resumeFrameRoute h_ind cont)⟩)
 
 /-- …and the membership that makes the union load-bearing: the nested chain
     alone cannot answer at the dedent's index, and the dedent chain alone cannot
@@ -2815,7 +2853,7 @@ example {sp_start sp_mid sp_key : SurfPos} {nv w : Nat} {ks : List FrameLevel}
       ResumeFrames (SLYamlStream sp_start) [FrameLevel.map nv] sp_w :=
   match fV.resumeAt hmem with
   | ⟨_ks', _, cont⟩ =>
-      ⟨[nv], frameChainOne (a := nv)
+      ⟨[nv], frameChainOneTest (a := nv)
         (fun sp_v h_entry sp_e h_tail =>
           (resumeMapRouteF h_ind cont sp_v h_entry sp_e h_tail).close)⟩
 
@@ -3133,7 +3171,7 @@ a literal singleton; `∃ ns` is where the head was lost.  `[a]` IS `a :: []`, s
 the premise's new shape costs those callers nothing but a comma: -/
 
 example {P : Nat → Prop} {a : Nat} (ha : P a) : ∃ (nv0 : Nat) (ns : List Nat), ∀ x ∈ nv0 :: ns, P x :=
-  ⟨a, [], frameChainOne (a := a) ha⟩
+  ⟨a, [], frameChainOneTest (a := a) ha⟩
 
 example {P : Nat → Prop} {a : Nat} (h : ∀ x ∈ [a], P x) : P a := h a (List.Mem.head [])
 

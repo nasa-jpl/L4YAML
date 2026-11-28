@@ -249,6 +249,8 @@ def readDecl (prods : Std.HashSet Name) (n : Name) : MetaM R := do
 -- `SurfPos → SurfPos → Prop` def) enters the alphabet now that §7–§9 sit in a `public section`; item 488 shipped
 -- them module-private, so no census read them (a correction to item 488's "no pin moved").
 -- 2026-11-14 (item 499): prodTyped 174 → 175 — KeyArm, the ?/: flow arms' typed production (StreamAccum).
+-- 2026-11-26 (actual marked-column correspondence):
+-- marked_col_of_explicit_source holds preprocessing to transport the actual pending mark; dispatcher equations are unchanged.
 def expectedAlphabet : String := "prodTyped=175 prodSurf=96 prodSpec=58"
 -- 133 → 137 on 2026-10-23: the four narrowed relations of `Proofs.Production.Acceptance.Quoted`
 -- (`DQCharOk`, `SQCharOk`, `SCDoubleQuotedOk`, `SCSingleQuotedOk`); not under `Surface`, no rule tag.
@@ -356,6 +358,8 @@ def expectedAlphabet : String := "prodTyped=175 prodSurf=96 prodSpec=58"
 -- `dispatchBlock_indents_of_inFlow`, `dispatchBlock_inFlow_cases` and `accum_step_key_pairK` hold the preprocess / block dispatcher; preprocess decls 257 → 261 (the four `h_pre` holders).
 -- 2026-11-17 (item 524, the deletion): stepHolders 2108 → 2100, preprocess decls 261 → 259 (`ad_implicitValueLine` / `ad_docStartLine` held `h_pre`) — the 23 `implicitValueLine` / `docStartLine` preservation lemmas
 -- (item 520's roster) deleted on the owner's ruling; eight of them held a scanner step as a premise.  dispHolders unmoved.
+-- 2026-11-27: integration over owner item 538 retains both source changes.
+-- The following snapshot is provisional until the native compiler remeasures this merge.
 def expectedSteps : String :=
 -- 2026-10-24 (B3 [66] col-0 threading): stepHolders 1819 → 1874, dispHolders 332 → 348, dispTwoCorr 29 → 31 —
 -- the gate/JSON-key/reservation lemmas hold the preprocess and dispatch step equations (1878/351 on the
@@ -412,9 +416,7 @@ def expectedSteps : String :=
 -- content dispatch's `.ok` with one `ScannerSurfCorr` end as a hypothesis (the other is its conclusion's).
 -- 2026-11-24 (item 535): stepHolders 2116 → 2108, dispHolders 437 → 429 — the eight unreferenced dispatcher-arm corollaries of `ScannerShape`
 -- (`dispatchStructural_*_trace` ×3, `dispatchFlowIndicators_*_trace` ×5) are deleted; each held a dispatcher's `.ok`.
--- 2026-11-25 (item 538, β PR 7): stepHolders 2108 → 2109, dispHolders 429 → 430 — `TPendingNode.question_step` (StreamBridge) holds the
--- block-indicator dispatch's `.ok` at `?`.
-  "stepHolders=2109 dispHolders=430 dispTwoCorr=42 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
+  "stepHolders=2110 dispHolders=430 dispTwoCorr=42 fns=75 fnsIx=26"  -- 2026-11-15 (item 517): +1/+1, `content_km_transport_any` (ContentBridge) holds `h_pre` / `hok`, the T mask's content-step transport; (item 512): +1/+1, `marks_step_content` holds `h_preprocess` / `h_dispatch`; 2026-11-14: `Proofs.Scanner.StructDepth` deleted (owner's ruling on items 446–452): its (γ1) `DInv` readers leave, stepHolders 2120 → 2103, dispHolders 422 → 418; `ScannerShape.scanFiltered_noComment` (item 451's holder) deleted with it: 2103 → 2102; `DocStartLiveInv.scanFiltered_liveF` too: 2102 → 2101  -- 2026-11-13 (item 489): +1/+1, `accum_step_content_pairB` holds `h_dispatch`; 2026-11-14 (item 490): +1/+1, `accum_step_content_pairK` holds it too
 
 /-- **The ladder, at each population.**  `edge` is a production whose right
     endpoint is the step's output; `chain` requires a path to it from another
@@ -532,7 +534,7 @@ def expectedPerFn : List String :=
   -- 2026-11-14: `StructDepth.DInv_dispatchContent` / `DInv_preprocess` left with the module (owner's ruling, items 446–452); 2026-11-15 (item 512): +1 / +1, `marks_step_content`
   -- 2026-11-15 (item 517): +1 / +1, `content_km_transport_any` (`TraceOf/ContentBridge`) — the T mask's content-step transport.
   ["scanNextToken_dispatchContent decls=197 chain=1",
-   "scanNextToken_preprocess decls=261 chain=4"]
+   "scanNextToken_preprocess decls=262 chain=4"]
 
 /-- **The one worked precedent is outside the work.**  It is not in item 238's
     transitive set and not on either repair thread, so β.5 neither pays for it

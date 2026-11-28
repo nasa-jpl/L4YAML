@@ -135,9 +135,10 @@ def guards : List Name :=
     with the constructor.  The counts here are the DOMAIN's classes, so a class
     emptying shows as a wrapper leaving the list rather than as a total
     drifting. -/
+-- 2026-11-26 (actual marked-column correspondence):
+-- All three off-column applications and their unused wrapper leave the DEFERRAL inventory; the no-pack class remains.
 def deferral : List Name :=
   [`block_dispatch_deferred,
-   `block_dispatch_deferred_stamp_offcol,
    `block_dispatch_deferred_stamp_nopack,
    -- ~~`block_dispatch_deferred_stamp_compact`~~ — **the wrapper LEFT the list
    -- at item 209**, which is the shape the docstring above named: a class does
@@ -467,9 +468,9 @@ All three lanes, in one walk of the module. -/
        "flowKeyRoute_of_root: rootMapRoute_or_refused=1 rootMapRouteF_or_refused=1",
        "question_open_map: rootMapRoute_or_refused=1 rootMapRouteF_or_refused=1"]⟩,
     ⟨⟨"DEFERRAL", deferral, deferral.map (ns ++ ·)⟩,
-      ["accum_block_on_closeThenBlock: block_dispatch_deferred_stamp_offcol=1 block_dispatch_deferred_stamp_nopack=1",
-       "accum_block_on_pendingBlock: block_dispatch_deferred_stamp_offcol=1 block_dispatch_deferred_stamp_nopack=1",
-       "accum_block_on_pendingBlockContent: block_dispatch_deferred_stamp_offcol=1 block_dispatch_deferred_stamp_nopack=1",
+      ["accum_block_on_closeThenBlock: block_dispatch_deferred_stamp_nopack=1",
+       "accum_block_on_pendingBlock: block_dispatch_deferred_stamp_nopack=1",
+       "accum_block_on_pendingBlockContent: block_dispatch_deferred_stamp_nopack=1",
        -- Item 288: the value park's frameless arm is refuted; the dead
        -- `pendingFlow` arm's application is the one left here.
        "accum_block_pending: block_dispatch_deferred_inline=1",

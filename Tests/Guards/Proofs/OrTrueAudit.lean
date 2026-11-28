@@ -257,11 +257,13 @@ def posLine (p : Pos) : String := s!"{p.decl}{p.site} {p.kind} ∨ {p.alt}"
 -- `km_push_at_open` ×2, `close_col_of_base` ×2, `flowKeyPack_of_close.h_base` ×2, `flowOpen_stamp` / `flowOpen_marker` ×4),
 -- inrTrivial 484 → 460, writers 39 → 37, paid 26 → 24, conclusions 11 → 9, spent 104 → 102 — the base slot's stamp /
 -- marker `∨ True` conjuncts deleted; the close decides both on its own state.
+-- 2026-11-26 (actual marked-column correspondence):
+-- Both document-marker supplies now prove coverage of the actual empty domain. The stronger helper still has one direct decline.
 def expectedSummary : String :=
 -- Item 519: inrTrivial 497 → 495 — the two flow-close `h_vpack` `Or.inr trivial` arms are PAID from `vslot`
 -- (the `h_framesV` arms keep their `[]` cover decline); shrink-only.
 -- Item 519 (review round): inrTrivial 495 → 496, see the writers' row for `accum_flow_open_depth0`.
-  "positions=252 top=162 nested=90 True=177 PackAlt=66 PackAltG=9 modules=2 supply: paid=27 relayed=116 declined-only=0 never-supplied=0 unresolved=8 conclusions=9 consumers: spent=102 relayed=13 unused=0 unreadable=36 writers=37 inrTrivial=460"
+  "positions=252 top=162 nested=90 True=177 PackAlt=66 PackAltG=9 modules=2 supply: paid=28 relayed=115 declined-only=0 never-supplied=0 unresolved=8 conclusions=9 consumers: spent=102 relayed=13 unused=0 unreadable=36 writers=37 inrTrivial=460"
 
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`,
 -- so its `h_nodeS` / `h_nodeSF` positions read [31] / [32] (were [30] / [31]) — an index shift, not a
@@ -559,7 +561,7 @@ def expectedSupply : List String :=
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[19].h_closeFV relayed [DECLINE=2 SPLIT=4]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[20].h_framesV relayed [DECLINE=2 SPLIT=4]",
   "L4YAML.Proofs.StreamAccum.PendingNode.pendingMapValue[22].h_seqF relayed [DECLINE=5 SPLIT=1]",
-  "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[10].h_vpack relayed [DECLINE=3 RELAY=1 SPLIT=6 VIA=1]",
+  "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[10].h_vpack paid [DECLINE=1 PAY=2 RELAY=1 SPLIT=7]",
   "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[19].h_sfx paid [DECLINE=10 PAY=1]",
   "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[20].h_mk paid [DECLINE=10 PAY=1]",
   "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[26].h_tail139 paid [DECLINE=8 PAY=3]",

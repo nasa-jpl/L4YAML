@@ -238,10 +238,12 @@ def holdsScanStream (n : Name) : MetaM (Nat × Nat × Bool) := do
 -- `accum_step_content_pairK` (ContentBridge §11) destructures the wrapper as `pairB` does; no new ring.
 -- 2026-11-17 (item 522): `accum_step_key_pairK` joins the thread (it destructures `accum_step_block`); the discriminator's
 -- total 18 → 19 and threadInT 18 → 19 with it.
+-- 2026-11-26 (actual marked-column correspondence):
+-- Remeasure the repair thread after the actual-column proof eliminates the three off-column calls and their unused wrapper.
 def expectedThread : String :=
 -- 2026-11-15 (item 520): thread 17 → 18 — `accum_step_flow_pairK` (ContentBridge) consumes `accum_step_flow`
 -- whole, one more declaration on the repair thread; prodThread / shared / capstones / rings unmoved.
-  "thread=19 prodThread=24 shared=15 capstones=2 rings=8"
+  "thread=19 prodThread=23 shared=15 capstones=2 rings=8"
 
 /-- The first ring: the five library consumers item 238 named, and item 239's
     own exhibit, which rides the arm on purpose and goes with it. -/

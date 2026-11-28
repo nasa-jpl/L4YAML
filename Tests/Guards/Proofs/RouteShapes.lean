@@ -676,6 +676,8 @@ def walk (table : Std.HashMap Name (Array Closure)) (c : Name) :
 -- 2026-10-29 (item 394, option B): `mk.valueF` [λλLE] → [λλLE2]: the cover `∃ lo, Floor lo n ks ∧
 -- Covered lo ks s0` sits between the frames binder and the resume route.
 -- 2026-10-30 (item 405, Rule 8 fix): the `?`-park field and its content twin are re-indexed by the projection `markedCols sc` (path LE → L: `∀ nv ∈ markedCols sc, …`, no `∃` binder) and `pendingMapValue.h_explUp` gains the `∨ PackAlt sc` arm (LEE2 → LEE3).
+-- 2026-11-26 (actual marked-column correspondence):
+-- Actual marked-column membership replaces the off-column consumer branch; route-shape readings follow the elaborated proof.
 def expectedClosures : List String :=
   ["pendingContent.h_closable[] req+guard: sp_gram: SSLComments ⇒ Stream",
    "pendingContent.h_key[λλLEEE1L] req+guard+pack: [col(pos(simpleKey(sc)))=_; line(pos(simpleKey(sc)))=line(sc)] _: SBlockMapEntry(_) ⇒ Stream",
@@ -954,11 +956,9 @@ def expectedK : List String :=
 -- births no longer forward their node through `SBlockNode_blockIn_to_blockOut`; the closure is carried as built.
 -- 2026-10-29 (item 389): closures 54 → 57, optional 38 → 41, guarded 13 → 16, bySpine 39 → 42, closureSlots 255 → 274, carry 180 → 192, punt 64 → 67, closed 6 → 10 — the mapping-top conjunct under pendingBlock.h_closeF / pendingBlockContent.h_closeF / pendingProps.h_closeFE.
 -- 2026-10-30 (item 405): `compact_open_map` closes `pendingMapValue.h_explUp` with the new `PackAlt` arm instead of carrying an empty chain (carry 192 → 191, closed 10 → 11; the route-argument walk loses that one forwarded edge).
--- 2026-11-26: the root key-slot proof is closed over the actual empty
--- scanner projection, so one optional closure changes from punt to closed.
 def expectedLine : String :=
   -- Item 372 (2026-10-27): `ImplicitKeyPack`'s route conjunct is an Or (the `SeqTopKey` face): the pack's route slot reads as a guarded alternative, not a bare stream route.
-  "closures=58 packed=14 optional=42 guarded=17 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=7 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=280 stream=7 carry=192 fwd=0 punt=67 closed=14 mandatory[stream=4 carry=53 fwd=0 punt=14 closed=1] optional[stream=3 carry=139 fwd=0 punt=53 closed=13] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=5 spinesCarried=35 spinesTouched=40 firstsFromStream=4 headsFromStream=3 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=49 flow[stream=8 carry=30 fwd=0 punt=10 closed=1] routeArgs=183 routeStream=16 routeCarry=69 routeFwd=55 routeClosed=43 routeToWalked=117 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=13 builds=170 buildSlots=1185 build[stream=16 carry=308 fwd=749 punt=77 closed=35] buildStreamSlots=16 buildSpines=10 routePairs=7 routeSpines=5 k=14 kHeads=6 streamBuilders=8"
+  "closures=58 packed=14 optional=42 guarded=17 facts=3 others=4 byHead=6 byFirst=9 bySpine=42 flowRoutes=7 flowSpinesNew=6 slots=62 nil=44 parkedCtor=35 closureSlots=280 stream=7 carry=192 fwd=0 punt=67 closed=14 mandatory[stream=4 carry=53 fwd=0 punt=14 closed=1] optional[stream=3 carry=139 fwd=0 punt=53 closed=13] packSlots=104 pack[stream=0 carry=84 fwd=0 punt=0 closed=20] spinesFromStream=5 spinesCarried=35 spinesTouched=40 firstsFromStream=4 headsFromStream=3 streamSites=2 closings=11 closedDistinct=3 closedIn=1 absorbed=4 obtained=2 flowSites=7 flowSlots=49 flow[stream=8 carry=30 fwd=0 punt=10 closed=1] routeArgs=185 routeStream=16 routeCarry=68 routeFwd=58 routeClosed=43 routeToWalked=117 routeStreamToWalked=11 viaObtained=0 viaSites=0 builders=12 builds=170 buildSlots=1185 build[stream=16 carry=308 fwd=749 punt=77 closed=35] buildStreamSlots=16 buildSpines=10 routePairs=7 routeSpines=5 k=14 kHeads=6 streamBuilders=8"
 
 set_option maxHeartbeats 4000000 in
 run_cmd Lean.Elab.Command.liftTermElabM do

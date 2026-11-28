@@ -281,7 +281,7 @@ def wrapOffcol : Name := `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stam
 def wrapNopack : Name := `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack
 def wrapInline : Name := `L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline
 
-def heads : List Name := [producer, wrapOffcol, wrapNopack, wrapInline]
+def heads : List Name := [producer, wrapNopack, wrapInline]
 
 partial def fvarsAux (e : Expr) : StateM (Std.HashSet Expr × Array Expr) Unit := do
   if (← get).1.contains e then return
@@ -436,7 +436,9 @@ via={String.intercalate "," (s.via.map (·.getString!)).toList}"
     `colon_fires_implicit_key`, `colon_fires_props_key` and
     `accum_block_pending` join the population (7 → 10) and the sites move by
     their one each, less the two `accum_block_on_*` lost (12 → 13). -/
-def expectedPop : String := "pop=10 sites=13"
+-- 2026-11-26 (actual marked-column correspondence):
+-- The three off-column calls and then their unused wrapper disappear: sites 13 → 9, width-one 6 → 3, unreached 5 → 4.
+def expectedPop : String := "pop=9 sites=9"
 
 /-- **The answer, in one line.**  Six sites one step wide, ~~one~~ two two,
     five with no scanner chain reaching the scan position at all — and
@@ -445,49 +447,19 @@ def expectedPop : String := "pop=10 sites=13"
     unreached, for three: `accum_block_pending`'s, two steps wide, and the two
     `:` consumers', unreached. -/
 def expectedWidth : String :=
-  "w0=0 w1=6 w2=2 unreached=5 corrBlock=0 corrScan=13"
+  "w0=0 w1=3 w2=2 unreached=4 corrBlock=0 corrScan=9"
 
 /-- Every site, with the step functions its width is spent on. -/
 def expectedSites : List String :=
-  ["L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack width=1 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol width=1 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack width=1 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol width=1 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack width=1 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol width=1 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
-   "L4YAML.Proofs.StreamAccum.accum_block_pending <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline width=2 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators,scanNextToken_preprocess",
-   "L4YAML.Proofs.StreamAccum.accum_content_pending <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=2 \
-corrBlock=0 corrScan=1 via=scanNextToken_dispatchContent,scanNextToken_preprocess",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=UNREACHED \
-corrBlock=0 corrScan=1 via=",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=UNREACHED \
-corrBlock=0 corrScan=1 via=",
-   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_offcol <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=UNREACHED \
-corrBlock=0 corrScan=1 via=",
-   "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline width=UNREACHED \
-corrBlock=0 corrScan=1 via=",
-   "L4YAML.Proofs.StreamAccum.colon_fires_props_key <- \
-L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline width=UNREACHED \
-corrBlock=0 corrScan=1 via="]
+  ["L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack width=1 corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
+   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack width=1 corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
+   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack width=1 corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators",
+   "L4YAML.Proofs.StreamAccum.accum_block_pending <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline width=2 corrBlock=0 corrScan=1 via=scanNextToken_dispatchBlockIndicators,scanNextToken_preprocess",
+   "L4YAML.Proofs.StreamAccum.accum_content_pending <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=2 corrBlock=0 corrScan=1 via=scanNextToken_dispatchContent,scanNextToken_preprocess",
+   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=UNREACHED corrBlock=0 corrScan=1 via=",
+   "L4YAML.Proofs.StreamAccum.block_dispatch_deferred_stamp_nopack <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred width=UNREACHED corrBlock=0 corrScan=1 via=",
+   "L4YAML.Proofs.StreamAccum.colon_fires_implicit_key <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline width=UNREACHED corrBlock=0 corrScan=1 via=",
+   "L4YAML.Proofs.StreamAccum.colon_fires_props_key <- L4YAML.Proofs.StreamAccum.block_dispatch_deferred_inline width=UNREACHED corrBlock=0 corrScan=1 via="]
 
 /-- **The ladder, for the three functions these sites cross**, re-derived in
     THIS module's import closure so the numbers are the ones the census above
@@ -576,6 +548,23 @@ def expectedLadder : List String :=
   -- Item 372 (2026-10-27): `seqTopKey_refuted_at_colon` holds the `:` dispatch (+1 holder).
   -- Item 387 (2026-10-29): `seqTop_refuted_at_indicator_le` holds the `:`/`?` dispatch (+1 holder).
   -- Item 409 (2026-10-30): `MarkedColsIn.step_value` holds the `:` dispatch and its preprocess (+1, +1).
+  -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchBlockIndicators holders 140 → 142 — `contentLead_of_interior`, `accum_step_content_traceK` read `h_blk_none`.
+  -- 2026-11-13 (item 489, the landing agreement): 142 → 143 — `accum_step_content_pairB` holds `h_blk_none`.
+  -- 2026-11-14 (item 490): 143 → 144 — `accum_step_content_pairK` holds `h_blk_none`.
+  -- 2026-11-08 (item 459, review): dispatchContent holders 170 → 173 — `ScannerShape.dispatchContent_{anchor,alias,tag}_trace`.
+  -- 2026-11-08 (item 464, S3 slice (3) first PR): dispatchContent holders 173 → 175 — `ScannerShape.dispatchContent_{doubleQuoted,singleQuoted}_trace`.
+  -- 2026-11-12 (item 486, S3 slice (4) PR 1): dispatchContent holders 175 → 180 — `TraceOf/ContentBridge`'s three twins
+  -- (`h_dispatch`) and its two `dispatchContent_{plain,blockScalar}_tokens` helpers.
+  -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchContent holders 180 → 183 — `contentLead_of_interior`, `content_prop_tail_kept`, `accum_step_content_traceK`.
+  -- 2026-11-13 (item 489): 183 → 184 — `accum_step_content_pairB` holds `h_dispatch`.
+  -- 2026-11-14 (item 490): 184 → 185 — `accum_step_content_pairK` holds `h_dispatch`.
+  -- 2026-11-15 (item 517): dispatchContent 185 → 186, preprocess 256 → 257 — `content_km_transport_any`
+  -- (`TraceOf/ContentBridge`) holds `hok` / `h_pre`: the T mask's content-step transport, route (μ).
+  -- 2026-11-12 (item 487, S3 slice (4) PR 2): preprocess holders 251 → 254 — `tailOf_preprocess_eq`, `contentLead_of_interior`, `accum_step_content_traceK`.
+  -- 2026-11-13 (item 489): 254 → 255 — `accum_step_content_pairB` holds `h_preprocess`.
+  -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
+  -- 2026-11-15 (item 520): preprocess 257 → 259 — `accum_step_flow_pairK` and `dispatchFlow_km_faces` hold
+  -- `h_preprocess` (the flow fold's two steps); dispatchContent / dispatchBlockIndicators unmoved.
   [
    -- 2026-11-12 (item 487, S3 slice (4) PR 2): dispatchBlockIndicators holders 140 → 142 — `contentLead_of_interior`, `accum_step_content_traceK` read `h_blk_none`.
    -- 2026-11-13 (item 489, the landing agreement): 142 → 143 — `accum_step_content_pairB` holds `h_blk_none`.
@@ -597,7 +586,7 @@ def expectedLadder : List String :=
    -- 2026-11-14 (item 490): 255 → 256 — `accum_step_content_pairK` holds `h_preprocess`.
    -- 2026-11-15 (item 520): preprocess 257 → 259 — `accum_step_flow_pairK` and `dispatchFlow_km_faces` hold
    -- `h_preprocess` (the flow fold's two steps); dispatchContent / dispatchBlockIndicators unmoved.
-   "scanNextToken_preprocess holders=261 edge=18 chain=4"]
+   "scanNextToken_preprocess holders=262 edge=18 chain=4"]
 
 /-- **What §1's proofs spend.**  `drop=false` is the non-circularity check
     items 242 and 243 also carry: a measurement of what the escape costs may
