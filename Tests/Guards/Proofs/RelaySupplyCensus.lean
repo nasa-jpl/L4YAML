@@ -1065,9 +1065,9 @@ def expectedProducers : List String :=
 -- 2026-11-02 (item 422): piped 78 → 73, `Or.elim⇒SPLIT` 5 → 0 — the five `h_park.elim`/`h_kslotUp.elim` pipes at the `h_outer` writes
 -- are `Classical.em (MarkedColsIn s_prep [k])` decisions now (see `expectedTally`).
 def expectedPipeLanding : String :=
-  "piped=101 producers=10 [Eq.rec⇒VIA=8, Or.elim⇒SPLIT=20, Or.imp⇒FIELD=38, \
+  "piped=103 producers=10 [Eq.rec⇒VIA=8, Or.elim⇒SPLIT=20, Or.imp⇒FIELD=38, \
 Or.imp⇒LOCAL=5, Or.imp⇒PAY=1, Or.imp⇒RELAY=18, Or.imp⇒SPLIT=4, Or.imp⇒VIA=2, \
-dite⇒SPLIT=5]"
+dite⇒SPLIT=7]"
 
 /-- What the SPLITs decide (DOCS item 216), and the row that matters is
     `elsewhere=0`: **not one leaf of any case split in this module is decided
@@ -1148,13 +1148,14 @@ dite⇒SPLIT=5]"
 -- four flow-close `Classical.em` splits on the closed state's marks are gone (`vslot` every-mark pays
 -- `h_vpack` / `h_framesV` outright) and the open's three `frameChainUnion` ladders with them.
 def expectedSplitLanding : String :=
-  "survived=175 collapsed=12 leaves=412 elsewhere=11 [DECLINE=208, PAY=193, \
+  "survived=175 collapsed=12 leaves=414 elsewhere=11 [DECLINE=208, PAY=195, \
 VIA=11] \
 [DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|VIA|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|DECLINE|PAY|VIA|VIA=1, \
 DECLINE|DECLINE|DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY=3, DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, \
-DECLINE|DECLINE|DECLINE|PAY|VIA=3, DECLINE|DECLINE|PAY=6, \
+DECLINE|DECLINE|DECLINE|PAY=2, DECLINE|DECLINE|DECLINE|PAY|PAY=1, \
+DECLINE|DECLINE|DECLINE|PAY|PAY|PAY=1, DECLINE|DECLINE|DECLINE|PAY|VIA=3, \
+DECLINE|DECLINE|PAY=5, DECLINE|DECLINE|PAY|PAY=1, \
 DECLINE|DECLINE|PAY|PAY|PAY=2, DECLINE|DECLINE|PAY|PAY|PAY|PAY|PAY=1, \
 DECLINE|PAY=152, DECLINE|PAY|PAY=2, PAY|VIA=1, PAY|VIA|VIA=1]"
 
@@ -1265,7 +1266,7 @@ def expectedSplitBranch : String :=
 -- Item 519: splits 174 → 175, leaves 420 → 422, relayRooted 164 → 161, siteDecided 10 → 14, plainRoot 55 → 52,
 -- DECLINE-closed 105 → 102, DECLINE-free 112 → 116, PAY-free 191 → 192 — the four flow-close `Classical.em`
 -- splits are gone and the open's three ladders with them (`vslot` every-mark).
-  "splits=175 leaves=412 relayRooted=161 siteDecided=14 optionalRoot=109 plainRoot=52 agree=116/116 disagree=0 [DECLINE-closed=96, DECLINE-free=112, PAY-free=193, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
+  "splits=175 leaves=414 relayRooted=159 siteDecided=16 optionalRoot=109 plainRoot=50 agree=114/114 disagree=0 [DECLINE-closed=96, DECLINE-free=112, PAY-free=195, VIA L4YAML.Proofs.StreamAccum.deeperLandingResume-=2, VIA L4YAML.Proofs.StreamAccum.flowKeyRoute_of_root-=1, VIA absurd-=8]"
 
 /-- **The ten splits the site decides for itself**, which is the whole residue
     of the branch question after `expectedSplitBranch`.  Four are a `dite` on a
@@ -1284,7 +1285,9 @@ def expectedSplitBranch : String :=
 -- retired: the two `h_outer` writes still decide by `Classical.em (MarkedColsIn s_prep [k])`, but BOTH arms pay now ((γ′)), so
 -- the split is no longer site-decided-with-a-decline (see `expectedTally`).
 def expectedSiteDecided : List String :=
-  ["1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
+  ["1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|DECLINE|DECLINE|PAY|PAY",
+   "1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|DECLINE|PAY|PAY",
+   "1 accum_block_on_closeThenBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
    -- Item 519: the four flow-close `match resume.vslot` sites — the frame's every-mark field decides the close's
    "1 accum_block_on_pendingBlock :: dite on VIA Eq ⇒ DECLINE|PAY",
    "1 accum_block_on_pendingBlock :: dite on VIA LE.le ⇒ DECLINE|DECLINE|PAY|PAY|PAY",
