@@ -11,11 +11,18 @@ statement.
 
 ## Status snapshot (2026-07-04)
 
-The build is **`sorry`-, `axiom`-, and `partial`-free.  Zero active
+The verified core source is **free of `sorry`, authored custom axioms and
+`partial def`. Zero active
 `sorry` sites remain: `universal_roundtrip` is fully machine-checked**
 (axioms: `propext`, `Classical.choice`, `Quot.sound` plus the
 pre-existing per-declaration `native_decide` reflected-decide leaves —
 no `sorryAx` anywhere on the closed path).
+
+The Lean 4.36 admission gates retain raw nonstandard axiom counts separately
+from independently replay-validated closed Boolean claims. Their `native`
+profile records claim validation using kernel checking or Lean's compiled
+evaluator; private visibility and generated-looking names do not authenticate
+tactic origin. The source discipline still prohibits authored custom assumptions.
 
 **Track B closed 2026-07-04.**  The two former non-all-scalar locality
 sorries (`emit_roundtrip_sequence_content_eq` /

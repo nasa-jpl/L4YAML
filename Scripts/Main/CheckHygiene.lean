@@ -3,10 +3,10 @@ module
 public import Scripts.Stats.Hygiene
 
 /-!
-# `lake run check-hygiene -- [STATS]` — zero sorries, zero custom axioms, kernel-accurate
+# `lake run check-hygiene -- [STATS]` — zero sorries, zero unvalidated axioms
 
 Reads `collect-stats`'s `stats.json` (default `docs/reports/stats.json`) and prints the
-heredoc's line — `env clean: N theorems, 0 sorries, 0 custom axioms` — or
+result with raw and replay-validated axiom counts — or
 `proof-hygiene gate failed: {…}` on stderr with exit 1.  Exit 2 when the file cannot be
 read or has not the shape.
 -/
@@ -15,7 +15,7 @@ namespace Scripts.CheckHygiene
 
 open Scripts.Stats.Hygiene
 
-def version : String := "scripts-check-hygiene 1.0 (Rule 9 phase 4 row 3)"
+def version : String := "scripts-check-hygiene 1.1 (Rule 9 phase 4 row 3)"
 
 def usage : String := "usage: lake run check-hygiene -- [STATS] [-C ROOT]
 
@@ -23,7 +23,7 @@ def usage : String := "usage: lake run check-hygiene -- [STATS] [-C ROOT]
   -C, --root ROOT  repository root (default: the current directory)
   -h, --help / -V, --version
 
-exit 0 clean; 1 a sorry or custom axiom in the compiled environment; 2 the file is unreadable."
+exit 0 clean; 1 a sorry, unvalidated axiom or inconsistent count; 2 the file is unreadable."
 
 def cli (args : List String) : IO UInt32 := do
   if args.any (fun a => a == "-h" || a == "--help") then IO.println usage; return 0

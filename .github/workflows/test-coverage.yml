@@ -284,7 +284,8 @@ jobs:
         #     ledger only shrinks; the gate is itself a Lean exe, built here.
         #   * sorry/axiom freedom — kernel-accurate (Lean.collectAxioms
         #     via collect-stats): zero theorems with (transitive) sorry,
-        #     zero custom axioms in the compiled environment.
+        #     zero unvalidated nonstandard axioms in the compiled environment,
+        #     retaining raw and independently replayed axiom counts.
         run: |
           lake run check-theorem-keyword
           lake run check-import-closure

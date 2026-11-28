@@ -9,9 +9,10 @@ public meta import Lean.Data.Json
 The pure half of `lake run check-hygiene` (Rule 9 phase 4 row 3): the `env`
 section of `collect-stats`'s `stats.json` — counted over the compiled
 environment by `Lean.collectAxioms`, not by grepping sources — must show zero
-theorems with a (direct or transitive) `sorry`, zero theorems resting on a custom
-axiom and zero custom axioms.  This was the `python3 - <<'EOF'` heredoc in
-`test-coverage.yml` and `generate-all.sh`; the verdict lines are the heredoc's.
+theorems with a (direct or transitive) `sorry` and zero unvalidated axioms.
+Raw nonstandard axiom declarations and replay-validated Boolean axioms are
+reported separately. Replay validates their propositions, not historical
+origin in a tactic; the result does not claim no axiom declaration exists.
 -/
 
 @[expose] public section
@@ -56,13 +57,22 @@ def verdict (stats : Json) : Except String String := do
     let n ← get k
     if n != 0 then bad := bad ++ [(k, n)]
   if !bad.isEmpty then throw s!"proof-hygiene gate failed: {pyDict bad}"
+  let raw ← get "raw_nonstandard_axioms"
+  let replayed ← get "replay_validated_axioms"
+  let unvalidated ← get "axioms"
+  if raw < 0 || replayed < 0 || raw != replayed + unvalidated then
+    throw "proof-hygiene gate failed: inconsistent raw/replayed axiom counts"
   let theorems ← get "theorems"
-  return s!"env clean: {theorems} theorems, 0 sorries, 0 custom axioms"
+  return s!"env clean: {theorems} theorems, 0 sorries, 0 unvalidated axioms; {replayed}/{raw} raw nonstandard axioms replay-validated"
 
 def verdictOf (text : String) : Except String String := Json.parse text >>= verdict
 
+#guard verdictOf "{\"env\": {\"theorems\": 1778, \"axioms\": 0, \"raw_nonstandard_axioms\": 12, \"replay_validated_axioms\": 12, \"theorems_with_direct_sorry\": 0, \"theorems_with_transitive_sorry\": 0, \"theorems_with_custom_axiom\": 0}}"
+  == .ok "env clean: 1778 theorems, 0 sorries, 0 unvalidated axioms; 12/12 raw nonstandard axioms replay-validated"
+#guard verdictOf "{\"env\": {\"theorems\": 1778, \"axioms\": 0, \"raw_nonstandard_axioms\": 13, \"replay_validated_axioms\": 12, \"theorems_with_direct_sorry\": 0, \"theorems_with_transitive_sorry\": 0, \"theorems_with_custom_axiom\": 0}}"
+  == .error "proof-hygiene gate failed: inconsistent raw/replayed axiom counts"
 #guard verdictOf "{\"env\": {\"theorems\": 1778, \"axioms\": 0, \"theorems_with_direct_sorry\": 0, \"theorems_with_transitive_sorry\": 0, \"theorems_with_custom_axiom\": 0}}"
-  == .ok "env clean: 1778 theorems, 0 sorries, 0 custom axioms"
+  == .error "env has no `raw_nonstandard_axioms`"
 #guard verdictOf "{\"env\": {\"theorems\": 5, \"axioms\": 1, \"theorems_with_direct_sorry\": 0, \"theorems_with_transitive_sorry\": 2, \"theorems_with_custom_axiom\": 0}}"
   == .error "proof-hygiene gate failed: {'theorems_with_transitive_sorry': 2, 'axioms': 1}"
 #guard verdictOf "{\"env\": {\"theorems\": 5}}" == .error "env has no `theorems_with_transitive_sorry`"

@@ -14,7 +14,7 @@
   hermetically from a fresh clone. Missing fields likewise render as
   `"?"` when an older payload is embedded.
 
-  Schema mirrors `tools/CollectStats.lean` (schema_version 2).
+  Schema mirrors `tools/CollectStats.lean` (schema_version 3).
 -/
 import Lean
 import VersoManual
@@ -88,7 +88,13 @@ def buildCells (j : Json) : Array Cell := Id.run do
                        | some a, none   => some a
                        | none,   some b => some b
                        | _,      _      => none
-  let envAxioms     := jNat j ["env", "axioms"]
+  let rawAxioms     := jNat j ["env", "raw_nonstandard_axioms"]
+  let replayedAxioms := jNat j ["env", "replay_validated_axioms"]
+  -- An older payload's `axioms` count omitted private declarations and did not
+  -- apply the replay policy. Do not relabel that old reading as a new verdict.
+  let hasReplaySchema := jNat j ["schema_version"] == some 3 &&
+    rawAxioms.isSome && replayedAxioms.isSome
+  let envAxioms     := if hasReplaySchema then jNat j ["env", "axioms"] else none
   let envSorry      := jNat j ["env", "theorems_with_direct_sorry"]
   let partialDefs   := jNat j ["static", "library", "partial_defs"]
   let suitesPassed  := jNat j ["test_suites", "total_passed"]
@@ -118,8 +124,11 @@ def buildCells (j : Json) : Array Cell := Id.run do
     ( [.text "Compile-time ", .code "#guard", .text " tests"],
       [.text s!"{withCommasOpt guards} (kernel-evaluated at build time)"] ),
 
-    ( [.text "Axioms / ", .code "sorry", .text " / ", .code "partial def"],
+    ( [.text "Unvalidated axioms / ", .code "sorry", .text " / ", .code "partial def"],
       [.text s!"{natOpt envAxioms} / {natOpt envSorry} / {natOpt partialDefs}"] ),
+
+    ( [.text "Replay-validated / raw nonstandard axioms"],
+      [.text s!"{fracOpt replayedAxioms rawAxioms} (claim validation; tactic origin unverified)"] ),
 
     ( [.text "Runtime test suites"],
       [.text s!"{withCommasOpt suitesPassed} tests across {natOpt suiteCount} suites"] ),
@@ -147,7 +156,7 @@ def buildCells (j : Json) : Array Cell := Id.run do
 
 /-- `:::statsTable` — render the at-a-glance table from the embedded
     `Doc.L4YAML.StatsData` payload.
-    Schema mirrors `tools/CollectStats.lean` (schema_version 2). -/
+    Schema mirrors `tools/CollectStats.lean` (schema_version 3). -/
 @[directive]
 def statsTable : DirectiveExpanderOf Unit
   | (), _ => do
