@@ -20029,6 +20029,107 @@ def testRootEmptyDomain (state : IO.Ref TestCollector) : IO Unit := do
   check state "P143 a BOM then `? a` marks column 0" (seedMarks "\ufeff? a" == some [0])
 end P143Test
 
+/-! ## P144 — the explicit `:`'s value slot (item 541, row 12)
+
+Item 541 deletes the slot's own route (`hkv`) from `accum_block_on_closeThenBlock.h_vslot`
+and pays the remaining chain where the own column holds no mark or every mark is the own.
+**Risk:** the explicit `:` leaves its own column marked (the own route would then be owed),
+or leaves no ancestor (the declined remainder would be empty).
+-/
+namespace P144Test
+/-- `scanValue`'s own `explicitValue`, read at the state the `:` is dispatched from (after preprocess):
+the register armed, no live simple key after `scanValueClearKey`, and (in block) the `:` AT the key's column. -/
+def explicitAt (s : ScannerState) : Bool :=
+  match scanNextToken_preprocess s with
+  | .ok (some (sp, _)) =>
+    let s_kc := scanValueClearKey sp
+    s_kc.explicitKeyLine.isSome && !s_kc.simpleKey.possible
+      && (sp.inFlow || (sp.col : Int) == s_kc.explicitKeyCol)
+  | _ => false
+
+open P143Test in
+/-- After every `value` token of a `scan` run: whether the `:` is EXPLICIT (`explicitAt`), the slot's
+level, the marked columns. -/
+partial def valueSlots (input : String) : List (Bool × Int × List Nat) :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Bool × Int × List Nat)) :
+      List (Bool × Int × List Nat) :=
+    match fuel with
+    | 0 => acc.reverse
+    | fuel + 1 =>
+      match scanNextToken s with
+      | .ok (some s') =>
+        let hit := match s'.tokens.back? with
+          | some t => s'.tokens.size > s.tokens.size && (match t.val with | .value => true | _ => false)
+          | none => false
+        go s' fuel (if hit then
+          (explicitAt s, s'.currentIndent, markedColsOf s'.pendingKeys s'.indentColumns) :: acc
+          else acc)
+      | _ => acc.reverse
+  go (scanSeed input) 64 []
+
+open P143Test in
+/-- `explicitAt` against the scanner's own effect, at every BLOCK-context `value` token: there an explicit
+`:` leaves `implicitValueLine` alone and an implicit one stamps its line.  A flow `:` leaves the field alone
+either way, so it is counted apart and not read.  Returns (block `:`s read, disagreements, flow `:`s). -/
+partial def tagDrift (input : String) : Nat × Nat × Nat :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : Nat × Nat × Nat) : Nat × Nat × Nat :=
+    match fuel with
+    | 0 => acc
+    | fuel + 1 =>
+      match scanNextToken s with
+      | .ok (some s') =>
+        let hit := match s'.tokens.back? with
+          | some t => s'.tokens.size > s.tokens.size && (match t.val with | .value => true | _ => false)
+          | none => false
+        let acc' := match scanNextToken_preprocess s with
+          | .ok (some (sp, _)) =>
+            if sp.inFlow then (acc.1, acc.2.1, acc.2.2 + 1)
+            else
+              -- the two effects must differ on this step, or the field says nothing
+              let agrees := sp.implicitValueLine != some sp.line &&
+                (if explicitAt s then s'.implicitValueLine == sp.implicitValueLine
+                 else s'.implicitValueLine == some sp.line)
+              (acc.1 + 1, if agrees then acc.2.1 else acc.2.1 + 1, acc.2.2)
+          | _ => (acc.1 + 1, acc.2.1 + 1, acc.2.2)
+        go s' fuel (if hit then acc' else acc)
+      | _ => acc
+  go (scanSeed input) 64 (0, 0, 0)
+
+def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P144: the explicit `:`'s value slot (item 541)"
+  let rows : List (String × List (Bool × Int × List Nat)) :=
+    [("? a\n: - b\n: c", [(true, 0, []), (false, 0, [])]),
+     ("? a\n: b", [(true, 0, [])]),
+     ("?\n: - b", [(true, 0, [])]),
+     ("  ? a\n  : - b", [(true, 2, [])]),
+     ("? ? a\n  : - b\n: c", [(true, 2, [0]), (true, 0, [])]),
+     ("?\n  ? a\n  : - b\n: c", [(true, 2, [0]), (true, 0, [])]),
+     ("? ? ? a\n    : - b\n  : c\n: d", [(true, 4, [0, 2]), (true, 2, [0]), (true, 0, [])]),
+     ("- ? a\n  : - b", [(true, 2, [])]),
+     ("\ufeff? a\n: - b", [(true, 0, [])]),
+     ("? a\n: b: c", [(true, 0, []), (false, 2, [])]),
+     ("? earth: blue\n: moon: white", [(false, 2, [0]), (true, 0, []), (false, 2, [])]),
+     ("? earth: blue\n  : x\n: y", [(false, 2, [0]), (false, 2, [0]), (true, 0, [])]),
+     ("? : x\n: y", [(false, 2, [0]), (true, 0, [])]),
+     ("k:\n  ? a\n: v", [(false, 0, []), (false, 0, [])]),
+     ("a: 1", [(false, 0, [])]), ("- a", []), ("", [])]
+  for (input, expected) in rows do
+    let got := valueSlots input
+    check state s!"P144 {repr input}: the `:`s (explicit?), their levels and the marks held there" (got == expected)
+    check state s!"P144 {repr input}: no EXPLICIT `:` leaves its own column marked"
+      ((got.filter (·.1)).all fun (_, nv, marks) => !marks.contains nv.toNat)
+  let drift := rows.foldl (fun acc (input, _) =>
+    let d := tagDrift input; (acc.1 + d.1, acc.2.1 + d.2.1, acc.2.2 + d.2.2)) (0, 0, 0)
+  check state "P144 the tag is the scanner's: at all 27 block `:`s (no flow `:` in the rows) it agrees with the step's effect on `implicitValueLine`"
+    (drift == (27, 0, 0))
+  check state "P144 a flow `:` is counted apart, not read against `implicitValueLine`: `{a: 1}` (0, 0, 1), `? {a: 1}⏎: b` (1, 0, 1)"
+    (tagDrift "{a: 1}" == (0, 0, 1) && tagDrift "? {a: 1}\n: b" == (1, 0, 1))
+  check state "P144 the own-column check is not vacuous: 13 inputs hold an explicit `:`"
+    ((rows.filter fun (input, _) => (valueSlots input).any (·.1)).length == 13)
+  check state "P144 the tag separates: 3 inputs hold an implicit `:` inside a pending `?` key (its mark still held)"
+    ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
+end P144Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20410,6 +20511,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P141Test.testContentBehindParks state
   P142Test.testQuestionPark state
   P143Test.testRootEmptyDomain state
+  P144Test.testExplicitValueSlot state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",

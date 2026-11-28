@@ -345,7 +345,6 @@ def expectedPositions : List String :=
     "L4YAML.Proofs.StreamAccum.ResumeKeyCtxbody nested ∨ True",
     "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[10].h_vpack top ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[11].h_vslot nested ∨ PackAlt",
-    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[11].h_vslot nested ∨ PackAlt",
     "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[19].h_sfx top ∨ True",
     "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[20].h_mk top ∨ True",
     "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[26].h_tail139 top ∨ True",

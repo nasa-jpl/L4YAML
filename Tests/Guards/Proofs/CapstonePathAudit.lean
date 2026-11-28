@@ -134,7 +134,6 @@ def expectedOff : List String :=
    "L4YAML.Proofs.StreamAccum.ResumeKeyCtxbody nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.ResumeKeyCtxbody nested ∨ True nested-unresolved",
    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[11].h_vslot nested ∨ PackAlt off-honest-nested",
-   "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[11].h_vslot nested ∨ PackAlt off-honest-nested",
    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[19].h_sfx top ∨ True off-honest DECLINE=10",
    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[20].h_mk top ∨ True off-honest DECLINE=10",
    "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock[26].h_tail139 top ∨ True off-unread DECLINE=8",

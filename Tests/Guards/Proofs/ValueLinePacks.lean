@@ -848,6 +848,8 @@ def expectedParams : List String :=
 -- 2026-10-30 (item 408): `accum_flow_open_depth0`'s `h_compact_pair` writers — the `pendingMapValue` arm's fabricated
 -- singleton chain is now a DECLINE; the `-` arm passes its projection routes directly (no head split).
 -- Item 519 (review round): three `accum_flow_open_depth0` rows rename a held binder — `h_kslotUp✝` → `h_kslotUp_old`, `h_explUp✝` → `h_explUp_mv` — the `vslot` writers read the ancestors' covers again as fallback funders; no row added or removed.
+   -- Item 519: the depth-0 open's `pendingBlock` / `pendingMapValue` writes read the parks' every-mark chains alone
+   -- (`h_kslotUp` / `h_explUp` dropped from the holds); the two flow-close `h_vpack` punts are PAID chains from `vslot`.
 def expectedWriters : List String :=
   -- Item 519: the depth-0 open's `pendingBlock` / `pendingMapValue` writes read the parks' every-mark chains alone
   -- (`h_kslotUp` / `h_explUp` dropped from the holds); the two flow-close `h_vpack` punts are PAID chains from `vslot`.
@@ -1071,11 +1073,11 @@ def expectedPerPos : List String :=
    "param:explEntryChain_of_keyContent.up writers=5 punt=0 stamp=0 empty=0 relay=5 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=5",
    "param:flowKeyPack_of_close.h_key writers=2 punt=0 stamp=0 empty=0 relay=2 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=2",
    "param:flowKeyRoute_of_open.h_compact_pair writers=3 punt=1 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=1 other=0 alt=0 held=0 levelVar=2 none=0 touched=2",
-   "param:indicator_open_map.h_explUp_chain writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=1 none=1 touched=2",
+   "param:indicator_open_map.h_explUp_chain writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=1 held=0 levelVar=2 none=0 touched=2",
    "param:indicator_open_map.h_explUp_chainD writers=4 punt=2 stamp=0 empty=0 relay=0 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=2 held=0 levelVar=2 none=0 touched=2",
    "param:question_open_map.h_explUp_chain writers=1 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
    "param:question_open_map.h_explUp_chainD writers=1 punt=0 stamp=0 empty=0 relay=0 step=1 via=0 chain=0 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=0 none=0 touched=1",
-   "param:slotChainMap.up writers=4 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=3 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=3 none=0 touched=4"]
+   "param:slotChainMap.up writers=2 punt=0 stamp=0 empty=0 relay=1 step=0 via=0 chain=1 route=0 frames=0 tail=0 other=0 alt=0 held=0 levelVar=1 none=0 touched=2"]
 -- 2026-10-18 (item 284): `nodes` 12296 → 12374 and nothing else.  The walk
 -- counts nodes only while it follows a value-line pack, so this is item 284's
 -- additions inside pack-carrying terms; the old `pendingFlow` arm restored alone
