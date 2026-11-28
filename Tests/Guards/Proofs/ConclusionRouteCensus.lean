@@ -504,7 +504,7 @@ def expectedPipeSplit : String :=
   -- five whose arms disagree land as splits, the twelve whose arms agree are collapsed edges and are counted nowhere here.
   -- 2026-10-29 (item 394): `FlowBaseRoutes.valueF` is a new producer relayed VIA at both flow closes (producers 32/10 → 34/11, landed 69 → 71, landed-producers 0 → 2).
 -- Item 519: producers 31 → 28, total 134 → 131 — the depth-0 open's three `frameChainUnion` ladders are gone.
-  "pipes=0/0 producers=28/10 landed=101 landed-producers=10 total=129"
+  "pipes=0/0 producers=28/10 landed=103 landed-producers=10 total=131"
 
 end L4YAML.Tests.Guards.ConclusionRouteCensus
 

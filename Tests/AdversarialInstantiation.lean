@@ -5390,6 +5390,25 @@ def testTraceOfBlockLedger (state : IO.Ref TestCollector) : IO Unit := do
       | .error _ => none
     checkM state s!"traceOf/block ledger {label}" (got == expected)
       s!"parseYaml: {repr got} (docs), expected {repr expected}"
+  -- The document count cannot tell the marker reading from the plain one (`a⏎...` is one
+  -- document either way): pin the SCANNER's events on the `[206]` rows.
+  let evRows : List (String × String × Option (List L4YAML.Proofs.Serialization.SerializationWellFormed.Event)) :=
+    [ ("R3 a⏎...", "a\n...", some [.endDocument]),
+      ("R4 a⏎---", "a\n---", some [.beginDocument]),
+      ("R4 a⏎--- b", "a\n--- b", some [.beginDocument]),
+      ("R3 cousin a⏎... b", "a\n... b", none),
+      ("a⏎...b (plain)", "a\n...b", some []),
+      ("a⏎ ... (plain)", "a\n ...", some []),
+      ("- a⏎...", "- a\n...", some [.endDocument]),
+      ("k: a⏎...", "k: a\n...", some [.endDocument]),
+      ("\"a⏎...\" (quoted text)", "\"a\n...\"", some []),
+      ("[a,⏎...⏎]", "[a,\n...\n]", none) ]
+  for (label, src, expected) in evRows do
+    let got : Option (List L4YAML.Proofs.Serialization.SerializationWellFormed.Event) :=
+      (L4YAML.Scanner.scan src).toOption.map
+      L4YAML.Proofs.Serialization.TokenEvents.tokenEvents
+    checkM state s!"traceOf/block ledger, scanner events {label}" (got == expected)
+      s!"tokenEvents ∘ scan: {repr got}, expected {repr expected}"
 
 /-! ## Priority 68 — `[211]` explicit-only `implicitContinue`: the narrowed stream's document
 count, read against the parser on C4's block/document grid (28 inputs), `a⏎&x`, and a
@@ -20144,6 +20163,68 @@ def testExplicitValueSlot (state : IO.Ref TestCollector) : IO Unit := do
     ((rows.filter fun (input, _) => (valueSlots input).any fun (e, _, marks) => !e && !marks.isEmpty).length == 3)
 end P144Test
 
+/-! ## P145 — the landed `-` and the marks it leaves (item 545, row 12)
+
+Item 545 pays `accum_block_on_closeThenBlock`'s `-` arm where no mark survives the landing (the empty
+domain on `s'`) and routes every surviving mark through the slot's chain at `nv ≤ k`.
+**Risk:** a dedent `-` always leaves an ancestor's mark (the empty-domain payment would be vacuous),
+or never leaves two marks at `nv ≤ k` (the chain payment would be).
+-/
+namespace P145Test
+open P143Test in
+/-- At every block `-` pause among the first `fuel` steps of a `scan` run: (a mark of the park right of
+the `-`?, the marks after the step).  The `-` is the scanner's own `isBlockEntryCandidate` at the preprocessed
+state (blank = space, tab, LF, CR, or EOF), so no offset is read off the input here. -/
+def dashLandings (input : String) (fuel : Nat := 64) : List (Bool × List Nat) :=
+  let rec go (s : ScannerState) (fuel : Nat) (acc : List (Bool × List Nat)) : List (Bool × List Nat) :=
+    match fuel with
+    | 0 => acc.reverse
+    | fuel + 1 =>
+      match scanNextToken s with
+      | .ok (some s') =>
+        let row := match scanNextToken_preprocess s with
+          | .ok (some (sp, c)) =>
+            if c == '-' && sp.flowLevel == 0 && isBlockEntryCandidate sp then
+              let pre := markedColsOf s.pendingKeys s.indentColumns
+              if pre.isEmpty then [] else
+                [(pre.any (· > sp.col), markedColsOf s'.pendingKeys s'.indentColumns)]
+            else []
+          | _ => []
+        go s' fuel (row ++ acc)
+      | _ => acc.reverse
+  go (scanSeed input) fuel []
+
+def testDashLandingMarks (state : IO.Ref TestCollector) : IO Unit := do
+  setCategory state "P145: the landed `-` and the marks it leaves (item 545)"
+  let inputs : List String :=
+    [ "- ?\n- b", "- ? a\n- b", "? ?\n- b", "- ?\n  - a\n- b", "k:\n  ? a\n- b", "- - ?\n  - b",
+      "? a\n- b", "?\n- a", "?\n- a\n: b", "- ?\n  - a\n  : b", "- ? a\n  : b", "- a\n- ? b\n  : c",
+      "?\n  ?\n    - a\n  : b\n: c", "?\n  - ?\n      - a\n    : b\n: c", "- ?\n    - a\n  : b",
+      "k:\n  ?\n  - a\n  : b", "- - ? a\n  - b", "- ? a\n  ? b\n- c", "? - a\n- b", "- ? - a\n- b",
+      "k:\n  - ? a\n  - b", "?\n  ?\n  - a\n  : b\n: c", "- ?\n    ?\n      - a\n    : b\n- c",
+      "- ? a\n  : b\n- c", "- - ? a\n- b",
+      "?\n  ?\n  -\n: w", "? - ?\n  - b\n: w", "?\n  - ?\n  - b\n: w", "?\n-\n: w", "", "- a", "? a" ]
+  let rows := inputs.flatMap fun input => (dashLandings input).map fun r => (input, r)
+  let dedent := rows.filter (·.2.1)
+  let paid := dedent.filter (·.2.2.isEmpty)
+  let multi := rows.filter fun r => !r.2.1 && r.2.2.length ≥ 2
+  check state "P145 block `-` pauses at a park holding a mark: 29" (rows.length == 29)
+  check state "P145 a mark of the park right of the `-`: 12" (dedent.length == 12)
+  check state "P145 of those, no mark survives the step (the empty domain, paid): 10" (paid.length == 10)
+  check state "P145 the 2 left hold an ancestor mark only (`[0]`, still declined)" ((dedent.filter (!·.2.2.isEmpty)).all (·.2.2 == [0]))
+  check state "P145 no mark right of the `-`, two marks held (the chain, not the own mark alone): 5" (multi.length == 5)
+  check state "P145 empty / singleton inputs: no pause at a park holding a mark" ((["", "- a", "? a"].flatMap (dashLandings ·)).isEmpty)
+  -- The fuel boundary, on `?\n- a` (step 1 = the `?`, step 2 = the `-` at the marked park).
+  let f := fun n => (dashLandings "?\n- a" n).length
+  IO.println s!"P145 fuel 0/1/2/3 rows={f 0}/{f 1}/{f 2}/{f 3}"
+  check state "P145 fuel 0 / 1: the walk stops before the `-`, no row; fuel 2 / 3: its one row" (f 0 == 0 && f 1 == 0 && f 2 == 1 && f 3 == 1)
+  -- The `-`'s separator is the scanner's (`isBlockEntryCandidate`): tab, CR and EOF behind the `-`, and a
+  -- multi-byte character ahead of it (byte offset ≠ character index).
+  let seps := ["?\n-\tb", "?\n-\r\nb", "?\n-", "- ? é\n- b", "?\n-b"].map fun i => (dashLandings i).length
+  IO.println s!"P145 separators {seps}"
+  check state "P145 a `-` before tab / CR / EOF / behind a multi-byte char is a pause (1 each); `-b` is not (0)" (seps == [1, 1, 1, 1, 0])
+end P145Test
+
 namespace P141Test
 def testContentBehindParks (state : IO.Ref TestCollector) : IO Unit := do
   let t := P141.tally (P113.allRows ++ P118.extraRows ++ P135.extraRows)
@@ -20478,6 +20559,7 @@ def collectTests : IO VerifiedSuiteResult := do
   P142Test.testQuestionPark state
   P143Test.testRootEmptyDomain state
   P144Test.testExplicitValueSlot state
+  P145Test.testDashLandingMarks state
   P131Test.testOpenCarrierShadow state
   let results ← finish state
   return { name := "adversarialinstantiation",

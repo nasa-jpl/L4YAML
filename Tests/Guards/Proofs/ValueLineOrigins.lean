@@ -771,8 +771,8 @@ def expectedOrigins : List String :=
 -- 2026-10-30 (item 405): rows follow `expectedOrigins` (the `?`-park chain ladder PAID, ruling "405 a").
 -- 2026-10-30 (item 405, Rule 8 fix): the eight `h_kslot`-fed rows read `paid:other/built` (the projection `markedCols sc` is an `other` level) and `none=[fact,…]` where `MarkedColsIn.self` is spent.
 def expectedRows : List String :=
-  ["accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslot := paid:other/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] none=[fact,punt] ⊢ some-held 1/2",
-   "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslotUp := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] none=[punt,stamp] ⊢ some-held 1/2",
+  ["accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslot := alt/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] none=[absurd,fact,punt] ⊢ some-held 1/2",
+   "accum_block_on_closeThenBlock #1 ctor:pendingBlock.h_kslotUp := alt/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] none=[absurd,punt,stamp] ⊢ some-held 1/2",
    "accum_block_on_closeThenBlock #1 param:indicator_open_map.h_explUp_chain := paid:chain/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] none=[stamp,punt] ⊢ some-held 1/2",
    "accum_block_on_closeThenBlock #1 param:indicator_open_map.h_explUp_chainD := alt/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] none=[stamp,absurd,punt] ⊢ some-held 1/2",
    "accum_block_on_closeThenBlock #1 param:slotChainMap.up := relay/built pos=[param:accum_block_on_closeThenBlock.h_vslot] origins=[O4,O69] ⊢ some-held 1/2",
@@ -1226,7 +1226,7 @@ def expectedLine : String :=
 -- Item 519 (review round): term size only — lets 753 → 756, lapps 1204 → 1209, alts 5620 → 5625, liteNodes 688005 → 688691 (the `vslot` writers' fallback funders: `have hnode`, `by_cases`); no row, origin or hold moved.
   -- 2026-11-22 (Lean v4.36.0): liteNodes 693828 → 693938 and nothing else — the walk crosses the same lets, applications,
   -- alternatives and nodes; v4.36.0 elaborates the same proof text to slightly larger terms. No origin row moved.
-  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=195 ctorRows=104 paramRows=91 packagedRows=29 punt=4 stamp=38 built=153 origins=70 originRows=35 route=12 frames=29 tail=15 other=0 concl=8 invariant=6 heldOrigins=15 allHeld=2 someHeld=122 noneHeld=13 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=6 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=397 lets=760 lapps=1235 alts=5688 nodes=14441 liteNodes=694671"
+  "positions=52 packaged=7 packConsts=[ImplicitKeyPack,PropsKeyPack] rows=195 ctorRows=104 paramRows=91 packagedRows=29 punt=4 stamp=38 built=153 origins=70 originRows=35 route=12 frames=29 tail=15 other=0 concl=8 invariant=6 heldOrigins=15 allHeld=2 someHeld=122 noneHeld=13 unbornRows=0 relayedPunt=0 relayedStamp=10 relayedAbsurd=6 relayedFact=0 deadRows=0 unbornPos=0 rounds=4 follows=399 lets=760 lapps=1235 alts=5690 nodes=14441 liteNodes=694976"
 
 /-! ## §4 The reading -/
 

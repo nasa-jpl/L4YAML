@@ -522,7 +522,9 @@ so `traceOf_unique` stays refuted until `[211]` is explicit-only.
 **A third hole, independent of `[211]`: `[206] c-forbidden`.**  `[207]
 l-bare-document` is `s-l+block-node(-1,BLOCK-IN)` *excluding `c-forbidden`
 content*; `SLBareDocument` has no such exclusion (`SCForbidden` is declared in
-`Surface/Document.lean` and used nowhere).  A column-0 `...` or `---` line is
+`Surface/Document.lean` and used nowhere), and neither has the hand-written
+`TLBareDocument` (`TraceOf/Document.lean`), the constructor the pairs below go
+through — a repair must narrow both.  A column-0 `...` or `---` line is
 therefore both a continuation line of a multi-line plain scalar (`[69]` at
 `n = 0`, `.`/`-` being `ns-plain-safe`) and a document marker
 (`Tests/Guards/Proofs/TraceOfForbiddenAmbiguity.lean`):

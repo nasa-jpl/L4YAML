@@ -261,7 +261,7 @@ def expectedSummary : String :=
 -- Item 519: inrTrivial 497 → 495 — the two flow-close `h_vpack` `Or.inr trivial` arms are PAID from `vslot`
 -- (the `h_framesV` arms keep their `[]` cover decline); shrink-only.
 -- Item 519 (review round): inrTrivial 495 → 496, see the writers' row for `accum_flow_open_depth0`.
-  "positions=252 top=162 nested=90 True=177 PackAlt=66 PackAltG=9 modules=2 supply: paid=27 relayed=116 declined-only=0 never-supplied=0 unresolved=8 conclusions=9 consumers: spent=102 relayed=13 unused=0 unreadable=36 writers=37 inrTrivial=460"
+  "positions=252 top=162 nested=90 True=177 PackAlt=66 PackAltG=9 modules=2 supply: paid=27 relayed=116 declined-only=0 never-supplied=0 unresolved=8 conclusions=9 consumers: spent=102 relayed=13 unused=0 unreadable=36 writers=37 inrTrivial=459"
 
 -- Item 508 (2026-11-14): `entryKeyPack_of_dispatch` took the `h_dead` premise after `h_preprocess`,
 -- so its `h_nodeS` / `h_nodeSF` positions read [31] / [32] (were [30] / [31]) — an index shift, not a
@@ -888,7 +888,7 @@ def expectedConsumers : List String :=
 def expectedWriters : List String :=
   ["L4YAML.Proofs.PreprocessIndentStable.IndentFloor.transport ×1 (PreprocessIndentStable)",
   "L4YAML.Proofs.StreamAccum.FlowBaseRoutes.ofValue ×3 (StreamAccum)",
-  "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×27 (StreamAccum)",
+  "L4YAML.Proofs.StreamAccum.accum_block_on_closeThenBlock ×26 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_noPending ×7 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlock ×26 (StreamAccum)",
   "L4YAML.Proofs.StreamAccum.accum_block_on_pendingBlockContent ×23 (StreamAccum)",
